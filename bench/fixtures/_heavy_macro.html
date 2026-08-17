@@ -1,0 +1,14 @@
+{# Module-level constants, like ui/icon.html's path table. #}
+{% set PATHS = {
+  "check": '<path d="M20 6 9 17l-5-5"/>',
+  "plus": '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  "trash": '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>',
+  "arrow": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  "dot": '<circle cx="12" cy="12" r="10"/>',
+  "list": '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/>',
+  "moon": '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/>',
+} %}
+{% macro row(task) -%}
+<tr><td>{{ task.title }}</td><td>{{ PATHS["check"] | safe }}</td><td>{{ task.owner }}</td></tr>
+{%- endmacro %}

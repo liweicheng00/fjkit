@@ -1,0 +1,64 @@
+{% from "ui/attrs.html" import attrs %}
+{% from "ui/icon.html" import icon %}
+
+{#
+  button(label, variant, size, href, icon_name, …, **html_attrs)
+
+  variant: primary | secondary | outline | ghost | link | destructive
+  size:    xs | sm | default | lg | icon | icon-sm | icon-xs
+
+  Note what the signature does NOT accept: a class string. Callers pick a
+  variant, never a colour. That is the whole reason components are macros with
+  named parameters — the parameter list *is* the contract, and it can say no.
+
+  Variants and sizes are attributes, not classes (`data-variant="primary"`),
+  because that is Basecoat's API. Extend it the same way; never invent a
+  parallel `btn-primary` class.
+#}
+{% macro button(label, variant="", size="", type="button", href=none, icon_name=none, icon_end=false, disabled=false) -%}
+  {%- set tag = "a" if href else "button" -%}
+  <{{ tag }} class="btn"
+    {%- if variant %} data-variant="{{ variant }}"{% endif %}
+    {%- if size %} data-size="{{ size }}"{% endif %}
+    {%- if href %} href="{{ href }}"{% else %} type="{{ type }}"{% endif %}
+    {%- if disabled %} disabled{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if icon_name and not icon_end %}{{ icon(icon_name) }}{% endif -%}
+    {{ label }}
+    {%- if icon_name and icon_end %}{{ icon(icon_name) }}{% endif -%}
+  </{{ tag }}>
+{%- endmacro %}
+
+{#
+  button_group() — a run of related buttons, e.g. a filter bar.
+
+      {% call button_group() %}
+        {% for value, label in filters %}
+          {{ button(label, size="xs", variant="ghost", hx_get=…) }}
+        {% endfor %}
+      {% endcall %}
+#}
+{% from "ui/attrs.html" import attrs %}
+{% from "ui/layout.html" import row %}
+
+{% macro button_group(gap=2, orientation="horizontal") -%}
+  {#
+    `caller()` is evaluated into a variable *before* the inner {% call %}.
+    Inside a call block Jinja rebinds `caller` to that block's own caller, so a
+    macro that forwards its body into another block macro must capture it first
+    — otherwise it reads the inner (non-existent) caller and raises
+    "No caller defined". Any composite macro here has to do the same.
+  #}
+  {%- set body = caller() -%}
+  {#
+    Basecoat's `.button-group` already understands `data-orientation="vertical"`
+    — it flips the flex direction and moves the shared borders to the
+    horizontal edges. Exposing it costs one closed lookup and saves every app
+    that needs a column of choices from writing `flex-col` itself.
+  #}
+  {%- if orientation == "vertical" -%}
+    <div class="button-group" data-orientation="vertical"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ body }}</div>
+  {%- else -%}
+    {% call row(gap=gap, align="center", **kwargs) %}{{ body }}{% endcall %}
+  {%- endif -%}
+{%- endmacro %}

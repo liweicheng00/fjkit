@@ -1,0 +1,51 @@
+# Workspace root. It ships nothing itself: the package is `packages/fjkit`, and
+# `examples/board` is the demo that doubles as the kit's acceptance test.
+#
+# Deliberately a virtual root (no [project] table). fjkit is the subject of this
+# repository, so nothing at the top level should look like an installable app.
+
+[tool.uv.workspace]
+members = ["packages/*", "examples/*"]
+# The style markers are distributions to publish, not parts of the dev
+# environment. A workspace installs every member, and installing all eight
+# markers at once is exactly the ambiguity `fjkit.styles` refuses to guess
+# its way out of — so they are excluded and reached by path below instead.
+exclude = ["packages/fjkit-style-*"]
+
+# Declared once, workspace-wide: the demo resolves `fjkit` to the local package
+# rather than to PyPI. The style markers are listed too, so `uv add "fjkit[nova]"`
+# resolves inside the workspace instead of looking for them on PyPI.
+[tool.uv.sources]
+fjkit = { workspace = true }
+fjkit-style-vega = { path = "packages/fjkit-style-vega" }
+fjkit-style-nova = { path = "packages/fjkit-style-nova" }
+fjkit-style-maia = { path = "packages/fjkit-style-maia" }
+fjkit-style-lyra = { path = "packages/fjkit-style-lyra" }
+fjkit-style-mira = { path = "packages/fjkit-style-mira" }
+fjkit-style-luma = { path = "packages/fjkit-style-luma" }
+fjkit-style-sera = { path = "packages/fjkit-style-sera" }
+fjkit-style-rhea = { path = "packages/fjkit-style-rhea" }
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.10.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.3",
+]
+
+[tool.pytest.ini_options]
+# The kit's suite and the demo's run together, so `uv run pytest` is the one
+# command that covers everything.
+testpaths = ["packages/fjkit/tests", "examples/board/tests"]
+# The demo's own package root, so its tests import `app.*` exactly as the demo
+# does — no path juggling inside the test files.
+pythonpath = ["examples/board"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

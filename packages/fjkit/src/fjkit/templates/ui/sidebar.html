@@ -1,0 +1,172 @@
+{#
+  The application shell's side column — 0.5's first piece.
+
+  A back office outgrows a header bar at about six destinations: the row runs
+  out of width, and grouping ("Workspace" / "Admin") has nowhere to live. That
+  is the point at which an app without a sidebar component starts writing
+  `fixed inset-y-0 w-64 border-r` by hand, which is the closed vocabulary gone
+  on page one.
+
+  Basecoat already ships `.sidebar` — the CSS is in the stylesheet whether or
+  not anything renders it (CHARTER.md §7), and its JS is vendored. So this file
+  is not a new widget; it is the fjkit-shaped door onto one that is already
+  paid for: route names instead of hrefs, an icon by name, closed enumerations,
+  and no class string anywhere in the signature.
+
+  The markup contract belongs to Basecoat and is load-bearing —
+  `aside.sidebar > nav > {header, section, footer}`, `[role=group] > ul > li`,
+  and the *next sibling* of the aside is what gets the margin that keeps the
+  page clear of it. `ui/shell.html` owns that sibling; an app calls these
+  macros through the shell's `sidebar` block and never has to know.
+
+      {% block sidebar %}
+        {% set mark %}{{ brand("Acme", url_for(request, "home"), "gauge") }}{% endset %}
+        {% call sidebar(header=mark) %}
+          {% call sidebar_group("Workspace") %}
+            {{ sidebar_link(request, "home", "Overview", icon_name="gauge") }}
+          {% endcall %}
+        {% endcall %}
+      {% endblock %}
+#}
+{% from "ui/attrs.html" import attrs %}
+{% from "ui/icon.html" import icon %}
+
+{#
+  sidebar(id, label, side, open, header, footer, **html_attrs)
+
+  side: left | right
+
+  `header` and `footer` take **pre-rendered markup**, like `card`'s `actions`:
+  a call block runs its body once per slot, and the body here is the navigation
+  — the part that is always there and always the biggest. Paying for it twice
+  to make room for a brand mark is the wrong trade.
+
+  **What `open` does, and does not.** It is the *desktop* starting state. On a
+  narrow screen the sidebar always starts closed, because it renders as a
+  full-screen overlay there and a page that opens covered by its own navigation
+  is a bug, not a preference. Basecoat's script owns both states from then on:
+  it sets `aria-hidden` and `inert` together, so a collapsed sidebar is out of
+  the tab order rather than merely invisible, and on a narrow screen it closes
+  itself when a link inside it is followed.
+
+  **Without JavaScript** the server-rendered `aria-hidden="false"` plus
+  Basecoat's `:not([data-sidebar-initialized])` rule leaves a wide screen fully
+  navigable and hides the overlay on a narrow one. The links stay in the HTML
+  either way, so a crawler and a reader-mode still see them.
+#}
+{% macro sidebar(id="sidebar", label="Main", side="left", open=true, header=none, footer=none) -%}
+  {#
+    Closed lookup, not interpolation: `data-side="{{ side }}"` would happily
+    emit `data-side="middle"`, and the CSS has no rule for it — the sidebar
+    would silently lose its border and its margin. An unknown value falls back
+    to the default instead.
+  #}
+  {%- set sides = {"left": "left", "right": "right"} -%}
+  <aside class="sidebar" id="{{ id }}" data-side="{{ sides.get(side, "left") }}"
+         aria-hidden="{{ "false" if open else "true" }}"
+    {%- if not open %} data-initial-open="false" inert{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {#
+      The <nav> is the panel; the <aside> around it is the backdrop on a narrow
+      screen, which is why clicking it closes the sidebar. `aria-label` names
+      the landmark: a page with two navigations ("Main", "Account") needs them
+      told apart in a screen reader's landmark list, and "navigation" twice
+      does not do that.
+    #}
+    <nav aria-label="{{ label }}">
+      {%- if header %}<header>{{ header }}</header>{% endif %}
+      <section>{{ caller() }}</section>
+      {%- if footer %}<footer>{{ footer }}</footer>{% endif %}
+    </nav>
+  </aside>
+{%- endmacro %}
+
+{#
+  sidebar_group(title) — a labelled band of links inside the sidebar.
+
+  The label is `aria-label` on the group rather than `aria-labelledby` pointing
+  at the <h3>, because the alternative is generating an id per group. Ids in a
+  macro that a page may render twice — a sidebar plus an htmx-swapped copy of
+  it — are ids that collide, and a colliding `aria-labelledby` resolves to the
+  wrong heading rather than to nothing. The string is identical to the visible
+  heading, so the name and the label still match.
+#}
+{% macro sidebar_group(title=none) -%}
+  <div role="group"{% if title %} aria-label="{{ title }}"{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if title %}<h3>{{ title }}</h3>{% endif %}
+    <ul>{{ caller() }}</ul>
+  </div>
+{%- endmacro %}
+
+{#
+  sidebar_link(request, route, label, icon_name, **html_attrs)
+
+  A route *name*, not a URL — same as `nav_links`. The active state compares
+  routes instead of string-matching paths, so it stays right when a URL grows a
+  query string, and a renamed path changes in one place.
+
+  The label sits in its own <span> because Basecoat truncates the last span in
+  the row: a long label ellipsises instead of pushing the icon out of the
+  panel. That is also why the icon is a parameter rather than something the
+  caller puts in the body.
+#}
+{% macro sidebar_link(request, route, label, icon_name=none) -%}
+  <li>
+    <a href="{{ url_for(request, route) }}"
+      {%- if is_active(request, route) %} aria-current="page"{% endif %}
+      {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+      {%- if icon_name %}{{ icon(icon_name, 16) }}{% endif %}
+      <span>{{ label }}</span>
+    </a>
+  </li>
+{%- endmacro %}
+
+{#
+  sidebar_submenu(label, icon_name, open) — a second level of links.
+
+      {% call sidebar_submenu("Reports", icon_name="chart-bar") %}
+        {{ sidebar_link(request, "report_daily", "Daily") }}
+      {% endcall %}
+
+  `<details>` and not a scripted disclosure: the browser owns the open state,
+  the Enter/Space handling and the expanded announcement, and Basecoat's CSS
+  already rotates the chevron off `[open]`. There is nothing left for
+  JavaScript to add, which is the test CHARTER.md §8 sets for wrapping a native
+  element.
+
+  Pass `open=true` for the branch the current page lives in; the router knows
+  which that is, the template does not.
+#}
+{% macro sidebar_submenu(label, icon_name=none, open=false) -%}
+  <li>
+    <details{% if open %} open{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+      <summary>
+        {%- if icon_name %}{{ icon(icon_name, 16) }}{% endif %}
+        <span>{{ label }}</span>
+      </summary>
+      <ul>{{ caller() }}</ul>
+    </details>
+  </li>
+{%- endmacro %}
+
+{#
+  sidebar_trigger(target, label) — the button that collapses and reveals it.
+
+  The shell renders one for you when its `sidebar` block is filled; call it
+  yourself only if you override the shell's header, or if your sidebar carries
+  an id other than the default.
+
+  `onclick` calls the method Basecoat's own script attached to the element —
+  the same shape as the theme toggle in `ui/nav.html`, and for the same reason:
+  the alternative is fjkit shipping a script of its own to bind one listener
+  (CHARTER.md §11.3), which costs a file and a load-order rule to save an
+  attribute. `aria-expanded` is deliberately absent: the script owns the open
+  state, so a value rendered here would be a second, stale copy of it.
+#}
+{% macro sidebar_trigger(target="sidebar", label="Toggle navigation") -%}
+  <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="{{ label }}" aria-controls="{{ target }}"
+          onclick="document.getElementById('{{ target }}').toggle()"
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ icon("panel-left", 16) }}</button>
+{%- endmacro %}

@@ -1,0 +1,94 @@
+{#
+  The app's shell: fjkit's, plus this app's identity.
+
+  Everything structural — <head>, the theme flash-guard, the asset links, the
+  sidebar/header/main/footer skeleton — lives in ui/shell.html. What is left
+  here is the brand, the navigation and the footer text, which is the part that
+  is actually this app's.
+
+  The destinations live in the `sidebar` block rather than `nav`: three of them
+  fit in a header bar, but a back office grows sideways, and the demo is the
+  kit's acceptance test for what happens when it does. Filling that block is
+  the whole opt-in — the shell moves the layout across on its own.
+#}
+{% extends "ui/shell.html" %}
+{% from "ui/nav.html" import brand, theme_toggle %}
+{% from "ui/layout.html" import row %}
+{% from "ui/sidebar.html" import sidebar, sidebar_group, sidebar_link %}
+{% from "ui/data.html" import kbd %}
+
+{% block site_title %}fjkit demo{% endblock %}
+
+{% block sidebar %}
+  {% set mark %}{{ brand("board", url_for(request, "dashboard"), icon_src=fjkit_static("brand/torii-bolt.png")) }}{% endset %}
+  {% call sidebar(header=mark, label="Board") %}
+    {% call sidebar_group("Workspace") %}
+      {{ sidebar_link(request, "dashboard", "Overview", icon_name="gauge") }}
+      {{ sidebar_link(request, "tasks_page", "Tasks", icon_name="list-checks") }}
+      {{ sidebar_link(request, "jobs_page", "Jobs", icon_name="play") }}
+    {% endcall %}
+  {% endcall %}
+{% endblock %}
+
+{% block footer %}
+  fjkit {{ fjkit_version.fjkit }} · FastAPI {{ fjkit_version.fastapi }} · Jinja2 {{ fjkit_version.jinja2 }}
+  · Basecoat {{ fjkit_version.basecoat }} · htmx {{ fjkit_version.htmx }}
+  — server render time is in the {{ kbd("Server-Timing") }} response header
+{% endblock %}
+
+{#
+  The style picker, and the one piece of hand-written JavaScript in this app.
+
+  fjkit still resolves one pack per process — the shell's <link> is whatever
+  `FjkitConfig.style` chose, and nothing here changes that on the server. All
+  eight are already served out of the installed package, so the browser can be
+  pointed at a different one to compare them; that is the demo's job, not the
+  kit's, which is why this lives in the app and not in `ui/shell.html`.
+
+  Why the script sits in `head` rather than at the end of `body`: it has to run
+  before the first paint, exactly like the shell's theme flash-guard above it.
+  A pack applied after paint is a visible flash of the other pack's geometry.
+
+  The pack is looked up in a map the server built, never concatenated into a
+  URL, so a `localStorage` value that is not one of the eight is ignored rather
+  than requested — a 404 on the only stylesheet is an unstyled page.
+#}
+{% block head %}
+  <script>
+    (() => {
+      const sheets = {{ style_sheets | tojson }};
+      const saved = localStorage.getItem("style");
+      const link = document.querySelector('link[rel="stylesheet"]');
+      if (saved && sheets[saved]) link.href = sheets[saved];
+
+      addEventListener("DOMContentLoaded", () => {
+        const picker = document.querySelector("[data-style-picker]");
+        if (saved && sheets[saved]) picker.value = saved;
+        picker.addEventListener("change", () => {
+          localStorage.setItem("style", picker.value);
+          link.href = sheets[picker.value];
+        });
+      });
+    })();
+  </script>
+{% endblock %}
+
+{#
+  A bare `select.select` rather than `select_field()`: that macro builds a form
+  field — label, hint, `.field` wrapper that stretches its control to the full
+  width — and this is a header control that submits nothing. `data-size="sm"`
+  matches the height of the theme toggle beside it.
+
+  The option values are the strings `FjkitConfig(style=...)` takes, so what the
+  picker shows is also what you would write down to keep a pack for good.
+#}
+{% block header_actions %}
+  {% call row(gap=2) %}
+    <select class="select" data-size="sm" data-style-picker aria-label="Style pack">
+      {% for pack in style_sheets %}
+        <option value="{{ pack }}"{% if pack == fjkit_style %} selected{% endif %}>{{ pack }}</option>
+      {% endfor %}
+    </select>
+    {{ theme_toggle() }}
+  {% endcall %}
+{% endblock %}

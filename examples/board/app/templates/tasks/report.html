@@ -1,0 +1,36 @@
+{#
+  The streamed page.
+
+  Nothing special in the markup — streaming is a property of how the route
+  renders it (@render(..., stream=True)), not of the template. The one thing that
+  matters: the expensive loop is at the *end*, so <head> and the shell are
+  already on the wire while the rows are still being generated.
+#}
+{% extends "base.html" %}
+{% from "ui/data.html" import badge, card %}
+{% from "ui/layout.html" import page_header %}
+{% from "ui/table.html" import cell, table %}
+
+{% block title %}Report{% endblock %}
+
+{% block content %}
+  {{ page_header("Report", tasks | length ~ " rows, streamed. Peak server memory is one buffer, not the whole document.") }}
+
+  {% call card(padded=false) %}
+    {% call table([
+         {"label": "#", "width": "narrow"},
+         {"label": "Task"},
+         {"label": "Status"},
+         {"label": "Owner"},
+       ]) %}
+      {% for task in tasks %}
+        <tr>
+          {{ cell(loop.index, tone="muted", numeric=true) }}
+          {{ cell(task.title) }}
+          {{ cell(badge(task.status.value | capitalize, variant=task.status_variant)) }}
+          {{ cell(task.owner, tone="muted") }}
+        </tr>
+      {% endfor %}
+    {% endcall %}
+  {% endcall %}
+{% endblock %}

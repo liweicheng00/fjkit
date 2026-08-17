@@ -1,0 +1,146 @@
+{#
+  Layout primitives.
+
+  These exist because of one promise: an app that uses fjkit never writes a raw
+  utility class. Components alone don't get you there — the moment you need two
+  cards side by side you reach for `grid gap-4`, and the closed vocabulary is
+  broken on page one. So arrangement is a component too.
+
+  Every spacing and column value is a *closed lookup* whose entries appear
+  verbatim below. Never build a class by interpolation (`gap-{{ n }}`):
+  Tailwind finds classes by scanning source text, so an interpolated one is
+  simply absent from the stylesheet. An unknown key falls back to the default
+  rather than emitting a class that does not exist.
+#}
+{% from "ui/attrs.html" import attrs %}
+
+{% set _GAP = {
+  0: "gap-0", 1: "gap-1", 2: "gap-2", 3: "gap-3",
+  4: "gap-4", 5: "gap-5", 6: "gap-6", 8: "gap-8",
+} %}
+
+{% set _ALIGN = {
+  "start": "items-start", "center": "items-center", "end": "items-end",
+  "stretch": "items-stretch", "baseline": "items-baseline",
+} %}
+
+{% set _JUSTIFY = {
+  "start": "justify-start", "center": "justify-center", "end": "justify-end",
+  "between": "justify-between", "around": "justify-around",
+} %}
+
+{#
+  stack(gap, align) — vertical flow.
+
+      {% call stack(4) %}
+        {{ card_a }}
+        {{ card_b }}
+      {% endcall %}
+
+  flex + gap rather than `space-y-*`: gap cannot collapse, cannot double up
+  when a child is conditionally absent, and reads the same as row().
+#}
+{% macro stack(gap=4, align=none) -%}
+  <div class="flex flex-col {{ _GAP.get(gap, "gap-4") }}{% if align %} {{ _ALIGN.get(align, "") }}{% endif %}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {{- caller() -}}
+  </div>
+{%- endmacro %}
+
+{#
+  row(gap, align, justify, wrap) — horizontal flow.
+
+  `wrap` defaults to true because a row of buttons or badges that cannot wrap
+  is a horizontal-scrollbar bug waiting for a narrow screen.
+#}
+{% macro row(gap=3, align="center", justify=none, wrap=true) -%}
+  <div class="flex{% if wrap %} flex-wrap{% endif %} {{ _GAP.get(gap, "gap-3") }}
+              {{- " " ~ _ALIGN.get(align, "") if align }}{{ " " ~ _JUSTIFY.get(justify, "") if justify }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {{- caller() -}}
+  </div>
+{%- endmacro %}
+
+{#
+  grid(cols, gap) — an even grid that collapses on small screens.
+
+  cols is what you want on a wide screen; the breakpoints below are fixed on
+  purpose. Letting callers choose breakpoints is how a layout vocabulary turns
+  back into Tailwind with extra steps.
+#}
+{% set _COLS = {
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-2 lg:grid-cols-3",
+  4: "sm:grid-cols-2 lg:grid-cols-4",
+} %}
+
+{% macro grid(cols=3, gap=4) -%}
+  <div class="grid {{ _GAP.get(gap, "gap-4") }} {{ _COLS.get(cols, "sm:grid-cols-2 lg:grid-cols-3") }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {{- caller() -}}
+  </div>
+{%- endmacro %}
+
+{#
+  split(aside, gap) — main column plus a fixed-width sidebar, stacking on
+  narrow screens. Two slots, so it is called with a slot argument:
+
+      {% call(slot) split() %}
+        {% if slot == "main" %}
+          …the board…
+        {% else %}
+          …the stats panel…
+        {% endif %}
+      {% endcall %}
+
+  The body runs once per slot, and each branch renders in exactly one of them.
+#}
+{% set _ASIDE = {
+  "sm": "lg:grid-cols-[1fr_16rem]",
+  "md": "lg:grid-cols-[1fr_19rem]",
+  "lg": "lg:grid-cols-[1fr_22rem]",
+} %}
+
+{% macro split(aside="md", gap=6) -%}
+  <div class="grid {{ _GAP.get(gap, "gap-6") }} {{ _ASIDE.get(aside, "lg:grid-cols-[1fr_19rem]") }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    <div>{{ caller("main") }}</div>
+    <aside>{{ caller("aside") }}</aside>
+  </div>
+{%- endmacro %}
+
+{#
+  page_header(title, description) — the title block every page opens with.
+
+  Works plain, or as a call block whose body becomes the right-hand actions:
+
+      {% call page_header("Tasks", "One board, no page reloads") %}
+        {{ button("New", variant="primary") }}
+      {% endcall %}
+#}
+{% macro page_header(title, description=none) -%}
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">{{ title }}</h1>
+      {% if description %}<p class="text-muted-foreground text-sm">{{ description }}</p>{% endif %}
+    </div>
+    {% if caller is defined %}{{ caller() }}{% endif %}
+  </div>
+{%- endmacro %}
+
+{#
+  section(title, description) — a labelled band within a page. Use when a page
+  has more than one topic; a page with one topic just needs page_header.
+#}
+{% macro section(title=none, description=none, gap=4) -%}
+  <section class="flex flex-col {{ _GAP.get(gap, "gap-4") }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {% if title or description %}
+      <div>
+        {% if title %}<h2 class="text-lg font-semibold tracking-tight">{{ title }}</h2>{% endif %}
+        {% if description %}<p class="text-muted-foreground text-sm">{{ description }}</p>{% endif %}
+      </div>
+    {% endif %}
+    {{- caller() -}}
+  </section>
+{%- endmacro %}
+
+{# divider() — a horizontal rule that uses the border token, not a hue. #}
+{% macro divider() -%}
+  <hr class="border-border">
+{%- endmacro %}

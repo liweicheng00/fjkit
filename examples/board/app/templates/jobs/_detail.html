@@ -1,0 +1,25 @@
+{#
+  The inside of a job's dialog. Returned by GET /jobs/{id}/detail and swapped
+  into `#job-detail-{id}-body` — the id the `dialog` macro puts on its body for
+  exactly this.
+
+  Nothing here knows it is in a dialog. It is an ordinary partial: it declares
+  its own imports, reads only `job`, `facts` and `timeline`, and would render
+  just as correctly on a page of its own. That is what makes the shell and the
+  contents separable in the first place.
+#}
+{% from "ui/data.html" import badge, bullet_list, list_item, metric_group %}
+{% from "ui/layout.html" import row, stack %}
+
+{% call stack(4) %}
+  {% call row(gap=2) %}
+    {{ badge(job.state.value | capitalize, variant=job.state_variant) }}
+    {{ badge(job.kind.value | capitalize, variant="outline") }}
+  {% endcall %}
+
+  {{ metric_group(facts) }}
+
+  {% call bullet_list() %}
+    {% for line in timeline %}{% call list_item() %}{{ line }}{% endcall %}{% endfor %}
+  {% endcall %}
+{% endcall %}

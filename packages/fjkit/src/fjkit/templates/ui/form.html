@@ -1,0 +1,101 @@
+{#
+  Form controls.
+
+  0.1 ships the two fields the demo needs plus the wrappers. The full set
+  (checkbox, radio group, switch, textarea, fieldset) is 0.2; Pydantic error
+  round-tripping is 0.3. Every field below already accepts an `error`
+  parameter so that landing does not change any signature.
+#}
+{% from "ui/attrs.html" import attrs %}
+
+{#
+  form(action, method, target, swap) — the <form> element itself.
+
+      {% call form(action=url_for(request, "tasks_create"), target="#board") %}
+        {% call field_row("1fr auto") %}…{% endcall %}
+      {% endcall %}
+
+  `target`/`swap` emit hx-target/hx-swap. A form with a target is an htmx form;
+  one without is an ordinary POST. Same macro either way — that symmetry is
+  what makes progressive enhancement cheap.
+#}
+{% macro form(action=none, method="post", target=none, swap="outerHTML", reset_on_success=false, card=true) -%}
+  <form class="{{ "card" if card else "" }}"
+    {%- if action %} {{ "hx-post" if method == "post" else "hx-get" }}="{{ action }}"{% endif %}
+    {%- if target %} hx-target="{{ target }}" hx-swap="{{ swap }}"{% endif %}
+    {%- if reset_on_success %} hx-on::after-request="this.reset()"{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {% if card %}<section>{{ caller() }}</section>{% else %}{{ caller() }}{% endif %}
+  </form>
+{%- endmacro %}
+
+{#
+  field_row(template) — fields side by side on wide screens, stacked on narrow.
+
+  `template` is a closed lookup key, not a raw grid-template string: an
+  interpolated `sm:grid-cols-[…]` would not exist in the stylesheet.
+#}
+{% set _ROWS = {
+  "wide-then-actions": "sm:grid-cols-[1fr_8.5rem_8.5rem_auto]",
+  "two": "sm:grid-cols-2",
+  "three": "sm:grid-cols-3",
+  "four": "sm:grid-cols-2 lg:grid-cols-4",
+  "field-and-button": "sm:grid-cols-[1fr_auto]",
+} %}
+
+{% macro field_row(template="two", gap=3) -%}
+  {%- set _GAP = {2: "gap-2", 3: "gap-3", 4: "gap-4"} -%}
+  <div class="grid {{ _GAP.get(gap, "gap-3") }} {{ _ROWS.get(template, "sm:grid-cols-2") }} sm:items-end">
+    {{- caller() -}}
+  </div>
+{%- endmacro %}
+
+{# text_field(name, label, …) — label + control + hint, wired together by id. #}
+{% macro text_field(name, label=none, value="", placeholder="", type="text", required=false, hint=none, error=none, id=none) -%}
+  {%- set field_id = id or ("f-" ~ name) -%}
+  <div class="field">
+    {% if label %}<label class="label" for="{{ field_id }}">{{ label }}</label>{% endif %}
+    <input class="input" type="{{ type }}" id="{{ field_id }}" name="{{ name }}"
+           value="{{ value }}" placeholder="{{ placeholder }}"
+           {%- if required %} required{% endif %}
+           {%- if error %} aria-invalid="true"{% endif %}
+           {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
+           {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {% if error %}
+      <p class="text-destructive text-xs" id="{{ field_id }}-hint">{{ error }}</p>
+    {% elif hint %}
+      <p class="text-muted-foreground text-xs" id="{{ field_id }}-hint">{{ hint }}</p>
+    {% endif %}
+  </div>
+{%- endmacro %}
+
+{#
+  select_field(name, label, options, selected)
+
+  `options` is a list of (value, label) pairs — the caller decides the labels,
+  so the macro never reaches into a domain enum it should not know about.
+
+  Native <select> on purpose: no JS, keyboard and screen-reader correct for
+  free, and one element instead of the ~30 a scripted listbox emits. Reach for
+  the JS combobox (0.8) only when you actually need search or multi-select.
+#}
+{% macro select_field(name, label=none, options=(), selected=none, id=none, blank=none, hint=none, error=none) -%}
+  {%- set field_id = id or ("f-" ~ name) -%}
+  <div class="field">
+    {% if label %}<label class="label" for="{{ field_id }}">{{ label }}</label>{% endif %}
+    <select class="select" id="{{ field_id }}" name="{{ name }}"
+            {%- if error %} aria-invalid="true"{% endif %}
+            {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
+            {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+      {% if blank is not none %}<option value="">{{ blank }}</option>{% endif %}
+      {% for value, text in options %}
+        <option value="{{ value }}"{% if value == selected %} selected{% endif %}>{{ text }}</option>
+      {% endfor %}
+    </select>
+    {% if error %}
+      <p class="text-destructive text-xs" id="{{ field_id }}-hint">{{ error }}</p>
+    {% elif hint %}
+      <p class="text-muted-foreground text-xs" id="{{ field_id }}-hint">{{ hint }}</p>
+    {% endif %}
+  </div>
+{%- endmacro %}

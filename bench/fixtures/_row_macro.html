@@ -1,0 +1,3 @@
+{% macro row(task) -%}
+<tr><td>{{ task.title }}</td><td><span class="badge" data-variant="{{ task.status_variant }}">{{ task.status.value }}</span></td><td>{{ task.owner }}</td></tr>
+{%- endmacro %}

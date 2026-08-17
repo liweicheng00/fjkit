@@ -1,0 +1,29 @@
+{#
+  Full page. Its only jobs: extend the shell, set the title, and drop in the
+  same partial the htmx endpoints return. Nothing about a task row is written
+  twice, so a change to the board cannot land in one place and miss the other.
+#}
+{% extends "base.html" %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import kbd %}
+{% from "ui/layout.html" import page_header %}
+
+{% block title %}Tasks{% endblock %}
+
+{% block content %}
+  {#
+    A block assignment rather than a plain string: `{% set %}…{% endset %}`
+    yields Markup, so the description can contain a component (here `kbd`)
+    without the page having to hand-write the markup or reach for |safe.
+  #}
+  {% set note %}
+    Every control here swaps {{ kbd("#board") }} — no page reloads, no client state.
+  {% endset %}
+
+  {% call page_header("Tasks", note) %}
+    {{ button("Streamed report", variant="outline", size="sm", icon_name="arrow-right", icon_end=true,
+              href=url_for(request, "tasks_report") ~ "?rows=5000") }}
+  {% endcall %}
+
+  {% include "tasks/_board.html" %}
+{% endblock %}

@@ -1,0 +1,106 @@
+{#
+  The document shell. Every page extends this, directly or through the app's
+  own base.html.
+
+  What it owns: the <head>, the theme flash-guard, the asset links, and the
+  header/main/footer skeleton. What it does not own: your brand, your nav, your
+  footer text — those are blocks.
+
+  Typical app base.html:
+
+      {% extends "ui/shell.html" %}
+      {% from "ui/nav.html" import brand, nav_links %}
+
+      {% block site_title %}Acme{% endblock %}
+      {% block brand %}{{ brand("Acme", url_for(request, "home"), "gauge") }}{% endblock %}
+      {% block nav %}{{ nav_links(request, [("home", "Overview")]) }}{% endblock %}
+
+  Fill the `sidebar` block instead of `nav` and the skeleton becomes a side
+  column plus a thin top bar; see the note above <body>.
+#}
+{% from "ui/nav.html" import theme_toggle %}
+{% from "ui/sidebar.html" import sidebar_trigger %}
+{#
+  Rendered into a variable rather than straight into the page, because three
+  things downstream depend on *whether the app filled it in*: the aside has to
+  come first in the body, the content wrapper next to it changes shape, and the
+  header grows a toggle. Jinja gives no way to ask whether a block is empty, so
+  the block is captured once here and the emptiness test is on the string.
+
+  The cost is buffering the sidebar's markup — a few hundred bytes — before the
+  response starts. Worth it: the alternative is a second flag the app has to
+  remember to set, which is a flag that will be forgotten.
+#}
+{% set sidebar_slot %}{% block sidebar %}{% endblock %}{% endset %}
+{% set has_sidebar = sidebar_slot.strip() | length > 0 -%}
+<!doctype html>
+<html lang="{% block lang %}en{% endblock %}" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %}{% block site_title_separator %} · {% endblock %}{% block site_title %}{% endblock %}</title>
+  {#
+    Theme is applied before first paint so a dark-mode reload never flashes
+    white. Basecoat's dark variant keys off `html.dark`, which is the only
+    thing this script touches.
+  #}
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  {#
+    One stylesheet, named after the style pack `FjkitConfig.style` selected.
+    All eight ship built in the wheel; exactly one is ever requested.
+  #}
+  <link rel="stylesheet" href="{{ fjkit_static('dist/fjkit-' ~ fjkit_style ~ '.css') }}">
+  {#
+    Where an app overrides tokens. One file, plain CSS, no build — see the
+    brand section of the docs. Empty by default.
+  #}
+  {% block stylesheets %}{% endblock %}
+  <script defer src="{{ fjkit_static('vendor/htmx/htmx.min.js') }}"></script>
+  <script defer src="{{ fjkit_static('vendor/basecoat/js/all.min.js') }}"></script>
+  {% block head %}{% endblock %}
+</head>
+{#
+  With a sidebar, the aside is the first thing in the body and the wrapper is
+  its *immediate next sibling* — that is the element Basecoat's CSS gives the
+  margin that keeps the page clear of the fixed panel, and it slides back to
+  zero when the sidebar collapses. Putting anything between the two silently
+  loses the margin, so the shell owns this adjacency rather than documenting it.
+
+  It also drops `mx-auto max-w-6xl` in that layout, and not for taste: `mx-auto`
+  is a utility, Basecoat's margin comes through `@apply` in the components
+  layer, and utilities win — a centred wrapper would quietly park itself
+  underneath the sidebar.
+#}
+<body class="min-h-full antialiased">
+  {{ sidebar_slot }}
+  <div class="{% if has_sidebar %}flex min-h-screen flex-col px-5{% else %}mx-auto flex min-h-screen max-w-6xl flex-col px-5{% endif %}">
+    {% block header %}
+      <header class="flex items-center gap-6 py-5">
+        {% if has_sidebar %}{% block sidebar_trigger %}{{ sidebar_trigger() }}{% endblock %}{% endif %}
+        {% block brand %}{% endblock %}
+        {% block nav %}{% endblock %}
+        <div class="ml-auto">
+          {% block header_actions %}{{ theme_toggle() }}{% endblock %}
+        </div>
+      </header>
+    {% endblock %}
+
+    <main class="flex-1 pb-16">
+      {% block content %}{% endblock %}
+    </main>
+
+    {% block footer_wrapper %}
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+        {% block footer %}{% endblock %}
+      </footer>
+    {% endblock %}
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

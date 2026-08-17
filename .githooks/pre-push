@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# The docs site is the documentation — there is no Markdown copy in the repo —
+# and `docs/` at the root is a build artefact. A push that changes the site's
+# source but not its output ships a site that documents the previous commit.
+#
+# Enable once:  git config core.hooksPath .githooks
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-push: rebuilding the docs site"
+uv run python packages/fjkit/docs/workbench/build.py >/dev/null
+
+if [ -n "$(git status --porcelain -- docs/)" ]; then
+  echo
+  echo "pre-push: BLOCKED — docs/ was stale. It has just been rebuilt:"
+  git --no-pager diff --stat -- docs/
+  echo
+  echo "Commit the rebuilt site, then push again."
+  exit 1
+fi
+
+echo "pre-push: docs/ is current"

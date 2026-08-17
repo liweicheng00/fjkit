@@ -1,0 +1,64 @@
+{#
+  Partial. Leading underscore = never extends the shell and is always
+  renderable on its own.
+
+  Returned bare by GET /tasks/board and by every mutating endpoint, and
+  included by tasks/page.html for the first paint. One definition of "what a
+  board looks like", used by both — so the two cannot drift apart.
+
+  A partial declares its own imports and reads only what the router put in the
+  context. That self-sufficiency is exactly what makes it swappable.
+#}
+{% from "ui/button.html" import button, button_group %}
+{% from "ui/data.html" import card %}
+{% from "ui/form.html" import form, field_row, text_field, select_field %}
+{% from "ui/layout.html" import split, stack %}
+{% from "ui/table.html" import table %}
+{% from "tasks/macros.html" import task_row, TASK_COLUMNS %}
+
+<div id="board">
+{% call(slot) split() %}
+  {% if slot == "main" %}
+
+    {% call stack(4) %}
+      {% call form(action=url_for(request, "tasks_create"), target="#board", reset_on_success=true) %}
+        {% call field_row("wide-then-actions") %}
+          {{ text_field("title", label="New task", placeholder="What needs doing?", required=true) }}
+          {{ select_field("priority", label="Priority", options=priority_options, selected="normal") }}
+          {{ text_field("owner", label="Owner", placeholder="unassigned") }}
+          {{ button("Add", variant="primary", type="submit", icon_name="plus") }}
+        {% endcall %}
+      {% endcall %}
+
+      {#
+        The filter bar is rendered into a variable and handed to the card as
+        its header actions. A card with a heavy body should not pay for a
+        two-slot call block just to get a couple of buttons in its header.
+      #}
+      {% set filters %}
+        {% call button_group() %}
+          {% for value, label in status_filters %}
+            {{ button(label, size="xs",
+                      variant="secondary" if active_status == value else "ghost",
+                      hx_get=url_for(request, "tasks_board") ~ ("?status=" ~ value if value else ""),
+                      hx_target="#board", hx_swap="outerHTML") }}
+          {% endfor %}
+        {% endcall %}
+      {% endset %}
+
+      {% call card(tasks | length ~ (" task" if tasks | length == 1 else " tasks"),
+                   actions=filters, padded=false) %}
+        {% call table(TASK_COLUMNS, rows=tasks,
+                      empty_title="Nothing here",
+                      empty_description="No task matches this filter.",
+                      empty_icon="list") %}
+          {% for task in tasks %}{{ task_row(request, task, filter_query) }}{% endfor %}
+        {% endcall %}
+      {% endcall %}
+    {% endcall %}
+
+  {% else %}
+    {% include "tasks/_stats.html" %}
+  {% endif %}
+{% endcall %}
+</div>

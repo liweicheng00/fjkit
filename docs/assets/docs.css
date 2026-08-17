@@ -1,0 +1,765 @@
+/* ============================================================================
+ * Documentation chrome. Loaded *after* fjkit.css, which is the kit's own
+ * stylesheet exactly as it ships. Every rule in this file is class-scoped with
+ * a `t-` prefix so it can never reach inside a preview — what you see in a
+ * stage is fjkit, not this file.
+ * ========================================================================= */
+
+:root {
+  --t-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --t-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --t-rule: color-mix(in oklch, var(--border) 100%, transparent);
+  --t-ink: oklch(0.24 0.03 275);
+  --t-code-bg: oklch(0.972 0.006 275);
+  --t-stage-bg: oklch(0.985 0.003 275);
+}
+
+/* fjkit's dark tokens are applied by adding `.dark` to <html>, exactly as
+ * ui/shell.html does it. The media query keeps the page readable in the
+ * un-stamped system-dark state before that script has run. */
+.dark {
+  --t-ink: oklch(0.96 0.01 275);
+  --t-code-bg: oklch(0.185 0.014 275);
+  --t-stage-bg: oklch(0.185 0.012 275);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not(.t-light) {
+    --primary: oklch(0.72 0.15 275);
+    --primary-foreground: oklch(0.18 0.03 275);
+    --ring: oklch(0.55 0.14 275);
+    --background: oklch(0.16 0.012 275);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.21 0.014 275);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.21 0.014 275);
+    --popover-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.27 0.014 275);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.32 0.02 275);
+    --accent-foreground: oklch(0.985 0 0);
+    --border: oklch(1 0 0 / 11%);
+    --input: oklch(1 0 0 / 15%);
+    --success: oklch(0.7 0.14 152);
+    --warning: oklch(0.8 0.15 78);
+    --info: oklch(0.7 0.12 235);
+    --t-ink: oklch(0.96 0.01 275);
+    --t-code-bg: oklch(0.185 0.014 275);
+    --t-stage-bg: oklch(0.185 0.012 275);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------- scaffold */
+.t-shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 clamp(1.1rem, 4vw, 2.5rem);
+}
+
+@media (min-width: 1080px) {
+  .t-shell { grid-template-columns: 13.5rem 1fr; gap: 3.5rem; }
+}
+
+.t-rail { display: none; }
+
+@media (min-width: 1080px) {
+  .t-rail {
+    display: block;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: 100vh;
+    overflow-y: auto;
+    padding: 2.75rem 0 3rem;
+  }
+}
+
+.t-rail-title {
+  font-family: var(--t-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin: 0 0 0.9rem;
+}
+
+.t-rail ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+
+.t-rail a {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  gap: 0.15rem;
+  align-items: baseline;
+  padding: 0.3rem 0.5rem 0.3rem 0;
+  font-size: 0.83rem;
+  line-height: 1.3;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  padding-left: 0.75rem;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.t-rail a:hover { color: var(--foreground); }
+.t-rail a.is-current { color: var(--foreground); border-left-color: var(--primary); }
+.t-rail a span { font-family: var(--t-mono); font-size: 0.68rem; color: var(--muted-foreground); }
+
+.t-main { min-width: 0; padding-bottom: 5rem; }
+
+/* ---------------------------------------------------------------- type */
+.t-eyebrow {
+  font-family: var(--t-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin: 0;
+}
+
+.t-display {
+  font-family: var(--t-display);
+  font-weight: 400;
+  color: var(--t-ink);
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+.t-prose { max-width: 62ch; }
+.t-prose p { margin: 0 0 0.85rem; line-height: 1.65; color: var(--foreground); }
+.t-prose p:last-child { margin-bottom: 0; }
+.t-prose strong { font-weight: 600; }
+.t-prose code, .t-inline {
+  font-family: var(--t-mono);
+  font-size: 0.86em;
+  background: var(--muted);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.t-muted { color: var(--muted-foreground); }
+
+/* ---------------------------------------------------------------- hero */
+.t-hero { padding: clamp(2.5rem, 7vw, 5rem) 0 2.5rem; }
+.t-hero h1 { font-size: clamp(2.6rem, 6.2vw, 4.4rem); line-height: 1.02; margin: 1.1rem 0 0; }
+.t-hero h1 em { font-style: italic; color: var(--primary); }
+
+.t-lede {
+  max-width: 54ch;
+  margin: 1.4rem 0 0;
+  font-size: 1.06rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+
+/* ---------------------------------------------------------------- lessons */
+.t-lesson { padding: 3.25rem 0 0; scroll-margin-top: 1.5rem; }
+.t-lesson-head { border-top: 1px solid var(--t-rule); padding-top: 1.4rem; margin-bottom: 1.5rem; }
+.t-num {
+  font-family: var(--t-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  color: var(--primary);
+  text-transform: uppercase;
+}
+.t-lesson h2 { font-size: clamp(1.65rem, 3.2vw, 2.25rem); margin: 0.45rem 0 0; }
+.t-thesis {
+  font-family: var(--t-display);
+  font-size: 1.12rem;
+  font-style: italic;
+  color: var(--muted-foreground);
+  max-width: 52ch;
+  margin: 0.6rem 0 0;
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------- stage */
+.t-stage {
+  margin: 1.6rem 0 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--t-stage-bg);
+  overflow: hidden;
+}
+
+.t-stage-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.t-stage-label {
+  font-family: var(--t-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.t-stage-bar .t-spacer { margin-left: auto; }
+
+.t-preview {
+  padding: 1.6rem;
+  background-color: var(--t-stage-bg);
+  background-image: radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0);
+  background-size: 16px 16px;
+}
+
+.t-preview.is-plain { background-image: none; }
+
+.t-preview-inner {
+  background: var(--background);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+/* ---------------------------------------------------------------- controls */
+.t-controls {
+  display: grid;
+  gap: 0.85rem 1.1rem;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  padding: 1rem 0.95rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.t-field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+
+.t-field > label,
+.t-legend {
+  font-family: var(--t-mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.t-field select,
+.t-field input[type="text"],
+.t-field input[type="number"] {
+  font: inherit;
+  font-size: 0.83rem;
+  padding: 0.32rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--background);
+  color: var(--foreground);
+  min-width: 0;
+}
+
+.t-field input[type="range"] { accent-color: var(--primary); width: 100%; }
+
+.t-field select:focus-visible,
+.t-field input:focus-visible,
+.t-seg button:focus-visible,
+.t-rail a:focus-visible,
+.t-tab:focus-visible,
+.t-ghost:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.t-check { flex-direction: row; align-items: center; gap: 0.45rem; }
+.t-check input { accent-color: var(--primary); }
+.t-check label { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-family: inherit; }
+
+.t-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--background); }
+
+.t-seg button {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.28rem 0.7rem;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.t-seg button:last-child { border-right: 0; }
+.t-seg button:hover { color: var(--foreground); }
+.t-seg button[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); }
+
+.t-ghost {
+  font: inherit;
+  font-size: 0.75rem;
+  font-family: var(--t-mono);
+  padding: 0.26rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--background);
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.t-ghost:hover { color: var(--foreground); border-color: var(--primary); }
+
+/* ---------------------------------------------------------------- code */
+.t-code-wrap { border-top: 1px solid var(--border); }
+
+.t-tabs { display: flex; gap: 0; background: var(--card); border-bottom: 1px solid var(--border); overflow-x: auto; }
+
+.t-tab {
+  font-family: var(--t-mono);
+  font-size: 0.7rem;
+  padding: 0.5rem 0.85rem;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.t-tab[aria-selected="true"] { color: var(--foreground); background: var(--t-code-bg); box-shadow: inset 0 -2px 0 var(--primary); }
+
+.t-code {
+  margin: 0;
+  padding: 0.95rem 1rem;
+  background: var(--t-code-bg);
+  font-family: var(--t-mono);
+  font-size: 0.79rem;
+  line-height: 1.65;
+  overflow-x: auto;
+  color: var(--foreground);
+  tab-size: 2;
+}
+
+/* The emitted markup is one long line — an inline icon is a whole <svg>. Wrap
+   it rather than making the reader scroll sideways to see the attributes. */
+.t-code.is-wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.t-code .k { color: var(--primary); }
+.t-code .s { color: var(--success); }
+.t-code .c { color: var(--muted-foreground); font-style: italic; }
+.t-code .a { color: var(--info); }
+
+.t-caption {
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------- knob */
+.t-knob { display: grid; gap: 1.25rem; grid-template-columns: 1fr; }
+
+@media (min-width: 780px) {
+  .t-knob { grid-template-columns: minmax(0, 15rem) 1fr; align-items: start; }
+}
+
+.t-swatches { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.t-swatch {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: pointer;
+  padding: 0;
+}
+
+.t-swatch[aria-pressed="true"] { border-color: var(--background); box-shadow: 0 0 0 2px var(--primary); }
+
+/* ---------------------------------------------------------------- tiles */
+.t-tile {
+  border: 1px dashed var(--primary);
+  border-radius: 6px;
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
+  color: var(--primary);
+  font-family: var(--t-mono);
+  font-size: 0.72rem;
+  padding: 0.9rem 0.75rem;
+  text-align: center;
+}
+
+.t-tile.is-aside { border-style: solid; }
+
+/* ---------------------------------------------------------------- flow */
+.t-flow { display: grid; gap: 0.6rem; grid-template-columns: 1fr; }
+
+@media (min-width: 720px) {
+  .t-flow { grid-template-columns: repeat(4, 1fr); align-items: stretch; }
+}
+
+.t-node {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  padding: 0.7rem 0.8rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  opacity: 0.45;
+  transition: opacity 0.25s, border-color 0.25s, transform 0.25s;
+}
+
+.t-node b { display: block; font-family: var(--t-mono); font-size: 0.72rem; font-weight: 500; }
+.t-node span { color: var(--muted-foreground); font-size: 0.74rem; }
+
+.t-node.is-lit { opacity: 1; border-color: var(--primary); }
+.t-node.is-shared { border-style: dashed; }
+.t-node.is-lit.is-shared { background: color-mix(in oklch, var(--primary) 7%, var(--card)); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ------------------------------------------------------------- exchange */
+.t-figure { margin: 0; padding: 1.4rem 1rem 0.4rem; background: var(--t-stage-bg); }
+.t-figure svg { display: block; width: 100%; max-width: 46rem; height: auto; margin: 0 auto; color: var(--foreground); }
+.t-figure figcaption {
+  max-width: 46rem;
+  margin: 0.5rem auto 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+/* Stage lighting. The request drives these classes from real htmx events, so
+   the picture and the network are never out of step. */
+.t-figure .stage { opacity: 0.32; transition: opacity 0.25s; }
+.t-figure .stage.is-lit { opacity: 1; }
+.t-figure .stage.is-lit .accent { stroke: var(--primary); }
+.t-figure .stage.is-lit text.accent { fill: var(--primary); stroke: none; }
+.t-figure .panel { fill: var(--card); stroke: currentColor; stroke-width: 1; }
+.t-figure .inner { fill: none; stroke: currentColor; stroke-width: 1; stroke-dasharray: 3 3; }
+.t-figure .wire { stroke: currentColor; stroke-width: 1.5; fill: none; }
+.t-figure text { fill: currentColor; font-family: var(--t-mono); font-size: 11px; }
+.t-figure text.lbl { font-size: 10px; fill: var(--muted-foreground); }
+.t-figure text.big { font-size: 12px; }
+
+/* ------------------------------------------------------------------- log */
+.t-log {
+  margin: 0;
+  padding: 0.5rem 0;
+  max-height: 17rem;
+  overflow-y: auto;
+  background: var(--t-code-bg);
+  font-family: var(--t-mono);
+  font-size: 0.74rem;
+  line-height: 1.55;
+}
+
+.t-log-entry { padding: 0.4rem 1rem; border-bottom: 1px solid var(--border); }
+.t-log-entry:last-child { border-bottom: 0; }
+.t-log-entry b { font-weight: 600; color: var(--primary); }
+.t-log-entry .hdr { color: var(--muted-foreground); display: block; }
+.t-log-entry .body { display: block; margin-top: 0.3rem; color: var(--success); overflow-wrap: anywhere; }
+.t-log-empty { padding: 0.9rem 1rem; color: var(--muted-foreground); }
+
+/* htmx toggles `htmx-request` on the element and on anything named by
+   hx-indicator. fjkit ships no indicator CSS yet (roadmap 0.6), so these three
+   rules are this page's own — which is exactly what you would write. */
+.t-indicator { opacity: 0; transition: opacity 0.15s; }
+.t-indicator.htmx-request { opacity: 1; }
+.t-spin { animation: t-spin 0.9s linear infinite; }
+
+@keyframes t-spin { to { transform: rotate(360deg); } }
+
+.t-live { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+.t-hint { font-size: 0.78rem; color: var(--muted-foreground); margin: 0; }
+
+/* ---------------------------------------------------------------- checker */
+.t-check-grid { display: grid; gap: 0; grid-template-columns: 1fr; }
+
+@media (min-width: 860px) {
+  .t-check-grid { grid-template-columns: 1fr 1fr; }
+  .t-check-grid > :first-child { border-right: 1px solid var(--border); }
+}
+
+.t-check-grid textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  background: var(--t-code-bg);
+  color: var(--foreground);
+  font-family: var(--t-mono);
+  font-size: 0.79rem;
+  line-height: 1.6;
+  padding: 0.95rem 1rem;
+  min-height: 15rem;
+  max-height: 24rem;
+  resize: vertical;
+}
+
+.t-results {
+  padding: 0.95rem 1rem;
+  min-height: 15rem;
+  max-height: 24rem;
+  overflow-y: auto;
+  background: var(--t-code-bg);
+}
+
+.t-violation {
+  border-left: 2px solid var(--destructive);
+  padding: 0.15rem 0 0.15rem 0.7rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.t-violation b { font-family: var(--t-mono); font-weight: 500; }
+.t-violation span { display: block; color: var(--muted-foreground); font-size: 0.76rem; margin-top: 0.15rem; }
+
+.t-clean { border-left-color: var(--success); }
+.t-clean b { color: var(--success); }
+
+/* ---------------------------------------------------------------- recipes */
+.t-recipes { display: grid; grid-template-columns: 1fr; }
+
+@media (min-width: 860px) {
+  .t-recipes { grid-template-columns: 14.5rem 1fr; }
+  .t-recipe-list { border-right: 1px solid var(--border); border-bottom: 0; }
+}
+
+.t-recipe-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem 0;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.t-recipe-list button {
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  padding: 0.4rem 0.9rem;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.t-recipe-list button:hover { color: var(--foreground); }
+.t-recipe-list button:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+
+.t-recipe-list button[aria-selected="true"] {
+  color: var(--foreground);
+  border-left-color: var(--primary);
+  background: var(--t-stage-bg);
+}
+
+/* The code pane scrolls sideways on its own; without this the grid track grows
+   to the widest line instead and takes the page with it. */
+.t-recipe-body { min-width: 0; }
+
+.t-recipe-when {
+  margin: 0;
+  padding: 0.7rem 1rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.t-recipe-when b { color: var(--foreground); font-weight: 500; }
+
+/* The link out to htmx's own page for the shape on screen. Same size as the
+   labels either side of it, so the bar stays one line of metadata. */
+.t-doc {
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.t-doc:hover { border-bottom-color: var(--primary); }
+.t-doc:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- misc */
+.t-columns { display: grid; gap: 1.5rem 2.5rem; grid-template-columns: 1fr; margin-top: 1.6rem; }
+
+@media (min-width: 760px) {
+  .t-columns.is-two { grid-template-columns: 1fr 1fr; }
+}
+
+.t-defs { margin: 0; font-size: 0.87rem; }
+.t-defs div { display: grid; grid-template-columns: 8.5rem 1fr; gap: 0.75rem; padding: 0.45rem 0; border-top: 1px solid var(--t-rule); }
+.t-defs dt { font-family: var(--t-mono); font-size: 0.76rem; color: var(--primary); }
+.t-defs dd { margin: 0; color: var(--muted-foreground); line-height: 1.5; }
+
+.t-close { border-top: 1px solid var(--t-rule); margin-top: 3.5rem; padding-top: 1.6rem; }
+.t-close a { color: var(--foreground); text-underline-offset: 3px; }
+
+/* ---------------------------------------------------------------- topbar
+ * The site's own navigation, and the only nav that survives below 1080px —
+ * the rail is a table of contents for the current page, not a way between
+ * pages. */
+.t-topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.55rem clamp(1.1rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--t-rule);
+  background: color-mix(in oklch, var(--background) 88%, transparent);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.t-topbar-mark {
+  font-family: var(--t-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.t-topbar-nav { display: flex; gap: 0.25rem; margin-left: auto; }
+
+.t-topbar-nav a,
+.t-topbar-out {
+  font-size: 0.82rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 5px;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+
+.t-topbar-nav a:hover, .t-topbar-out:hover { color: var(--foreground); }
+
+.t-topbar-nav a[aria-current="page"] {
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.t-topbar-out { display: none; }
+
+@media (min-width: 640px) {
+  .t-topbar-nav { margin-left: 0; }
+  .t-topbar-out { display: inline-block; margin-left: auto; }
+}
+
+.t-topbar a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* The rail is sticky under a sticky bar, so it starts below it rather than
+   under it. Same offset for the anchor scroll target. */
+@media (min-width: 1080px) {
+  .t-rail { top: 3rem; max-height: calc(100vh - 3rem); padding-top: 2rem; }
+}
+
+.t-lesson { scroll-margin-top: 4rem; }
+
+/* ------------------------------------------------------------ rail: pages */
+.t-rail-pages { list-style: none; margin: 0; padding: 0; }
+
+.t-rail-pages a {
+  display: block;
+  grid-template-columns: none;
+  padding: 0.4rem 0 0.4rem 0.75rem;
+  font-size: 0.83rem;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+}
+
+.t-rail-pages a:hover { color: var(--foreground); border-left-color: var(--border); }
+
+.t-rail-pages a span {
+  display: block;
+  font-family: inherit;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  margin-top: 0.1rem;
+  color: var(--muted-foreground);
+}
+
+/* ------------------------------------------------------------------ tree */
+.t-tree {
+  padding: 1rem 0.5rem 1rem 0;
+  font-family: var(--t-mono);
+  font-size: 0.78rem;
+  overflow-x: auto;
+}
+
+.t-tree > div {
+  display: grid;
+  grid-template-columns: minmax(13rem, max-content) 4.5rem 1fr;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.18rem 1rem;
+}
+
+.t-tree code {
+  white-space: pre;
+  color: var(--foreground);
+  background: none;
+  padding: 0;
+}
+
+/* A directory line ends in "/" and carries no role, so it reads as the header
+   of the block under it rather than as another entry. */
+.t-tree .t-kind {
+  font-size: 0.63rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.t-tree .t-note {
+  font-family: var(--t-display);
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+
+@media (max-width: 720px) {
+  .t-tree > div { grid-template-columns: 1fr; gap: 0.1rem; }
+  .t-tree .t-note { margin-bottom: 0.4rem; }
+}
+
+/* ----------------------------------------------------------------- icons */
+.t-icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.t-icons figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--foreground);
+}
+
+.t-icons figcaption {
+  font-family: var(--t-mono);
+  font-size: 0.66rem;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------- file panes
+ * A whole router.py is 130 lines. Left to grow, one tab group would be longer
+ * than everything said about it, so the pane scrolls inside itself and the
+ * page stays navigable. */
+[data-files-pane] .t-code { max-height: 34rem; overflow: auto; }

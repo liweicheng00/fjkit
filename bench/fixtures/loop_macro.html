@@ -1,0 +1,4 @@
+{% from "_row_macro.html" import row %}
+<table><tbody>
+{% for task in tasks %}{{ row(task) }}{% endfor %}
+</tbody></table>

@@ -1,0 +1,11 @@
+{#
+  One job, on its own. What every poll returns, and what the POST that starts a
+  job returns — so a card is described in exactly one place no matter which
+  request produced it.
+
+  A partial declares its own imports and reads only what the router put in the
+  context: here that is `job`, and nothing else.
+#}
+{% from "jobs/macros.html" import job_card %}
+
+{{ job_card(request, job) }}

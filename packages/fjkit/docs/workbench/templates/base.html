@@ -1,0 +1,100 @@
+{#
+  The docs site's shell — this app's identity, and nothing structural.
+
+  It is the same file `examples/board/app/templates/base.html` is, doing the
+  same job: extend `ui/shell.html`, fill three blocks, stay out of the way. The
+  <head>, the theme flash-guard, the asset links and the sidebar/main/footer
+  skeleton all stay in the kit. This site is a fjkit app; if that stops being
+  true, `tests/test_docs_site.py` fails.
+
+  `sections` is a top-level `{% set %}` in each page — a list of
+  {id, title} — which Jinja evaluates before this template renders, so the
+  in-page rail below is built from the page's own headings and cannot drift
+  away from them.
+
+  Both languages render through this one file. `t` is the chrome — rail
+  headings, the footer sentence, the label on the language link — and `lang` is
+  the build being written. Every asset is named through `fjkit_static`, whose
+  prefix is `assets` for the English pages and `../assets` for the Chinese ones
+  in `zh/`, because GitHub Pages serves this site from a project subpath and
+  every link on it has to be relative.
+#}
+{% extends "ui/shell.html" %}
+{% from "ui/nav.html" import brand %}
+{% from "ui/sidebar.html" import sidebar, sidebar_group, sidebar_link %}
+{% from "ui/data.html" import kbd %}
+
+{% block lang %}{{ lang.html_lang }}{% endblock %}
+{% block site_title %}fjkit{% endblock %}
+{% block title %}{{ page.title }}{% endblock %}
+
+{% block head %}
+  <meta name="description" content="{{ page.description }}">
+  <meta property="og:title" content="{{ page.title }}">
+  <meta property="og:description" content="{{ page.description }}">
+  <meta property="og:type" content="article">
+  {#
+    The mock server, installed before htmx runs. A plain script executes during
+    parsing; the shell's htmx and Basecoat tags are `defer`, so they run after
+    it whatever the order in the file. Only the Learn page has live demos, but
+    the shim is inert until a route is registered against it.
+  #}
+  <script src="{{ fjkit_static('mock-server.js') }}"></script>
+{% endblock %}
+
+{#
+  The one file the kit's four contact points allow an app to write for itself:
+  token overrides and element-level typography. No classes, so nothing here can
+  substitute for a component that ought to exist.
+#}
+{% block stylesheets %}
+  <link rel="stylesheet" href="{{ fjkit_static('brand.css') }}">
+{% endblock %}
+
+{% block sidebar %}
+  {% set mark %}{{ brand("fjkit", url_for(request, "introduction"), icon_src=fjkit_static("brand/torii-bolt.png")) }}{% endset %}
+  {% call sidebar(header=mark, label=t.sidebar_label) %}
+    {% call sidebar_group(t.pages_group) %}
+      {% for item in pages %}
+        {{ sidebar_link(request, item.route, item.label, icon_name=item.icon) }}
+      {% endfor %}
+    {% endcall %}
+
+    {% call sidebar_group(t.sections_group) %}
+      {% for section in sections %}
+        {{ sidebar_link(request, page.route ~ "#" ~ section.id, section.title) }}
+      {% endfor %}
+    {% endcall %}
+
+    {#
+      The same page in the other language, never the other language's landing
+      page: someone reading about hx-swap wants to keep reading about hx-swap.
+      `url_for` resolves `zh:learn` into the relative hop between the two
+      builds, and `is_active` refuses a language-qualified name, so this link
+      is never the current one.
+    #}
+    {% call sidebar_group(t.language_group) %}
+      {{ sidebar_link(request, lang.other ~ ":" ~ page.route, t.other_language, icon_name="languages") }}
+    {% endcall %}
+  {% endcall %}
+{% endblock %}
+
+{% block footer %}
+  fjkit {{ fjkit_version.fjkit }} · FastAPI {{ fjkit_version.fastapi }} ·
+  Jinja2 {{ fjkit_version.jinja2 }} · Basecoat {{ fjkit_version.basecoat }} ·
+  htmx {{ fjkit_version.htmx }} —
+  <a href="https://github.com/liweicheng00/fjkit">{{ t.footer_source }}</a>.
+  {{ t.footer_note[0] }}{{ kbd("ui/shell.html") }}{{ t.footer_note[1] }}{{ kbd("fjkit check") }}{{ t.footer_note[2] }}
+{% endblock %}
+
+{#
+  `defer`, all of them. The shell loads htmx and Basecoat deferred from the
+  <head>, and deferred scripts run in document order *after* parsing — so a
+  plain script down here would execute first and find neither of them. Same
+  rule any app page follows when it adds a script of its own.
+#}
+{% block scripts %}
+  <script defer src="{{ fjkit_static('data.js') }}"></script>
+  <script defer src="{{ fjkit_static('common.js') }}"></script>
+  {% block page_scripts %}{% endblock %}
+{% endblock %}

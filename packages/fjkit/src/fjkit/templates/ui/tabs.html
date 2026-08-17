@@ -1,0 +1,80 @@
+{#
+  Tabs — roadmap 0.7, pulled forward.
+
+  Basecoat already ships `.tabs` and its behaviour: its vendored script owns the
+  selection, the `hidden` on the other panels, and the ArrowLeft/Right/Home/End
+  keys. What it does not ship in `components/tabs.css` is a skin — that file is
+  flex direction and `outline-none`, nothing else. The *style pack* does ship
+  one, and it is a pill strip; fjkit draws underline tabs, so `fjkit.css` turns
+  the pack's geometry off before painting its own. Read that block before
+  changing anything here: the two skins overlapping is what put a phantom
+  scrollbar on the card's edge once already.
+
+  This macro carries the aria wiring the script needs, and nothing else.
+
+  The contract Basecoat's JS reads:
+
+      .tabs > [role="tablist"] > [role="tab"][aria-controls="<panel id>"]
+      .tabs > [role="tabpanel"][id="<panel id>"]
+
+  Getting that pairing right by hand is exactly the kind of thing a component
+  should stop you having to think about.
+
+      {% call tabs([{"id": "main", "label": "main.py"},
+                    {"id": "router", "label": "router.py"}], label="File") %}
+        {% call tab_panel("main") %}…{% endcall %}
+        {% call tab_panel("router") %}…{% endcall %}
+      {% endcall %}
+
+  `items` is a list of dicts, the same shape `table` takes its columns in, and
+  extra keys are ignored — so a caller that already has a list of files can pass
+  it straight through instead of building a parallel one. It is the light half,
+  so it is a parameter while the panels are the body: same trade as `card`'s
+  `actions`, because a two-slot call block renders its body once per slot and
+  the body here is every panel's content.
+
+  Ids are page-unique, like any id. A page with two tab groups over the same
+  subject prefixes them ("file-main", "diff-main"), the way it would for any
+  other pair of elements.
+#}
+{% from "ui/attrs.html" import attrs %}
+
+{#
+  tabs(items, label, selected, orientation)
+
+  orientation: horizontal | vertical — the value Basecoat's key handler reads to
+  decide whether Left/Right or Up/Down moves between tabs, so it is a closed
+  lookup rather than interpolated: `aria-orientation="sideways"` would leave the
+  arrow keys dead with no other symptom.
+
+  `selected` names the item that starts open; the first one by default. The
+  server knows which tab the request was for, so this is a parameter and not
+  something a script decides after paint.
+#}
+{% macro tabs(items, label="Tabs", selected=none, orientation="horizontal") -%}
+  {%- set body = caller() -%}
+  {%- set orientations = {"horizontal": "horizontal", "vertical": "vertical"} -%}
+  {%- set active = selected if selected is not none else (items[0].id if items else none) -%}
+  <div class="tabs"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    <nav role="tablist" aria-label="{{ label }}"
+         aria-orientation="{{ orientations.get(orientation, "horizontal") }}">
+      {% for item in items %}
+        <button type="button" role="tab" aria-controls="{{ item.id }}"
+                aria-selected="{{ "true" if item.id == active else "false" }}">{{ item.label }}</button>
+      {% endfor %}
+    </nav>
+    {{- body -}}
+  </div>
+{%- endmacro %}
+
+{#
+  tab_panel(id) — the body for one tab. The id is what the tab's `aria-controls`
+  named; Basecoat hides and reveals it from there.
+
+  No `hidden` is rendered here: its script sets that on init, and a panel that
+  arrived pre-hidden would be invisible to a reader with JavaScript off. This
+  way the panels stack and every one is legible.
+#}
+{% macro tab_panel(id) -%}
+  <div id="{{ id }}" role="tabpanel"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ caller() }}</div>
+{%- endmacro %}

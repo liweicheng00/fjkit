@@ -1,0 +1,71 @@
+{#
+  The pieces of the shell's header. Separate from shell.html so an app can
+  import them without importing the template it extends.
+#}
+{% from "ui/attrs.html" import attrs %}
+{% from "ui/icon.html" import icon %}
+
+{#
+  brand(label, href, icon_name | icon_src) — the wordmark and home link.
+
+  Two ways to give it a mark, and they are mutually exclusive:
+
+  `icon_name` draws a Lucide glyph on a token-coloured tile. The tile uses
+  `bg-primary text-primary-foreground`, never `text-white`: the contrast token
+  is what keeps the mark legible after someone rebrands to a light primary.
+
+  `icon_src` places a piece of artwork — a real logo, served from wherever the
+  app keeps it. No tile, because a logo brings its own ground and painting
+  `bg-primary` behind it would only box it in. That does mean the mark stops
+  following `--primary`, which is the trade a brand asset always makes.
+
+  `alt=""` on purpose: the label sits right beside it inside the same anchor,
+  so a screen reader that announced both would say the name twice. `width` and
+  `height` are set so the row does not reflow when the image arrives.
+#}
+{% macro brand(label, href="/", icon_name=none, icon_src=none) -%}
+  <a href="{{ href }}" class="flex items-center gap-2 font-semibold tracking-tight"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if icon_src %}
+      <img class="size-7" src="{{ icon_src }}" width="28" height="28" alt="">
+    {% elif icon_name %}
+      <span class="bg-primary text-primary-foreground grid size-7 place-items-center rounded-lg">
+        {{- icon(icon_name, 16) -}}
+      </span>
+    {% endif -%}
+    {{ label }}
+  </a>
+{%- endmacro %}
+
+{#
+  nav_links(request, links) — top-level navigation.
+
+  `links` is a list of (route_name, label) pairs. Route *names*, not URLs, so
+  the active state is decided by comparing routes rather than string-matching
+  paths — which stays correct when a URL gains a query string.
+#}
+{% macro nav_links(request, links) -%}
+  <nav class="text-muted-foreground flex items-center gap-1 text-sm">
+    {% for route, label in links %}
+      <a class="hover:text-foreground rounded-md px-2.5 py-1.5 transition-colors
+                {% if is_active(request, route) %}text-foreground bg-muted{% endif %}"
+         href="{{ url_for(request, route) }}"
+         {%- if is_active(request, route) %} aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+{%- endmacro %}
+
+{#
+  theme_toggle() — light/dark switch.
+
+  The only inline script fjkit ships besides the flash-guard in the shell. It
+  is two lines and it has to run before any bundle would have loaded, which is
+  why it is not in a .js file.
+#}
+{% macro theme_toggle() -%}
+  <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')">
+    {{- icon("sun", 16, "hidden dark:block") }}{{ icon("moon", 16, "dark:hidden") -}}
+  </button>
+{%- endmacro %}

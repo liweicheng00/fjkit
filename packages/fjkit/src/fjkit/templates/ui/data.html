@@ -1,0 +1,226 @@
+{% from "ui/attrs.html" import attrs %}
+{% from "ui/icon.html" import icon %}
+
+{# badge(label, variant) — variant: primary|secondary|outline|destructive|success|warning|info #}
+{% macro badge(label, variant="") -%}
+  <span class="badge"{% if variant %} data-variant="{{ variant }}"{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ label }}</span>
+{%- endmacro %}
+
+{#
+  card(title, description, size, actions, padded) — a {% call %} block macro.
+
+      {% call card("Throughput", "last 7 days") %}
+        <p>…</p>
+      {% endcall %}
+
+  `actions` takes pre-rendered markup for the right-hand side of the header:
+
+      {% set filters %}{% call button_group() %}…{% endcall %}{% endset %}
+      {% call card("5 tasks", actions=filters) %}…{% endcall %}
+
+  A parameter rather than a second slot on purpose — a two-slot call block runs
+  its body once per slot, which is the wrong shape for the common case where a
+  card has a heavy body and no actions at all.
+
+  `padded=false` drops the inner <section>, so a table can sit flush against
+  the card's edges instead of inside its padding. When there is also a header,
+  the body gets a rule above it — a flush body butting straight into header
+  text reads as one block.
+#}
+{% macro card(title=none, description=none, size="", actions=none, padded=true) -%}
+  {%- set has_header = title or description or actions -%}
+  <div class="card"{% if size %} data-size="{{ size }}"{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if has_header %}
+    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        {% if title %}<h3>{{ title }}</h3>{% endif %}
+        {% if description %}<p>{{ description }}</p>{% endif %}
+      </div>
+      {% if actions %}{{ actions }}{% endif %}
+    </header>
+    {%- endif %}
+    {% if padded %}
+      <section>{{ caller() }}</section>
+    {% elif has_header %}
+      <div class="border-t">{{ caller() }}</div>
+    {% else %}
+      {{ caller() }}
+    {% endif %}
+  </div>
+{%- endmacro %}
+
+{#
+  Never build a class by string interpolation (`text-{{ tone }}`): Tailwind
+  finds classes by scanning source text, so an interpolated one is simply
+  absent from the stylesheet. Tones are a closed lookup whose values appear
+  verbatim in this file — which is exactly what makes them findable.
+#}
+{% set _TONES = {
+  "success": "text-success",
+  "warning": "text-warning",
+  "info": "text-info",
+  "destructive": "text-destructive",
+  "muted": "text-muted-foreground",
+} %}
+
+{# stat(label, value, hint, icon_name, tone) — the KPI tile. #}
+{% macro stat(label, value, hint=none, icon_name=none, tone=none) -%}
+  <div class="card" data-size="sm">
+    <section class="flex items-start justify-between gap-3">
+      <div class="space-y-1">
+        <p class="text-muted-foreground text-xs font-medium tracking-wide uppercase">{{ label }}</p>
+        <p class="text-3xl font-semibold tabular-nums {{ _TONES.get(tone, "") }}">{{ value }}</p>
+        {% if hint %}<p class="text-muted-foreground text-xs">{{ hint }}</p>{% endif %}
+      </div>
+      {% if icon_name %}
+        <span class="bg-muted text-muted-foreground grid size-9 place-items-center rounded-lg">{{ icon(icon_name, 18) }}</span>
+      {% endif %}
+    </section>
+  </div>
+{%- endmacro %}
+
+{#
+  metric_group(items) — a compact row of counts, the small sibling of stat().
+
+  `items` is a list of (label, value) pairs. Use it inside a card when the
+  numbers are context for something else; use stat() when they are the point of
+  the page.
+#}
+{% macro metric_group(items, cols=3) -%}
+  {%- set _GRID = {2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4"} -%}
+  <dl class="grid {{ _GRID.get(cols, "grid-cols-3") }} gap-2 text-center">
+    {% for label, value in items %}
+      <div class="bg-muted/60 rounded-lg py-2.5">
+        <dt class="text-muted-foreground text-[0.7rem] tracking-wide uppercase">{{ label }}</dt>
+        <dd class="mt-1 text-xl font-semibold tabular-nums">{{ value }}</dd>
+      </div>
+    {% endfor %}
+  </dl>
+{%- endmacro %}
+
+{# progress(value, label) — value is 0-100. #}
+{% macro progress(value, label=none) -%}
+  <div class="space-y-1.5">
+    {% if label %}
+      <div class="text-muted-foreground flex justify-between text-xs">
+        <span>{{ label }}</span><span class="tabular-nums">{{ value }}%</span>
+      </div>
+    {% endif %}
+    <div class="progress" role="progressbar" aria-valuenow="{{ value }}" aria-valuemin="0" aria-valuemax="100">
+      <span style="width: {{ value }}%"></span>
+    </div>
+  </div>
+{%- endmacro %}
+
+{# empty_state(title, description, icon_name) — the zero-row case, once. #}
+{% macro empty_state(title, description=none, icon_name="sparkle") -%}
+  <div class="empty">
+    <header>
+      <figure>{{ icon(icon_name, 22) }}</figure>
+      <h3>{{ title }}</h3>
+      {% if description %}<p>{{ description }}</p>{% endif %}
+    </header>
+  </div>
+{%- endmacro %}
+
+{#
+  bullet_list() / list_item() — prose lists inside a card.
+
+      {% call bullet_list() %}
+        {% call list_item() %}Templates are compiled once per process.{% endcall %}
+      {% endcall %}
+#}
+{% macro bullet_list(tone="muted") -%}
+  <ul class="{{ _TONES.get(tone, "") }} space-y-2 text-sm">{{ caller() }}</ul>
+{%- endmacro %}
+
+{% macro list_item() -%}
+  <li>{{ caller() }}</li>
+{%- endmacro %}
+
+{#
+  link(label, href) — an inline link in body copy.
+
+  Underlined by default: a link that is only distinguished by colour fails for
+  anyone who cannot see the colour.
+#}
+{% macro link(label, href) -%}
+  <a class="text-foreground underline underline-offset-4" href="{{ href }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ label }}</a>
+{%- endmacro %}
+
+{# kbd(keys) — a keyboard key or a literal token in running text. #}
+{% macro kbd(keys) -%}
+  <code class="kbd">{{ keys }}</code>
+{%- endmacro %}
+
+{#
+  code_block(source, label, wrap) — source, a log, a config, a payload.
+
+  Roadmap 0.9, pulled forward. There is no Basecoat component for this and no
+  amount of `card` gets you there: a code region has three problems a <pre> on
+  its own does not solve.
+
+  1. **It scrolls, so it has to be reachable.** A scroll container that nothing
+     can focus is unreachable by keyboard entirely — the mouse can wheel it, a
+     keyboard user cannot. `tabindex="0"` is the fix, and it is why this clears
+     CHARTER §8's "just wrapping a native element" bar rather than falling foul
+     of it.
+  2. **A focusable region needs a name**, or a screen reader announces an
+     unlabelled stop in the tab order. `role="region"` is only applied when
+     there is a label to give it, because a region without one is worse than no
+     region at all.
+  3. **Long lines.** `wrap=true` for emitted markup — one line of HTML with an
+     inline SVG in it is not something anyone should scroll sideways through.
+
+  The content is printed as text, and stays text: highlighting is a client-side
+  concern, and a page that wants it reads `textContent` back out and marks up
+  the tokens. That keeps the source legible with scripting off and keeps this
+  macro out of the business of knowing any language.
+#}
+{% macro code_block(source, label=none, wrap=false) -%}
+  <pre class="code-block scrollbar" tabindex="0"
+    {%- if wrap %} data-wrap="true"{% endif %}
+    {%- if label %} role="region" aria-label="{{ label }}"{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ source }}</pre>
+{%- endmacro %}
+
+{#
+  item_list() / item(title, description, …) — a list of rows that are not a
+  table: settings, results, definitions, a feed.
+
+  Roadmap 0.9. Basecoat ships `.item-group` / `.item` and its markup contract is
+  load-bearing — `.item > section` is the text column, `.item > figure` the
+  leading icon, `.item > aside` the trailing actions — which is precisely the
+  kind of thing an app should not be re-deriving from a stylesheet.
+
+      {% call item_list() %}
+        {{ item("router.py", "reads the request, calls the service") }}
+        {{ item("service.py", "the actual work", icon_name="gauge") }}
+      {% endcall %}
+
+  `description` may be markup, so a row can hold a badge or a link without the
+  caller reaching for |safe.
+
+  **clamp** is the one thing worth knowing. Basecoat clamps `.item p` to two
+  lines, which is right for a feed and wrong for a definition list — so
+  `clamp=false` releases it. It is an attribute rather than a class because the
+  rule lives in `fjkit.css`, next to the other `data-*` extensions of Basecoat's
+  own API.
+#}
+{% macro item_list() -%}
+  <div class="item-group"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ caller() }}</div>
+{%- endmacro %}
+
+{% macro item(title, description=none, icon_name=none, actions=none, href=none, clamp=true) -%}
+  {%- set tag = "a" if href else "div" -%}
+  <{{ tag }} class="item"{% if not clamp %} data-clamp="false"{% endif %}
+    {%- if href %} href="{{ href }}"{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if icon_name %}<figure>{{ icon(icon_name, 16) }}</figure>{% endif %}
+    <section>
+      <h4>{{ title }}</h4>
+      {%- if description %}<p>{{ description }}</p>{% endif %}
+    </section>
+    {%- if actions %}<aside>{{ actions }}</aside>{% endif %}
+  </{{ tag }}>
+{%- endmacro %}

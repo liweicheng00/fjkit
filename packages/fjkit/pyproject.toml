@@ -1,0 +1,54 @@
+[project]
+name = "fjkit"
+version = "0.1.0.dev0"
+description = "Server-rendered UI kit for FastAPI — Jinja2 + Basecoat + htmx, no front-end build"
+readme = "README.md"
+requires-python = ">=3.13"
+# Runtime dependencies are deliberately two. Adding a third needs an RFC
+# (CHARTER.md §7).
+dependencies = [
+    "fastapi>=0.115",
+    "jinja2>=3.1.6",
+]
+
+# Install-time style selection:  uv add "fjkit[nova]"
+#
+# Each extra pulls in a marker distribution — one entry point, no CSS, because
+# all eight stylesheets are already inside this wheel. An extra can only add
+# another distribution; it cannot change a byte of the one it belongs to, so a
+# marker is the only thing that can carry the choice through an install.
+#
+# Not pinned to fjkit's version: there is nothing in a marker to keep in step.
+# `FjkitConfig(style=...)` does the same job in code and always wins.
+[project.optional-dependencies]
+vega = ["fjkit-style-vega>=0.1"]
+nova = ["fjkit-style-nova>=0.1"]
+maia = ["fjkit-style-maia>=0.1"]
+lyra = ["fjkit-style-lyra>=0.1"]
+mira = ["fjkit-style-mira>=0.1"]
+luma = ["fjkit-style-luma>=0.1"]
+sera = ["fjkit-style-sera>=0.1"]
+rhea = ["fjkit-style-rhea>=0.1"]
+
+[project.scripts]
+fjkit = "fjkit.cli:main"
+
+[dependency-groups]
+# Only fjkit itself needs Tailwind — it runs at release time to produce
+# static/dist/fjkit-<pack>.css, one per style pack. Consumers never install this.
+build = ["pytailwindcss>=0.3.1"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fjkit"]
+
+[tool.hatch.build]
+# Templates, the built stylesheet and the vendored assets ship inside the
+# wheel — that is what makes "no build step" true for consumers.
+artifacts = [
+    "src/fjkit/templates/**/*",
+    "src/fjkit/static/**/*",
+]

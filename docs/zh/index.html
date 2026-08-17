@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="zh-Hant" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fjkit — FastAPI 沒有附的 UI 層 · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css">
+  <link rel="stylesheet" href="../assets/brand.css">
+  <script defer src="../assets/vendor/htmx/htmx.min.js"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js"></script>
+  <meta name="description" content="fjkit 是 FastAPI 沒有附的那層 UI：頁面、表格、表單、導覽、深色模式與 htmx 局部更新，全部是 Jinja macro，而且你這端不需要任何前端工具鏈。">
+  <meta property="og:title" content="fjkit — FastAPI 沒有附的 UI 層">
+  <meta property="og:description" content="fjkit 是 FastAPI 沒有附的那層 UI：頁面、表格、表單、導覽、深色模式與 htmx 局部更新，全部是 Jinja macro，而且你這端不需要任何前端工具鏈。">
+  <meta property="og:type" content="article">
+  <script src="../assets/mock-server.js"></script>
+</head>
+<body class="min-h-full antialiased">
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
+    <a href="index.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>上手</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>元件</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
+    <a href="index.html#what">      <span>fjkit 是什麼</span>
+    </a>
+  </li>
+        <li>
+    <a href="index.html#who">      <span>給誰用</span>
+    </a>
+  </li>
+        <li>
+    <a href="index.html#decisions">      <span>五個決定，以及撐住它們的東西</span>
+    </a>
+  </li>
+        <li>
+    <a href="index.html#box">      <span>wheel 裡裝了什麼</span>
+    </a>
+  </li>
+        <li>
+    <a href="index.html#next">      <span>接下來去哪</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="語言"><h3>語言</h3>    <ul>      <li>
+    <a href="../index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>English</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-screen flex-col px-5">
+      <header class="flex items-center gap-6 py-5">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>        <div class="ml-auto">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>        </div>
+      </header>
+
+    <main class="flex-1 pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">FastAPI 沒有附的那層 UI</h1>
+<p class="text-muted-foreground text-sm">    頁面、表格、表單、導覽、深色模式與 htmx 局部更新——都是你從 handler 所在的同一份程式碼裡
+    呼叫的 Jinja macro，而且你這端不需要任何前端工具鏈。
+</p>    </div>
+  </div>
+
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>第一次來？這個站既是文件，也是證據。</h3><p>三頁全部是同一支 fjkit app。</p>      </div>
+    </header>      <section><div class="flex flex-col gap-3">      <p>
+        你在這裡看到的每一個元件，都是由 fjkit 自己的 Jinja Environment 渲染出來的；而它周圍那些東西
+        ——這張 card、側欄、表格——是同一批 macro 蓋的。<code>fjkit check</code> 在 CI 裡掃這些模板，
+        所以這個站不可能給你看套件裡沒有的元件，也不可能寫出一個 app 不被允許寫的 class。
+      </p>
+</div></section>
+  </div>
+<div id="what">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">fjkit 是什麼</h2><p class="text-muted-foreground text-sm">一個畫面就是一條路由、一份模板，加上幾個 macro 呼叫。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        fjkit 是你的 FastAPI handler 與瀏覽器之間的那一層。接線只做一次，之後每個畫面都是一份
+        呼叫 macro 的模板：<code>page_header</code>、<code>card</code>、<code>table</code>、
+        <code>form</code>、<code>sidebar</code>。沒有第二個應用程式要建置，沒有第二種語言，
+        出事的時候也沒有第二個地方要找。
+      </p>
+      <p>
+        撐住其餘一切的那個限制：<strong>Tailwind 跑在 fjkit 發佈的時候，不是跑在你的 app 執行的時候。</strong>
+        你的 repo 裡沒有 <code>package.json</code>、沒有 <code>node_modules</code>、沒有 Tailwind 執行檔，
+        改完模板也沒有任何東西要重建。底下兩個檔案都是直接從這個 repo 裡的 demo app 讀出來的。
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="intro-main"
+                aria-selected="true">app/main.py</button>
+        <button type="button" role="tab" aria-controls="intro-page"
+                aria-selected="false">app/templates/tasks/page.html</button>
+    </nav><div id="intro-main" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">&#34;&#34;&#34;The demo app, built on fjkit.
+
+Compare with the pre-fjkit version (`git show 2ef74c9:app/main.py`): the
+Environment, the vendored assets and the whole stylesheet pipeline are gone.
+What is left is three lines of wiring and the app&#39;s own routes.
+&#34;&#34;&#34;
+
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
+from pathlib import Path
+from time import perf_counter
+
+from fastapi import FastAPI
+from fjkit import FjkitConfig, Templates, mount_ui
+from fjkit.vendored import STYLE_PACKS
+
+from app.features.dashboard.router import router as dashboard_router
+from app.features.jobs.router import router as jobs_router
+from app.features.jobs.service import JobService
+from app.features.tasks.router import router as tasks_router
+from app.features.tasks.service import TaskService
+
+APP_DIR = Path(__file__).resolve().parent
+ROOT_DIR = APP_DIR.parent
+
+#: Where the kit&#39;s assets are served from. Spelled out rather than left to the
+#: default because the picker below builds URLs under the same prefix, and two
+#: places guessing it separately is how a mount and a link drift apart.
+STATIC_URL = &#34;/_fjkit&#34;
+
+#: Every style pack, and the URL its stylesheet is served from.
+#:
+#: fjkit resolves exactly one pack per process (`FjkitConfig.style`), and that
+#: stays true here — the shell links `fjkit-vega.css` like it always did. What
+#: this feeds is the demo&#39;s picker: all eight packs ship in the wheel and
+#: `mount_ui` serves the whole static directory, so the browser can be pointed
+#: at another one to compare them without a restart. That is an affordance of
+#: this demo, not something the kit does, which is why the map is built here.
+#:
+#: A dict rather than a list because the picker&#39;s script looks a pack up in it:
+#: a value that is not one of the eight has no URL, so a stale or hand-edited
+#: `localStorage` entry cannot turn into a 404 and an unstyled page.
+STYLE_SHEETS = {pack: f&#34;{STATIC_URL}/dist/fjkit-{pack}.css&#34; for pack in STYLE_PACKS}
+
+#: The app&#39;s templates are searched before fjkit&#39;s, so dropping a file at
+#: `templates/ui/button.html` would shadow the kit&#39;s — that is `fjkit eject`.
+config = FjkitConfig(
+    template_dir=APP_DIR / &#34;templates&#34;,
+    bytecode_cache_dir=ROOT_DIR / &#34;.jinja-cache&#34;,
+    static_url=STATIC_URL,
+    globals={&#34;style_sheets&#34;: STYLE_SHEETS},
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Built once per process. Compiling a template is expensive; looking one up
+    # in the Environment&#39;s LRU afterwards is a dict hit.
+    app.state.templates = Templates.create(config)
+    app.state.tasks = TaskService()
+    # Background jobs live here for the same reason tasks do: one store per
+    # process, so a job started by one request is visible to the poll that
+    # follows it. A real app swaps this for a queue; the routes do not change.
+    app.state.jobs = JobService()
+    yield
+
+
+def create_app() -&gt; FastAPI:
+    app = FastAPI(title=&#34;fjkit demo — task board&#34;, lifespan=lifespan)
+
+    @app.middleware(&#34;http&#34;)
+    async def server_timing(request, call_next):
+        &#34;&#34;&#34;Publish wall time as `Server-Timing`, so the browser&#39;s network panel
+        shows the server cost of every page and every htmx swap.&#34;&#34;&#34;
+        started = perf_counter()
+        response = await call_next(request)
+        response.headers[&#34;Server-Timing&#34;] = f&#34;app;dur={(perf_counter() - started) * 1000:.2f}&#34;
+        return response
+
+    # Serves fjkit&#39;s stylesheet and the vendored htmx/Basecoat JS straight out
+    # of the installed package. The app has no static assets of its own.
+    mount_ui(app, config)
+
+    app.include_router(dashboard_router)
+    app.include_router(tasks_router)
+    app.include_router(jobs_router)
+
+    @app.get(&#34;/health&#34;, include_in_schema=False)
+    async def health() -&gt; dict[str, str]:
+        return {&#34;status&#34;: &#34;ok&#34;}
+
+    return app
+
+
+app = create_app()</pre>
+
+<footer>三個呼叫：FjkitConfig 收下所有旋鈕，mount_ui 直接從安裝好的套件裡供應 stylesheet 與 vendored JS，Templates.create 每個 process 只建一次 environment。</footer></div><div id="intro-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/tasks/page.html" data-lang="jinja">{#
+  Full page. Its only jobs: extend the shell, set the title, and drop in the
+  same partial the htmx endpoints return. Nothing about a task row is written
+  twice, so a change to the board cannot land in one place and miss the other.
+#}
+{% extends &#34;base.html&#34; %}
+{% from &#34;ui/button.html&#34; import button %}
+{% from &#34;ui/data.html&#34; import kbd %}
+{% from &#34;ui/layout.html&#34; import page_header %}
+
+{% block title %}Tasks{% endblock %}
+
+{% block content %}
+  {#
+    A block assignment rather than a plain string: `{% set %}…{% endset %}`
+    yields Markup, so the description can contain a component (here `kbd`)
+    without the page having to hand-write the markup or reach for |safe.
+  #}
+  {% set note %}
+    Every control here swaps {{ kbd(&#34;#board&#34;) }} — no page reloads, no client state.
+  {% endset %}
+
+  {% call page_header(&#34;Tasks&#34;, note) %}
+    {{ button(&#34;Streamed report&#34;, variant=&#34;outline&#34;, size=&#34;sm&#34;, icon_name=&#34;arrow-right&#34;, icon_end=true,
+              href=url_for(request, &#34;tasks_report&#34;) ~ &#34;?rows=5000&#34;) }}
+  {% endcall %}
+
+  {% include &#34;tasks/_board.html&#34; %}
+{% endblock %}</pre>
+
+<footer>注意一頁裡沒有什麼：沒有 utility class、沒有顏色、沒有 &lt;svg&gt;，也沒有藏在元件裡的 htmx 樣板碼。</footer></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        那些「沒有」不是風格偏好。一份在發佈時就編譯好的 stylesheet，裡面只可能有發佈當下存在的 class
+        ——所以詞彙表必須是封閉的，而且模板一踏出去，
+        <a href="learn.html#gate">就有一個指令會讓 build 掛掉</a>。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="who">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">給誰用</h2><p class="text-muted-foreground text-sm">會寫後端、需要一個像樣的介面、又不想碰前端工具鏈的人。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        如果你已經會寫 FastAPI，而你需要導覽、深色模式、一張可篩選的表格，以及一個會驗證的表單
+        ——這是給你的。如果你要帶 React、Vue 或 Svelte 進來，那這一層就選錯了，而這是一個決定，
+        不是一個缺口。
+      </p>
+</div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>它應該花你多少</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>第一頁</h4><p>大約二十行 Python 就有導覽與深色模式，而且沒有建置步驟</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>一個後台畫面</h4><p>列表、篩選、新增表單與 htmx 更新，一個下午，不必寫 CSS 或 JavaScript</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>換品牌</h4><p>一份覆寫 token 的 stylesheet，掛在 kit 的後面</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>升級</h4><p>改一個版本號——stylesheet 在 wheel 裡，不在你的 repo 裡</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>它刻意不是什麼</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>資料層</h4><p>沒有 ORM、沒有後台產生器、沒有登入。fjkit 負責渲染；要渲染什麼由你的 app 決定</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>前端 API</h4><p>JSON 是一等公民，但它描述的是「這一頁拿到的資料」——不是為了另一個前端渲染器而維護的第二份契約</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>每個方向都能設定</h4><p>參數是封閉列舉，因為一份參數表必須有能力說不</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>偽裝過的 Node 工具鏈</h4><p>fjkit 自己的 CI 可以用；你的 app 永遠不用</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="decisions">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">五個決定，以及撐住它們的東西</h2><p class="text-muted-foreground text-sm">每一條都是一個承諾，而每個承諾都有一樣東西撐著它。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        這些已經定了，文件其餘部分都建立在它們之上。一個沒有東西在執行的承諾，只是 README 裡的一句話
+        ——第三欄就是把每一條變成「build 掛得掉」的那樣東西。
+      </p>
+</div>
+<div class="card">          <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">決定</th>
+              <th class=" ">它換到什麼</th>
+              <th class=" ">什麼撐住它</th>
+          </tr>
+        </thead>
+        <tbody>          <tr>
+            <td class="font-medium">你這端零建置</td>
+            <td class="">沒有工具鏈、沒有 watcher，改完模板沒有任何東西要重建</td>
+            <td class="text-muted-foreground">wheel 裡就帶著編譯好的 stylesheet、htmx 與 Basecoat</td>
+          </tr>
+          <tr>
+            <td class="font-medium">class 詞彙表是封閉的</td>
+            <td class="">出貨的那份 stylesheet 永遠夠用，因為連版面都是元件</td>
+            <td class="text-muted-foreground">fjkit check，跑在你的 CI，也跑在我們的</td>
+          </tr>
+          <tr>
+            <td class="font-medium">一個顏色旋鈕</td>
+            <td class="">換品牌是改一個檔案，而且改完「綠色仍然代表完成」</td>
+            <td class="text-muted-foreground">每個顏色都是 token；模板指名角色，永遠不指名色相</td>
+          </tr>
+          <tr>
+            <td class="font-medium">簽名就是契約</td>
+            <td class="">macro 不可能吐出一個不存在的 class</td>
+            <td class="text-muted-foreground">封閉列舉；多的關鍵字變成 HTML 屬性，僅此而已</td>
+          </tr>
+          <tr>
+            <td class="font-medium">一份 partial，兩個入口</td>
+            <td class="">整頁與 htmx 局部更新不可能長歪成兩個樣子</td>
+            <td class="text-muted-foreground">頁面 include 的，就是端點回傳的那一份 partial</td>
+          </tr>
+</tbody>
+      </table>
+    </div>
+
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        每一條背後的理由寫在 repo 的 <code>CHARTER.md</code> 第 2 節，而
+        <a href="learn.html">「上手」那一頁</a>會在瀏覽器裡示範其中四條
+        ——包括那個品牌旋鈕，你會看著整頁在眼前重新上色。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="box">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">wheel 裡裝了什麼</h2><p class="text-muted-foreground text-sm">一個 wheel、兩個執行期依賴，沒有任何東西要你自己編譯。</p>      </div>
+      <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>套件裡帶的</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>templates/ui/</h4><p>那些 macro——版面、按鈕、資料、表單、表格、分頁、導覽、側欄、回饋、圖示，以及文件外殼</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>編譯好的 stylesheet，每個風格包一份：234 KB 原始、23.9 KB gzip，在 build 自己守著的 28 KB 預算內。一頁只載一份</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/vendor/</h4><p>htmx 與 Basecoat 的 JavaScript，版本釘死，直接從套件裡供應</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>1,767 個圖示</h4><p>Lucide，按名字內嵌——沒有 icon font、沒有 sprite 請求、執行期沒有 JS</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>你會碰到的全部表面</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>FjkitConfig、mount_ui、Templates</h4><p>接線，每支 app 一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>@render</h4><p>在裝飾器上指名模板；handler 只回資料</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit check</h4><p>詞彙表關卡——放進你的 CI</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit eject</h4><p>逃生口：把元件複製進你的 app 再改</p>    </section>  </div></div></div>
+  </div>
+</div>
+<div class="flex flex-col gap-3">      <p>
+        需求：Python 3.13 以上，以及兩個執行期依賴——FastAPI 與 Jinja2。要加第三個，需要一個到目前
+        為止還沒有人提得出來的理由。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="next">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">接下來去哪</h2><p class="text-muted-foreground text-sm">讀一頁，或把 demo 跑起來。兩件事都大約十分鐘。</p>      </div>
+      <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>這個站上</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>上手</h4><p><a href="learn.html">kit 怎麼接、htmx 送出什麼，以及那個會讓 build 掛掉的關卡</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>元件</h4><p><a href="components.html">每個 macro，實際渲染，附上產生它的那行呼叫</a></p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>在 repo 裡</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>examples/board/</h4><p>一支能跑的 app——router、service、schemas，以及三種模板</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>src/fjkit/templates/ui/</h4><p>每個 macro，以及這個站台據以生成的簽名註解</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>src/fjkit/static/src/fjkit.css</h4><p>token 表、深色模式，以及品牌旋鈕碰不到的東西</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>docs/jinja-performance.md</h4><p>benchmark 真正量到什麼，以及真正慢的那三件事</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>CHARTER.md</h4><p>路線圖，以及這個專案要求自己遵守的規則</p>    </section>  </div></div></div>
+  </div>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>或者直接跑 demo</h3>      </div>
+    </header>      <section>      <pre class="code-block scrollbar" tabindex="0" data-lang="text">uv sync
+uv run fastapi dev examples/board/app/main.py</pre>
+
+      <footer>
+        一個總覽頁、一塊有 htmx 局部更新的任務板，以及一份串流出去的兩萬列報表——原始碼就在
+        <code>examples/board</code>，它同時也是這個 kit 的驗收測試。沒有 CSS 要 build，
+        也沒有 watcher 要開著。<code class="kbd">uv run fjkit check app/templates</code> 是你的專案唯一多出來的指令。
+      </footer>
+</section>
+  </div>
+</section></div></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.1.0.dev0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">原始碼與 issues</a>.
+  這個站本身就是一支 fjkit app：它 extends <code class="kbd">ui/shell.html</code>，而且通過 <code class="kbd">fjkit check</code>——所以它不可能展示套件裡沒有的元件。
+      </footer>
+  </div>
+  <script defer src="../assets/data.js"></script>
+  <script defer src="../assets/common.js"></script>
+</body>
+</html>

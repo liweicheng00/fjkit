@@ -1,0 +1,73 @@
+{#
+  The request diagram — one SVG, both languages.
+
+  Every word in it comes from `t.diagram`, which `build.py` carries per
+  language. Copying the figure to translate it would mean maintaining two sets
+  of coordinates, and the second set would be the one that goes stale.
+
+  No classes anywhere in it: colours and sizes are SVG presentation attributes,
+  and the stage lighting is driven by `data-lit` on each group, which learn.js
+  flips from real htmx events. That keeps the figure inside the closed
+  vocabulary — an SVG is one of the few places where a page legitimately has no
+  component to reach for, and attributes are how it stays honest.
+#}
+<svg viewBox="0 0 720 320" role="img" fill="none"
+     font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+     aria-label="{{ t.diagram.alt }}">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+    </marker>
+  </defs>
+
+  <g id="dg-browser" data-lit="true">
+    <rect x="8" y="30" width="268" height="266" rx="8" fill="var(--card)" stroke="currentColor"></rect>
+    <text x="24" y="52" font-size="10" fill="var(--muted-foreground)">{{ t.diagram.browser }}</text>
+    <rect x="24" y="66" width="236" height="52" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="36" y="88" font-size="12" fill="currentColor">&lt;button hx-post&gt;</text>
+    <text x="36" y="105" font-size="10" fill="var(--muted-foreground)">{{ t.diagram.trigger }}</text>
+
+    <g id="dg-target">
+      <rect data-accent x="24" y="196" width="236" height="84" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+      <text data-accent x="36" y="220" font-size="12" fill="currentColor">#board</text>
+      <text x="36" y="238" font-size="10" fill="var(--muted-foreground)">{{ t.diagram.target_1 }}</text>
+      <text x="36" y="253" font-size="10" fill="var(--muted-foreground)">{{ t.diagram.target_2 }}</text>
+    </g>
+  </g>
+
+  <g id="dg-request" data-lit="false">
+    <line data-accent x1="276" y1="92" x2="440" y2="92" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <text data-accent x="288" y="72" font-size="11" fill="currentColor">POST /tasks</text>
+    <text x="288" y="86" font-size="10" fill="var(--muted-foreground)">HX-Request: true</text>
+    <text x="288" y="112" font-size="10" fill="var(--muted-foreground)">HX-Target: board</text>
+    <text x="288" y="126" font-size="10" fill="var(--muted-foreground)">{{ t.diagram.body }}</text>
+  </g>
+
+  <g id="dg-server" data-lit="false">
+    <rect x="440" y="30" width="272" height="266" rx="8" fill="var(--card)" stroke="currentColor"></rect>
+    <text x="456" y="52" font-size="10" fill="var(--muted-foreground)">FASTAPI</text>
+
+    <rect x="456" y="66" width="240" height="40" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="468" y="91" font-size="12" fill="currentColor">router.py</text>
+
+    <line x1="576" y1="106" x2="576" y2="130" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <rect x="456" y="130" width="240" height="40" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="468" y="155" font-size="12" fill="currentColor">{{ t.diagram.service }}</text>
+
+    <line x1="576" y1="170" x2="576" y2="194" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <rect data-accent x="456" y="194" width="240" height="56" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text data-accent x="468" y="217" font-size="12" fill="currentColor">tasks/_board.html</text>
+    <text x="468" y="235" font-size="10" fill="var(--muted-foreground)">{{ t.diagram.partial }}</text>
+  </g>
+
+  <g id="dg-response" data-lit="false">
+    <line data-accent x1="440" y1="272" x2="276" y2="272" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <text data-accent x="288" y="290" font-size="11" fill="currentColor">200 text/html</text>
+    <text x="288" y="306" font-size="10" fill="var(--muted-foreground)">{{ t.diagram.response }}</text>
+  </g>
+
+  <g id="dg-swap" data-lit="false">
+    <path data-accent d="M 268 272 C 300 272 300 238 268 238" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></path>
+    <text data-accent x="150" y="180" font-size="11" fill="currentColor" text-anchor="middle">{{ t.diagram.swap }}</text>
+  </g>
+</svg>
