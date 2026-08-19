@@ -49,7 +49,7 @@ fjkit
     </a>
   </li>
         <li>
-    <a href="index.html#decisions">      <span>Five decisions, and what holds them</span>
+    <a href="index.html#decisions">      <span>Six decisions, and what holds them</span>
     </a>
   </li>
         <li>
@@ -303,7 +303,7 @@ app = create_app()</pre>
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Five decisions, and what holds them</h2><p class="text-muted-foreground text-sm">Each one is a promise, and each promise has something that makes it hold.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Six decisions, and what holds them</h2><p class="text-muted-foreground text-sm">Each one is a promise, and each promise has something that makes it hold.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         These are settled, and the rest of the documentation assumes them. A promise with nothing
         enforcing it is a README sentence — the third column is what turns each one into something a
@@ -344,6 +344,11 @@ app = create_app()</pre>
             <td class="">the full page and the htmx swap cannot drift apart</td>
             <td class="text-muted-foreground">the page embeds the partial the endpoints return</td>
           </tr>
+          <tr>
+            <td class="font-medium">One annotation, two wire formats</td>
+            <td class="">every htmx endpoint is already a JSON API — no second route, no serialiser, no DTO to keep in step</td>
+            <td class="text-muted-foreground">@render serialises the model when no browser is waiting for markup</td>
+          </tr>
 </tbody>
       </table>
     </div>
@@ -351,8 +356,17 @@ app = create_app()</pre>
   </div>
 <div class="flex flex-col gap-3">      <p>
         The reasoning behind each is in <code>CHARTER.md</code> §2 in the repository, and
-        <a href="learn.html">the Learn page</a> demonstrates four of the five in
-        the browser — including the brand knob, which repaints the page while you watch.
+        <a href="learn.html">the Learn page</a> demonstrates four of them in the
+        browser — including the brand knob, which repaints the page while you watch.
+      </p>
+      <p>
+        The last one is the one people do not expect, so it is worth saying plainly. A fjkit handler
+        returns a model, not markup; <code>@render</code> decides the wire format from whether the
+        caller has markup waiting. So <code>GET /tasks/board</code> answers htmx with a rendered board
+        and answers <code>curl</code> with <code>BoardResponse</code> as JSON — same route, same
+        handler, same return annotation, and FastAPI has already documented it in <code>/docs</code>.
+        <a href="learn.html#json">Both halves of that reply are on the Learn
+        page.</a>
       </p>
 </div>
 </section></div></div>

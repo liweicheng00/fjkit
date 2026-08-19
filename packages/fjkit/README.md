@@ -43,6 +43,23 @@ One knob, plain CSS, no build:
 :root { --primary: oklch(0.55 0.2 145); --primary-foreground: oklch(0.99 0 0); }
 ```
 
+## One handler, two wire formats
+
+A handler returns a model, not markup. `@render` picks the format from whether
+the caller has markup waiting, so a fragment route is the app's JSON API
+without a second route:
+
+```console
+$ curl -s localhost:8000/tasks/board
+{"tasks": [...], "stats": {"total": 8, "done_pct": 25}}
+
+$ curl -s -H 'HX-Request: true' localhost:8000/tasks/board
+<div id="board">...</div>
+```
+
+The return annotation describes both, so FastAPI has already put the JSON in
+`/docs`. `mode="html"` or `mode="json"` on the decorator forces one.
+
 ## Checking your templates
 
 fjkit's class vocabulary is closed — apps compose macros rather than writing

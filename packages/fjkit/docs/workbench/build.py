@@ -267,6 +267,72 @@ DEMO_SOURCES = [
     "app/templates/tasks/page.html",
 ]
 
+#: Lesson 06 ("No HX-Request") quotes one route answering twice. Captured from
+#: the demo — `GET /tasks/board?status=doing`, with and without the header —
+#: rather than replayed during the build: the seeded rows carry timestamps, so a
+#: live capture would rewrite `docs/` on every run and make the built site
+#: unreviewable in a diff. `test_docs_site.py` checks that the two routes quoted
+#: here are still the ones the demo declares.
+NEGOTIATION = {
+    "route": """\
+@router.get("/tasks", name="tasks_page")
+@render("tasks/page.html", partial="tasks/_board.html")
+def tasks_page(service: ServiceDep, status: Status | None = None) -> BoardResponse:
+    # A page route: it names a page and a partial, so it always has markup
+    # waiting. A navigation gets the page; htmx gets the board.
+    return _board(service, status)
+
+
+@router.get("/tasks/board", name="tasks_board")
+@render("tasks/_board.html")
+def tasks_board(service: ServiceDep, status: Status | None = None) -> BoardResponse:
+    # A fragment route: it names only a partial. htmx gets the board, and
+    # anyone else gets BoardResponse as JSON — the API, at no extra cost.
+    return _board(service, status)""",
+    "json": """\
+$ curl -s localhost:8000/tasks/board?status=doing
+
+content-type: application/json
+vary: HX-Request
+
+{
+  "tasks": [
+    {
+      "id": 4,
+      "title": "Turn off auto_reload in the prod image",
+      "status": "doing",
+      "priority": "normal",
+      "owner": "kai",
+      "created_at": "2026-08-18T19:38:42.562805Z",
+      "status_variant": "info",
+      "priority_variant": "secondary"
+    }
+  ],
+  "stats": {"total": 8, "todo": 4, "doing": 2, "done": 2, "done_pct": 25},
+  "owners": ["kai", "mei"],
+  "active_status": "doing",
+  "filter_query": "?status=doing"
+}""",
+    "html": """\
+$ curl -s -H 'HX-Request: true' localhost:8000/tasks/board?status=doing
+
+content-type: text/html; charset=utf-8
+vary: HX-Request
+
+<div id="board">
+  <div class="grid gap-6 lg:grid-cols-[1fr_19rem]">
+    <form class="card" hx-post="/tasks" hx-target="#board" hx-swap="outerHTML">
+      ...
+    </form>
+    <table class="table">
+      <tr><td>Turn off auto_reload in the prod image</td>
+          <td><span class="badge" data-variant="info">Doing</span></td>
+      ...
+    </table>
+  </div>
+</div>""",
+}
+
 #: Copied preserving the path `mount_ui()` serves them under, so `fjkit_static`
 #: resolves the same string in the shell whether it is running in an app or
 #: being written to disk here.
@@ -391,6 +457,7 @@ def build() -> int:
                 lang=lang,
                 t=strings,
                 src=src,
+                wire=NEGOTIATION,
             )
             out = out_dir / page["file"]
             out.write_text(html, encoding="utf-8")

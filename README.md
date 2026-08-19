@@ -68,6 +68,7 @@ open.
 | Rebranding is one file | every colour is a token. Templates name a role, never a hue. |
 | A macro cannot be misused | signatures take closed enumerations and never a class string |
 | Page and htmx swap cannot drift | one partial, embedded by the page and returned by the endpoints |
+| Every htmx endpoint is already a JSON API | a handler returns a model; `@render` serialises it when no browser is waiting for markup, so a swap route answers `curl` with its `response_model` — no second route, no serialiser |
 | …and none of it needs a build step | Tailwind runs in fjkit's release pipeline. `dist/fjkit.css`, htmx and Basecoat's JS ship inside the wheel — which only holds because the class vocabulary is closed, and `fjkit check` enforces that. |
 
 ## Why this stack

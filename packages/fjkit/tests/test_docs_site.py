@@ -93,6 +93,34 @@ def test_no_page_drives_tab_selection():
         )
 
 
+def test_the_quoted_routes_are_the_demo_s():
+    """Lesson 06 quotes two of the demo's routes to show one handler answering
+    with HTML and with JSON. The snippet is a literal in `build.py` because a
+    live capture would rewrite `docs/` on every build — so nothing but this
+    stops it describing routes the demo no longer has.
+
+    Only the decorator lines are compared. The bodies in the snippet are
+    trimmed and re-commented for the page, which is the point of quoting rather
+    than dumping the file.
+    """
+    import sys
+
+    sys.path.insert(0, str(DOCS))
+    try:
+        import build  # type: ignore[import-not-found]
+    finally:
+        sys.path.pop(0)
+
+    router = (
+        Path(__file__).resolve().parents[3] / "examples" / "board" / "app" / "features" / "tasks" / "router.py"
+    ).read_text()
+
+    quoted = [line for line in build.NEGOTIATION["route"].splitlines() if line.startswith("@")]
+    assert quoted, "the snippet quotes no routes at all"
+    missing = [line for line in quoted if line not in router]
+    assert not missing, "Lesson 06 quotes decorators the demo no longer declares:\n" + "\n".join(missing)
+
+
 def test_the_site_builds():
     """End to end: all six pages — three, twice — render through the real
     Environment.
@@ -135,6 +163,7 @@ def test_the_site_builds():
                 lang=lang,
                 t=build.STRINGS[lang["code"]],
                 src=src,
+                wire=build.NEGOTIATION,
             )
             assert html.startswith("<!doctype html>")
             assert 'class="sidebar"' in html, "the shell's sidebar block went unfilled"

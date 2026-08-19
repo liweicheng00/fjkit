@@ -61,6 +61,10 @@ fjkit
     </a>
   </li>
         <li>
+    <a href="learn.html#json">      <span>沒有 HX-Request：同一條路由回 JSON</span>
+    </a>
+  </li>
+        <li>
     <a href="learn.html#patterns">      <span>九種 htmx 模式，以及對應的 handler</span>
     </a>
   </li>
@@ -143,13 +147,15 @@ fjkit
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">htmx 的請求與回應</h2><p class="text-muted-foreground text-sm">伺服器回的是 HTML。沒有 JSON，也沒有要同步的前端狀態。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">htmx 的請求與回應</h2><p class="text-muted-foreground text-sm">伺服器用 HTML 回應一次 swap。這中間沒有序列化，也沒有要同步的前端狀態。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         整個想法就是這樣，而且比看起來小。一個元素說明<em>要發哪個請求</em>，以及<em>答案要放在哪裡</em>。
         伺服器回一段 HTML——就是它本來會放進整頁的那段標記——htmx 把那段放進你指名的元素裡。
       </p>
       <p>
-        沒有東西被序列化成 JSON，前端沒有重新渲染，也沒有狀態同時活在兩個地方。按下按鈕：
+        這中間沒有東西被序列化，前端沒有重新渲染，也沒有狀態同時活在兩個地方。
+        （同一條路由很樂意用 JSON 回應一支腳本——<a href="#json">第 06 課</a>——但那是另一道門，
+        不是這段交換裡的一個步驟。）按下按鈕：
         <strong>底下那個請求是真的</strong>。這一頁載了 htmx，而瀏覽器裡有一支 mock server 扮演
         FastAPI 那一側。
       </p>
@@ -373,8 +379,169 @@ fjkit
 </section></div></div>
 <hr class="border-border">
 
-<div id="patterns">
+<div id="json">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">沒有 HX-Request：同一條路由回 JSON</h2><p class="text-muted-foreground text-sm">handler 回傳的是 model，不是標記。要送出什麼，只取決於一個問題：這個呼叫端有沒有在等標記？</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        第 02 課說這段交換裡沒有 JSON——就 swap 本身而言是對的。但看一眼 handler 真正回傳的東西：
+        是一個 <code>BoardResponse</code>，不是一串 HTML。把前者變成後者的是
+        <code>@render</code>；而當呼叫端不是一個在等標記的瀏覽器時，就沒有東西可以<em>渲染進去</em>，
+        model 便直接以 JSON 送出。
+      </p>
+      <p>
+        這就是 <code>render_mode="auto"</code>，<code>FjkitConfig</code> 的預設值。決定它的有兩件事，
+        兩件都不是 <code>Accept</code> 標頭：<strong>這條路由是什麼</strong>，以及
+        <strong>請求上有沒有 <code>HX-Request: true</code></strong>。頁面路由永遠有標記在等——
+        它存在的理由就是回應一次冷啟導覽，用 JSON 回應只會換來一片空白的瀏覽器視窗；
+        片段路由則只有在 htmx 開口時才有。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>auto 會回什麼</h3><p>第一欄由路由決定，第二欄由標頭決定。</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">路由</th>
+              <th class=" ">HX-Request</th>
+              <th class=" ">Content-Type</th>
+              <th class=" ">內容</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)</td>
+          <td class=""><span class="badge" data-variant="outline">沒有</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">整頁，連 shell 一起</td>
+        </tr>
+        <tr>
+          <td class="font-medium">同一條路由</td>
+          <td class=""><span class="badge" data-variant="info">true</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">只有 _board.html——那個 swap</td>
+        </tr>
+        <tr>
+          <td class="font-medium">@render(&#34;tasks/_board.html&#34;)</td>
+          <td class=""><span class="badge" data-variant="outline">沒有</span></td>
+          <td class="text-muted-foreground">application/json</td>
+          <td class="">序列化後的 BoardResponse——這條路由的 response_model</td>
+        </tr>
+        <tr>
+          <td class="font-medium">同一條路由</td>
+          <td class=""><span class="badge" data-variant="info">true</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">只有 _board.html——那個 swap</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        第三列值得再看一次，因為那是真正拿到手的東西：<strong>這個 app 裡每一個 htmx 端點，
+        本來就已經是一個 JSON 端點。</strong><code>GET /tasks/board</code> 對 htmx 回一塊看板，
+        對 <code>curl</code> 回它背後那個 model。沒有第二條路由、沒有 serializer、
+        也沒有一份會跟模板走鐘的 DTO——回傳標註是兩者唯一的描述，所以 FastAPI 早就把
+        <code>BoardResponse</code> 放進 <code>/docs</code> 了。
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="json-route"
+                aria-selected="true">router.py</button>
+        <button type="button" role="tab" aria-controls="json-curl"
+                aria-selected="false">沒有 HX-Request → JSON</button>
+        <button type="button" role="tab" aria-controls="json-htmx"
+                aria-selected="false">HX-Request: true → HTML</button>
+    </nav><div id="json-route" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.get(&#34;/tasks&#34;, name=&#34;tasks_page&#34;)
+@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)
+def tasks_page(service: ServiceDep, status: Status | None = None) -&gt; BoardResponse:
+    # A page route: it names a page and a partial, so it always has markup
+    # waiting. A navigation gets the page; htmx gets the board.
+    return _board(service, status)
+
+
+@router.get(&#34;/tasks/board&#34;, name=&#34;tasks_board&#34;)
+@render(&#34;tasks/_board.html&#34;)
+def tasks_board(service: ServiceDep, status: Status | None = None) -&gt; BoardResponse:
+    # A fragment route: it names only a partial. htmx gets the board, and
+    # anyone else gets BoardResponse as JSON — the API, at no extra cost.
+    return _board(service, status)</pre>
+
+<footer>兩條路由共用一份 handler 內容。第一條同時指定了頁面與 partial，所以永遠有標記可以回給導覽；第二條只指定片段——這正是它落在 auto 的 JSON 那一半的原因。</footer></div><div id="json-curl" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="沒有 HX-Request → JSON" data-lang="text">$ curl -s localhost:8000/tasks/board?status=doing
+
+content-type: application/json
+vary: HX-Request
+
+{
+  &#34;tasks&#34;: [
+    {
+      &#34;id&#34;: 4,
+      &#34;title&#34;: &#34;Turn off auto_reload in the prod image&#34;,
+      &#34;status&#34;: &#34;doing&#34;,
+      &#34;priority&#34;: &#34;normal&#34;,
+      &#34;owner&#34;: &#34;kai&#34;,
+      &#34;created_at&#34;: &#34;2026-08-18T19:38:42.562805Z&#34;,
+      &#34;status_variant&#34;: &#34;info&#34;,
+      &#34;priority_variant&#34;: &#34;secondary&#34;
+    }
+  ],
+  &#34;stats&#34;: {&#34;total&#34;: 8, &#34;todo&#34;: 4, &#34;doing&#34;: 2, &#34;done&#34;: 2, &#34;done_pct&#34;: 25},
+  &#34;owners&#34;: [&#34;kai&#34;, &#34;mei&#34;],
+  &#34;active_status&#34;: &#34;doing&#34;,
+  &#34;filter_query&#34;: &#34;?status=doing&#34;
+}</pre>
+
+<footer>status_variant 與 priority_variant 是 model 上的 @computed_field，所以模板需要的那個顯示決定也會到達 JSON，而不是只活在 Jinja 裡。</footer></div><div id="json-htmx" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="HX-Request: true → HTML" data-lang="text">$ curl -s -H &#39;HX-Request: true&#39; localhost:8000/tasks/board?status=doing
+
+content-type: text/html; charset=utf-8
+vary: HX-Request
+
+&lt;div id=&#34;board&#34;&gt;
+  &lt;div class=&#34;grid gap-6 lg:grid-cols-[1fr_19rem]&#34;&gt;
+    &lt;form class=&#34;card&#34; hx-post=&#34;/tasks&#34; hx-target=&#34;#board&#34; hx-swap=&#34;outerHTML&#34;&gt;
+      ...
+    &lt;/form&gt;
+    &lt;table class=&#34;table&#34;&gt;
+      &lt;tr&gt;&lt;td&gt;Turn off auto_reload in the prod image&lt;/td&gt;
+          &lt;td&gt;&lt;span class=&#34;badge&#34; data-variant=&#34;info&#34;&gt;Doing&lt;/span&gt;&lt;/td&gt;
+      ...
+    &lt;/table&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+
+<footer>同一個網址、同一個 handler、同一個 model——只是被渲染而不是被序列化。</footer></div></div>
+  </div>
+
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>怎麼覆蓋它</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>強制 HTML</h4><p>decorator 上寫 <code>mode="html"</code>——一個絕不能被序列化的片段</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>強制 JSON</h4><p><code>mode="json"</code>——一條就只是 API 的路由，對 htmx 也一樣</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>整個 app</h4><p><code>FjkitConfig(render_mode="html")</code> 把整個行為關掉</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>請求贏不了設定</h4><p>寫死 html 或 json 的路由沒有商量餘地——只有 auto 會去讀那個標頭</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>兩件要知道的事</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>快取</h4><p>凡是形狀取決於該標頭的回應，fjkit 都會補上 <code>Vary: HX-Request</code></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>為什麼重要</h4><p>少了它，CDN 會把快取起來的片段送進一次導覽——一個沒有 shell 的頁面，而且哪裡都不會報錯</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>hx-boosted</h4><p>boost 過的連結是 htmx 在做一次普通導覽：就這個問題而言它算瀏覽器，所以拿到的是整頁，不是 partial</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>命名規則</h4><p>檔名以 _ 開頭的模板就是片段——test_conventions.py 本來就在管這條慣例</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="patterns">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">九種 htmx 模式，以及對應的 handler</h2><p class="text-muted-foreground text-sm">畫面各有不同；形狀沒有。每一種都是一個 trigger、一個 target 與一份 partial。</p>      </div>
@@ -433,7 +600,7 @@ fjkit
 <hr class="border-border">
 
 <div id="knob">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
 <span class="badge" data-variant="secondary">theming</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">換品牌：品牌 token 與狀態 token</h2><p class="text-muted-foreground text-sm">換品牌是一個 CSS 變數。「綠色代表完成」不在那個轉盤上。</p>      </div>
@@ -507,7 +674,7 @@ fjkit
 <hr class="border-border">
 
 <div id="gate">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">fjkit check：封閉詞彙表</h2><p class="text-muted-foreground text-sm">一條沒有人能不小心違反的慣例，比一條寫下來的慣例值錢。</p>      </div>

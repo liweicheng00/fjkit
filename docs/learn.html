@@ -61,6 +61,10 @@ fjkit
     </a>
   </li>
         <li>
+    <a href="learn.html#json">      <span>No HX-Request: the same route answers JSON</span>
+    </a>
+  </li>
+        <li>
     <a href="learn.html#patterns">      <span>Nine htmx patterns, and their handlers</span>
     </a>
   </li>
@@ -145,15 +149,16 @@ fjkit
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">The htmx request and response</h2><p class="text-muted-foreground text-sm">The server answers with HTML. There is no JSON, and no client-side state to keep in sync.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">The htmx request and response</h2><p class="text-muted-foreground text-sm">The server answers a swap with HTML. Nothing is serialised for it, and no client-side state is kept in sync.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         This is the whole idea, and it is smaller than it looks. An element says <em>which</em> request
         to make and <em>where to put the answer</em>. The server answers with a piece of HTML — the same
         markup it would have put in the page — and htmx drops that piece into the element you named.
       </p>
       <p>
-        Nothing is serialised to JSON, nothing is re-rendered on the client, and no state lives in two
-        places. Press the button: <strong>the request below is real</strong>. htmx is loaded on this
+        Nothing is serialised for the swap, nothing is re-rendered on the client, and no state lives in
+        two places. (The same route will happily answer a script in JSON —
+        <a href="#json">lesson 06</a> — but that is a second door, not a step in this exchange.) Press the button: <strong>the request below is real</strong>. htmx is loaded on this
         page, and a mock server in the browser plays the FastAPI side.
       </p>
 </div>
@@ -378,8 +383,170 @@ fjkit
 </section></div></div>
 <hr class="border-border">
 
-<div id="patterns">
+<div id="json">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">No HX-Request: the same route answers JSON</h2><p class="text-muted-foreground text-sm">A handler returns a model, not markup. One question decides what goes on the wire: does this caller have markup waiting?</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Lesson 02 said the exchange carries no JSON, and of the swap itself that is true. But look at
+        what the handler actually returned — a <code>BoardResponse</code>, not a string of HTML.
+        <code>@render</code> is what turns one into the other, and when the caller is not a browser
+        waiting for markup there is nothing to render <em>into</em>. The model goes out as JSON.
+      </p>
+      <p>
+        That is <code>render_mode="auto"</code>, the default on <code>FjkitConfig</code>. Two things
+        decide it, and neither of them is an <code>Accept</code> header: <strong>what the route
+        is</strong>, and <strong>whether the request carries <code>HX-Request: true</code></strong>.
+        A page route always has markup waiting — a cold navigation is the request it exists for, and
+        answering that with JSON would be a blank browser window. A fragment route only has markup
+        waiting when htmx asked for it.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What auto answers</h3><p>The route decides the first column; the header decides the second.</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">The route</th>
+              <th class=" ">HX-Request</th>
+              <th class=" ">Content-Type</th>
+              <th class=" ">Body</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)</td>
+          <td class=""><span class="badge" data-variant="outline">absent</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">the whole page, shell and all</td>
+        </tr>
+        <tr>
+          <td class="font-medium">the same route</td>
+          <td class=""><span class="badge" data-variant="info">true</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">_board.html on its own — the swap</td>
+        </tr>
+        <tr>
+          <td class="font-medium">@render(&#34;tasks/_board.html&#34;)</td>
+          <td class=""><span class="badge" data-variant="outline">absent</span></td>
+          <td class="text-muted-foreground">application/json</td>
+          <td class="">BoardResponse, serialised — the route&#39;s response_model</td>
+        </tr>
+        <tr>
+          <td class="font-medium">the same route</td>
+          <td class=""><span class="badge" data-variant="info">true</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">_board.html on its own — the swap</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        Read the third row again, because it is the one worth having: <strong>every htmx endpoint in
+        the app is already a JSON endpoint.</strong> <code>GET /tasks/board</code> answers htmx with a
+        board and answers <code>curl</code> with the model behind it. No second route, no serialiser,
+        no DTO that drifts from the template — the return annotation is the only description of
+        either, so FastAPI has already put <code>BoardResponse</code> in <code>/docs</code>.
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="json-route"
+                aria-selected="true">router.py</button>
+        <button type="button" role="tab" aria-controls="json-curl"
+                aria-selected="false">no HX-Request → JSON</button>
+        <button type="button" role="tab" aria-controls="json-htmx"
+                aria-selected="false">HX-Request: true → HTML</button>
+    </nav><div id="json-route" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.get(&#34;/tasks&#34;, name=&#34;tasks_page&#34;)
+@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)
+def tasks_page(service: ServiceDep, status: Status | None = None) -&gt; BoardResponse:
+    # A page route: it names a page and a partial, so it always has markup
+    # waiting. A navigation gets the page; htmx gets the board.
+    return _board(service, status)
+
+
+@router.get(&#34;/tasks/board&#34;, name=&#34;tasks_board&#34;)
+@render(&#34;tasks/_board.html&#34;)
+def tasks_board(service: ServiceDep, status: Status | None = None) -&gt; BoardResponse:
+    # A fragment route: it names only a partial. htmx gets the board, and
+    # anyone else gets BoardResponse as JSON — the API, at no extra cost.
+    return _board(service, status)</pre>
+
+<footer>Two routes over one handler body. The first names a page and a partial, so it always has markup for a navigation. The second names only a fragment — which is what puts it in auto’s JSON half.</footer></div><div id="json-curl" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="no HX-Request → JSON" data-lang="text">$ curl -s localhost:8000/tasks/board?status=doing
+
+content-type: application/json
+vary: HX-Request
+
+{
+  &#34;tasks&#34;: [
+    {
+      &#34;id&#34;: 4,
+      &#34;title&#34;: &#34;Turn off auto_reload in the prod image&#34;,
+      &#34;status&#34;: &#34;doing&#34;,
+      &#34;priority&#34;: &#34;normal&#34;,
+      &#34;owner&#34;: &#34;kai&#34;,
+      &#34;created_at&#34;: &#34;2026-08-18T19:38:42.562805Z&#34;,
+      &#34;status_variant&#34;: &#34;info&#34;,
+      &#34;priority_variant&#34;: &#34;secondary&#34;
+    }
+  ],
+  &#34;stats&#34;: {&#34;total&#34;: 8, &#34;todo&#34;: 4, &#34;doing&#34;: 2, &#34;done&#34;: 2, &#34;done_pct&#34;: 25},
+  &#34;owners&#34;: [&#34;kai&#34;, &#34;mei&#34;],
+  &#34;active_status&#34;: &#34;doing&#34;,
+  &#34;filter_query&#34;: &#34;?status=doing&#34;
+}</pre>
+
+<footer>status_variant and priority_variant are @computed_field on the model, so a view decision the template needs reaches the JSON too instead of existing only in Jinja.</footer></div><div id="json-htmx" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="HX-Request: true → HTML" data-lang="text">$ curl -s -H &#39;HX-Request: true&#39; localhost:8000/tasks/board?status=doing
+
+content-type: text/html; charset=utf-8
+vary: HX-Request
+
+&lt;div id=&#34;board&#34;&gt;
+  &lt;div class=&#34;grid gap-6 lg:grid-cols-[1fr_19rem]&#34;&gt;
+    &lt;form class=&#34;card&#34; hx-post=&#34;/tasks&#34; hx-target=&#34;#board&#34; hx-swap=&#34;outerHTML&#34;&gt;
+      ...
+    &lt;/form&gt;
+    &lt;table class=&#34;table&#34;&gt;
+      &lt;tr&gt;&lt;td&gt;Turn off auto_reload in the prod image&lt;/td&gt;
+          &lt;td&gt;&lt;span class=&#34;badge&#34; data-variant=&#34;info&#34;&gt;Doing&lt;/span&gt;&lt;/td&gt;
+      ...
+    &lt;/table&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+
+<footer>Same URL, same handler, same model — rendered instead of serialised.</footer></div></div>
+  </div>
+
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Overriding it</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>force HTML</h4><p><code>mode="html"</code> on the decorator — a fragment that must never serialise</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>force JSON</h4><p><code>mode="json"</code> — a route that is an API and nothing else, even to htmx</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>app-wide</h4><p><code>FjkitConfig(render_mode="html")</code> turns the whole behaviour off</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>no request wins</h4><p>a route that said html or json is not negotiable — only auto reads the header</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Two things to know</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>caching</h4><p>fjkit sets <code>Vary: HX-Request</code> on every reply whose shape depended on the header</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>why it matters</h4><p>without it a CDN serves a cached fragment into a navigation — a page with no shell, and no error anywhere</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>hx-boosted</h4><p>a boosted link is htmx doing a navigation: it counts as a browser for this question, so it gets the page, not the partial</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the naming rule</h4><p>a template whose name starts with _ is a fragment — the same convention test_conventions.py already enforces</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="patterns">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Nine htmx patterns, and their handlers</h2><p class="text-muted-foreground text-sm">Screens differ; the shapes do not. Each one is a trigger, a target and a partial.</p>      </div>
@@ -439,7 +606,7 @@ fjkit
 <hr class="border-border">
 
 <div id="knob">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
 <span class="badge" data-variant="secondary">theming</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Rebranding: brand and status tokens</h2><p class="text-muted-foreground text-sm">Rebranding is a CSS variable. "Green means done" is not on the dial.</p>      </div>
@@ -514,7 +681,7 @@ fjkit
 <hr class="border-border">
 
 <div id="gate">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">fjkit check: the closed vocabulary</h2><p class="text-muted-foreground text-sm">A convention nobody can violate by accident is worth more than one written down.</p>      </div>

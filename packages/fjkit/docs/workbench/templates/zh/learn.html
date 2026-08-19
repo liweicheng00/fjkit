@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% from "_parts.html" import defs, lesson, prose, stage, stage_with %}
+{% from "_parts.html" import code, defs, files, lesson, prose, stage, stage_with %}
 {% from "ui/button.html" import button, button_group %}
 {% from "ui/data.html" import badge, card, code_block, link %}
 {% from "ui/form.html" import field_row %}
 {% from "ui/layout.html" import grid, page_header, row, stack %}
+{% from "ui/table.html" import cell, table %}
 
 {#
   「上手」的中文版。id、控制項與腳本掛點跟英文版逐字相同——learn.js 是同一支，
@@ -15,6 +16,7 @@
   {"id": "targets",  "title": "hx-target 與 hx-swap"},
   {"id": "triggers", "title": "hx-trigger：打字、捲動、輪詢"},
   {"id": "partials", "title": "partial：一份檔案，整頁與局部共用"},
+  {"id": "json",     "title": "沒有 HX-Request：同一條路由回 JSON"},
   {"id": "patterns", "title": "九種 htmx 模式，以及對應的 handler"},
   {"id": "knob",     "title": "換品牌：品牌 token 與狀態 token"},
   {"id": "gate",     "title": "fjkit check：封閉詞彙表"},
@@ -66,7 +68,7 @@
   {% endcall %}
 
   {# ============================================================== 02 #}
-  {% set t02 %}伺服器回的是 HTML。沒有 JSON，也沒有要同步的前端狀態。{% endset %}
+  {% set t02 %}伺服器用 HTML 回應一次 swap。這中間沒有序列化，也沒有要同步的前端狀態。{% endset %}
   {% call lesson("exchange", "02", "htmx 的請求與回應", t02, tag="htmx") %}
     {% call prose() %}
       <p>
@@ -74,7 +76,9 @@
         伺服器回一段 HTML——就是它本來會放進整頁的那段標記——htmx 把那段放進你指名的元素裡。
       </p>
       <p>
-        沒有東西被序列化成 JSON，前端沒有重新渲染，也沒有狀態同時活在兩個地方。按下按鈕：
+        這中間沒有東西被序列化，前端沒有重新渲染，也沒有狀態同時活在兩個地方。
+        （同一條路由很樂意用 JSON 回應一支腳本——<a href="#json">第 06 課</a>——但那是另一道門，
+        不是這段交換裡的一個步驟。）按下按鈕：
         <strong>底下那個請求是真的</strong>。這一頁載了 htmx，而瀏覽器裡有一支 mock server 扮演
         FastAPI 那一側。
       </p>
@@ -233,8 +237,95 @@
   {% endcall %}
 
   {# ============================================================== 06 #}
-  {% set t06 %}畫面各有不同；形狀沒有。每一種都是一個 trigger、一個 target 與一份 partial。{% endset %}
-  {% call lesson("patterns", "06", "九種 htmx 模式，以及對應的 handler", t06, tag="htmx") %}
+  {% set t06 %}handler 回傳的是 model，不是標記。要送出什麼，只取決於一個問題：這個呼叫端有沒有在等標記？{% endset %}
+  {% call lesson("json", "06", "沒有 HX-Request：同一條路由回 JSON", t06, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        第 02 課說這段交換裡沒有 JSON——就 swap 本身而言是對的。但看一眼 handler 真正回傳的東西：
+        是一個 <code>BoardResponse</code>，不是一串 HTML。把前者變成後者的是
+        <code>@render</code>；而當呼叫端不是一個在等標記的瀏覽器時，就沒有東西可以<em>渲染進去</em>，
+        model 便直接以 JSON 送出。
+      </p>
+      <p>
+        這就是 <code>render_mode="auto"</code>，<code>FjkitConfig</code> 的預設值。決定它的有兩件事，
+        兩件都不是 <code>Accept</code> 標頭：<strong>這條路由是什麼</strong>，以及
+        <strong>請求上有沒有 <code>HX-Request: true</code></strong>。頁面路由永遠有標記在等——
+        它存在的理由就是回應一次冷啟導覽，用 JSON 回應只會換來一片空白的瀏覽器視窗；
+        片段路由則只有在 htmx 開口時才有。
+      </p>
+    {% endcall %}
+
+    {% call stage("auto 會回什麼", "第一欄由路由決定，第二欄由標頭決定。") %}
+      {% call table([{"label": "路由"}, {"label": "HX-Request"}, {"label": "Content-Type"}, {"label": "內容"}]) %}
+        <tr>
+          {{ cell("@render(\"tasks/page.html\", partial=\"tasks/_board.html\")", tone="strong") }}
+          {{ cell(badge("沒有", variant="outline")) }}
+          {{ cell("text/html", tone="muted") }}
+          {{ cell("整頁，連 shell 一起") }}
+        </tr>
+        <tr>
+          {{ cell("同一條路由", tone="strong") }}
+          {{ cell(badge("true", variant="info")) }}
+          {{ cell("text/html", tone="muted") }}
+          {{ cell("只有 _board.html——那個 swap") }}
+        </tr>
+        <tr>
+          {{ cell("@render(\"tasks/_board.html\")", tone="strong") }}
+          {{ cell(badge("沒有", variant="outline")) }}
+          {{ cell("application/json", tone="muted") }}
+          {{ cell("序列化後的 BoardResponse——這條路由的 response_model") }}
+        </tr>
+        <tr>
+          {{ cell("同一條路由", tone="strong") }}
+          {{ cell(badge("true", variant="info")) }}
+          {{ cell("text/html", tone="muted") }}
+          {{ cell("只有 _board.html——那個 swap") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        第三列值得再看一次，因為那是真正拿到手的東西：<strong>這個 app 裡每一個 htmx 端點，
+        本來就已經是一個 JSON 端點。</strong><code>GET /tasks/board</code> 對 htmx 回一塊看板，
+        對 <code>curl</code> 回它背後那個 model。沒有第二條路由、沒有 serializer、
+        也沒有一份會跟模板走鐘的 DTO——回傳標註是兩者唯一的描述，所以 FastAPI 早就把
+        <code>BoardResponse</code> 放進 <code>/docs</code> 了。
+      </p>
+    {% endcall %}
+
+    {{ files([
+      {"id": "json-route", "label": "router.py", "lang": "python", "source": wire.route,
+       "note": "兩條路由共用一份 handler 內容。第一條同時指定了頁面與 partial，所以永遠有標記可以回給導覽；第二條只指定片段——這正是它落在 auto 的 JSON 那一半的原因。"},
+      {"id": "json-curl", "label": "沒有 HX-Request \u2192 JSON", "lang": "text", "source": wire.json,
+       "note": "status_variant 與 priority_variant 是 model 上的 @computed_field，所以模板需要的那個顯示決定也會到達 JSON，而不是只活在 Jinja 裡。"},
+      {"id": "json-htmx", "label": "HX-Request: true \u2192 HTML", "lang": "text", "source": wire.html,
+       "note": "同一個網址、同一個 handler、同一個 model——只是被渲染而不是被序列化。"},
+    ]) }}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set force_html %}decorator 上寫 <code>mode="html"</code>——一個絕不能被序列化的片段{% endset %}
+      {% set force_json %}<code>mode="json"</code>——一條就只是 API 的路由，對 htmx 也一樣{% endset %}
+      {% set app_wide %}<code>FjkitConfig(render_mode="html")</code> 把整個行為關掉{% endset %}
+      {{ defs("怎麼覆蓋它", [
+        ("強制 HTML", force_html),
+        ("強制 JSON", force_json),
+        ("整個 app", app_wide),
+        ("請求贏不了設定", "寫死 html 或 json 的路由沒有商量餘地——只有 auto 會去讀那個標頭"),
+      ]) }}
+      {% set vary_note %}凡是形狀取決於該標頭的回應，fjkit 都會補上 <code>Vary: HX-Request</code>{% endset %}
+      {{ defs("兩件要知道的事", [
+        ("快取", vary_note),
+        ("為什麼重要", "少了它，CDN 會把快取起來的片段送進一次導覽——一個沒有 shell 的頁面，而且哪裡都不會報錯"),
+        ("hx-boosted", "boost 過的連結是 htmx 在做一次普通導覽：就這個問題而言它算瀏覽器，所以拿到的是整頁，不是 partial"),
+        ("命名規則", "檔名以 _ 開頭的模板就是片段——test_conventions.py 本來就在管這條慣例"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set t07 %}畫面各有不同；形狀沒有。每一種都是一個 trigger、一個 target 與一份 partial。{% endset %}
+  {% call lesson("patterns", "07", "九種 htmx 模式，以及對應的 handler", t07, tag="htmx") %}
     {% call prose() %}
       <p>
         整套屬性詞彙一個螢幕就放得下——
@@ -288,9 +379,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 07 #}
-  {% set t07 %}換品牌是一個 CSS 變數。「綠色代表完成」不在那個轉盤上。{% endset %}
-  {% call lesson("knob", "07", "換品牌：品牌 token 與狀態 token", t07, tag="theming") %}
+  {# ============================================================== 08 #}
+  {% set t08 %}換品牌是一個 CSS 變數。「綠色代表完成」不在那個轉盤上。{% endset %}
+  {% call lesson("knob", "08", "換品牌：品牌 token 與狀態 token", t08, tag="theming") %}
     {% call prose() %}
       <p>
         拉拉看色相。你正在編輯 <code>:root</code> 上的 <code>--primary</code>——就是一支 app 會寫在
@@ -363,9 +454,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 08 #}
-  {% set t08 %}一條沒有人能不小心違反的慣例，比一條寫下來的慣例值錢。{% endset %}
-  {% call lesson("gate", "08", "fjkit check：封閉詞彙表", t08) %}
+  {# ============================================================== 09 #}
+  {% set t09 %}一條沒有人能不小心違反的慣例，比一條寫下來的慣例值錢。{% endset %}
+  {% call lesson("gate", "09", "fjkit check：封閉詞彙表", t09) %}
     {% call prose() %}
       <p>
         <code>fjkit check</code> 讀你的模板，然後拒絕兩種東西：顏色字面值，以及元件詞彙表以外的任何 class。

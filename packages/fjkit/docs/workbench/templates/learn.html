@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% from "_parts.html" import defs, lesson, prose, stage, stage_with %}
+{% from "_parts.html" import code, defs, files, lesson, prose, stage, stage_with %}
 {% from "ui/button.html" import button, button_group %}
 {% from "ui/data.html" import badge, card, code_block, link %}
 {% from "ui/form.html" import field_row %}
 {% from "ui/layout.html" import grid, page_header, row, stack %}
+{% from "ui/table.html" import cell, table %}
 
 {#
   The rail in base.html is built from this list, so a section renamed here is
@@ -15,6 +16,7 @@
   {"id": "targets",  "title": "hx-target and hx-swap"},
   {"id": "triggers", "title": "hx-trigger: typing, scrolling, polling"},
   {"id": "partials", "title": "Partials: one file, page and swap"},
+  {"id": "json",     "title": "No HX-Request: the same route answers JSON"},
   {"id": "patterns", "title": "Nine htmx patterns, and their handlers"},
   {"id": "knob",     "title": "Rebranding: brand and status tokens"},
   {"id": "gate",     "title": "fjkit check: the closed vocabulary"},
@@ -68,7 +70,7 @@
   {% endcall %}
 
   {# ============================================================== 02 #}
-  {% set t02 %}The server answers with HTML. There is no JSON, and no client-side state to keep in sync.{% endset %}
+  {% set t02 %}The server answers a swap with HTML. Nothing is serialised for it, and no client-side state is kept in sync.{% endset %}
   {% call lesson("exchange", "02", "The htmx request and response", t02, tag="htmx") %}
     {% call prose() %}
       <p>
@@ -77,8 +79,9 @@
         markup it would have put in the page — and htmx drops that piece into the element you named.
       </p>
       <p>
-        Nothing is serialised to JSON, nothing is re-rendered on the client, and no state lives in two
-        places. Press the button: <strong>the request below is real</strong>. htmx is loaded on this
+        Nothing is serialised for the swap, nothing is re-rendered on the client, and no state lives in
+        two places. (The same route will happily answer a script in JSON —
+        <a href="#json">lesson 06</a> — but that is a second door, not a step in this exchange.) Press the button: <strong>the request below is real</strong>. htmx is loaded on this
         page, and a mock server in the browser plays the FastAPI side.
       </p>
     {% endcall %}
@@ -238,8 +241,96 @@
   {% endcall %}
 
   {# ============================================================== 06 #}
-  {% set t06 %}Screens differ; the shapes do not. Each one is a trigger, a target and a partial.{% endset %}
-  {% call lesson("patterns", "06", "Nine htmx patterns, and their handlers", t06, tag="htmx") %}
+  {% set t06 %}A handler returns a model, not markup. One question decides what goes on the wire: does this caller have markup waiting?{% endset %}
+  {% call lesson("json", "06", "No HX-Request: the same route answers JSON", t06, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        Lesson 02 said the exchange carries no JSON, and of the swap itself that is true. But look at
+        what the handler actually returned — a <code>BoardResponse</code>, not a string of HTML.
+        <code>@render</code> is what turns one into the other, and when the caller is not a browser
+        waiting for markup there is nothing to render <em>into</em>. The model goes out as JSON.
+      </p>
+      <p>
+        That is <code>render_mode="auto"</code>, the default on <code>FjkitConfig</code>. Two things
+        decide it, and neither of them is an <code>Accept</code> header: <strong>what the route
+        is</strong>, and <strong>whether the request carries <code>HX-Request: true</code></strong>.
+        A page route always has markup waiting — a cold navigation is the request it exists for, and
+        answering that with JSON would be a blank browser window. A fragment route only has markup
+        waiting when htmx asked for it.
+      </p>
+    {% endcall %}
+
+    {% call stage("What auto answers", "The route decides the first column; the header decides the second.") %}
+      {% call table([{"label": "The route"}, {"label": "HX-Request"}, {"label": "Content-Type"}, {"label": "Body"}]) %}
+        <tr>
+          {{ cell("@render(\"tasks/page.html\", partial=\"tasks/_board.html\")", tone="strong") }}
+          {{ cell(badge("absent", variant="outline")) }}
+          {{ cell("text/html", tone="muted") }}
+          {{ cell("the whole page, shell and all") }}
+        </tr>
+        <tr>
+          {{ cell("the same route", tone="strong") }}
+          {{ cell(badge("true", variant="info")) }}
+          {{ cell("text/html", tone="muted") }}
+          {{ cell("_board.html on its own — the swap") }}
+        </tr>
+        <tr>
+          {{ cell("@render(\"tasks/_board.html\")", tone="strong") }}
+          {{ cell(badge("absent", variant="outline")) }}
+          {{ cell("application/json", tone="muted") }}
+          {{ cell("BoardResponse, serialised — the route's response_model") }}
+        </tr>
+        <tr>
+          {{ cell("the same route", tone="strong") }}
+          {{ cell(badge("true", variant="info")) }}
+          {{ cell("text/html", tone="muted") }}
+          {{ cell("_board.html on its own — the swap") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        Read the third row again, because it is the one worth having: <strong>every htmx endpoint in
+        the app is already a JSON endpoint.</strong> <code>GET /tasks/board</code> answers htmx with a
+        board and answers <code>curl</code> with the model behind it. No second route, no serialiser,
+        no DTO that drifts from the template — the return annotation is the only description of
+        either, so FastAPI has already put <code>BoardResponse</code> in <code>/docs</code>.
+      </p>
+    {% endcall %}
+
+    {{ files([
+      {"id": "json-route", "label": "router.py", "lang": "python", "source": wire.route,
+       "note": "Two routes over one handler body. The first names a page and a partial, so it always has markup for a navigation. The second names only a fragment — which is what puts it in auto\u2019s JSON half."},
+      {"id": "json-curl", "label": "no HX-Request \u2192 JSON", "lang": "text", "source": wire.json,
+       "note": "status_variant and priority_variant are @computed_field on the model, so a view decision the template needs reaches the JSON too instead of existing only in Jinja."},
+      {"id": "json-htmx", "label": "HX-Request: true \u2192 HTML", "lang": "text", "source": wire.html,
+       "note": "Same URL, same handler, same model — rendered instead of serialised."},
+    ]) }}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set force_html %}<code>mode="html"</code> on the decorator — a fragment that must never serialise{% endset %}
+      {% set force_json %}<code>mode="json"</code> — a route that is an API and nothing else, even to htmx{% endset %}
+      {% set app_wide %}<code>FjkitConfig(render_mode="html")</code> turns the whole behaviour off{% endset %}
+      {{ defs("Overriding it", [
+        ("force HTML", force_html),
+        ("force JSON", force_json),
+        ("app-wide", app_wide),
+        ("no request wins", "a route that said html or json is not negotiable — only auto reads the header"),
+      ]) }}
+      {% set vary_note %}fjkit sets <code>Vary: HX-Request</code> on every reply whose shape depended on the header{% endset %}
+      {{ defs("Two things to know", [
+        ("caching", vary_note),
+        ("why it matters", "without it a CDN serves a cached fragment into a navigation — a page with no shell, and no error anywhere"),
+        ("hx-boosted", "a boosted link is htmx doing a navigation: it counts as a browser for this question, so it gets the page, not the partial"),
+        ("the naming rule", "a template whose name starts with _ is a fragment — the same convention test_conventions.py already enforces"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set t07 %}Screens differ; the shapes do not. Each one is a trigger, a target and a partial.{% endset %}
+  {% call lesson("patterns", "07", "Nine htmx patterns, and their handlers", t07, tag="htmx") %}
     {% call prose() %}
       <p>
         The whole attribute vocabulary fits on one screen —
@@ -294,9 +385,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 07 #}
-  {% set t07 %}Rebranding is a CSS variable. "Green means done" is not on the dial.{% endset %}
-  {% call lesson("knob", "07", "Rebranding: brand and status tokens", t07, tag="theming") %}
+  {# ============================================================== 08 #}
+  {% set t08 %}Rebranding is a CSS variable. "Green means done" is not on the dial.{% endset %}
+  {% call lesson("knob", "08", "Rebranding: brand and status tokens", t08, tag="theming") %}
     {% call prose() %}
       <p>
         Drag the hue. You are editing <code>--primary</code> on <code>:root</code> — the same three
@@ -370,9 +461,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 08 #}
-  {% set t08 %}A convention nobody can violate by accident is worth more than one written down.{% endset %}
-  {% call lesson("gate", "08", "fjkit check: the closed vocabulary", t08) %}
+  {# ============================================================== 09 #}
+  {% set t09 %}A convention nobody can violate by accident is worth more than one written down.{% endset %}
+  {% call lesson("gate", "09", "fjkit check: the closed vocabulary", t09) %}
     {% call prose() %}
       <p>
         <code>fjkit check</code> reads your templates and rejects two things: colour literals, and any

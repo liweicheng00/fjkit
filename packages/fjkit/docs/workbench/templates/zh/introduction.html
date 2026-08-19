@@ -13,7 +13,7 @@
 {% set sections = [
   {"id": "what",      "title": "fjkit 是什麼"},
   {"id": "who",       "title": "給誰用"},
-  {"id": "decisions", "title": "五個決定，以及撐住它們的東西"},
+  {"id": "decisions", "title": "六個決定，以及撐住它們的東西"},
   {"id": "box",       "title": "wheel 裡裝了什麼"},
   {"id": "next",      "title": "接下來去哪"},
 ] %}
@@ -37,6 +37,9 @@
   ("一份 partial，兩個入口",
    "整頁與 htmx 局部更新不可能長歪成兩個樣子",
    "頁面 include 的，就是端點回傳的那一份 partial"),
+  ("一個標註，兩種傳輸格式",
+   "每一個 htmx 端點本來就已經是 JSON API——不必第二條路由、不必 serializer、不必維護一份會走鐘的 DTO",
+   "沒有瀏覽器在等標記時，@render 就把 model 序列化出去"),
 ] %}
 
 {% block content %}
@@ -120,7 +123,7 @@
 
   {# ============================================================== 03 #}
   {% set i03 %}每一條都是一個承諾，而每個承諾都有一樣東西撐著它。{% endset %}
-  {% call lesson("decisions", "03", "五個決定，以及撐住它們的東西", i03) %}
+  {% call lesson("decisions", "03", "六個決定，以及撐住它們的東西", i03) %}
     {% call prose() %}
       <p>
         這些已經定了，文件其餘部分都建立在它們之上。一個沒有東西在執行的承諾，只是 README 裡的一句話
@@ -146,6 +149,14 @@
         每一條背後的理由寫在 repo 的 <code>CHARTER.md</code> 第 2 節，而
         <a href="{{ url_for(request, "learn") }}">「上手」那一頁</a>會在瀏覽器裡示範其中四條
         ——包括那個品牌旋鈕，你會看著整頁在眼前重新上色。
+      </p>
+      <p>
+        最後一條是大家不會預期的那條，值得直接講白。fjkit 的 handler 回傳的是 model，不是標記；
+        <code>@render</code> 依「呼叫端有沒有在等標記」決定傳輸格式。所以
+        <code>GET /tasks/board</code> 對 htmx 回一塊渲染好的看板，對 <code>curl</code> 回
+        <code>BoardResponse</code> 的 JSON——同一條路由、同一個 handler、同一個回傳標註，
+        而 FastAPI 早就把它寫進 <code>/docs</code> 了。
+        <a href="{{ url_for(request, "learn") }}#json">那份回應的兩半都在「上手」頁上。</a>
       </p>
     {% endcall %}
   {% endcall %}

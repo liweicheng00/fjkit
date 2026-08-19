@@ -14,7 +14,7 @@
 {% set sections = [
   {"id": "what",      "title": "What fjkit is"},
   {"id": "who",       "title": "Who it is for"},
-  {"id": "decisions", "title": "Five decisions, and what holds them"},
+  {"id": "decisions", "title": "Six decisions, and what holds them"},
   {"id": "box",       "title": "What ships in the wheel"},
   {"id": "next",      "title": "Where to go next"},
 ] %}
@@ -39,6 +39,9 @@
   ("One partial, two doors",
    "the full page and the htmx swap cannot drift apart",
    "the page embeds the partial the endpoints return"),
+  ("One annotation, two wire formats",
+   "every htmx endpoint is already a JSON API — no second route, no serialiser, no DTO to keep in step",
+   "@render serialises the model when no browser is waiting for markup"),
 ] %}
 
 {% block content %}
@@ -125,7 +128,7 @@
 
   {# ============================================================== 03 #}
   {% set i03 %}Each one is a promise, and each promise has something that makes it hold.{% endset %}
-  {% call lesson("decisions", "03", "Five decisions, and what holds them", i03) %}
+  {% call lesson("decisions", "03", "Six decisions, and what holds them", i03) %}
     {% call prose() %}
       <p>
         These are settled, and the rest of the documentation assumes them. A promise with nothing
@@ -150,8 +153,17 @@
     {% call prose() %}
       <p>
         The reasoning behind each is in <code>CHARTER.md</code> §2 in the repository, and
-        <a href="{{ url_for(request, "learn") }}">the Learn page</a> demonstrates four of the five in
-        the browser — including the brand knob, which repaints the page while you watch.
+        <a href="{{ url_for(request, "learn") }}">the Learn page</a> demonstrates four of them in the
+        browser — including the brand knob, which repaints the page while you watch.
+      </p>
+      <p>
+        The last one is the one people do not expect, so it is worth saying plainly. A fjkit handler
+        returns a model, not markup; <code>@render</code> decides the wire format from whether the
+        caller has markup waiting. So <code>GET /tasks/board</code> answers htmx with a rendered board
+        and answers <code>curl</code> with <code>BoardResponse</code> as JSON — same route, same
+        handler, same return annotation, and FastAPI has already documented it in <code>/docs</code>.
+        <a href="{{ url_for(request, "learn") }}#json">Both halves of that reply are on the Learn
+        page.</a>
       </p>
     {% endcall %}
   {% endcall %}
