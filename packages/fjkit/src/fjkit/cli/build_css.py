@@ -34,7 +34,7 @@ _PACK_IMPORT = re.compile(r'^@import\s+"[^"]*basecoat-\w+\.css";\s*/\*\s*fjkit:s
 
 
 def output_for(style: str) -> Path:
-    """Where a pack's stylesheet lands. Also read by `mount_ui` and the shell,
+    """Where a pack's stylesheet lands. Also read by `mount_fjkit` and the shell,
     so the URL a page requests and the file the build wrote cannot drift."""
     return DIST / f"fjkit-{style}.css"
 

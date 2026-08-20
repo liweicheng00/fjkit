@@ -101,7 +101,7 @@ def _static_url(prefix: str):
     """Bind the configured prefix once, so templates just name the file.
 
     Not `request.url_for` on purpose: the kit's assets are mounted by
-    `mount_ui()` at a path the config already knows, and going through the
+    `mount_fjkit()` at a path the config already knows, and going through the
     route table would make a missing mount fail deep inside a template render
     instead of at startup.
     """
@@ -154,7 +154,10 @@ class Templates:
 
     @classmethod
     def create(cls, config: FjkitConfig | None = None) -> Templates:
-        """Build the Environment and wrap it. Call once, in lifespan.
+        """Build the Environment and wrap it. Call once, per process.
+
+        `mount_fjkit()` already does this; reach for it directly only to render
+        outside an app — a build script, a benchmark.
 
         Compiling a template is expensive; looking one up in the Environment's
         LRU afterwards is a dict hit. Anything that builds an Environment per
@@ -205,5 +208,5 @@ class Templates:
 
 
 def get_templates(request: Request) -> Templates:
-    """FastAPI dependency. The Environment is built once, in lifespan."""
+    """FastAPI dependency. The Environment is built once, by `mount_fjkit()`."""
     return request.app.state.templates

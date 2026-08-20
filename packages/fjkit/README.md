@@ -12,13 +12,12 @@ is released, not when your app runs, so your repo has no `package.json`, no
 from pathlib import Path
 
 from fastapi import FastAPI
-from fjkit import FjkitConfig, Templates, mount_ui
+from fjkit import FjkitConfig, mount_fjkit
 
 config = FjkitConfig(template_dir=Path(__file__).parent / "templates")
 
 app = FastAPI()
-mount_ui(app, config)
-app.state.templates = Templates.create(config)
+mount_fjkit(app, config)
 ```
 
 ```jinja

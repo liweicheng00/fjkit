@@ -3,23 +3,20 @@ const WIRING = [
   {
     file: "app/main.py",
     lang: "python",
-    why: "Three calls. FjkitConfig holds every knob; mount_ui serves the kit's assets from inside the installed package; Templates.create compiles the environment once, in lifespan.",
+    why: "Two calls. FjkitConfig holds every knob; mount_fjkit serves the kit's assets from inside the installed package and compiles the environment once, at construction.",
     code: `from fastapi import FastAPI
-from fjkit import FjkitConfig, Templates, mount_ui
+from fjkit import FjkitConfig, mount_fjkit
 
 config = FjkitConfig(
     template_dir=APP_DIR / "templates",
     bytecode_cache_dir=ROOT_DIR / ".jinja-cache",
 )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Compiling a template is expensive; a later lookup is a dict hit.
-    app.state.templates = Templates.create(config)
-    yield
+app = FastAPI()
 
-app = FastAPI(lifespan=lifespan)
-mount_ui(app, config)`,
+# Serves the kit's assets, and compiles the environment once — compiling a
+# template is expensive, a later lookup is a dict hit.
+mount_fjkit(app, config)`,
   },
   {
     file: "app/templates/base.html",

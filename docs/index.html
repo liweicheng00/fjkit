@@ -130,7 +130,8 @@ fjkit
 
 Compare with the pre-fjkit version (`git show 2ef74c9:app/main.py`): the
 Environment, the vendored assets and the whole stylesheet pipeline are gone.
-What is left is three lines of wiring and the app&#39;s own routes.
+What is left is two lines of wiring — a config and a mount — and the
+app&#39;s own routes.
 &#34;&#34;&#34;
 
 from __future__ import annotations
@@ -140,7 +141,7 @@ from pathlib import Path
 from time import perf_counter
 
 from fastapi import FastAPI
-from fjkit import FjkitConfig, Templates, mount_ui
+from fjkit import FjkitConfig, mount_fjkit
 from fjkit.vendored import STYLE_PACKS
 
 from app.features.dashboard.router import router as dashboard_router
@@ -162,7 +163,7 @@ STATIC_URL = &#34;/_fjkit&#34;
 #: fjkit resolves exactly one pack per process (`FjkitConfig.style`), and that
 #: stays true here — the shell links `fjkit-vega.css` like it always did. What
 #: this feeds is the demo&#39;s picker: all eight packs ship in the wheel and
-#: `mount_ui` serves the whole static directory, so the browser can be pointed
+#: `mount_fjkit` serves the whole static directory, so the browser can be pointed
 #: at another one to compare them without a restart. That is an affordance of
 #: this demo, not something the kit does, which is why the map is built here.
 #:
@@ -183,9 +184,6 @@ config = FjkitConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Built once per process. Compiling a template is expensive; looking one up
-    # in the Environment&#39;s LRU afterwards is a dict hit.
-    app.state.templates = Templates.create(config)
     app.state.tasks = TaskService()
     # Background jobs live here for the same reason tasks do: one store per
     # process, so a job started by one request is visible to the poll that
@@ -207,8 +205,9 @@ def create_app() -&gt; FastAPI:
         return response
 
     # Serves fjkit&#39;s stylesheet and the vendored htmx/Basecoat JS straight out
-    # of the installed package. The app has no static assets of its own.
-    mount_ui(app, config)
+    # of the installed package, and builds the Jinja Environment once. The app
+    # has no static assets of its own.
+    mount_fjkit(app, config)
 
     app.include_router(dashboard_router)
     app.include_router(tasks_router)
@@ -223,7 +222,7 @@ def create_app() -&gt; FastAPI:
 
 app = create_app()</pre>
 
-<footer>Three calls: FjkitConfig holds every knob, mount_ui serves the stylesheet and the vendored JS out of the installed package, Templates.create builds the environment once per process.</footer></div><div id="intro-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/tasks/page.html" data-lang="jinja">{#
+<footer>Two calls: FjkitConfig holds every knob; mount_fjkit serves the stylesheet and the vendored JS out of the installed package and builds the environment once per process.</footer></div><div id="intro-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/tasks/page.html" data-lang="jinja">{#
   Full page. Its only jobs: extend the shell, set the title, and drop in the
   same partial the htmx endpoints return. Nothing about a task row is written
   twice, so a change to the board cannot land in one place and miss the other.
@@ -390,7 +389,7 @@ app = create_app()</pre>
       <div>
 <h3>The whole surface you touch</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>FjkitConfig, mount_ui, Templates</h4><p>the wiring, once per app</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>FjkitConfig, mount_fjkit</h4><p>the wiring, once per app</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>@render</h4><p>name a template on the decorator; the handler returns data</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>fjkit check</h4><p>the vocabulary gate — run it in your CI</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>fjkit eject</h4><p>the escape hatch: copy a component into your app and edit it</p>    </section>  </div></div></div>

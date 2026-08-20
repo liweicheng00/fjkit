@@ -46,9 +46,9 @@
   {% call lesson("wiring", "01", "接線：config、mount、templates", t01) %}
     {% call prose() %}
       <p>
-        一支 fjkit app 只在四個地方碰到 kit。<code>FjkitConfig</code> 收下所有旋鈕，
-        <code>mount_ui()</code> 直接從安裝好的套件裡供應 stylesheet 與 vendored JS，
-        <code>Templates.create()</code> 每個 process 建一次 Jinja environment。
+        一支 fjkit app 只在三個地方碰到 kit。<code>FjkitConfig</code> 收下所有旋鈕，
+        <code>mount_fjkit()</code> 直接從安裝好的套件裡供應 stylesheet 與 vendored JS，
+        並且每個 process 建一次 Jinja environment；<code>@render</code> 指名路由要用的模板。
       </p>
       <p>
         四個檔案點過去看。沒有 <code>package.json</code>，也沒有 watcher 要開著——repo 裡的

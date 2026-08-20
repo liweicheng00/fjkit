@@ -279,8 +279,8 @@ def _templates(request: Request):
     templates = getattr(request.app.state, "templates", None)
     if templates is None:
         raise RuntimeError(
-            "@render needs `app.state.templates`. Build it once in lifespan: "
-            "`app.state.templates = Templates.create(config)`."
+            "@render needs `app.state.templates`. Wire it once, at app "
+            "construction: `mount_fjkit(app, config)`."
         )
     return templates
 

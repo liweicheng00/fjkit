@@ -13,12 +13,13 @@ template.
 
 ```python
 from fastapi import FastAPI
-from fjkit import FjkitConfig, Templates, mount_ui
+from fjkit import FjkitConfig, mount_fjkit
 
 config = FjkitConfig(template_dir=APP_DIR / "templates")
 
-app = FastAPI(lifespan=lifespan)      # lifespan sets app.state.templates
-mount_ui(app, config)                 # serves fjkit.css, htmx and Basecoat's JS
+app = FastAPI()
+mount_fjkit(app, config)              # serves fjkit.css, htmx and Basecoat's JS,
+                                      # and builds the Jinja Environment
 ```
 
 ```jinja

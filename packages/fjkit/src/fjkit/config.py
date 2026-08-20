@@ -39,7 +39,7 @@ class FjkitConfig:
     template_dir: Path | None = None
 
     #: URL prefix the kit's stylesheet and vendored JS are served from. Both
-    #: `mount_ui()` and the shell template read this, so they cannot disagree.
+    #: `mount_fjkit()` and the shell template read this, so they cannot disagree.
     static_url: str = "/_fjkit"
 
     #: Which Basecoat style pack the shell loads. All eight ship in the wheel

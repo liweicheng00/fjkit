@@ -80,7 +80,7 @@
 
     {{ files([
       {"id": "intro-main", "label": "app/main.py", "lang": "python", "source": src["app/main.py"],
-       "note": "三個呼叫：FjkitConfig 收下所有旋鈕，mount_ui 直接從安裝好的套件裡供應 stylesheet 與 vendored JS，Templates.create 每個 process 只建一次 environment。"},
+       "note": "兩個呼叫：FjkitConfig 收下所有旋鈕；mount_fjkit 直接從安裝好的套件裡供應 stylesheet 與 vendored JS，並且每個 process 只建一次 environment。"},
       {"id": "intro-page", "label": "app/templates/tasks/page.html", "lang": "jinja", "source": src["app/templates/tasks/page.html"],
        "note": "注意一頁裡沒有什麼：沒有 utility class、沒有顏色、沒有 <svg>，也沒有藏在元件裡的 htmx 樣板碼。"},
     ]) }}
@@ -172,7 +172,7 @@
         ("1,767 個圖示", "Lucide，按名字內嵌——沒有 icon font、沒有 sprite 請求、執行期沒有 JS"),
       ]) }}
       {{ defs("你會碰到的全部表面", [
-        ("FjkitConfig、mount_ui、Templates", "接線，每支 app 一次"),
+        ("FjkitConfig、mount_fjkit", "接線，每支 app 一次"),
         ("@render", "在裝飾器上指名模板；handler 只回資料"),
         ("fjkit check", "詞彙表關卡——放進你的 CI"),
         ("fjkit eject", "逃生口：把元件複製進你的 app 再改"),

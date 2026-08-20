@@ -84,7 +84,7 @@
 
     {{ files([
       {"id": "intro-main", "label": "app/main.py", "lang": "python", "source": src["app/main.py"],
-       "note": "Three calls: FjkitConfig holds every knob, mount_ui serves the stylesheet and the vendored JS out of the installed package, Templates.create builds the environment once per process."},
+       "note": "Two calls: FjkitConfig holds every knob; mount_fjkit serves the stylesheet and the vendored JS out of the installed package and builds the environment once per process."},
       {"id": "intro-page", "label": "app/templates/tasks/page.html", "lang": "jinja", "source": src["app/templates/tasks/page.html"],
        "note": "Note what a page does not contain: no utility classes, no colour, no <svg>, no htmx boilerplate hidden in a component."},
     ]) }}
@@ -179,7 +179,7 @@
         ("1,767 icons", "Lucide, inlined by name — no icon font, no sprite request, no runtime JS"),
       ]) }}
       {{ defs("The whole surface you touch", [
-        ("FjkitConfig, mount_ui, Templates", "the wiring, once per app"),
+        ("FjkitConfig, mount_fjkit", "the wiring, once per app"),
         ("@render", "name a template on the decorator; the handler returns data"),
         ("fjkit check", "the vocabulary gate — run it in your CI"),
         ("fjkit eject", "the escape hatch: copy a component into your app and edit it"),

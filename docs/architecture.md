@@ -22,7 +22,7 @@ flowchart LR
     K2["ui/shell.html<br/><small>head、主題、資產連結</small>"]
     K3["ui/layout · button · form · data · table · icon<br/><small>封閉詞彙表</small>"]
     K4["static/dist/fjkit-&lt;pack&gt;.css<br/><small>八個風格包，發佈時 build 好</small>"]
-    K5["static/vendor/{htmx,basecoat}<br/><small>mount_ui() 掛載</small>"]
+    K5["static/vendor/{htmx,basecoat}<br/><small>mount_fjkit() 掛載</small>"]
     K6["fjkit check · pytest<br/><small>慣例強制執行</small>"]
   end
 

@@ -15,7 +15,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
-from fjkit import FjkitConfig, build_environment, mount_ui, styles
+from fjkit import FjkitConfig, build_environment, mount_fjkit, styles
 from fjkit.cli.build_css import GZIP_BUDGET, RAW_BUDGET, output_for
 from fjkit.config import STATIC_DIR
 from fjkit.vendored import DEFAULT_STYLE, STYLE_PACKS
@@ -155,4 +155,4 @@ def test_packs_differ_only_in_declarations():
 
 def test_mount_rejects_a_pack_it_cannot_serve():
     with pytest.raises(RuntimeError, match="style='nope'"):
-        mount_ui(FastAPI(), FjkitConfig(style="nope"))  # type: ignore[arg-type]
+        mount_fjkit(FastAPI(), FjkitConfig(style="nope"))  # type: ignore[arg-type]

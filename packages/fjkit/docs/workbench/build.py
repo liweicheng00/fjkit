@@ -34,7 +34,7 @@ knobs `FjkitConfig` already has rather than a fork of the shell:
 
 * `static_url="assets"` — so `fjkit_static('dist/fjkit-<pack>.css')` resolves to a
   path next to the page instead of to a mounted route. The static tree is
-  copied under `assets/` with the same shape `mount_ui()` serves.
+  copied under `assets/` with the same shape `mount_fjkit()` serves.
 * `globals={"url_for": …, "is_active": …}` — the kit's versions call
   `request.url_for`, and a build has no request. These take the same
   `(request, name)` signature and read `request.route`, which is a plain object
@@ -333,7 +333,7 @@ vary: HX-Request
 </div>""",
 }
 
-#: Copied preserving the path `mount_ui()` serves them under, so `fjkit_static`
+#: Copied preserving the path `mount_fjkit()` serves them under, so `fjkit_static`
 #: resolves the same string in the shell whether it is running in an app or
 #: being written to disk here.
 VENDORED = [

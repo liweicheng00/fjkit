@@ -44,12 +44,13 @@
 
   {# ============================================================== 01 #}
   {% set t01 %}Everything else you write is your app, not your front end.{% endset %}
-  {% call lesson("wiring", "01", "Wiring: config, mount, templates", t01) %}
+  {% call lesson("wiring", "01", "Wiring: config, mount, render", t01) %}
     {% call prose() %}
       <p>
-        A fjkit app touches the kit in exactly four places. <code>FjkitConfig</code> holds every knob,
-        <code>mount_ui()</code> serves the stylesheet and the vendored JS straight out of the installed
-        package, and <code>Templates.create()</code> builds the Jinja environment once per process.
+        A fjkit app touches the kit in exactly three places. <code>FjkitConfig</code> holds every knob,
+        <code>mount_fjkit()</code> serves the stylesheet and the vendored JS straight out of the installed
+        package and builds the Jinja environment once per process, and <code>@render</code> names the
+        template a route answers with.
       </p>
       <p>
         Click through the four files. There is no <code>package.json</code> and no watcher to keep

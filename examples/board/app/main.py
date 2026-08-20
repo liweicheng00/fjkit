@@ -2,7 +2,8 @@
 
 Compare with the pre-fjkit version (`git show 2ef74c9:app/main.py`): the
 Environment, the vendored assets and the whole stylesheet pipeline are gone.
-What is left is three lines of wiring and the app's own routes.
+What is left is two lines of wiring — a config and a mount — and the
+app's own routes.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from pathlib import Path
 from time import perf_counter
 
 from fastapi import FastAPI
-from fjkit import FjkitConfig, Templates, mount_ui
+from fjkit import FjkitConfig, mount_fjkit
 from fjkit.vendored import STYLE_PACKS
 
 from app.features.dashboard.router import router as dashboard_router
@@ -34,7 +35,7 @@ STATIC_URL = "/_fjkit"
 #: fjkit resolves exactly one pack per process (`FjkitConfig.style`), and that
 #: stays true here — the shell links `fjkit-vega.css` like it always did. What
 #: this feeds is the demo's picker: all eight packs ship in the wheel and
-#: `mount_ui` serves the whole static directory, so the browser can be pointed
+#: `mount_fjkit` serves the whole static directory, so the browser can be pointed
 #: at another one to compare them without a restart. That is an affordance of
 #: this demo, not something the kit does, which is why the map is built here.
 #:
@@ -55,9 +56,6 @@ config = FjkitConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Built once per process. Compiling a template is expensive; looking one up
-    # in the Environment's LRU afterwards is a dict hit.
-    app.state.templates = Templates.create(config)
     app.state.tasks = TaskService()
     # Background jobs live here for the same reason tasks do: one store per
     # process, so a job started by one request is visible to the poll that
@@ -79,8 +77,9 @@ def create_app() -> FastAPI:
         return response
 
     # Serves fjkit's stylesheet and the vendored htmx/Basecoat JS straight out
-    # of the installed package. The app has no static assets of its own.
-    mount_ui(app, config)
+    # of the installed package, and builds the Jinja Environment once. The app
+    # has no static assets of its own.
+    mount_fjkit(app, config)
 
     app.include_router(dashboard_router)
     app.include_router(tasks_router)
