@@ -222,6 +222,7 @@ STRINGS = {
         "language_group": "Language",
         "other_language": "中文",
         "footer_source": "source and issues",
+        "github_label": "fjkit on GitHub",
         #: Three fragments rather than one string with placeholders: the two
         #: gaps are filled with `kbd()`, which yields Markup, and splitting the
         #: sentence keeps the template free of `|safe`.
@@ -256,6 +257,7 @@ STRINGS = {
         "language_group": "語言",
         "other_language": "English",
         "footer_source": "原始碼與 issues",
+        "github_label": "fjkit 的 GitHub 原始碼",
         "diagram": {
             "alt": (
                 "瀏覽器帶著 HX-Request 標頭送出 POST /tasks；FastAPI 的路由呼叫 service，"

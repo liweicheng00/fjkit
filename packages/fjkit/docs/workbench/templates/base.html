@@ -20,9 +20,11 @@
   every link on it has to be relative.
 #}
 {% extends "ui/shell.html" %}
-{% from "ui/nav.html" import brand %}
+{% from "ui/nav.html" import brand, theme_toggle %}
 {% from "ui/sidebar.html" import sidebar, sidebar_group, sidebar_link %}
 {% from "ui/data.html" import kbd %}
+{% from "ui/button.html" import button %}
+{% from "ui/layout.html" import row %}
 
 {% block lang %}{{ lang.html_lang }}{% endblock %}
 {% block site_title %}fjkit{% endblock %}
@@ -76,6 +78,44 @@
     {% call sidebar_group(t.language_group) %}
       {{ sidebar_link(request, lang.other ~ ":" ~ page.route, t.other_language, icon_name="languages") }}
     {% endcall %}
+  {% endcall %}
+{% endblock %}
+
+{#
+  The GitHub mark, and the one piece of artwork this site draws by hand.
+
+  fjkit's icons are Lucide, and Lucide ships no brand marks — `icon("github")`
+  raises. The kit has no seam for one either, on purpose: a brand-icon set is a
+  licensing question before it is a rendering question, and it is not the kit's
+  to answer. So the mark sits with the site, beside its other brand asset.
+
+  `fill="currentColor"` and no `stroke`: this is a filled logo, not a Lucide
+  stroke glyph. That attribute is the whole of its dark-mode handling — it takes
+  the button's text colour, like the sun and moon next to it.
+
+  Through `button()` rather than a hand-written `<a class="btn">`, so it carries
+  whatever the button contract is: the same ghost/icon-sm pairing `theme_toggle`
+  uses, which is what keeps the two the same size in the header.
+
+  The label is `t`, not a literal. Everything else in the chrome is translated in
+  one file and this is chrome — an icon-only link whose only name is its
+  `aria-label` is the last place to leave a stray English string.
+
+  The footer already links to the same repository in prose. This is not a
+  duplicate so much as the other half of it: the footer sentence names the repo
+  for someone reading to the bottom, the header gives it a fixed place to be.
+#}
+{% set github_mark %}
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+{% endset %}
+
+{% block header_actions %}
+  {% call row(gap=2) %}
+    {{ button(github_mark, variant="ghost", size="icon-sm",
+              href="https://github.com/liweicheng00/fjkit",
+              aria_label=t.github_label) }}
+    {{ theme_toggle() }}
   {% endcall %}
 {% endblock %}
 
