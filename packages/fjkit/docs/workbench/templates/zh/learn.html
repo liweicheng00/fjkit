@@ -26,8 +26,8 @@
 {% call stack(8) %}
 
   {% set intro %}
-    頁面、表格、表單、導覽、深色模式與 htmx 局部更新——組成方式是 Jinja macro，寫在 handler
-    所在的同一份程式碼裡，由一個從不打開前端工具鏈的人寫出來。
+    九課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 掛掉的指令。
+    底下每個示範都是活的。
   {% endset %}
   {{ page_header("在寫路由的地方，把介面一起寫完", intro) }}
 
@@ -35,8 +35,8 @@
     {% call prose() %}
       <p>
         底下每一個預覽都是真的 macro 輸出，build 時由 fjkit 自己的 Jinja Environment 渲染。
-        它周圍這一頁也是：側欄、這些 card、表格與分頁列，都是 demo app 呼叫的同一批 macro，
-        而 <code>fjkit check</code> 在 CI 裡掃這個站的模板。這裡不可能出現套件沒有的元件。
+        它周圍這一頁也是。側欄、這些 card、表格與分頁列，都是 demo app 呼叫的同一批 macro。
+        <code>fjkit check</code> 在 CI 裡掃這個站的模板，所以這裡不可能出現套件沒有的元件。
       </p>
     {% endcall %}
   {% endcall %}
@@ -46,13 +46,13 @@
   {% call lesson("wiring", "01", "接線：config、mount、templates", t01) %}
     {% call prose() %}
       <p>
-        一支 fjkit app 只在三個地方碰到 kit。<code>FjkitConfig</code> 收下所有旋鈕，
+        一支 fjkit app 只在三個地方碰到 kit。<code>FjkitConfig</code> 收下所有旋鈕。
         <code>mount_fjkit()</code> 直接從安裝好的套件裡供應 stylesheet 與 vendored JS，
-        並且每個 process 建一次 Jinja environment；<code>@render</code> 指名路由要用的模板。
+        並且每個 process 建一次 Jinja environment。<code>@render</code> 指名路由要用的模板。
       </p>
       <p>
-        四個檔案點過去看。沒有 <code>package.json</code>，也沒有 watcher 要開著——repo 裡的
-        <code>examples/board</code> 就是同樣這四個，放在一支能跑的 app 裡。
+        四個檔案點過去看。沒有 <code>package.json</code>，也沒有 watcher 要開著。
+        repo 裡的 <code>examples/board</code> 就是同樣這四個，放在一支能跑的 app 裡。
       </p>
     {% endcall %}
 
@@ -73,14 +73,13 @@
     {% call prose() %}
       <p>
         整個想法就是這樣，而且比看起來小。一個元素說明<em>要發哪個請求</em>，以及<em>答案要放在哪裡</em>。
-        伺服器回一段 HTML——就是它本來會放進整頁的那段標記——htmx 把那段放進你指名的元素裡。
+        伺服器回一段 HTML，就是它本來會放進整頁的那段標記。htmx 把那段放進你指名的元素裡。
       </p>
       <p>
-        這中間沒有東西被序列化，前端沒有重新渲染，也沒有狀態同時活在兩個地方。
-        （同一條路由很樂意用 JSON 回應一支腳本——<a href="#json">第 06 課</a>——但那是另一道門，
-        不是這段交換裡的一個步驟。）按下按鈕：
-        <strong>底下那個請求是真的</strong>。這一頁載了 htmx，而瀏覽器裡有一支 mock server 扮演
-        FastAPI 那一側。
+        這中間沒有東西被序列化。前端沒有重新渲染。也沒有狀態同時活在兩個地方。
+        同一條路由很樂意用 JSON 回應一支腳本，那是<a href="#json">第 06 課</a>，是另一道門，
+        不是這段交換裡的一個步驟。按下按鈕：<strong>底下那個請求是真的</strong>。
+        這一頁載了 htmx，而瀏覽器裡有一支 mock server 扮演 FastAPI 那一側。
       </p>
     {% endcall %}
 
@@ -105,7 +104,7 @@
     {% call prose() %}
       <p>
         那些 <code>HX-*</code> 標頭，就是一條路由用來分辨「這是局部更新」還是「這是整頁載入」的依據。
-        其餘部分是一個再普通不過的 POST——兩端都沒有任何前端框架參與。
+        其餘部分是一個再普通不過的 POST。兩端都沒有任何前端框架參與。
       </p>
     {% endcall %}
   {% endcall %}
@@ -117,13 +116,13 @@
       <p>
         {{ link("hx-target", "https://htmx.org/attributes/hx-target/") }} 挑元素。
         {{ link("hx-swap", "https://htmx.org/attributes/hx-swap/") }} 說明要拿它怎麼辦。
-        htmx 的困惑大多住在這一對上，所以拿底下這塊真的板子試——每一種組合都會發出真的請求，
-        換進去的也是真的回應。
+        htmx 的困惑大多住在這一對上，所以拿底下這塊真的板子試。
+        每一種組合都會發出真的請求，換進去的也是真的回應。
       </p>
       <p>
         <code>outerHTML</code> 換掉目標元素本身，所以回應必須包含那層外框。
         <code>innerHTML</code>（預設）換掉它裡面的東西，所以回應<em>不能</em>包。
-        把這兩個搞混就是那個經典 bug——你會得到一塊板子裡面又一塊板子。
+        把這兩個搞混就是那個經典 bug：你會得到一塊板子裡面又一塊板子。
       </p>
     {% endcall %}
 
@@ -147,10 +146,10 @@
   {% call lesson("triggers", "04", "hx-trigger：打字、捲動、輪詢", t04, tag="htmx") %}
     {% call prose() %}
       <p>
-        多數時候你根本不寫 trigger：<code>button</code> 在 click 時發，<code>form</code> 在 submit 時發，
+        多數時候你根本不寫 trigger。<code>button</code> 在 click 時發，<code>form</code> 在 submit 時發，
         <code>input</code> 或 <code>select</code> 在 change 時發。
-        {{ link("hx-trigger", "https://htmx.org/attributes/hx-trigger/") }} 是給其餘情況用的
-        ——也是那個讓你不寫一行 JavaScript 就換到「邊打邊搜」、延後載入與輪詢的屬性。
+        {{ link("hx-trigger", "https://htmx.org/attributes/hx-trigger/") }} 是給其餘情況用的。
+        它也是那個讓你不寫一行 JavaScript 就換到「邊打邊搜」、延後載入與輪詢的屬性。
         底下三個都是活的。
       </p>
     {% endcall %}
@@ -184,13 +183,14 @@
   {% call lesson("partials", "05", "partial：一份檔案，整頁與局部共用", t05, tag="htmx") %}
     {% call prose() %}
       <p>
-        接下來是 fjkit 那一半。partial 就是名字以底線開頭的模板：它不 extends 外殼，
-        自己宣告 import，並且把自己包在「會被換掉的那個元素」裡。整頁用
+        接下來是 fjkit 那一半。partial 就是名字以底線開頭的模板。它不 extends 外殼，自己宣告 import，
+        並且把自己包在「會被換掉的那個元素」裡。整頁用
         {% raw %}<code>{% include %}</code>{% endraw %} 把它放進去；每個 htmx 端點則是光禿禿地回它。
       </p>
       <p>
-        這就是為什麼 fjkit app 裡沒有「更新那一列」這條程式路徑。每一次異動都重新渲染整塊板子的
-        partial 再換進去——一份「板子長什麼樣」的定義，第一次上色用它，之後每個請求也用它。
+        這就是為什麼 fjkit app 裡沒有「更新那一列」這條程式路徑。
+        每一次異動都重新渲染整塊板子的 partial 再換進去。
+        「板子長什麼樣」只有一份定義，第一次上色用它，之後每個請求也用它。
         真正的檔案在 repo 的 <code>examples/board/app/templates/tasks/</code>。
       </p>
     {% endcall %}
@@ -241,16 +241,16 @@
   {% call lesson("json", "06", "沒有 HX-Request：同一條路由回 JSON", t06, tag="htmx") %}
     {% call prose() %}
       <p>
-        第 02 課說這段交換裡沒有 JSON——就 swap 本身而言是對的。但看一眼 handler 真正回傳的東西：
-        是一個 <code>BoardResponse</code>，不是一串 HTML。把前者變成後者的是
-        <code>@render</code>；而當呼叫端不是一個在等標記的瀏覽器時，就沒有東西可以<em>渲染進去</em>，
-        model 便直接以 JSON 送出。
+        第 02 課說這段交換裡沒有 JSON，就 swap 本身而言是對的。
+        但看一眼 handler 真正回傳的東西：是一個 <code>BoardResponse</code>，不是一串 HTML。
+        把前者變成後者的是 <code>@render</code>。當呼叫端不是一個在等標記的瀏覽器時，
+        就沒有東西可以<em>渲染進去</em>，model 便直接以 JSON 送出。
       </p>
       <p>
         這就是 <code>render_mode="auto"</code>，<code>FjkitConfig</code> 的預設值。決定它的有兩件事，
         兩件都不是 <code>Accept</code> 標頭：<strong>這條路由是什麼</strong>，以及
-        <strong>請求上有沒有 <code>HX-Request: true</code></strong>。頁面路由永遠有標記在等——
-        它存在的理由就是回應一次冷啟導覽，用 JSON 回應只會換來一片空白的瀏覽器視窗；
+        <strong>請求上有沒有 <code>HX-Request: true</code></strong>。頁面路由永遠有標記在等，
+        因為它存在的理由就是回應一次冷啟導覽，用 JSON 回應只會換來一片空白的瀏覽器視窗。
         片段路由則只有在 htmx 開口時才有。
       </p>
     {% endcall %}
@@ -288,8 +288,8 @@
       <p>
         第三列值得再看一次，因為那是真正拿到手的東西：<strong>這個 app 裡每一個 htmx 端點，
         本來就已經是一個 JSON 端點。</strong><code>GET /tasks/board</code> 對 htmx 回一塊看板，
-        對 <code>curl</code> 回它背後那個 model。沒有第二條路由、沒有 serializer、
-        也沒有一份會跟模板走鐘的 DTO——回傳標註是兩者唯一的描述，所以 FastAPI 早就把
+        對 <code>curl</code> 回它背後那個 model。沒有第二條路由、沒有 serializer，
+        也沒有一份會跟模板走鐘的 DTO。回傳標註是兩者唯一的描述，所以 FastAPI 早就把
         <code>BoardResponse</code> 放進 <code>/docs</code> 了。
       </p>
     {% endcall %}
@@ -328,14 +328,14 @@
   {% call lesson("patterns", "07", "九種 htmx 模式，以及對應的 handler", t07, tag="htmx") %}
     {% call prose() %}
       <p>
-        整套屬性詞彙一個螢幕就放得下——
+        整套屬性詞彙一個螢幕就放得下，
         <a href="{{ url_for(request, "components#cheatsheet") }}">「元件」那一頁把它印出來了</a>。
-        比較花時間學的是它反覆組成的那幾種排列，所以這裡把它們連同 fjkit 的寫法一起列出來：
+        比較花時間學的是它反覆組成的那幾種排列。這裡把它們連同 fjkit 的寫法一起列出來：
         一個分頁是 macro 呼叫，另一個是回應它的 handler。
       </p>
       <p>
-        底下每個 handler 都回一份 partial，而且都是普通的 <code>def</code>，所以 Starlette 會把它丟進
-        threadpool。每種模式都連到它出處的 htmx 頁面；上游的
+        底下每個 handler 都回一份 partial，而且都是普通的 <code>def</code>，
+        所以 Starlette 會把它丟進 threadpool。每種模式都連到它出處的 htmx 頁面。上游的
         {{ link("文件", "https://htmx.org/docs/") }} 與
         {{ link("屬性參考", "https://htmx.org/reference/") }} 短到可以整份讀完，而且值得。
       </p>
@@ -384,12 +384,13 @@
   {% call lesson("knob", "08", "換品牌：品牌 token 與狀態 token", t08, tag="theming") %}
     {% call prose() %}
       <p>
-        拉拉看色相。你正在編輯 <code>:root</code> 上的 <code>--primary</code>——就是一支 app 會寫在
-        自己 stylesheet 裡的那三行，中間沒有任何建置步驟。整頁都會動，包括這個側欄與這些 card，
-        因為這一頁本來就蓋在同一組 token 上。
+        拉拉看色相。你正在編輯 <code>:root</code> 上的 <code>--primary</code>，
+        就是一支 app 會寫在自己 stylesheet 裡的那三行，中間沒有任何建置步驟。
+        整頁都會動，包括這個側欄與這些 card，因為這一頁本來就蓋在同一組 token 上。
       </p>
       <p>
-        盯著狀態標籤：它們不動。狀態顏色刻意<em>沒有</em>接到品牌上，因為「綠色代表完成」必須撐過一次改版。
+        盯著狀態標籤：它們不動。狀態顏色刻意<em>沒有</em>接到品牌上，
+        因為「綠色代表完成」必須撐過一次改版。
       </p>
     {% endcall %}
 
@@ -460,12 +461,12 @@
     {% call prose() %}
       <p>
         <code>fjkit check</code> 讀你的模板，然後拒絕兩種東西：顏色字面值，以及元件詞彙表以外的任何 class。
-        utility class <strong>即使今天能用也一樣被拒</strong>——如果你的 app 靠 <code>gap-4</code> 撐著，
+        utility class <strong>即使今天能用也一樣被拒</strong>。如果你的 app 靠某個間距 utility 撐著，
         只因為 fjkit 的外殼剛好吐了它，那麼外殼哪天不吐了，你的 app 就會安靜地壞掉。
       </p>
       <p>
-        改改看底下的標記。這支檢查器跑的是 fjkit 自己的規則，用的是它真正的 class 清單——
-        <span id="vocab-count">…</span>——跟 CI 裡跑的是同一份程式碼，也跟掃這個站模板的是同一份。
+        改改看底下的標記。這支檢查器跑的是 fjkit 自己的規則，用的是它真正的 class 清單
+        ——<span id="vocab-count">…</span>——跟 CI 裡跑的是同一份程式碼，也跟掃這個站模板的是同一份。
       </p>
     {% endcall %}
 
@@ -489,8 +490,8 @@
 
     {% call prose() %}
       <p>
-        被擋下來的 class 是一種情報：它指名了那個還不存在的元件或參數。0.1 落地的時候，
-        改寫前的模板拿到 258 個違規；改寫後是 0。
+        被擋下來的 class 是一種情報。它指名了那個還不存在的元件或參數。
+        0.1 落地時，改寫前的模板被判了 258 條違規；改寫後是 0。
       </p>
     {% endcall %}
 

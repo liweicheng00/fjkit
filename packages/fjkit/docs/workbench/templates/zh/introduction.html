@@ -1,220 +1,103 @@
 {% extends "base.html" %}
-{% from "_parts.html" import code, defs, files, lesson, prose %}
-{% from "ui/data.html" import card, kbd %}
+{% from "_parts.html" import defs, lesson, prose %}
 {% from "ui/layout.html" import grid, page_header, stack %}
-{% from "ui/table.html" import cell, table %}
 
 {#
   首頁的中文版：fjkit 是什麼、給誰用、接下來去哪。
 
   這一頁不負責把任何東西講完。上面每一句主張，都會在另外兩頁被示範一次——接線在「上手」，
   簽名在「元件」——所以這一頁的工作是短，然後把人交出去。
+
+  行文規則，也是這一頁讀起來這樣的全部理由：一句話講一件事，結論放前面，能斷句就不要插入語。
+  一個讀到特色清單就走的人，也應該已經知道這是什麼。
 #}
 {% set sections = [
-  {"id": "what",      "title": "fjkit 是什麼"},
   {"id": "who",       "title": "給誰用"},
-  {"id": "decisions", "title": "六個決定，以及撐住它們的東西"},
   {"id": "box",       "title": "wheel 裡裝了什麼"},
   {"id": "next",      "title": "接下來去哪"},
 ] %}
 
 {#
-  純字串，不是 Markup：一個需要在裡面塞 <code> 的決定，就是還沒寫得夠白話到能放在首頁的決定。
+  三條，而且是決定一個人要不要繼續讀下去的那三條。這個專案其餘的承諾在「上手」頁上，
+  那裡是示範而不是宣稱；理由則在 CHARTER.md 第 2 節。
+
+  純字串，不是 Markup：一個需要在裡面塞 <code> 的特色，就是還沒寫得夠白話到能放在首頁的特色。
 #}
-{% set decisions = [
-  ("你這端零建置",
-   "沒有工具鏈、沒有 watcher，改完模板沒有任何東西要重建",
-   "wheel 裡就帶著編譯好的 stylesheet、htmx 與 Basecoat"),
-  ("class 詞彙表是封閉的",
-   "出貨的那份 stylesheet 永遠夠用，因為連版面都是元件",
-   "fjkit check，跑在你的 CI，也跑在我們的"),
+{% set features = [
+  ("零建置",
+   "沒有 package.json、沒有 node_modules、沒有 watcher。stylesheet 在 fjkit 發佈時就編譯好了，不是在你的 app 執行時。"),
   ("一個顏色旋鈕",
-   "換品牌是改一個檔案，而且改完「綠色仍然代表完成」",
-   "每個顏色都是 token；模板指名角色，永遠不指名色相"),
-  ("簽名就是契約",
-   "macro 不可能吐出一個不存在的 class",
-   "封閉列舉；多的關鍵字變成 HTML 屬性，僅此而已"),
-  ("一份 partial，兩個入口",
-   "整頁與 htmx 局部更新不可能長歪成兩個樣子",
-   "頁面 include 的，就是端點回傳的那一份 partial"),
-  ("一個標註，兩種傳輸格式",
-   "每一個 htmx 端點本來就已經是 JSON API——不必第二條路由、不必 serializer、不必維護一份會走鐘的 DTO",
-   "沒有瀏覽器在等標記時，@render 就把 model 序列化出去"),
+   "每個顏色都是 token。換品牌是改一個檔案，而且改完綠色仍然代表完成。"),
+  ("掛在你現有的 API 上",
+   "每一個 htmx 端點都會用 JSON 回應 curl。同一條路由、同一個 handler、同一個回傳標註。"),
 ] %}
 
 {% block content %}
 {% call stack(8) %}
 
   {% set intro %}
-    頁面、表格、表單、導覽、深色模式與 htmx 局部更新——都是你從 handler 所在的同一份程式碼裡
-    呼叫的 Jinja macro，而且你這端不需要任何前端工具鏈。
+    把 Jinja、Tailwind CSS 與 shadcn 風格元件整合起來，給 FastAPI 用。
   {% endset %}
-  {{ page_header("FastAPI 沒有附的那層 UI", intro) }}
+  {{ page_header("給 FastAPI 的快速 UI", intro) }}
 
-  {% call card("第一次來？這個站既是文件，也是證據。", "三頁全部是同一支 fjkit app。") %}
-    {% call prose() %}
-      <p>
-        你在這裡看到的每一個元件，都是由 fjkit 自己的 Jinja Environment 渲染出來的；而它周圍那些東西
-        ——這張 card、側欄、表格——是同一批 macro 蓋的。<code>fjkit check</code> 在 CI 裡掃這些模板，
-        所以這個站不可能給你看套件裡沒有的元件，也不可能寫出一個 app 不被允許寫的 class。
-      </p>
-    {% endcall %}
-  {% endcall %}
+  {{ defs("主要特色", features) }}
 
   {# ============================================================== 01 #}
-  {% set i01 %}一個畫面就是一條路由、一份模板，加上幾個 macro 呼叫。{% endset %}
-  {% call lesson("what", "01", "fjkit 是什麼", i01) %}
+  {% set i01 %}會寫後端、需要一個像樣的介面、又不想碰前端工具鏈的人。{% endset %}
+  {% call lesson("who", "01", "給誰用", i01) %}
     {% call prose() %}
       <p>
-        fjkit 是你的 FastAPI handler 與瀏覽器之間的那一層。接線只做一次，之後每個畫面都是一份
-        呼叫 macro 的模板：<code>page_header</code>、<code>card</code>、<code>table</code>、
-        <code>form</code>、<code>sidebar</code>。沒有第二個應用程式要建置，沒有第二種語言，
-        出事的時候也沒有第二個地方要找。
+        你已經會寫 FastAPI。你需要導覽、深色模式、一張可篩選的表格，以及一個會驗證的表單。
+        這是給你的。
       </p>
       <p>
-        撐住其餘一切的那個限制：<strong>Tailwind 跑在 fjkit 發佈的時候，不是跑在你的 app 執行的時候。</strong>
-        你的 repo 裡沒有 <code>package.json</code>、沒有 <code>node_modules</code>、沒有 Tailwind 執行檔，
-        改完模板也沒有任何東西要重建。底下兩個檔案都是直接從這個 repo 裡的 demo app 讀出來的。
+        如果你要帶 React、Vue 或 Svelte 進來，那這一層就選錯了。這是一個決定，不是一個缺口。
       </p>
     {% endcall %}
 
-    {{ files([
-      {"id": "intro-main", "label": "app/main.py", "lang": "python", "source": src["app/main.py"],
-       "note": "兩個呼叫：FjkitConfig 收下所有旋鈕；mount_fjkit 直接從安裝好的套件裡供應 stylesheet 與 vendored JS，並且每個 process 只建一次 environment。"},
-      {"id": "intro-page", "label": "app/templates/tasks/page.html", "lang": "jinja", "source": src["app/templates/tasks/page.html"],
-       "note": "注意一頁裡沒有什麼：沒有 utility class、沒有顏色、沒有 <svg>，也沒有藏在元件裡的 htmx 樣板碼。"},
+    {{ defs("它應該花你多少", [
+      ("第一頁", "大約二十行 Python 就有導覽與深色模式，而且沒有建置步驟"),
+      ("一個後台畫面", "列表、篩選、新增表單與 htmx 更新，一個下午。不寫 CSS，也不寫 JavaScript。"),
+      ("換品牌", "一份覆寫 token 的 stylesheet，掛在 kit 的後面"),
+      ("升級", "改一個版本號。stylesheet 在 wheel 裡，不在你的 repo 裡。"),
     ]) }}
-
-    {% call prose() %}
-      <p>
-        那些「沒有」不是風格偏好。一份在發佈時就編譯好的 stylesheet，裡面只可能有發佈當下存在的 class
-        ——所以詞彙表必須是封閉的，而且模板一踏出去，
-        <a href="{{ url_for(request, "learn") }}#gate">就有一個指令會讓 build 掛掉</a>。
-      </p>
-    {% endcall %}
   {% endcall %}
 
   {# ============================================================== 02 #}
-  {% set i02 %}會寫後端、需要一個像樣的介面、又不想碰前端工具鏈的人。{% endset %}
-  {% call lesson("who", "02", "給誰用", i02) %}
-    {% call prose() %}
-      <p>
-        如果你已經會寫 FastAPI，而你需要導覽、深色模式、一張可篩選的表格，以及一個會驗證的表單
-        ——這是給你的。如果你要帶 React、Vue 或 Svelte 進來，那這一層就選錯了，而這是一個決定，
-        不是一個缺口。
-      </p>
-    {% endcall %}
-
-    {% call grid(cols=2, gap=4) %}
-      {{ defs("它應該花你多少", [
-        ("第一頁", "大約二十行 Python 就有導覽與深色模式，而且沒有建置步驟"),
-        ("一個後台畫面", "列表、篩選、新增表單與 htmx 更新，一個下午，不必寫 CSS 或 JavaScript"),
-        ("換品牌", "一份覆寫 token 的 stylesheet，掛在 kit 的後面"),
-        ("升級", "改一個版本號——stylesheet 在 wheel 裡，不在你的 repo 裡"),
-      ]) }}
-      {{ defs("它刻意不是什麼", [
-        ("資料層", "沒有 ORM、沒有後台產生器、沒有登入。fjkit 負責渲染；要渲染什麼由你的 app 決定"),
-        ("前端 API", "JSON 是一等公民，但它描述的是「這一頁拿到的資料」——不是為了另一個前端渲染器而維護的第二份契約"),
-        ("每個方向都能設定", "參數是封閉列舉，因為一份參數表必須有能力說不"),
-        ("偽裝過的 Node 工具鏈", "fjkit 自己的 CI 可以用；你的 app 永遠不用"),
-      ]) }}
-    {% endcall %}
-  {% endcall %}
-
-  {# ============================================================== 03 #}
-  {% set i03 %}每一條都是一個承諾，而每個承諾都有一樣東西撐著它。{% endset %}
-  {% call lesson("decisions", "03", "六個決定，以及撐住它們的東西", i03) %}
-    {% call prose() %}
-      <p>
-        這些已經定了，文件其餘部分都建立在它們之上。一個沒有東西在執行的承諾，只是 README 裡的一句話
-        ——第三欄就是把每一條變成「build 掛得掉」的那樣東西。
-      </p>
-    {% endcall %}
-
-    {% call card(padded=false) %}
-      {% call table([{"label": "決定"}, {"label": "它換到什麼"}, {"label": "什麼撐住它"}],
-                    rows=decisions) %}
-        {% for decision, buys, holds in decisions %}
-          <tr>
-            {{ cell(decision, tone="strong") }}
-            {{ cell(buys) }}
-            {{ cell(holds, tone="muted") }}
-          </tr>
-        {% endfor %}
-      {% endcall %}
-    {% endcall %}
-
-    {% call prose() %}
-      <p>
-        每一條背後的理由寫在 repo 的 <code>CHARTER.md</code> 第 2 節，而
-        <a href="{{ url_for(request, "learn") }}">「上手」那一頁</a>會在瀏覽器裡示範其中四條
-        ——包括那個品牌旋鈕，你會看著整頁在眼前重新上色。
-      </p>
-      <p>
-        最後一條是大家不會預期的那條，值得直接講白。fjkit 的 handler 回傳的是 model，不是標記；
-        <code>@render</code> 依「呼叫端有沒有在等標記」決定傳輸格式。所以
-        <code>GET /tasks/board</code> 對 htmx 回一塊渲染好的看板，對 <code>curl</code> 回
-        <code>BoardResponse</code> 的 JSON——同一條路由、同一個 handler、同一個回傳標註，
-        而 FastAPI 早就把它寫進 <code>/docs</code> 了。
-        <a href="{{ url_for(request, "learn") }}#json">那份回應的兩半都在「上手」頁上。</a>
-      </p>
-    {% endcall %}
-  {% endcall %}
-
-  {# ============================================================== 04 #}
-  {% set i04 %}一個 wheel、兩個執行期依賴，沒有任何東西要你自己編譯。{% endset %}
-  {% call lesson("box", "04", "wheel 裡裝了什麼", i04) %}
+  {% set i02 %}一個 wheel、兩個執行期依賴，沒有任何東西要你自己編譯。{% endset %}
+  {% call lesson("box", "02", "wheel 裡裝了什麼", i02) %}
     {% call grid(cols=2, gap=4) %}
       {{ defs("套件裡帶的", [
-        ("templates/ui/", "那些 macro——版面、按鈕、資料、表單、表格、分頁、導覽、側欄、回饋、圖示，以及文件外殼"),
-        ("static/dist/fjkit-<pack>.css", "編譯好的 stylesheet，每個風格包一份：234 KB 原始、23.9 KB gzip，在 build 自己守著的 28 KB 預算內。一頁只載一份"),
+        ("templates/ui/", "那些 macro：版面、按鈕、資料、表單、表格、分頁、導覽、側欄、回饋、圖示，以及文件外殼"),
+        ("static/dist/fjkit-<pack>.css", "編譯好的 stylesheet，每個風格包一份。234 KB 原始、23.9 KB gzip，在 build 自己守著的 28 KB 預算內。一頁只載一份。"),
         ("static/vendor/", "htmx 與 Basecoat 的 JavaScript，版本釘死，直接從套件裡供應"),
-        ("1,767 個圖示", "Lucide，按名字內嵌——沒有 icon font、沒有 sprite 請求、執行期沒有 JS"),
+        ("1,767 個圖示", "Lucide，按名字內嵌。沒有 icon font、沒有 sprite 請求、執行期沒有 JS。"),
       ]) }}
       {{ defs("你會碰到的全部表面", [
         ("FjkitConfig、mount_fjkit", "接線，每支 app 一次"),
         ("@render", "在裝飾器上指名模板；handler 只回資料"),
-        ("fjkit check", "詞彙表關卡——放進你的 CI"),
+        ("fjkit check", "詞彙表關卡。放進你的 CI。"),
         ("fjkit eject", "逃生口：把元件複製進你的 app 再改"),
       ]) }}
     {% endcall %}
 
     {% call prose() %}
       <p>
-        需求：Python 3.13 以上，以及兩個執行期依賴——FastAPI 與 Jinja2。要加第三個，需要一個到目前
-        為止還沒有人提得出來的理由。
+        需求：Python 3.13 以上，以及兩個執行期依賴——FastAPI 與 Jinja2。要加第三個，需要一個到
+        目前為止還沒有人提得出來的理由。
       </p>
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 05 #}
-  {% set i05 %}讀一頁，或把 demo 跑起來。兩件事都大約十分鐘。{% endset %}
-  {% call lesson("next", "05", "接下來去哪", i05) %}
-    {% call grid(cols=2, gap=4) %}
-      {% set n_learn %}<a href="{{ url_for(request, "learn") }}">kit 怎麼接、htmx 送出什麼，以及那個會讓 build 掛掉的關卡</a>{% endset %}
-      {% set n_components %}<a href="{{ url_for(request, "components") }}">每個 macro，實際渲染，附上產生它的那行呼叫</a>{% endset %}
-      {{ defs("這個站上", [
-        ("上手", n_learn),
-        ("元件", n_components),
-      ]) }}
-      {{ defs("在 repo 裡", [
-        ("examples/board/", "一支能跑的 app——router、service、schemas，以及三種模板"),
-        ("src/fjkit/templates/ui/", "每個 macro，以及這個站台據以生成的簽名註解"),
-        ("src/fjkit/static/src/fjkit.css", "token 表、深色模式，以及品牌旋鈕碰不到的東西"),
-        ("docs/jinja-performance.md", "benchmark 真正量到什麼，以及真正慢的那三件事"),
-        ("CHARTER.md", "路線圖，以及這個專案要求自己遵守的規則"),
-      ]) }}
-    {% endcall %}
-
-    {% call card("或者直接跑 demo") %}
-      {{ code("uv sync
-uv run fastapi dev examples/board/app/main.py", "text") }}
-      <footer>
-        一個總覽頁、一塊有 htmx 局部更新的任務板，以及一份串流出去的兩萬列報表——原始碼就在
-        <code>examples/board</code>，它同時也是這個 kit 的驗收測試。沒有 CSS 要 build，
-        也沒有 watcher 要開著。{{ kbd("uv run fjkit check app/templates") }} 是你的專案唯一多出來的指令。
-      </footer>
-    {% endcall %}
+  {# ============================================================== 03 #}
+  {% set i03 %}兩頁。一頁給你看接線，一頁給你看每一個 macro。{% endset %}
+  {% call lesson("next", "03", "接下來去哪", i03) %}
+    {% set n_learn %}<a href="{{ url_for(request, "learn") }}">kit 怎麼接、htmx 送出什麼，以及那個會讓 build 掛掉的關卡</a>{% endset %}
+    {% set n_components %}<a href="{{ url_for(request, "components") }}">每個 macro，實際渲染，附上產生它的那行呼叫</a>{% endset %}
+    {{ defs("這個站上", [
+      ("上手", n_learn),
+      ("元件", n_components),
+    ]) }}
   {% endcall %}
 
 {% endcall %}

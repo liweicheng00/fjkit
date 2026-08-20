@@ -40,7 +40,8 @@
 {% call stack(8) %}
 
   {% set intro %}
-    轉動旋鈕，同時盯著兩件事一起變：元件本身，以及你要打出這個結果會寫的那行 Jinja。
+    每一個 macro，都有實際渲染的預覽與產生它的那行呼叫。
+    轉動旋鈕，兩件事會一起變：元件本身，以及你要打出這個結果會寫的那行 Jinja。
     底下每一個預覽都是 build 時由 fjkit 自己的 Environment 渲染出來的。
   {% endset %}
   {{ page_header("每個 macro，以及產生它的那行呼叫", intro) }}
@@ -50,10 +51,10 @@
   {% call lesson("macros", "01", "每個 macro：呼叫與 HTML", c01) %}
     {% call prose() %}
       <p>
-        底下每一個參數都是<strong>封閉列舉</strong>。沒有 <code>class=</code> 這個逃生口，也沒有色相可以傳
-        ——你挑一個 variant，長什麼樣由 token 層決定。多傳給 macro 的東西一律變成 HTML 屬性：
-        <code>hx_post="/tasks"</code> 會渲染成 <code>hx-post="/tasks"</code>，這就是 htmx 從頭到尾
-        不必出現在任何一個 macro 定義裡的原因。
+        底下每一個參數都是<strong>封閉列舉</strong>。沒有 <code>class=</code> 這個逃生口，也沒有色相可以傳。
+        你挑一個 variant，長什麼樣由 token 層決定。多傳給 macro 的東西一律變成 HTML 屬性：
+        <code>hx_post="/tasks"</code> 會渲染成 <code>hx-post="/tasks"</code>。
+        這就是 htmx 從頭到尾不必出現在任何一個 macro 定義裡的原因。
       </p>
     {% endcall %}
 
@@ -89,9 +90,9 @@
   {% call lesson("layout", "02", "版面：stack、row、grid、split", c02) %}
     {% call prose() %}
       <p>
-        光有元件到不了封閉詞彙表——你第一次要把兩張 card 並排，手就伸向 utility class，而 fjkit
-        出貨的那份 stylesheet 根本不知道你想要它。所以間距與欄數也是 macro，每一個值都是查表，
-        表裡的字串<em>原封不動</em>出現在 kit 的原始碼裡，Tailwind 掃得到。
+        光有元件到不了封閉詞彙表。你第一次要把兩張 card 並排，手就伸向 utility class，
+        而 fjkit 出貨的那份 stylesheet 根本不知道你想要它。所以間距與欄數也是 macro。
+        每一個值都是查表，表裡的字串<em>原封不動</em>出現在 kit 的原始碼裡，Tailwind 掃得到。
       </p>
       <p>
         虛線方塊代表你的內容。轉旋鈕，看著底下那行原始碼跟著變。
@@ -118,9 +119,9 @@
     {% call prose() %}
       <p>
         這三個是資料還沒進來以前，一頁就已經由它們組成的部分。
-        <code>page_header</code> 收一個 block，那個 block 就是它的動作區——所以標題、說明與一排按鈕
-        在任何寬度下都待在同一行，呼叫端不必量任何東西。這一頁最上面那個 header 就是同一個 macro，
-        平鋪直敘地呼叫，沒有動作要放。
+        <code>page_header</code> 收一個 block，那個 block 就是它的動作區。
+        所以標題、說明與一排按鈕在任何寬度下都待在同一行，呼叫端不必量任何東西。
+        這一頁最上面那個 header 就是同一個 macro，平鋪直敘地呼叫，沒有動作要放。
       </p>
     {% endcall %}
 
@@ -138,7 +139,7 @@
         表格上方那排數值、句子裡夾著一組按鍵的那種說明。
       </p>
       <p>
-        <code>empty_state</code> 值得在你需要它之前就先知道——<code>rows</code> 是空的時候，
+        <code>empty_state</code> 值得在你需要它之前就先知道。<code>rows</code> 是空的時候，
         <code>table</code> 會自己把它渲染出來，所以沒有任何呼叫端要寫 if-rows-else 那段分支。
       </p>
     {% endcall %}
@@ -154,14 +155,15 @@
   {% call lesson("icons", "05", "icon()：任何 Lucide 名字，直接內嵌", c05) %}
     {% call prose() %}
       <p>
-        <code>icon("plus")</code> 會把 Lucide 的路徑當成 <code>&lt;svg&gt;</code> 內嵌進去。它繼承
-        <code>currentColor</code>，所以放進 primary 按鈕裡的 icon 顏色本來就是對的，而且不管多大
-        都不用付一個網路請求。
+        <code>icon("plus")</code> 會把 Lucide 的路徑當成 <code>&lt;svg&gt;</code> 內嵌進去。
+        它繼承 <code>currentColor</code>，所以放進 primary 按鈕裡的 icon 顏色本來就是對的，
+        而且不管多大都不用付一個網路請求。
       </p>
       <p>
-        大部分 macro 直接收 <code>icon_name=</code>——<code>button</code>、<code>stat</code>、
-        <code>empty_state</code>、<code>brand</code>、<code>sidebar_link</code>——所以你很少會自己
-        呼叫這一個。這個站側欄裡的圖示全部是那樣來的。底下是其中一小撮；任何 Lucide 名字都可以。
+        大部分 macro 直接收 <code>icon_name=</code>：<code>button</code>、<code>stat</code>、
+        <code>empty_state</code>、<code>brand</code>、<code>sidebar_link</code>。
+        所以你很少會自己呼叫這一個。這個站側欄裡的圖示全部是那樣來的。
+        底下是其中一小撮，任何 Lucide 名字都可以。
       </p>
     {% endcall %}
 

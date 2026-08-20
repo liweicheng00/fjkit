@@ -141,10 +141,6 @@ def test_the_site_builds():
 
     from fjkit import FjkitConfig, build_environment
 
-    # Real content is what `build.py` reads off disk; these pages only have to
-    # render, so the sources are stubs keyed the same way.
-    src = dict.fromkeys(build.DEMO_SOURCES, "# source")
-
     for lang in build.LANGS:
         env = build_environment(
             FjkitConfig(
@@ -162,7 +158,6 @@ def test_the_site_builds():
                 page=page,
                 lang=lang,
                 t=build.STRINGS[lang["code"]],
-                src=src,
                 wire=build.NEGOTIATION,
             )
             assert html.startswith("<!doctype html>")

@@ -98,18 +98,18 @@ PAGES = [
         "icon": "book-open",
         "en": {
             "label": "Introduction",
-            "title": "fjkit — the UI layer FastAPI does not ship",
+            "title": "fjkit — a fast UI for FastAPI",
             "description": (
-                "fjkit is the UI layer FastAPI does not ship: pages, tables, forms, navigation, dark "
-                "mode and htmx swaps as Jinja macros, with no front-end toolchain on your side."
+                "fjkit integrates Jinja, Tailwind CSS and shadcn-style components with FastAPI: pages, "
+                "tables, forms, navigation and htmx swaps as Jinja macros, with no build step on your side."
             ),
         },
         "zh": {
             "label": "簡介",
-            "title": "fjkit — FastAPI 沒有附的 UI 層",
+            "title": "fjkit — 給 FastAPI 的快速 UI",
             "description": (
-                "fjkit 是 FastAPI 沒有附的那層 UI：頁面、表格、表單、導覽、深色模式與 htmx 局部更新，"
-                "全部是 Jinja macro，而且你這端不需要任何前端工具鏈。"
+                "fjkit 把 Jinja、Tailwind CSS 與 shadcn 風格元件整合給 FastAPI 用：頁面、表格、表單、"
+                "導覽與 htmx 局部更新全部是 Jinja macro，而且你這端零建置。"
             ),
         },
     },
@@ -258,15 +258,6 @@ STRINGS = {
     },
 }
 
-#: Files from the demo the Introduction quotes, read at build time and passed
-#: to the template as `src`, keyed by this path — so the page cannot quote a
-#: line the app does not contain, and a rename here fails the build rather than
-#: silently publishing stale code.
-DEMO_SOURCES = [
-    "app/main.py",
-    "app/templates/tasks/page.html",
-]
-
 #: Lesson 06 ("No HX-Request") quotes one route answering twice. Captured from
 #: the demo — `GET /tasks/board?status=doing`, with and without the header —
 #: rather than replayed during the build: the seeded rows carry timestamps, so a
@@ -398,14 +389,6 @@ def build() -> int:
     if result.returncode != 0:
         return result.returncode
 
-    src = {}
-    for rel in DEMO_SOURCES:
-        path = DEMO / rel
-        if not path.exists():
-            print(f"the Introduction quotes {rel}, which does not exist", file=sys.stderr)
-            return 2
-        src[rel] = path.read_text(encoding="utf-8").strip()
-
     OUT_ASSETS.mkdir(parents=True, exist_ok=True)
 
     for path, rel, _ in VENDORED:
@@ -456,7 +439,6 @@ def build() -> int:
                 page=merged,
                 lang=lang,
                 t=strings,
-                src=src,
                 wire=NEGOTIATION,
             )
             out = out_dir / page["file"]

@@ -26,8 +26,8 @@
 {% call stack(8) %}
 
   {% set intro %}
-    Pages, tables, forms, navigation, dark mode and htmx swaps — composed as Jinja macros, in the
-    same codebase as your handlers, by someone who never opens a front-end toolchain.
+    Nine lessons: how a fjkit app is wired, what htmx actually sends, how a rebrand works, and the
+    command that fails a build. Every demo below is live.
   {% endset %}
   {{ page_header("Build the interface where you build the routes", intro) }}
 
@@ -35,8 +35,8 @@
     {% call prose() %}
       <p>
         Every preview below is real macro output, rendered by fjkit's own Jinja environment at build
-        time. So is the page around them: the sidebar, these cards, the tables and the tab strips are
-        the same macros the demo app calls, and <code>fjkit check</code> runs over this site's
+        time. So is the page around them. The sidebar, these cards, the tables and the tab strips
+        are the same macros the demo app calls, and <code>fjkit check</code> runs over this site's
         templates in CI. Nothing here can show you a component the package does not ship.
       </p>
     {% endcall %}
@@ -47,14 +47,14 @@
   {% call lesson("wiring", "01", "Wiring: config, mount, render", t01) %}
     {% call prose() %}
       <p>
-        A fjkit app touches the kit in exactly three places. <code>FjkitConfig</code> holds every knob,
-        <code>mount_fjkit()</code> serves the stylesheet and the vendored JS straight out of the installed
-        package and builds the Jinja environment once per process, and <code>@render</code> names the
-        template a route answers with.
+        A fjkit app touches the kit in exactly three places. <code>FjkitConfig</code> holds every
+        knob. <code>mount_fjkit()</code> serves the stylesheet and the vendored JS straight out of
+        the installed package, and builds the Jinja environment once per process.
+        <code>@render</code> names the template a route answers with.
       </p>
       <p>
         Click through the four files. There is no <code>package.json</code> and no watcher to keep
-        running — and <code>examples/board</code> in the repository is the same four in a working
+        running. <code>examples/board</code> in the repository is the same four files in a working
         app.
       </p>
     {% endcall %}
@@ -75,15 +75,17 @@
   {% call lesson("exchange", "02", "The htmx request and response", t02, tag="htmx") %}
     {% call prose() %}
       <p>
-        This is the whole idea, and it is smaller than it looks. An element says <em>which</em> request
-        to make and <em>where to put the answer</em>. The server answers with a piece of HTML — the same
-        markup it would have put in the page — and htmx drops that piece into the element you named.
+        This is the whole idea, and it is smaller than it looks. An element says <em>which</em>
+        request to make, and <em>where to put the answer</em>. The server answers with a piece of
+        HTML, the same markup it would have put in the page. htmx drops that piece into the element
+        you named.
       </p>
       <p>
-        Nothing is serialised for the swap, nothing is re-rendered on the client, and no state lives in
-        two places. (The same route will happily answer a script in JSON —
-        <a href="#json">lesson 06</a> — but that is a second door, not a step in this exchange.) Press the button: <strong>the request below is real</strong>. htmx is loaded on this
-        page, and a mock server in the browser plays the FastAPI side.
+        Nothing is serialised for the swap. Nothing is re-rendered on the client. No state lives in two
+        places. The same route will happily answer a script in JSON — that is <a href="#json">lesson 06</a>
+        — but that is a second door, not a step in this exchange. Press the button:
+        <strong>the request below is real</strong>. htmx is loaded on this page, and a mock server in the
+        browser plays the FastAPI side.
       </p>
     {% endcall %}
 
@@ -107,8 +109,8 @@
 
     {% call prose() %}
       <p>
-        Those <code>HX-*</code> headers are how a route can tell a swap from a full page load.
-        Everything else is an ordinary POST — no client framework is involved on either side.
+        Those <code>HX-*</code> headers are how a route tells a swap from a full page load.
+        Everything else is an ordinary POST. No client framework is involved on either side.
       </p>
     {% endcall %}
   {% endcall %}
@@ -119,14 +121,14 @@
     {% call prose() %}
       <p>
         {{ link("hx-target", "https://htmx.org/attributes/hx-target/") }} picks the element.
-        {{ link("hx-swap", "https://htmx.org/attributes/hx-swap/") }} says what to do with it. This
-        pair is where most htmx confusion lives, so try them against a live board — every combination
-        below runs a real request and swaps the real response.
+        {{ link("hx-swap", "https://htmx.org/attributes/hx-swap/") }} says what to do with it. This pair is
+        where most htmx confusion lives, so try them against a live board. Every combination below runs a
+        real request and swaps the real response.
       </p>
       <p>
-        <code>outerHTML</code> replaces the target itself, so the response has to include the wrapper.
-        <code>innerHTML</code> (the default) replaces what is inside it, so the response must
-        <em>not</em>. Mixing those two up is the classic bug — you get a board inside a board.
+        <code>outerHTML</code> replaces the target itself, so the response has to include the
+        wrapper. <code>innerHTML</code> (the default) replaces what is inside it, so the response
+        must <em>not</em>. Mixing those two up is the classic bug: you get a board inside a board.
       </p>
     {% endcall %}
 
@@ -150,11 +152,11 @@
   {% call lesson("triggers", "04", "hx-trigger: typing, scrolling, polling", t04, tag="htmx") %}
     {% call prose() %}
       <p>
-        You usually write no trigger at all: a <code>button</code> fires on click, a <code>form</code>
-        on submit, an <code>input</code> or <code>select</code> on change.
-        {{ link("hx-trigger", "https://htmx.org/attributes/hx-trigger/") }} is for the other cases —
-        and it is the attribute that buys you search-as-you-type, lazy loading and polling without a
-        line of JavaScript. All three below are live.
+        You usually write no trigger at all. A <code>button</code> fires on click, a <code>form</code> on
+        submit, an <code>input</code> or <code>select</code> on change.
+        {{ link("hx-trigger", "https://htmx.org/attributes/hx-trigger/") }} is for the other cases. It is
+        the attribute that buys you search-as-you-type, lazy loading and polling, with no JavaScript. All
+        three below are live.
       </p>
     {% endcall %}
 
@@ -187,15 +189,15 @@
   {% call lesson("partials", "05", "Partials: one file, page and swap", t05, tag="htmx") %}
     {% call prose() %}
       <p>
-        Now the fjkit half. A partial is any template whose name starts with an underscore: it never
+        Now the fjkit half. A partial is any template whose name starts with an underscore. It never
         extends the shell, it declares its own imports, and it wraps itself in the element the swap
         replaces. The full page {% raw %}<code>{% include %}</code>{% endraw %}s it; every htmx
         endpoint returns it bare.
       </p>
       <p>
-        That is why a fjkit app has no "update the row" code path. Every mutation re-renders the whole
-        board partial and swaps it — one definition of what a board looks like, used by the first paint
-        and by every request after it. The real files are
+        That is why a fjkit app has no "update the row" code path. Every mutation re-renders the
+        whole board partial and swaps it. One definition of what a board looks like, used by the
+        first paint and by every request after it. The real files are
         <code>examples/board/app/templates/tasks/</code> in the repository.
       </p>
     {% endcall %}
@@ -246,18 +248,18 @@
   {% call lesson("json", "06", "No HX-Request: the same route answers JSON", t06, tag="htmx") %}
     {% call prose() %}
       <p>
-        Lesson 02 said the exchange carries no JSON, and of the swap itself that is true. But look at
-        what the handler actually returned — a <code>BoardResponse</code>, not a string of HTML.
-        <code>@render</code> is what turns one into the other, and when the caller is not a browser
-        waiting for markup there is nothing to render <em>into</em>. The model goes out as JSON.
+        Lesson 02 said the exchange carries no JSON, and of the swap itself that is true. But look
+        at what the handler actually returned: a <code>BoardResponse</code>, not a string of HTML.
+        <code>@render</code> is what turns one into the other. When the caller is not a browser
+        waiting for markup, there is nothing to render <em>into</em>, so the model goes out as JSON.
       </p>
       <p>
         That is <code>render_mode="auto"</code>, the default on <code>FjkitConfig</code>. Two things
         decide it, and neither of them is an <code>Accept</code> header: <strong>what the route
         is</strong>, and <strong>whether the request carries <code>HX-Request: true</code></strong>.
-        A page route always has markup waiting — a cold navigation is the request it exists for, and
-        answering that with JSON would be a blank browser window. A fragment route only has markup
-        waiting when htmx asked for it.
+        A page route always has markup waiting, because a cold navigation is the request it exists
+        for, and answering that with JSON would be a blank browser window. A fragment route only has
+        markup waiting when htmx asked for it.
       </p>
     {% endcall %}
 
@@ -293,10 +295,11 @@
     {% call prose() %}
       <p>
         Read the third row again, because it is the one worth having: <strong>every htmx endpoint in
-        the app is already a JSON endpoint.</strong> <code>GET /tasks/board</code> answers htmx with a
-        board and answers <code>curl</code> with the model behind it. No second route, no serialiser,
-        no DTO that drifts from the template — the return annotation is the only description of
-        either, so FastAPI has already put <code>BoardResponse</code> in <code>/docs</code>.
+        the app is already a JSON endpoint.</strong> <code>GET /tasks/board</code> answers htmx with
+        a board, and answers <code>curl</code> with the model behind it. No second route, no
+        serialiser, no DTO that drifts from the template. The return annotation is the only
+        description of either, so FastAPI has already put <code>BoardResponse</code> in
+        <code>/docs</code>.
       </p>
     {% endcall %}
 
@@ -334,17 +337,17 @@
   {% call lesson("patterns", "07", "Nine htmx patterns, and their handlers", t07, tag="htmx") %}
     {% call prose() %}
       <p>
-        The whole attribute vocabulary fits on one screen —
-        <a href="{{ url_for(request, "components#cheatsheet") }}">the Components page prints it</a>.
-        What takes longer to learn is the handful of arrangements it keeps forming, so here they are
-        with the fjkit spelling: the macro call on one tab, the handler that answers it on the other.
+        The whole attribute vocabulary fits on one screen, and
+        <a href="{{ url_for(request, "components#cheatsheet") }}">the Components page prints it</a>. What
+        takes longer to learn is the handful of arrangements it keeps forming. Here they are with the fjkit
+        spelling: the macro call on one tab, the handler that answers it on the other.
       </p>
       <p>
-        Every handler below returns a partial and is a plain <code>def</code>, so Starlette runs it in
-        the threadpool. Each pattern links out to the htmx page it comes from; the upstream
+        Every handler below returns a partial and is a plain <code>def</code>, so Starlette runs it in the
+        threadpool. Each pattern links out to the htmx page it comes from. The upstream
         {{ link("docs", "https://htmx.org/docs/") }} and
-        {{ link("attribute reference", "https://htmx.org/reference/") }} are short enough to read
-        whole, and worth it.
+        {{ link("attribute reference", "https://htmx.org/reference/") }} are short enough to read whole,
+        and worth it.
       </p>
     {% endcall %}
 
@@ -391,13 +394,14 @@
   {% call lesson("knob", "08", "Rebranding: brand and status tokens", t08, tag="theming") %}
     {% call prose() %}
       <p>
-        Drag the hue. You are editing <code>--primary</code> on <code>:root</code> — the same three
-        lines an app writes in its own stylesheet, with no build step in between. The whole page moves,
-        including this sidebar and these cards, because the page is built on the same tokens.
+        Drag the hue. You are editing <code>--primary</code> on <code>:root</code>, which is the
+        same three lines an app writes in its own stylesheet. There is no build step in between. The
+        whole page moves, including this sidebar and these cards, because the page is built on the
+        same tokens.
       </p>
       <p>
-        Watch the status badges: they don't move. Status colour is deliberately <em>not</em> wired to
-        the brand, because "green means done" has to survive a rebrand.
+        Watch the status badges. They do not move. Status colour is deliberately <em>not</em> wired
+        to the brand, because "green means done" has to survive a rebrand.
       </p>
     {% endcall %}
 
@@ -467,15 +471,15 @@
   {% call lesson("gate", "09", "fjkit check: the closed vocabulary", t09) %}
     {% call prose() %}
       <p>
-        <code>fjkit check</code> reads your templates and rejects two things: colour literals, and any
-        class outside the component vocabulary. Utilities are rejected <strong>even when they work
-        today</strong> — if your app leans on <code>gap-4</code> because fjkit's shell happens to emit
-        it, your app breaks silently the day the shell stops.
+        <code>fjkit check</code> reads your templates and rejects two things: colour literals, and
+        any class outside the component vocabulary. Utilities are rejected <strong>even when they
+        work today</strong>. If your app leans on a spacing utility because fjkit's shell happens to
+        emit it, your app breaks silently the day the shell stops.
       </p>
       <p>
         Edit the markup. The checker below runs fjkit's own rules against its real class list —
-        <span id="vocab-count">…</span> — the same code that runs in CI, and the same code that runs
-        over this site's templates.
+        <span id="vocab-count">…</span> — and it is the same code that runs in CI, and the same code
+        that runs over this site's templates.
       </p>
     {% endcall %}
 
@@ -499,7 +503,7 @@
 
     {% call prose() %}
       <p>
-        A blocked class is information: it names the component or the parameter that does not exist
+        A blocked class is information. It names the component or the parameter that does not exist
         yet. When 0.1 landed, the pre-fjkit templates scored 258 violations; the rewrite scores 0.
       </p>
     {% endcall %}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>fjkit — the UI layer FastAPI does not ship · fjkit</title>
+  <title>fjkit — a fast UI for FastAPI · fjkit</title>
   <script>
     (() => {
       const saved = localStorage.getItem("theme");
@@ -15,9 +15,9 @@
   <link rel="stylesheet" href="assets/brand.css">
   <script defer src="assets/vendor/htmx/htmx.min.js"></script>
   <script defer src="assets/vendor/basecoat/js/all.min.js"></script>
-  <meta name="description" content="fjkit is the UI layer FastAPI does not ship: pages, tables, forms, navigation, dark mode and htmx swaps as Jinja macros, with no front-end toolchain on your side.">
-  <meta property="og:title" content="fjkit — the UI layer FastAPI does not ship">
-  <meta property="og:description" content="fjkit is the UI layer FastAPI does not ship: pages, tables, forms, navigation, dark mode and htmx swaps as Jinja macros, with no front-end toolchain on your side.">
+  <meta name="description" content="fjkit integrates Jinja, Tailwind CSS and shadcn-style components with FastAPI: pages, tables, forms, navigation and htmx swaps as Jinja macros, with no build step on your side.">
+  <meta property="og:title" content="fjkit — a fast UI for FastAPI">
+  <meta property="og:description" content="fjkit integrates Jinja, Tailwind CSS and shadcn-style components with FastAPI: pages, tables, forms, navigation and htmx swaps as Jinja macros, with no build step on your side.">
   <meta property="og:type" content="article">
   <script src="assets/mock-server.js"></script>
 </head>
@@ -41,15 +41,7 @@ fjkit
 </ul>
   </div>
 <div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
-    <a href="index.html#what">      <span>What fjkit is</span>
-    </a>
-  </li>
-        <li>
     <a href="index.html#who">      <span>Who it is for</span>
-    </a>
-  </li>
-        <li>
-    <a href="index.html#decisions">      <span>Six decisions, and what holds them</span>
     </a>
   </li>
         <li>
@@ -84,295 +76,49 @@ fjkit
 <div class="flex flex-col gap-8">
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
-      <h1 class="text-2xl font-semibold tracking-tight">The UI layer FastAPI does not ship</h1>
-<p class="text-muted-foreground text-sm">    Pages, tables, forms, navigation, dark mode and htmx swaps — Jinja macros you call from the same
-    codebase as your handlers, with no front-end toolchain on your side.
+      <h1 class="text-2xl font-semibold tracking-tight">A Fast UI for FastAPI</h1>
+<p class="text-muted-foreground text-sm">    An integration of Jinja, Tailwind CSS and shadcn-style components, for FastAPI.
 </p>    </div>
   </div>
 
-<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+  <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>New here? This site is the documentation and the evidence.</h3><p>The four pages are one fjkit app.</p>      </div>
-    </header>      <section><div class="flex flex-col gap-3">      <p>
-        Every component you will see is rendered by fjkit's own Jinja environment, and the page around
-        it — this card, the sidebar, the tables — is built from the same macros. <code>fjkit check</code>
-        runs over these templates in CI, so the site cannot show you a component the package does not
-        ship, or a class an app is not allowed to write.
-      </p>
-</div></section>
+<h3>The key features are:</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>No build step</h4><p>No package.json, no node_modules, no watcher. The stylesheet is compiled when fjkit is released, not when your app runs.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>One colour knob</h4><p>Every colour is a token. Rebranding is one file, and green still means done afterwards.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Mounts on your existing API</h4><p>Every htmx endpoint answers curl with JSON. Same route, same handler, same return annotation.</p>    </section>  </div></div></div>
   </div>
-<div id="what">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">What fjkit is</h2><p class="text-muted-foreground text-sm">A screen is a route, a template, and a handful of macro calls.</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        fjkit is the layer between your FastAPI handlers and the browser. You wire it once, and then
-        every screen is a template that calls macros: <code>page_header</code>, <code>card</code>,
-        <code>table</code>, <code>form</code>, <code>sidebar</code>. There is no second application to
-        build, no second language, and no second place to look when something breaks.
-      </p>
-      <p>
-        The constraint that shapes everything else: <strong>Tailwind runs when fjkit is released, not
-        when your app runs.</strong> Your repository has no <code>package.json</code>, no
-        <code>node_modules</code>, no Tailwind binary, and nothing to rebuild after you edit a
-        template. Both files below are read straight off the demo app in this repository.
-      </p>
-</div>
-    <div class="card">      <div class="tabs">
-    <nav role="tablist" aria-label="File"
-         aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="intro-main"
-                aria-selected="true">app/main.py</button>
-        <button type="button" role="tab" aria-controls="intro-page"
-                aria-selected="false">app/templates/tasks/page.html</button>
-    </nav><div id="intro-main" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">&#34;&#34;&#34;The demo app, built on fjkit.
-
-Compare with the pre-fjkit version (`git show 2ef74c9:app/main.py`): the
-Environment, the vendored assets and the whole stylesheet pipeline are gone.
-What is left is two lines of wiring — a config and a mount — and the
-app&#39;s own routes.
-&#34;&#34;&#34;
-
-from __future__ import annotations
-
-from contextlib import asynccontextmanager
-from pathlib import Path
-from time import perf_counter
-
-from fastapi import FastAPI
-from fjkit import FjkitConfig, mount_fjkit
-from fjkit.vendored import STYLE_PACKS
-
-from app.features.dashboard.router import router as dashboard_router
-from app.features.jobs.router import router as jobs_router
-from app.features.jobs.service import JobService
-from app.features.tasks.router import router as tasks_router
-from app.features.tasks.service import TaskService
-
-APP_DIR = Path(__file__).resolve().parent
-ROOT_DIR = APP_DIR.parent
-
-#: Where the kit&#39;s assets are served from. Spelled out rather than left to the
-#: default because the picker below builds URLs under the same prefix, and two
-#: places guessing it separately is how a mount and a link drift apart.
-STATIC_URL = &#34;/_fjkit&#34;
-
-#: Every style pack, and the URL its stylesheet is served from.
-#:
-#: fjkit resolves exactly one pack per process (`FjkitConfig.style`), and that
-#: stays true here — the shell links `fjkit-vega.css` like it always did. What
-#: this feeds is the demo&#39;s picker: all eight packs ship in the wheel and
-#: `mount_fjkit` serves the whole static directory, so the browser can be pointed
-#: at another one to compare them without a restart. That is an affordance of
-#: this demo, not something the kit does, which is why the map is built here.
-#:
-#: A dict rather than a list because the picker&#39;s script looks a pack up in it:
-#: a value that is not one of the eight has no URL, so a stale or hand-edited
-#: `localStorage` entry cannot turn into a 404 and an unstyled page.
-STYLE_SHEETS = {pack: f&#34;{STATIC_URL}/dist/fjkit-{pack}.css&#34; for pack in STYLE_PACKS}
-
-#: The app&#39;s templates are searched before fjkit&#39;s, so dropping a file at
-#: `templates/ui/button.html` would shadow the kit&#39;s — that is `fjkit eject`.
-config = FjkitConfig(
-    template_dir=APP_DIR / &#34;templates&#34;,
-    bytecode_cache_dir=ROOT_DIR / &#34;.jinja-cache&#34;,
-    static_url=STATIC_URL,
-    globals={&#34;style_sheets&#34;: STYLE_SHEETS},
-)
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    app.state.tasks = TaskService()
-    # Background jobs live here for the same reason tasks do: one store per
-    # process, so a job started by one request is visible to the poll that
-    # follows it. A real app swaps this for a queue; the routes do not change.
-    app.state.jobs = JobService()
-    yield
-
-
-def create_app() -&gt; FastAPI:
-    app = FastAPI(title=&#34;fjkit demo — task board&#34;, lifespan=lifespan)
-
-    @app.middleware(&#34;http&#34;)
-    async def server_timing(request, call_next):
-        &#34;&#34;&#34;Publish wall time as `Server-Timing`, so the browser&#39;s network panel
-        shows the server cost of every page and every htmx swap.&#34;&#34;&#34;
-        started = perf_counter()
-        response = await call_next(request)
-        response.headers[&#34;Server-Timing&#34;] = f&#34;app;dur={(perf_counter() - started) * 1000:.2f}&#34;
-        return response
-
-    # Serves fjkit&#39;s stylesheet and the vendored htmx/Basecoat JS straight out
-    # of the installed package, and builds the Jinja Environment once. The app
-    # has no static assets of its own.
-    mount_fjkit(app, config)
-
-    app.include_router(dashboard_router)
-    app.include_router(tasks_router)
-    app.include_router(jobs_router)
-
-    @app.get(&#34;/health&#34;, include_in_schema=False)
-    async def health() -&gt; dict[str, str]:
-        return {&#34;status&#34;: &#34;ok&#34;}
-
-    return app
-
-
-app = create_app()</pre>
-
-<footer>Two calls: FjkitConfig holds every knob; mount_fjkit serves the stylesheet and the vendored JS out of the installed package and builds the environment once per process.</footer></div><div id="intro-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/tasks/page.html" data-lang="jinja">{#
-  Full page. Its only jobs: extend the shell, set the title, and drop in the
-  same partial the htmx endpoints return. Nothing about a task row is written
-  twice, so a change to the board cannot land in one place and miss the other.
-#}
-{% extends &#34;base.html&#34; %}
-{% from &#34;ui/button.html&#34; import button %}
-{% from &#34;ui/data.html&#34; import kbd %}
-{% from &#34;ui/layout.html&#34; import page_header %}
-
-{% block title %}Tasks{% endblock %}
-
-{% block content %}
-  {#
-    A block assignment rather than a plain string: `{% set %}…{% endset %}`
-    yields Markup, so the description can contain a component (here `kbd`)
-    without the page having to hand-write the markup or reach for |safe.
-  #}
-  {% set note %}
-    Every control here swaps {{ kbd(&#34;#board&#34;) }} — no page reloads, no client state.
-  {% endset %}
-
-  {% call page_header(&#34;Tasks&#34;, note) %}
-    {{ button(&#34;Streamed report&#34;, variant=&#34;outline&#34;, size=&#34;sm&#34;, icon_name=&#34;arrow-right&#34;, icon_end=true,
-              href=url_for(request, &#34;tasks_report&#34;) ~ &#34;?rows=5000&#34;) }}
-  {% endcall %}
-
-  {% include &#34;tasks/_board.html&#34; %}
-{% endblock %}</pre>
-
-<footer>Note what a page does not contain: no utility classes, no colour, no &lt;svg&gt;, no htmx boilerplate hidden in a component.</footer></div></div>
-  </div>
-
-<div class="flex flex-col gap-3">      <p>
-        That absence is not a house style. A stylesheet compiled at release time can only contain
-        classes that existed at release time — so the vocabulary has to be closed, and
-        <a href="learn.html#gate">a command fails the build</a> when a template
-        steps outside it.
-      </p>
-</div>
-</section></div></div>
-<hr class="border-border">
 
 <div id="who">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Who it is for</h2><p class="text-muted-foreground text-sm">A back-end developer who needs a real interface and no front-end toolchain.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        If you can already write FastAPI and you need navigation, dark mode, a filterable table and a
-        form that validates — this is for you. If you are bringing React, Vue or Svelte, it is the
-        wrong layer, and that is a decision rather than a gap.
+        You already write FastAPI. You need navigation, dark mode, a filterable table and a form that
+        validates. This is for you.
+      </p>
+      <p>
+        If you are bringing React, Vue or Svelte, this is the wrong layer. That is a decision, not a
+        gap.
       </p>
 </div>
-<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>What it should cost you</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>a first page</h4><p>navigation and dark mode in about twenty lines of Python, and no build step</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>an admin screen</h4><p>list, filters, a create form and htmx updates in an afternoon, without writing CSS or JavaScript</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a first page</h4><p>navigation and dark mode in about twenty lines of Python, with no build step</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>an admin screen</h4><p>list, filters, a create form and htmx updates in an afternoon. No CSS, no JavaScript.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>a rebrand</h4><p>one stylesheet of token overrides, loaded after the kit&#39;s</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>an upgrade</h4><p>a version bump — the stylesheet is inside the wheel, not in your repository</p>    </section>  </div></div></div>
+      <h4>an upgrade</h4><p>a version bump. The stylesheet lives in the wheel, not in your repository.</p>    </section>  </div></div></div>
   </div>
-      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>What it deliberately is not</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>a data layer</h4><p>no ORM, no admin generator, no auth. fjkit renders; your app decides what to render</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>a front-end API</h4><p>JSON is a first-class mode, but it describes the data this page was handed — not a second contract kept for a client-side renderer</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>configurable in every direction</h4><p>parameters are closed enumerations, because a parameter list has to be able to say no</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>a Node toolchain in disguise</h4><p>fjkit&#39;s own CI may use one. Your app never does</p>    </section>  </div></div></div>
-  </div>
-</div>
-</section></div></div>
-<hr class="border-border">
 
-<div id="decisions">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">Six decisions, and what holds them</h2><p class="text-muted-foreground text-sm">Each one is a promise, and each promise has something that makes it hold.</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        These are settled, and the rest of the documentation assumes them. A promise with nothing
-        enforcing it is a README sentence — the third column is what turns each one into something a
-        build can fail on.
-      </p>
-</div>
-<div class="card">          <div class="table-container">
-      <table class="table">
-        <thead>
-          <tr>
-              <th class=" ">Decision</th>
-              <th class=" ">What it buys you</th>
-              <th class=" ">What holds it</th>
-          </tr>
-        </thead>
-        <tbody>          <tr>
-            <td class="font-medium">Zero build on your side</td>
-            <td class="">no toolchain, no watcher, nothing to rebuild after a template edit</td>
-            <td class="text-muted-foreground">the wheel ships the compiled stylesheet, htmx and Basecoat</td>
-          </tr>
-          <tr>
-            <td class="font-medium">The class vocabulary is closed</td>
-            <td class="">the shipped stylesheet is always enough, because layout is a component too</td>
-            <td class="text-muted-foreground">fjkit check, in your CI as well as ours</td>
-          </tr>
-          <tr>
-            <td class="font-medium">One colour knob</td>
-            <td class="">rebranding is one file, and green still means done afterwards</td>
-            <td class="text-muted-foreground">every colour is a token; templates name a role, never a hue</td>
-          </tr>
-          <tr>
-            <td class="font-medium">The signature is the contract</td>
-            <td class="">a macro cannot emit a class that does not exist</td>
-            <td class="text-muted-foreground">closed enumerations; extra keywords become HTML attributes, nothing else</td>
-          </tr>
-          <tr>
-            <td class="font-medium">One partial, two doors</td>
-            <td class="">the full page and the htmx swap cannot drift apart</td>
-            <td class="text-muted-foreground">the page embeds the partial the endpoints return</td>
-          </tr>
-          <tr>
-            <td class="font-medium">One annotation, two wire formats</td>
-            <td class="">every htmx endpoint is already a JSON API — no second route, no serialiser, no DTO to keep in step</td>
-            <td class="text-muted-foreground">@render serialises the model when no browser is waiting for markup</td>
-          </tr>
-</tbody>
-      </table>
-    </div>
-
-  </div>
-<div class="flex flex-col gap-3">      <p>
-        The reasoning behind each is in <code>CHARTER.md</code> §2 in the repository, and
-        <a href="learn.html">the Learn page</a> demonstrates four of them in the
-        browser — including the brand knob, which repaints the page while you watch.
-      </p>
-      <p>
-        The last one is the one people do not expect, so it is worth saying plainly. A fjkit handler
-        returns a model, not markup; <code>@render</code> decides the wire format from whether the
-        caller has markup waiting. So <code>GET /tasks/board</code> answers htmx with a rendered board
-        and answers <code>curl</code> with <code>BoardResponse</code> as JSON — same route, same
-        handler, same return annotation, and FastAPI has already documented it in <code>/docs</code>.
-        <a href="learn.html#json">Both halves of that reply are on the Learn
-        page.</a>
-      </p>
-</div>
 </section></div></div>
 <hr class="border-border">
 
 <div id="box">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">What ships in the wheel</h2><p class="text-muted-foreground text-sm">One wheel, two runtime dependencies, and nothing for you to compile.</p>      </div>
@@ -380,10 +126,10 @@ app = create_app()</pre>
       <div>
 <h3>Shipped in the package</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>templates/ui/</h4><p>the macros — layout, buttons, data, forms, tables, tabs, navigation, sidebar, feedback, icons, and the document shell</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>the compiled stylesheet, one per style pack: 234 KB raw, 23.9 KB gzip, under a 28 KB budget the build enforces. A page loads one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>templates/ui/</h4><p>the macros: layout, buttons, data, forms, tables, tabs, navigation, sidebar, feedback, icons, and the document shell</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>the compiled stylesheet, one per style pack. 234 KB raw, 23.9 KB gzip, under a 28 KB budget the build enforces. A page loads one.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>static/vendor/</h4><p>htmx and Basecoat&#39;s JavaScript, pinned and served out of the package</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>1,767 icons</h4><p>Lucide, inlined by name — no icon font, no sprite request, no runtime JS</p>    </section>  </div></div></div>
+      <h4>1,767 icons</h4><p>Lucide, inlined by name. No icon font, no sprite request, no runtime JS.</p>    </section>  </div></div></div>
   </div>
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -391,55 +137,31 @@ app = create_app()</pre>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>FjkitConfig, mount_fjkit</h4><p>the wiring, once per app</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>@render</h4><p>name a template on the decorator; the handler returns data</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fjkit check</h4><p>the vocabulary gate — run it in your CI</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit check</h4><p>the vocabulary gate. Run it in your CI.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>fjkit eject</h4><p>the escape hatch: copy a component into your app and edit it</p>    </section>  </div></div></div>
   </div>
 </div>
 <div class="flex flex-col gap-3">      <p>
-        Requirements: Python 3.13 or newer, and two runtime dependencies — FastAPI and Jinja2. Adding a
-        third needs an argument nobody has made yet.
+        Requirements: Python 3.13 or newer, and two runtime dependencies — FastAPI and Jinja2. A third
+        one needs an argument nobody has made yet.
       </p>
 </div>
 </section></div></div>
 <hr class="border-border">
 
 <div id="next">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Where to go next</h2><p class="text-muted-foreground text-sm">Read one page, or run the demo. Both take about ten minutes.</p>      </div>
-      <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+<h2 class="text-lg font-semibold tracking-tight">Where to go next</h2><p class="text-muted-foreground text-sm">Two pages. One shows you the wiring, the other shows you every macro.</p>      </div>
+          <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>On this site</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>Learn</h4><p><a href="learn.html">how the kit is wired, what htmx sends, and the gate that fails a build</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>Components</h4><p><a href="components.html">every macro, live, with the call that made it</a></p>    </section>  </div></div></div>
   </div>
-      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>In the repository</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>examples/board/</h4><p>a working app — routers, services, schemas and the three kinds of template</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>src/fjkit/templates/ui/</h4><p>every macro, with the signature comment this site is generated from</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>src/fjkit/static/src/fjkit.css</h4><p>the token table, dark mode, and what the brand knob does not touch</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>docs/jinja-performance.md</h4><p>what the benchmarks measured, and the three things that were actually slow</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>CHARTER.md</h4><p>the roadmap, and the rules this project holds itself to</p>    </section>  </div></div></div>
-  </div>
-</div>
-<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>Or run the demo</h3>      </div>
-    </header>      <section>      <pre class="code-block scrollbar" tabindex="0" data-lang="text">uv sync
-uv run fastapi dev examples/board/app/main.py</pre>
 
-      <footer>
-        An overview page, a task board with htmx swaps, and a streamed 20,000-row report — the app
-        whose source is in <code>examples/board</code>, and the kit's acceptance test. No CSS build to
-        run, no watcher to keep open. <code class="kbd">uv run fjkit check app/templates</code> is the only command your own project
-        gains.
-      </footer>
-</section>
-  </div>
 </section></div></div>
 <hr class="border-border">
 

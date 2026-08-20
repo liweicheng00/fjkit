@@ -89,8 +89,9 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Every macro, and the call that made it</h1>
-<p class="text-muted-foreground text-sm">    Turn the knobs and watch two things change together: the component, and the Jinja you would have
-    typed to get it. Every preview was rendered by fjkit's own Environment at build time.
+<p class="text-muted-foreground text-sm">    Every macro, with a live preview and the call that produced it. Turn the knobs and two things
+    change together: the component, and the Jinja you would have typed to get it. Every preview was
+    rendered by fjkit's own Environment at build time.
 </p>    </div>
   </div>
 
@@ -100,11 +101,11 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Every macro: the call and the HTML</h2><p class="text-muted-foreground text-sm">No macro accepts a class string, so no call site can invent a colour.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        Every parameter below is a <strong>closed enumeration</strong>. There is no <code>class=</code>
-        escape hatch and no hue to pass — you pick a variant, and the token layer decides what that
-        looks like. Anything extra you hand a macro becomes an HTML attribute:
-        <code>hx_post="/tasks"</code> renders as <code>hx-post="/tasks"</code>, which is how htmx stays
-        out of every macro definition.
+        Every parameter below is a <strong>closed enumeration</strong>. There is no
+        <code>class=</code> escape hatch and no hue to pass. You pick a variant, and the token layer
+        decides what that looks like. Anything extra you hand a macro becomes an HTML attribute:
+        <code>hx_post="/tasks"</code> renders as <code>hx-post="/tasks"</code>. That is how htmx
+        stays out of every macro definition.
       </p>
 </div>
 <div class="card">            <div class="tabs" id="macro-picker">
@@ -138,10 +139,10 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Layout: stack, row, grid, split</h2><p class="text-muted-foreground text-sm">The moment you type <code>grid gap-4</code>, the no-build promise is over.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        Components alone don't get you to a closed vocabulary — the first time you need two cards side
-        by side you reach for a utility class, and the stylesheet fjkit shipped has no idea you wanted
-        it. So spacing and columns are macros, and every value is a lookup whose entries appear
-        <em>verbatim</em> in the kit's source where Tailwind can see them.
+        Components alone do not get you to a closed vocabulary. The first time you need two cards
+        side by side you reach for a utility class, and the stylesheet fjkit shipped has no idea you
+        wanted it. So spacing and columns are macros too. Every value is a lookup whose entries
+        appear <em>verbatim</em> in the kit's source, where Tailwind can see them.
       </p>
       <p>
         The dashed tiles are your content. Change the knobs and watch the source line change with them.
@@ -171,10 +172,9 @@ fjkit
 <h2 class="text-lg font-semibold tracking-tight">page_header, section, divider</h2><p class="text-muted-foreground text-sm">A heading, a rule and a group are components too — or they are utility classes.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         These three are what a page is made of before any of its data arrives.
-        <code>page_header</code> takes a block, and the block is its actions — so a title, a
-        description and a row of buttons stay on one line at every width without a caller measuring
-        anything. The header at the top of this page is the same macro, called plainly, with no
-        actions to place.
+        <code>page_header</code> takes a block, and the block is its actions. A title, a description
+        and a row of buttons stay on one line at every width, with no caller measuring anything. The
+        header at the top of this page is the same macro, called plainly, with no actions to place.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -217,11 +217,11 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">empty_state, metric_group, lists</h2><p class="text-muted-foreground text-sm">Everything else in <code>data.html</code> — the pieces that display a value.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        A table full of rows is the easy case. These are the others: the count that has no rows behind
-        it yet, the row of numbers above a table, the sentence with a key combination in it.
+        A table full of rows is the easy case. These are the others: the count that has no rows
+        behind it yet, the row of numbers above a table, the sentence with a key combination in it.
       </p>
       <p>
-        <code>empty_state</code> is worth knowing before you need it — <code>table</code> renders it
+        <code>empty_state</code> is worth knowing before you need it. <code>table</code> renders it
         for you when <code>rows</code> is empty, so no caller writes the if-rows-else branch.
       </p>
 </div>
@@ -275,15 +275,15 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">icon(): any Lucide name, inlined</h2><p class="text-muted-foreground text-sm">1,767 names, no sprite sheet, no icon font, no request.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        <code>icon("plus")</code> inlines the Lucide path as an <code>&lt;svg&gt;</code>. It inherits
-        <code>currentColor</code>, so an icon inside a primary button is already the right colour, and
-        it costs no network request at any size.
+        <code>icon("plus")</code> inlines the Lucide path as an <code>&lt;svg&gt;</code>. It
+        inherits <code>currentColor</code>, so an icon inside a primary button is already the right
+        colour, and it costs no network request at any size.
       </p>
       <p>
-        Most macros take <code>icon_name=</code> directly — <code>button</code>, <code>stat</code>,
-        <code>empty_state</code>, <code>brand</code>, <code>sidebar_link</code> — so you rarely call
+        Most macros take <code>icon_name=</code> directly: <code>button</code>, <code>stat</code>,
+        <code>empty_state</code>, <code>brand</code>, <code>sidebar_link</code>. So you rarely call
         this one yourself. The links in this site's sidebar are all of them. A sample of the set is
-        below; any Lucide name works.
+        below, and any Lucide name works.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
