@@ -10,9 +10,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from fjkit.vendored import StylePack
+
+if TYPE_CHECKING:
+    from fjkit.plugins import Plugin
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 TEMPLATE_DIR = PACKAGE_DIR / "templates"
@@ -77,6 +80,13 @@ class FjkitConfig:
     #: Extra values exposed to every template. Prefer this over threading the
     #: same key through every route's context dict.
     globals: dict[str, object] = field(default_factory=dict)
+
+    #: Extensions, applied in this order. A plugin can add middleware, an
+    #: exception handler, a template directory, or a value that every template
+    #: gets — see `fjkit.plugins`. Order matters twice: template directories
+    #: are searched in it, and Starlette runs middleware in reverse of it, so a
+    #: plugin listed later wraps the ones before it.
+    plugins: tuple[Plugin, ...] = ()
 
     #: Default representation for every `@render` route. A single decorator can
     #: override it with `mode=`, so this is the app-wide default rather than a

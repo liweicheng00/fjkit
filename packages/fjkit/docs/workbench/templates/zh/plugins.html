@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% from "_parts.html" import code, defs, files, lesson, prose, stage %}
+{% from "ui/data.html" import badge, card, code_block, link %}
+{% from "ui/layout.html" import page_header, stack %}
+{% from "ui/table.html" import cell, table %}
+
+{#
+  base.html 的側欄由這份清單建出來，所以在這裡改名就等於改了導覽。
+  id 要跟 `lesson()` 產生的錨點一致。
+#}
+{% set sections = [
+  {"id": "why",      "title": "plugin 是什麼"},
+  {"id": "mount",    "title": "mount()：app 那一側"},
+  {"id": "extend",   "title": "extend()：Jinja 與每一次渲染"},
+  {"id": "rules",    "title": "順序、碰撞與界線"},
+  {"id": "auth",     "title": "auth plugin"},
+  {"id": "write",    "title": "flash plugin"},
+] %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    有些東西不是 macro。plugin 加的是 middleware、exception handler，或是每個模板都該拿到的值——
+    一個物件，一個地方註冊。
+  {% endset %}
+  {{ page_header("Plugins", intro) }}
+
+  {# ============================================================== 01 #}
+  {% set t01 %}兩個貢獻時機，因為 kit 真的有兩個時機。{% endset %}
+  {% call lesson("why", "01", "plugin 是什麼", t01) %}
+    {% call prose() %}
+      <p>
+        macro 管的是一頁畫出什麼。它管不到 handler 執行之前發生的事，也管不到「每個模板都該知道、
+        但不該由每條路由傳過去」的東西。session 兩者都要，flash、語系、feature flag 也是。
+      </p>
+      <p>
+        plugin 是一個物件，兩個方法都可選。<code>mount()</code> 在 app 建構時執行，
+        <code>extend()</code> 在 Jinja environment 建立時執行。只想給每個模板一個值的 plugin，
+        就只寫後面那個。
+      </p>
+    {% endcall %}
+
+    {{ code("config = FjkitConfig(
+    template_dir=APP_DIR / \"templates\",
+    plugins=(auth, flash),
+)
+mount_fjkit(app, config)", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        註冊就這樣而已。<code>mount_fjkit()</code> 本來就要讀這份 config 來掛靜態檔與建
+        environment，所以 plugin 不需要第二個呼叫，也沒有 import 順序要記。
+      </p>
+      <p>
+        分成兩個時機是刻意讓它看得見的。藏起來會比較友善——直到某個人的 <code>mount()</code>
+        靜悄悄地沒有執行為止。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 02 #}
+  {% set t02 %}middleware、handler、路由——而且都記在加它的那個 plugin 頭上。{% endset %}
+  {% call lesson("mount", "02", "mount()：app 那一側", t02) %}
+    {% call prose() %}
+      <p>
+        <code>AppSetup</code> 基本上就是 FastAPI 的轉手。它多做的事是署名：出問題的 plugin 會被
+        指名，而不是靠一個一個拔掉來找。
+      </p>
+    {% endcall %}
+
+    {{ defs("AppSetup", [
+      ("add_middleware(cls, **options)", "Starlette 依註冊的反序執行 middleware，所以 plugins= 裡排在後面的 plugin 包在前面那些的外層"),
+      ("add_exception_handler(exc, handler)", "注意 middleware 裡拋出的例外永遠到不了 handler——Starlette 的 handler 那一層在使用者 middleware 的內側"),
+      ("include_router(router)", "給自帶端點的 plugin"),
+      ("mount_static(url, directory)", "給自帶資產的 plugin，掛載名稱由 plugin 名字衍生"),
+      ("warn(message)", "啟動期的設定檢查；訊息會冠上 plugin 名稱，以 PluginWarning 發出"),
+      ("app, config", "活的 FastAPI app 與 FjkitConfig，給上面兩個表達不了的檢查用"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        <code>warn()</code> 是給「只有這個 plugin 認得出來」的組合用的。例如正式設定配上記憶體版
+        session store：在你的筆電上完全正常，換到四個 worker 後面就會隨機把人登出，而且 traceback
+        裡沒有任何一行指向原因。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 03 #}
+  {% set t03 %}per-request 的 context，是原本缺的那一塊。{% endset %}
+  {% call lesson("extend", "03", "extend()：Jinja 與每一次渲染", t03) %}
+    {% call prose() %}
+      <p>
+        <code>FjkitConfig.globals</code> 每個 process 只算一次。對版本字串來說剛剛好，對「現在登入
+        的是誰」來說毫無用處。<code>add_context_processor()</code> 是另外那一半：每次渲染執行一次，
+        拿得到當下的 request。
+      </p>
+    {% endcall %}
+
+    {{ defs("EnvSetup", [
+      ("add_template_dir(path)", "搜尋順序排在 app 的模板之後、kit 的之前——plugin 可以蓋掉 kit 的 macro，永遠蓋不掉 app 自己寫的檔案"),
+      ("add_global(name, value)", "整個 process 一個值"),
+      ("add_filter(name, fn)", "一個 Jinja filter"),
+      ("add_context_processor(fn, provides=[…])", "併進每個模板的 context，每次渲染一次"),
+    ]) }}
+
+    {{ code("def extend(self, setup: EnvSetup) -> None:
+    setup.add_context_processor(
+        lambda request: {\"session\": getattr(request.state, \"auth\", None)},
+        provides=[\"session\"],
+    )", label="auth plugin 的 extend()，全部") }}
+
+    {% call prose() %}
+      <p>
+        兩個限制，都是刻意的。processor 必須是<strong>同步</strong>的：它在
+        <code>Templates.page()</code> 裡執行，而那是 <code>def</code> handler 從 threadpool 進來的。
+        需要 I/O 的 plugin 在 middleware 裡做完，把結果留在 <code>request.state</code> 上——上面那
+        一行讀的正是這個。
+      </p>
+      <p>
+        <code>provides=</code> 是強制宣告而不是自動推得。沒有它，兩個 plugin 默默搶同一個
+        <code>user</code>，只能靠渲染一頁然後剛好注意到才會發現；有了它，衝突是一個點名雙方的啟動
+        期錯誤。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 04 #}
+  {% set t04 %}所有可能撞在一起的東西，都在啟動時炸，不會留到正式環境。{% endset %}
+  {% call lesson("rules", "04", "順序、碰撞與界線", t04) %}
+    {% call stage("模板搜尋順序", "先找到的贏。") %}
+      {% call table([{"label": "順序"}, {"label": "屬於"}, {"label": "可以蓋掉"}]) %}
+        <tr>
+          {{ cell("1", tone="muted", numeric=true) }}
+          {{ cell("app 的 template_dir", tone="strong") }}
+          {{ cell("全部——這就是 fjkit eject") }}
+        </tr>
+        <tr>
+          {{ cell("2", tone="muted", numeric=true) }}
+          {{ cell("每個 plugin，依 plugins= 的順序", tone="strong") }}
+          {{ cell("kit 的 macro，永遠不含 app 的檔案") }}
+        </tr>
+        <tr>
+          {{ cell("3", tone="muted", numeric=true) }}
+          {{ cell("kit", tone="strong") }}
+          {{ cell("沒有") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {{ defs("啟動時就拒絕", [
+      ("兩個 plugin 同名", "它們會在 request.state.<name> 上撞在一起，之後每一則錯誤訊息都變得沒辦法分辨"),
+      ("兩個 plugin 搶同一個 global、filter 或 context key", "錯誤訊息會點名雙方，並要你改名或拿掉一個"),
+      ("processor 回傳沒宣告過的 key", "在 strict_undefined 下會被抓到，所以是在開發階段浮現"),
+    ]) }}
+
+    {% set no_markup %}
+      沒有任何一個 hook 能把 markup 塞進 shell。有的話，任何 plugin 都能在每一頁放一段
+      <code>&lt;script&gt;</code>——「你這端零建置」與封閉詞彙表會同時從那道側門走掉。要出 UI 的
+      plugin 出的是<em>模板</em>，而且跟其他東西一樣得過 <code>fjkit check</code>。
+    {% endset %}
+    {{ defs("plugin 做不到的事", [
+      ("注入 markup", no_markup),
+      ("依賴另一個 plugin", "順序就是你寫的順序，沒有解析步驟——因為目前還沒有東西需要"),
+      ("在啟動時開連線", "沒有 lifespan hook。plugin 收的是 app 已經建好的 client，這也是 RedisStore 有一個 client 參數的原因"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 05 #}
+  {% set t05 %}瀏覽器拿 cookie，token 留在伺服器。{% endset %}
+  {% call lesson("auth", "05", "auth plugin", t05, tag="fjkit.auth") %}
+    {% call prose() %}
+      <p>
+        內建的第一個 plugin，也是這個接縫存在的理由。瀏覽器只拿到一個不透明、簽名過的
+        <code>HttpOnly</code> cookie；access token、refresh token 與你的 claims 全部留在伺服器端的
+        session store 裡。
+      </p>
+      <p>
+        這正是 htmx app 要的形狀。不需要 <code>htmx:configRequest</code> 去掛 header、不需要
+        refresh 重試的膠水、DOM 裡沒有 token——瀏覽器每個請求都會帶上 cookie，因為瀏覽器本來就會。
+      </p>
+    {% endcall %}
+
+    {{ code("auth = AuthPlugin(
+    secret=os.environ[\"FJKIT_SECRET\"],
+    store=RedisStore(redis.from_url(REDIS_URL)),
+    source=MyOIDCSource(),
+    trusted_origins=[\"https://app.example.com\"],
+)
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))", label="app/main.py") }}
+
+    {{ defs("三個各自可換的接縫", [
+      ("SessionStore", "開發用 MemoryStore、正式用 RedisStore，或你自己的——五個 async 方法"),
+      ("TokenSource", "憑證怎麼變成 session：比對密碼、OIDC code 交換、跟上游換 token。預設的 LocalSource 根本沒有上游"),
+      ("Csrf", "cookie 是 ambient credential，所以 CSRF 回來了。SameSite=Lax 加上精確的 Origin 比對——兩者漏掉的東西不一樣"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        路由完全看不到這些。在 router 上掛 <code>Depends(auth.required)</code>，底下的 handler
+        簽名一個字都不用改；session 在 <code>request.state.auth</code> 上，在每個模板裡叫
+        <code>session</code>。
+      </p>
+    {% endcall %}
+
+    {% call stage("未登入的請求怎麼被拒絕", "@render 拿來決定線上格式的那個問題，換個角度問：該怎麼說不。") %}
+      {% call table([{"label": "誰在問"}, {"label": "回什麼"}, {"label": "為什麼不是 401"}]) %}
+        <tr>
+          {{ cell("htmx", tone="strong") }}
+          {{ cell(badge("401 + HX-Redirect", variant="info")) }}
+          {{ cell("——htmx 在讀狀態碼之前就處理 HX-Redirect，所以這一格兩者兼得") }}
+        </tr>
+        <tr>
+          {{ cell("瀏覽器導覽", tone="strong") }}
+          {{ cell(badge("303", variant="info")) }}
+          {{ cell("沒有 body 的 401 就是一片空白；人要的是登入表單") }}
+        </tr>
+        <tr>
+          {{ cell("腳本、curl、另一個服務", tone="strong") }}
+          {{ cell(badge("401", variant="outline")) }}
+          {{ cell("——401 就是為這個呼叫端存在的") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        只有中間那一列不能是 401：一般導覽沒有任何機制可以對它做出反應，只會停在一片空白上。
+        htmx 那一列才有意思——它處理完 <code>HX-Redirect</code> 就 return，<em>還沒讀到</em>狀態碼，
+        所以狀態碼可以誠實，而瀏覽器照樣整頁移動。導覽的判定是 <code>Sec-Fetch-Mode: navigate</code>，
+        沒有的話退而看 <code>Accept</code> 有沒有提到 <code>text/html</code>；其餘都是
+        <code>render_mode="auto"</code> 下會拿到 JSON 的那個呼叫端。那個 401 不帶
+        <code>WWW-Authenticate</code>：RFC 9110 要求這個欄位，但所有已註冊的機制在這裡都是錯的。
+        <code>Basic</code> 會讓瀏覽器跳出它自己的帳密對話框，而那正是這個 plugin 要取代掉的登入表單。
+      </p>
+    {% endcall %}
+
+    {{ defs("動手之前值得知道的", [
+      ("每個請求一次 store 查詢", "這是「刪一筆就能撤銷 session」與「refresh token 永不上線」的代價"),
+      ("refresh 有鎖", "否則同時發出的四個 swap 會送出四次 refresh，而有輪替的上游在第二次到達時就撤銷整個 family"),
+      ("refresh 期間不換 session id", "換了的話並行的 swap 會各帶回一張不同的 Set-Cookie，最後一張贏，其餘變孤兒"),
+      ("登入路由是 async def", "它們要 await store，真正的 TokenSource 還要 await 身分提供者。只負責渲染的路由維持 def"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 06 #}
+  {% set t06 %}一則活得比產生它的那個回應更久的訊息。{% endset %}
+  {% call lesson("write", "06", "flash plugin", t06, tag="fjkit.flash") %}
+    {% call prose() %}
+      <p>
+        轉址是訊息的墳場。<code>HX-Trigger</code> 是叫頁面去觸發一個事件，但頁面在那個標頭抵達之前
+        就被換掉了；一般導覽更是從頭到尾沒有 JavaScript 參與。唯一跨得過去的只有 cookie。
+      </p>
+      <p>
+        所以 flash 是一個短命的簽名 cookie：在轉址的那個回應上種下去，在落地的那個請求上讀回來，
+        渲染進下一頁，並在同一個回應裡清掉——這就是它只出現一次、重新整理不會再跳的原因。
+        <code>ui/shell.html</code> 已經帶了 toaster 區域並從 <code>flash</code> 填它，所以註冊
+        plugin 就是全部的設定，你的模板一個字都不用改。
+      </p>
+    {% endcall %}
+
+    {{ code("flash = FlashPlugin(secret=os.environ[\"FJKIT_SECRET\"])
+auth = AuthPlugin(secret=…, trusted_origins=…, flash=flash)
+
+config = FjkitConfig(template_dir=…, plugins=(flash, auth))", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        <code>auth</code> 是被交給 flash，而不是自己 import 它。兩個 plugin 誰也不依賴誰——auth
+        沒有 flash 也能跑，而一條剛存好資料的路由想要的是
+        <code>flash.add(response, "Saved")</code>，跟 session 毫無關係。把它們接起來的是 app，
+        這也是第 04 節裡沒有相依解析的同一個理由。
+      </p>
+      <p>
+        它在 Jinja 這一側只有一個 processor，而它交出去的是一個小物件而不是一個 list，理由值得
+        知道：一次頁面載入發出的請求不只頁面本身——htmx 的輪詢、prefetch、樣式表都算——如果「消耗」
+        的定義是「這個請求帶了那個 cookie」，其中任何一個都會把訊息吃掉。所以那個佇列是在被
+        <em>迭代</em>時才標記為已讀，而那只發生在真正畫出 toast 的地方。
+      </p>
+    {% endcall %}
+
+    {{ code("def extend(self, setup: EnvSetup) -> None:
+    setup.add_context_processor(self._read, provides=[\"flash\"])
+
+def _read(self, request: Request) -> dict[str, object]:
+    # 是佇列不是 list：有東西迭代它的時候，它會把自己標記成已讀。
+    return {\"flash\": _Queue(getattr(request.state, \"flash\", ()), request)}", label="fjkit/flash.py") }}
+
+    {% call prose() %}
+      <p>
+        在任何地方發一則——<code>flash.add(response, "Saved", category="success")</code>——它就會
+        出現在瀏覽器接下來落地的那一頁上，長成一個 toast，而那一頁的路由對它一無所知。這也是判斷
+        一樣東西該不該做成 plugin 的標準：這個值，路由自己傳得過去嗎？這裡傳不過去，因為發出訊息
+        的那條路由，不是渲染它的那條。
+      </p>
+    {% endcall %}
+
+    {{ defs("鴨子型別，不是繼承", [
+      ("name", "一個 str 屬性——必要，而且只有這一個"),
+      ("mount / extend", "要寫哪個都行，兩個都不寫也行；沒有的那個就不會被呼叫"),
+      ("沒有基底類別", "Plugin 是 Protocol，所以一個 plugin 不需要 import fjkit 才能成為 plugin"),
+    ]) }}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}

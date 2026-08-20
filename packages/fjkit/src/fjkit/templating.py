@@ -23,21 +23,32 @@ from jinja2 import (
 
 from fjkit.config import TEMPLATE_DIR, FjkitConfig
 from fjkit.icons import path as _icon_path
+from fjkit.plugins import collect_env
 from fjkit.styles import resolve_style
 
 __all__ = ["Templates", "build_environment", "get_templates"]
 
 
 def build_environment(config: FjkitConfig | None = None) -> Environment:
-    """Compile-time settings for every template the app renders."""
-    config = config or FjkitConfig()
+    """Compile-time settings for every template the app renders.
 
-    # App templates first, kit templates second. A file at the same path in the
-    # app wins — that is how `fjkit eject` works, and why shadowing is a
-    # supported feature rather than a fork.
+    Also the one place plugins' `extend` hooks run, so their context processors
+    end up on the returned Environment as `fjkit_context_processors`. They ride
+    there because `Templates` is built from an Environment and nothing else,
+    and running the hooks a second time to collect them would call plugin code
+    twice for one app.
+    """
+    config = config or FjkitConfig()
+    contributions = collect_env(config)
+
+    # App templates first, then any a plugin shipped, then the kit's. A file at
+    # the same path in the app wins — that is how `fjkit eject` works, and why
+    # shadowing is a supported feature rather than a fork. Plugins sit in the
+    # middle so one can replace a kit macro but never a file the app wrote.
     searchpath: list[FileSystemLoader] = []
     if config.template_dir is not None:
         searchpath.append(FileSystemLoader(config.template_dir, encoding="utf-8"))
+    searchpath.extend(FileSystemLoader(d, encoding="utf-8") for d in contributions.template_dirs)
     searchpath.append(FileSystemLoader(TEMPLATE_DIR, encoding="utf-8"))
 
     bytecode_cache = None
@@ -76,7 +87,17 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     # *name* rather than a finished URL so a custom shell can also report or
     # switch on which pack is live.
     env.globals["fjkit_style"] = resolve_style(config.style)
+
+    # Plugins before the app's own globals: an app can always override what a
+    # plugin exposed, and never the other way round.
+    env.globals.update(contributions.globals)
+    env.filters.update(contributions.filters)
     env.globals.update(config.globals)
+
+    #: Read by `Templates.page()` and `.stream()`. A tuple so the hot path can
+    #: test it with one truthiness check and skip the merge entirely when no
+    #: plugin asked for a per-request context — which is the common case.
+    env.fjkit_context_processors = tuple(contributions.processors)  # type: ignore[attr-defined]
     return env
 
 
@@ -176,7 +197,7 @@ class Templates:
         headers: Mapping[str, str] | None = None,
     ) -> HTMLResponse:
         template = self.env.get_template(name)
-        html = template.render(request=request, **(context or {}))
+        html = template.render(request=request, **self._context(request, context))
         return HTMLResponse(html, status_code=status_code, headers=dict(headers or {}))
 
     def stream(
@@ -191,8 +212,10 @@ class Templates:
     ) -> StreamingResponse:
         template = self.env.get_template(name)
 
+        merged = self._context(request, context)
+
         def chunks() -> Iterator[str]:
-            stream = template.stream(request=request, **(context or {}))
+            stream = template.stream(request=request, **merged)
             # Un-buffered, Jinja yields one string per literal/expression —
             # thousands of tiny writes, each one an ASGI message. Buffering
             # batches them, which is where nearly all of the win is.
@@ -205,6 +228,35 @@ class Templates:
             media_type="text/html",
             headers=dict(headers or {}),
         )
+
+    def _context(self, request: Request, context: Mapping[str, Any] | None) -> dict[str, Any]:
+        """The route's context, with every plugin's per-request values under it.
+
+        The route wins: a handler that returns `user` overrides the plugin that
+        provides one, because the specific caller knows something the app-wide
+        rule does not.
+        """
+        processors = getattr(self.env, "fjkit_context_processors", ())
+        if not processors:
+            # The common case, and the hot path: no copy, no merge, no loop.
+            return dict(context or {})
+
+        merged: dict[str, Any] = {}
+        for plugin, provides, processor in processors:
+            values = processor(request)
+            if self.config.strict_undefined:
+                # Same dev/prod switch as undefined names, and the same reason:
+                # a key a plugin never declared is invisible until two plugins
+                # collide over it, and by then the page is already wrong.
+                undeclared = set(values) - set(provides)
+                if undeclared:
+                    raise RuntimeError(
+                        f"fjkit plugin {plugin!r} returned context key(s) "
+                        f"{sorted(undeclared)} it did not declare in `provides=`."
+                    )
+            merged.update(values)
+        merged.update(context or {})
+        return merged
 
 
 def get_templates(request: Request) -> Templates:

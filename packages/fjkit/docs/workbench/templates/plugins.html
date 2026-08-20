@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+{% from "_parts.html" import code, defs, files, lesson, prose, stage %}
+{% from "ui/data.html" import badge, card, code_block, link %}
+{% from "ui/layout.html" import page_header, stack %}
+{% from "ui/table.html" import cell, table %}
+
+{#
+  The rail in base.html is built from this list, so a section renamed here is
+  renamed in the navigation. Ids match the anchors `lesson()` emits.
+#}
+{% set sections = [
+  {"id": "why",      "title": "What a plugin is"},
+  {"id": "mount",    "title": "mount(): the app side"},
+  {"id": "extend",   "title": "extend(): Jinja, and every render"},
+  {"id": "rules",    "title": "Order, collisions, and limits"},
+  {"id": "auth",     "title": "The auth plugin"},
+  {"id": "write",    "title": "The flash plugin"},
+] %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    Some things are not a macro. A plugin adds middleware, an exception handler, or a value every
+    template gets — in one object, registered in one place.
+  {% endset %}
+  {{ page_header("Plugins", intro) }}
+
+  {# ============================================================== 01 #}
+  {% set t01 %}Two contribution points, because the kit has two moments.{% endset %}
+  {% call lesson("why", "01", "What a plugin is", t01) %}
+    {% call prose() %}
+      <p>
+        A macro covers what a page draws. It does not cover what happens before the handler runs, or
+        what every template should know without a route passing it along. Sessions need both. So do
+        flash messages, locales and feature flags.
+      </p>
+      <p>
+        A plugin is one object with two optional methods. <code>mount()</code> runs when the app is
+        constructed. <code>extend()</code> runs when the Jinja environment is built. Both are
+        optional — a plugin that only puts a value in every template writes only the second.
+      </p>
+    {% endcall %}
+
+    {{ code("config = FjkitConfig(
+    template_dir=APP_DIR / \"templates\",
+    plugins=(auth, flash),
+)
+mount_fjkit(app, config)", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        That is the whole registration. <code>mount_fjkit()</code> already reads this config for the
+        static mount and the environment, so a plugin needs no second call and no import order to
+        get right.
+      </p>
+      <p>
+        The split is visible on purpose. Hiding it would be friendlier right up until someone's
+        <code>mount()</code> silently never ran.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 02 #}
+  {% set t02 %}Middleware, handlers, routes — attributed to the plugin that added them.{% endset %}
+  {% call lesson("mount", "02", "mount(): the app side", t02) %}
+    {% call prose() %}
+      <p>
+        <code>AppSetup</code> is a thin pass-through to FastAPI. What it adds is attribution: a
+        misbehaving plugin is named rather than found by elimination.
+      </p>
+    {% endcall %}
+
+    {{ defs("AppSetup", [
+      ("add_middleware(cls, **options)", "Starlette runs middleware in reverse registration order, so a plugin listed later in plugins= wraps the ones before it"),
+      ("add_exception_handler(exc, handler)", "note that an exception raised inside middleware never reaches one — Starlette's handler layer sits inside the user stack"),
+      ("include_router(router)", "for a plugin that ships endpoints of its own"),
+      ("mount_static(url, directory)", "for a plugin that ships assets, mounted under a name derived from the plugin's"),
+      ("warn(message)", "startup configuration checks; the message is prefixed with the plugin's name and raised as PluginWarning"),
+      ("app, config", "the live FastAPI app and the FjkitConfig, for the checks the two above cannot express"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        <code>warn()</code> is for the combinations only the plugin can recognise. An in-memory
+        session store under a production config, say: it works on your laptop and logs users out at
+        random behind four workers, and nothing in the traceback points at the cause.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 03 #}
+  {% set t03 %}The per-request context is the part that was missing.{% endset %}
+  {% call lesson("extend", "03", "extend(): Jinja, and every render", t03) %}
+    {% call prose() %}
+      <p>
+        <code>FjkitConfig.globals</code> is resolved once per process. That is right for a version
+        string and useless for the signed-in user. <code>add_context_processor()</code> is the
+        other half: a callable run once per render, with the live request.
+      </p>
+    {% endcall %}
+
+    {{ defs("EnvSetup", [
+      ("add_template_dir(path)", "searched after the app's templates and before the kit's — a plugin may replace a kit macro, never a file the app wrote"),
+      ("add_global(name, value)", "one value for the whole process"),
+      ("add_filter(name, fn)", "a Jinja filter"),
+      ("add_context_processor(fn, provides=[…])", "merged into every template's context, once per render"),
+    ]) }}
+
+    {{ code("def extend(self, setup: EnvSetup) -> None:
+    setup.add_context_processor(
+        lambda request: {\"session\": getattr(request.state, \"auth\", None)},
+        provides=[\"session\"],
+    )", label="the auth plugin's whole extend()") }}
+
+    {% call prose() %}
+      <p>
+        Two constraints, both deliberate. A processor is <strong>synchronous</strong>: it runs inside
+        <code>Templates.page()</code>, which a <code>def</code> handler reaches from the threadpool. A
+        plugin needing I/O does it in middleware and leaves the result on
+        <code>request.state</code> — which is exactly what the line above reads.
+      </p>
+      <p>
+        And <code>provides=</code> is required rather than inferred. Without it, two plugins quietly
+        fighting over <code>user</code> is discoverable only by rendering a page and noticing. With
+        it, the clash is a startup error naming both.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 04 #}
+  {% set t04 %}Everything a plugin can collide over fails at startup, not in production.{% endset %}
+  {% call lesson("rules", "04", "Order, collisions, and limits", t04) %}
+    {% call stage("Template search order", "First match wins.") %}
+      {% call table([{"label": "Searched"}, {"label": "Belongs to"}, {"label": "May shadow"}]) %}
+        <tr>
+          {{ cell("1", tone="muted", numeric=true) }}
+          {{ cell("the app's template_dir", tone="strong") }}
+          {{ cell("everything — this is fjkit eject") }}
+        </tr>
+        <tr>
+          {{ cell("2", tone="muted", numeric=true) }}
+          {{ cell("each plugin, in plugins= order", tone="strong") }}
+          {{ cell("the kit's macros, never the app's files") }}
+        </tr>
+        <tr>
+          {{ cell("3", tone="muted", numeric=true) }}
+          {{ cell("the kit", tone="strong") }}
+          {{ cell("nothing") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {{ defs("Refused at startup", [
+      ("two plugins with one name", "they would collide on request.state.<name> and make every later error ambiguous"),
+      ("two plugins claiming one global, filter or context key", "the error names both, and says to rename one or drop one"),
+      ("a context key a processor did not declare", "caught under strict_undefined, so it surfaces in development"),
+    ]) }}
+
+    {% set no_markup %}
+      There is no hook to inject markup into the shell. With one, any plugin could put a
+      <code>&lt;script&gt;</code> on every page — and both <em>no build step on your side</em> and
+      the closed vocabulary would leave through it. A plugin that ships UI ships
+      <em>templates</em>, and they pass <code>fjkit check</code> like everything else.
+    {% endset %}
+    {{ defs("What a plugin cannot do", [
+      ("inject markup", no_markup),
+      ("depend on another plugin", "order is the order you wrote; there is no resolution step, because nothing has needed one yet"),
+      ("open a connection at startup", "no lifespan hook — a plugin takes a client the app already built, which is why RedisStore has a client parameter"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 05 #}
+  {% set t05 %}The browser holds a cookie. The server holds the token.{% endset %}
+  {% call lesson("auth", "05", "The auth plugin", t05, tag="fjkit.auth") %}
+    {% call prose() %}
+      <p>
+        The first plugin in the box, and the reason the seam exists. The browser is given one
+        opaque, signed, <code>HttpOnly</code> cookie. The access token, the refresh token and your
+        claims stay in a session store on the server.
+      </p>
+      <p>
+        This is what an htmx app wants. No <code>htmx:configRequest</code> hook attaching a header,
+        no refresh-and-retry glue, no token in the DOM — the browser sends the cookie on every
+        request because that is what browsers do.
+      </p>
+    {% endcall %}
+
+    {{ code("auth = AuthPlugin(
+    secret=os.environ[\"FJKIT_SECRET\"],
+    store=RedisStore(redis.from_url(REDIS_URL)),
+    source=MyOIDCSource(),
+    trusted_origins=[\"https://app.example.com\"],
+)
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))", label="app/main.py") }}
+
+    {{ defs("Three seams, replaceable independently", [
+      ("SessionStore", "MemoryStore for development, RedisStore for production, or your own — five async methods"),
+      ("TokenSource", "how credentials become a session: a password check, an OIDC code exchange, an upstream token swap. LocalSource is the default and has no upstream at all"),
+      ("Csrf", "a cookie is an ambient credential, so CSRF returns. SameSite=Lax plus an exact Origin comparison — the two miss different things"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        Routes see none of it. Put <code>Depends(auth.required)</code> on a router and its handlers
+        keep the signatures they had; the session is on <code>request.state.auth</code>, and in
+        every template as <code>session</code>.
+      </p>
+    {% endcall %}
+
+    {% call stage("How an anonymous request is refused", "The same question @render asks about the wire, asked about how to say no.") %}
+      {% call table([{"label": "Who asked"}, {"label": "Answer"}, {"label": "Why not 401"}]) %}
+        <tr>
+          {{ cell("htmx", tone="strong") }}
+          {{ cell(badge("401 + HX-Redirect", variant="info")) }}
+          {{ cell("— htmx acts on HX-Redirect before it reads the status, so this one is both") }}
+        </tr>
+        <tr>
+          {{ cell("a browser navigation", tone="strong") }}
+          {{ cell(badge("303", variant="info")) }}
+          {{ cell("a 401 with no body is a blank page; people want the login form") }}
+        </tr>
+        <tr>
+          {{ cell("a script, curl, a service", tone="strong") }}
+          {{ cell(badge("401", variant="outline")) }}
+          {{ cell("— this is the caller 401 is for") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        Only the middle row cannot be a 401: a plain navigation has no way to act on one, so it
+        would land on a blank page. htmx is the interesting case — it reads <code>HX-Redirect</code>
+        and returns <em>before</em> it looks at the status code, so the status is free to be honest
+        while the browser still moves the whole page. A navigation is recognised by
+        <code>Sec-Fetch-Mode: navigate</code>, or failing that by <code>Accept</code> mentioning
+        <code>text/html</code>; anything else is the caller a route in
+        <code>render_mode="auto"</code> answers in JSON. The 401 carries no
+        <code>WWW-Authenticate</code>: the field is required by RFC 9110, and every registered
+        scheme is wrong here. <code>Basic</code> would make the browser open its own credential
+        dialog, which is the login form this plugin exists to replace.
+      </p>
+    {% endcall %}
+
+    {{ defs("Worth knowing before you reach for it", [
+      ("one store read per request", "the price of revoking a session by deleting a row, and of keeping refresh tokens off the wire"),
+      ("refresh is locked", "four swaps firing at once would otherwise send four refreshes, and an upstream that rotates refresh tokens revokes the family when the second arrives"),
+      ("the session id does not change on refresh", "concurrent swaps would each return a different Set-Cookie, the last would win, and the rest would be orphaned"),
+      ("login routes are async def", "they await the store, and a real TokenSource awaits an identity provider. Routes that only render stay def"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 06 #}
+  {% set t06 %}A message that outlives the response that raised it.{% endset %}
+  {% call lesson("write", "06", "The flash plugin", t06, tag="fjkit.flash") %}
+    {% call prose() %}
+      <p>
+        A redirect is where messages go to die. <code>HX-Trigger</code> names an event for the page
+        to fire, and the page is replaced before the header arrives; a plain navigation has no
+        JavaScript involved at all. The cookie jar is the only thing that crosses.
+      </p>
+      <p>
+        So a flash is written as a short-lived signed cookie, read back on the request that lands,
+        rendered into the next page, and cleared in the same breath — which is why it appears once
+        and not again on reload. <code>ui/shell.html</code> already carries a toaster region and
+        fills it from <code>flash</code>, so registering the plugin is the entire setup and no
+        template in your app changes.
+      </p>
+    {% endcall %}
+
+    {{ code("flash = FlashPlugin(secret=os.environ[\"FJKIT_SECRET\"])
+auth = AuthPlugin(secret=…, trusted_origins=…, flash=flash)
+
+config = FjkitConfig(template_dir=…, plugins=(flash, auth))", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        <code>auth</code> is handed the flash rather than importing it. Neither plugin depends on
+        the other — auth works without one, and a route that just saved something wants
+        <code>flash.add(response, "Saved")</code> with no session in sight. The app is what
+        connects them, which is the same reason there is no dependency resolution in section 04.
+      </p>
+      <p>
+        The whole of its Jinja side is one processor, and the reason it hands over a small object
+        rather than a list is worth knowing: a page load fires more requests than the page — an
+        htmx poll, a prefetch, a stylesheet — and any of them would consume the message if
+        consumption meant "a request carried the cookie". So the queue is marked read when it is
+        <em>iterated</em>, which only happens where the toasts are actually drawn.
+      </p>
+    {% endcall %}
+
+    {{ code("def extend(self, setup: EnvSetup) -> None:
+    setup.add_context_processor(self._read, provides=[\"flash\"])
+
+def _read(self, request: Request) -> dict[str, object]:
+    # A queue, not a list: it marks itself read when something iterates it.
+    return {\"flash\": _Queue(getattr(request.state, \"flash\", ()), request)}", label="fjkit/flash.py") }}
+
+    {% call prose() %}
+      <p>
+        Raise one from anywhere — <code>flash.add(response, "Saved", category="success")</code> —
+        and it appears on whatever page the browser lands on next, as a toast, with no route on
+        that page knowing anything about it. That is the test of whether something should be a
+        plugin at all: could a route have passed it instead? Here it could not, because the route
+        that raises the message is not the route that renders it.
+      </p>
+    {% endcall %}
+
+    {{ defs("Duck-typed, not inherited", [
+      ("name", "a str attribute — required, and the only one"),
+      ("mount / extend", "implement either, both, or neither; missing ones are simply not called"),
+      ("no base class", "Plugin is a Protocol, so a plugin never imports fjkit to be one"),
+    ]) }}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}

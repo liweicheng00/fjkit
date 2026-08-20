@@ -36,8 +36,19 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 APP_TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "examples" / "board" / "app" / "templates"
 
 
+#: The globals the demo's own `main.py` supplies. `base.html` feeds
+#: `style_sheets` to its style picker through `| tojson`, and an undefined
+#: value there is a `TypeError` rather than a blank — so a benchmark that
+#: renders the demo's pages has to supply them, exactly as the app does.
+#:
+#: A plain dict, not an import from the demo: the point of this file is to
+#: measure Jinja, and reaching into the app for a constant would make the
+#: numbers depend on the app's wiring.
+APP_GLOBALS = {"style_sheets": {"vega": "/_fjkit/dist/fjkit-vega.css"}}
+
+
 def app_env(**overrides) -> Environment:
-    return build_environment(FjkitConfig(template_dir=APP_TEMPLATE_DIR, **overrides))
+    return build_environment(FjkitConfig(template_dir=APP_TEMPLATE_DIR, globals=APP_GLOBALS, **overrides))
 
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"

@@ -21,15 +21,17 @@ from fjkit.cli.check import check_templates
 DOCS = Path(__file__).resolve().parents[1] / "docs" / "workbench"
 TEMPLATES = DOCS / "templates"
 
-#: Every page template, both languages. The Chinese pages are the same three
+#: Every page template, both languages. The Chinese pages are the same four
 #: pages translated — same `sections`, same shell — so they answer to the same
 #: assertions rather than a relaxed set.
 PAGES = [
     "introduction.html",
     "learn.html",
+    "plugins.html",
     "components.html",
     "zh/introduction.html",
     "zh/learn.html",
+    "zh/plugins.html",
     "zh/components.html",
 ]
 
@@ -122,7 +124,7 @@ def test_the_quoted_routes_are_the_demo_s():
 
 
 def test_the_site_builds():
-    """End to end: all six pages — three, twice — render through the real
+    """End to end: all eight pages — four, twice — render through the real
     Environment.
 
     Also the only test that proves `url_for`/`is_active` still satisfy the
@@ -179,8 +181,9 @@ def test_every_asset_link_is_relative_to_its_page():
     if not (out / "index.html").exists():
         pytest.skip("the site has not been built in this checkout")
 
-    pages = [out / "index.html", out / "learn.html", out / "components.html"]
-    pages += [out / "zh" / name for name in ("index.html", "learn.html", "components.html")]
+    names = ("index.html", "learn.html", "plugins.html", "components.html")
+    pages = [out / name for name in names]
+    pages += [out / "zh" / name for name in names]
 
     for page in pages:
         html = page.read_text(encoding="utf-8")

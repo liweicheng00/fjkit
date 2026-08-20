@@ -18,6 +18,7 @@
   Fill the `sidebar` block instead of `nav` and the skeleton becomes a side
   column plus a thin top bar; see the note above <body>.
 #}
+{% from "ui/feedback.html" import toast, toaster %}
 {% from "ui/nav.html" import theme_toggle %}
 {% from "ui/sidebar.html" import sidebar_trigger %}
 {#
@@ -101,6 +102,30 @@
       </footer>
     {% endblock %}
   </div>
+
+  {#
+    Where a message that outlived a redirect arrives.
+
+    `flash` is not something a route passes in — it comes from `FlashPlugin`'s
+    context processor, so a page that has never heard of flash messages still
+    shows one. `is defined` rather than a truth test: without the plugin the
+    name does not exist at all, and `strict_undefined` would make that an error
+    on every page of every app that never wanted this.
+
+    The region is rendered whether or not anything is in it. It is one empty
+    element, and always having it is what lets a toast appear on a page that
+    did not know in advance that one was coming.
+  #}
+  {% block toasts %}
+    {% call toaster() %}
+      {% if flash is defined and flash %}
+        {% for message in flash %}
+          {{ toast(message.title, message.text, category=message.category) }}
+        {% endfor %}
+      {% endif %}
+    {% endcall %}
+  {% endblock %}
+
   {% block scripts %}{% endblock %}
 </body>
 </html>

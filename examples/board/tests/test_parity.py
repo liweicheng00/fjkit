@@ -69,6 +69,11 @@ ALLOWED_LOST_HREFS = {"/static/dist/app.css"}
 #: GET / used to ship the same mutating row as /tasks. The overview is now
 #: read-only; those htmx hooks live on the board. Everywhere else is exact.
 #:
+#: `toaster` is the second id written out here for the same reason as `sidebar`:
+#: `ui/shell.html` now renders the region a flash message lands in on every full
+#: page, empty or not. Basecoat registers its controller against `#toaster`
+#: specifically, so the id is not ours to rename.
+#:
 #: `ids` is the one field where an *addition* still fails, and deliberately so:
 #: an id is an htmx target, and a page that quietly grows or renames one is how
 #: a swap starts landing in the wrong place. So the shell's sidebar — which is
@@ -79,13 +84,13 @@ ALLOWED_CONTRACT_DRIFT = {
         "hx_attrs": [],
         "hx_targets": [],
         "hx_urls": [],
-        "ids": ["sidebar"],
+        "ids": ["sidebar", "toaster"],
     },
     "GET /tasks": {
-        "ids": ["board", "f-owner", "f-priority", "f-title", "sidebar"],
+        "ids": ["board", "f-owner", "f-priority", "f-title", "sidebar", "toaster"],
     },
     "GET /tasks/report?rows=5": {
-        "ids": ["sidebar"],
+        "ids": ["sidebar", "toaster"],
     },
 }
 

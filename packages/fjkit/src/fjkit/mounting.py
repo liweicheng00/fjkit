@@ -17,6 +17,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from fjkit.config import STATIC_DIR, FjkitConfig
+from fjkit.plugins import install_plugins
 from fjkit.styles import resolve_style
 from fjkit.templating import Templates
 
@@ -54,6 +55,11 @@ def mount_fjkit(app: FastAPI, config: FjkitConfig | None = None) -> Templates:
         StaticFiles(directory=STATIC_DIR),
         name="fjkit_static",
     )
+
+    # Before the Environment: a plugin's `mount` may refuse a configuration
+    # outright, and failing there is cheaper and clearer than failing after
+    # every template in the app has been compiled.
+    install_plugins(app, config)
 
     templates = Templates.create(config)
     app.state.templates = templates

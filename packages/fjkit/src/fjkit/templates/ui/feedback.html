@@ -160,3 +160,68 @@
     </div>
   </div>
 {%- endmacro %}
+
+{#
+  toaster(align) — the region toasts appear in. One per page, in the shell.
+
+  `id="toaster"` is not a choice: Basecoat registers its controller against
+  `#toaster` specifically, and the CSS is written as `.toaster .toast`, so a
+  toast outside this element gets neither the behaviour nor the skin.
+
+  Empty is the normal state. It costs one element and no CSS, and having it
+  always present is what lets a server-rendered toast arrive without the page
+  needing to know in advance that one might.
+#}
+{% macro toaster(align="end") -%}
+  <div id="toaster" class="toaster" data-align="{{ align }}">{{ caller() if caller else "" }}</div>
+{%- endmacro %}
+
+{#
+  toast(title, description, category, duration, action_label, action_href)
+
+  category: info | success | warning | error
+
+  Server-rendered, and that is the whole point of it. Basecoat scans the DOM
+  for `.toast` and initialises whatever it finds, so a toast written into the
+  page by a template behaves exactly like one raised by script — it animates
+  in, times out, and dismisses on click. No JavaScript of ours, and nothing to
+  call after the page has loaded.
+
+  That is what makes a message survive a redirect. `HX-Trigger` cannot: the
+  document it would fire into is replaced before it arrives. Markup in the next
+  page is the only carrier a full navigation leaves intact.
+
+  `duration` is milliseconds, or -1 to stay until dismissed. Left unset,
+  Basecoat uses 3s, and 5s for `error`.
+
+  The icon is fjkit's, not Basecoat's inline SVG: one icon set on the page
+  keeps stroke weight and corner radius consistent, and it costs nothing
+  because `icon()` is already resolved per render.
+#}
+{% set _TOAST_ICONS = {
+  "info": "info",
+  "success": "circle-check",
+  "warning": "triangle-alert",
+  "error": "circle-x",
+} %}
+
+{% macro toast(title, description=none, category="info", duration=none, action_label=none, action_href=none) -%}
+  <div class="toast"
+       role="{{ "alert" if category == "error" else "status" }}"
+       aria-atomic="true"
+       data-category="{{ category }}"
+       {%- if duration is not none %} data-duration="{{ duration }}"{% endif %}>
+    <div class="toast-content">
+      {{ icon(_TOAST_ICONS.get(category, "info"), 16) }}
+      <section>
+        <h2>{{ title }}</h2>
+        {% if description %}<p>{{ description }}</p>{% endif %}
+      </section>
+      {% if action_label and action_href %}
+        <footer>
+          <a href="{{ action_href }}" class="btn" data-toast-action>{{ action_label }}</a>
+        </footer>
+      {% endif %}
+    </div>
+  </div>
+{%- endmacro %}

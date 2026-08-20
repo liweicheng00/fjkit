@@ -9,12 +9,17 @@ app's own routes.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from pathlib import Path
 
 from fastapi import FastAPI
-from fjkit import FjkitConfig, mount_fjkit
+from fjkit import FjkitConfig, FlashPlugin, mount_fjkit
+from fjkit.auth import AuthPlugin, CookieSpec, MemoryStore
 from fjkit.vendored import STYLE_PACKS
 
+from app.features.auth.router import protected as auth_protected_router
+from app.features.auth.router import router as auth_router
+from app.features.auth.service import DemoSource
 from app.features.dashboard.router import router as dashboard_router
 from app.features.jobs.router import router as jobs_router
 from app.features.jobs.service import JobService
@@ -43,6 +48,16 @@ STATIC_URL = "/_fjkit"
 #: `localStorage` entry cannot turn into a 404 and an unstyled page.
 STYLE_SHEETS = {pack: f"{STATIC_URL}/dist/fjkit-{pack}.css" for pack in STYLE_PACKS}
 
+#: Where this demo runs. Named rather than derived from the `Host` header,
+#: which a request controls — a CSRF check that trusts a value the request
+#: supplied is not a check. A deployed app lists its real origin here.
+TRUSTED_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
+
+#: Fixed so that `fastapi dev` reloading does not sign you out mid-demo. A real
+#: app reads this from the environment and never commits it; the sessions it
+#: signs are only as private as this file is.
+DEMO_SECRET = "fjkit-demo-not-a-secret"
+
 #: The app's templates are searched before fjkit's, so dropping a file at
 #: `templates/ui/button.html` would shadow the kit's — that is `fjkit eject`.
 config = FjkitConfig(
@@ -51,6 +66,36 @@ config = FjkitConfig(
     static_url=STATIC_URL,
     globals={"style_sheets": STYLE_SHEETS},
 )
+
+
+def build_plugins() -> tuple[FlashPlugin, AuthPlugin]:
+    """One set per app, for the same reason the services are.
+
+    The session store is in-memory, so two apps sharing one would share their
+    sessions — which is exactly what the test suite must not have. A deployed
+    app builds these once and gives auth a `RedisStore`.
+
+    `flash` is handed to `auth` rather than imported by it. Neither plugin
+    depends on the other: auth works without a flash, and flash is useful to
+    any route that just finished something. The app is what connects them.
+    """
+    flash = FlashPlugin(secret=DEMO_SECRET, secure=False)
+    auth = AuthPlugin(
+        flash=flash,
+        secret=DEMO_SECRET,
+        store=MemoryStore(),
+        source=DemoSource(),
+        trusted_origins=TRUSTED_ORIGINS,
+        # Where an unauthenticated request is sent. This demo's login form is
+        # on the session page rather than a page of its own, so that is where
+        # the plugin points; the default is "/login".
+        login_url="/session",
+        # The demo is served over plain http. A real app leaves this at its
+        # default of True and serves https, which is the only way the cookie is
+        # protected in transit at all.
+        cookie=CookieSpec(secure=False),
+    )
+    return flash, auth
 
 
 @asynccontextmanager
@@ -66,14 +111,24 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title="fjkit demo — task board", lifespan=lifespan)
 
+    # The session plugin. Registering it is the whole of the wiring: it brings
+    # its own middleware, its own 401 behaviour and the `session` every template
+    # gets. `app.state.auth` is here because two routes call `issue`/`revoke`
+    # and want the same instance the middleware is using.
+    flash, auth = build_plugins()
+    app.state.auth = auth
+    app.state.flash = flash
+
     # Serves fjkit's stylesheet and the vendored htmx/Basecoat JS straight out
     # of the installed package, and builds the Jinja Environment once. The app
     # has no static assets of its own.
-    mount_fjkit(app, config)
+    mount_fjkit(app, replace(config, plugins=(flash, auth)))
 
     app.include_router(dashboard_router)
     app.include_router(tasks_router)
     app.include_router(jobs_router)
+    app.include_router(auth_router)
+    app.include_router(auth_protected_router)
 
     @app.get("/health", include_in_schema=False)
     async def health() -> dict[str, str]:

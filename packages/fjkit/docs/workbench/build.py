@@ -1,4 +1,4 @@
-"""Build the documentation site — three pages in two languages, and the site is
+"""Build the documentation site — four pages in two languages, and the site is
 a fjkit app.
 
     uv run python packages/fjkit/docs/workbench/build.py
@@ -7,8 +7,9 @@ Output, all under `docs/` at the repo root, which is what GitHub Pages serves:
 
     index.html       Introduction — what the kit is, who it is for, what it is not
     learn.html       Learn        — the narrative: wiring, htmx, theming, the gate
+    plugins.html     Plugins      — the extension seam, and the session plugin
     components.html  Components   — every macro, live, with the code that made it
-    zh/              the same three pages in Chinese, from `templates/zh/`
+    zh/              the same four pages in Chinese, from `templates/zh/`
     assets/dist/     fjkit.css, exactly as the wheel ships it
     assets/vendor/   htmx and Basecoat's JS, exactly as the wheel ships them
     assets/brand/    the brand mark, exactly as the wheel ships it
@@ -131,6 +132,27 @@ PAGES = [
             "description": (
                 "不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、"
                 "一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。"
+            ),
+        },
+    },
+    {
+        "route": "plugins",
+        "file": "plugins.html",
+        "icon": "puzzle",
+        "en": {
+            "label": "Plugins",
+            "title": "fjkit plugins",
+            "description": (
+                "Add middleware, an exception handler or a value every template gets, in one object "
+                "registered in one place — and the session plugin that was the first to need it."
+            ),
+        },
+        "zh": {
+            "label": "外掛",
+            "title": "fjkit 外掛",
+            "description": (
+                "用一個物件、一個註冊點，加上 middleware、exception handler，或每個模板都拿得到的值"
+                "——以及第一個需要它的 session 外掛。"
             ),
         },
     },
