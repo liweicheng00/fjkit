@@ -271,4 +271,4 @@ Basecoat 的 skin 是單一檔案，沒辦法按元件 tree-shake；23.5 KB 跟 
 
 **量測，不要相信直覺。** 這份文件裡有一半的結論跟一般說法相反
 （`auto_reload` 沒差、macro 比 inline 慢、threadpool 沒有真的解放 loop）。
-`Server-Timing` header 每個 response 都有，devtools 的 Network 面板直接看得到。
+要看自己的數字，就跑 `bench/render_bench.py`——這份文件裡的每一條結論都對應它的一個 case。

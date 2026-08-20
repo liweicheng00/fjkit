@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-from time import perf_counter
 
 from fastapi import FastAPI
 from fjkit import FjkitConfig, mount_fjkit
@@ -66,15 +65,6 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="fjkit demo — task board", lifespan=lifespan)
-
-    @app.middleware("http")
-    async def server_timing(request, call_next):
-        """Publish wall time as `Server-Timing`, so the browser's network panel
-        shows the server cost of every page and every htmx swap."""
-        started = perf_counter()
-        response = await call_next(request)
-        response.headers["Server-Timing"] = f"app;dur={(perf_counter() - started) * 1000:.2f}"
-        return response
 
     # Serves fjkit's stylesheet and the vendored htmx/Basecoat JS straight out
     # of the installed package, and builds the Jinja Environment once. The app

@@ -37,6 +37,23 @@ EXACT = ("fields", "hx_attrs", "hx_targets", "hx_urls", "form_actions", "ids", "
 ALLOWED_LOST_WORDS = {
     # The demo was renamed; the shell's <title> suffix changed with it.
     "fastapi-jinja2",
+    # The `Server-Timing` middleware was removed, and with it the footer
+    # sentence that pointed at the header: "— server render time is in the
+    # Server-Timing response header". `bench/render_bench.py` is where those
+    # numbers come from, and always was; the header only restated them.
+    #
+    # These are the words that actually stopped appearing anywhere, not every
+    # word in the sentence — "the", "in" and "time" survive elsewhere on the
+    # pages that carry them. Listing the observed set rather than a generous
+    # superset is what keeps this list from turning into a stop-word exemption
+    # that would hide the next real loss.
+    "Server-Timing",
+    "server",
+    "render",
+    "is",
+    "response",
+    "header",
+    "—",
 }
 
 #: Per-probe exceptions for copy that left one page on purpose. "Advance" still

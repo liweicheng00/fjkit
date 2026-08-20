@@ -23,10 +23,6 @@ def test_dashboard_rows_are_read_only(client):
     assert "hx-delete" not in html
 
 
-def test_every_page_reports_server_timing(client):
-    assert client.get("/tasks").headers["Server-Timing"].startswith("app;dur=")
-
-
 def test_streamed_report_is_streamed_and_complete(client):
     with client.stream("GET", "/tasks/report?rows=500") as response:
         assert response.status_code == 200

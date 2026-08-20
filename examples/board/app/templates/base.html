@@ -15,7 +15,6 @@
 {% from "ui/nav.html" import brand, theme_toggle %}
 {% from "ui/layout.html" import row %}
 {% from "ui/sidebar.html" import sidebar, sidebar_group, sidebar_link %}
-{% from "ui/data.html" import kbd %}
 
 {% block site_title %}fjkit demo{% endblock %}
 
@@ -33,7 +32,6 @@
 {% block footer %}
   fjkit {{ fjkit_version.fjkit }} · FastAPI {{ fjkit_version.fastapi }} · Jinja2 {{ fjkit_version.jinja2 }}
   · Basecoat {{ fjkit_version.basecoat }} · htmx {{ fjkit_version.htmx }}
-  — server render time is in the {{ kbd("Server-Timing") }} response header
 {% endblock %}
 
 {#
