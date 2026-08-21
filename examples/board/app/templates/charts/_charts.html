@@ -1,0 +1,27 @@
+{#
+  The three cards. Returned bare by GET /charts when htmx asks, and included
+  by charts/page.html for the first paint — one partial, two entrances.
+
+  The whole set swaps rather than the one chart the control changes, for the
+  same reason the job list does: there is then no client-side question about
+  which parts of the page agree with the server. It costs two redraws of
+  figures whose data did not change, and a redraw is a `Plotly.react` against
+  identical input, which is the cheap case.
+
+  Swapping charts in and out is the part that usually breaks: the incoming
+  nodes have never been drawn, and the outgoing ones are holding resize
+  listeners. `charts.js` handles both on `htmx:load` and
+  `htmx:beforeCleanupElement`, so this template needs no hook of its own.
+#}
+{% from "ui/layout.html" import grid %}
+{% from "charts/macros.html" import chart %}
+
+{#
+  Two columns rather than a stack: at six charts a single column is a page you
+  scroll rather than a page you read, and comparing two figures means seeing
+  both. `grid(2)` collapses to one column on a narrow screen, which is the
+  layout macro's job and not this template's.
+#}
+{% call grid(2, id="charts") %}
+  {% for item in charts %}{{ chart(item) }}{% endfor %}
+{% endcall %}

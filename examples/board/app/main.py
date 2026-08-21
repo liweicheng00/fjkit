@@ -13,6 +13,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fjkit import FjkitConfig, FlashPlugin, mount_fjkit
 from fjkit.auth import AuthPlugin, CookieSpec, MemoryStore
 from fjkit.vendored import STYLE_PACKS
@@ -20,6 +21,7 @@ from fjkit.vendored import STYLE_PACKS
 from app.features.auth.router import protected as auth_protected_router
 from app.features.auth.router import router as auth_router
 from app.features.auth.service import DemoSource
+from app.features.charts.router import router as charts_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.jobs.router import router as jobs_router
 from app.features.jobs.service import JobService
@@ -28,6 +30,15 @@ from app.features.tasks.service import TaskService
 
 APP_DIR = Path(__file__).resolve().parent
 ROOT_DIR = APP_DIR.parent
+
+#: This app's own assets: the vendored Plotly bundle and the script that
+#: bridges it to fjkit's colour tokens. Nothing else lives here, and nothing
+#: here is generated — `tests/test_conventions.py` asserts there is no CSS and
+#: no `package.json` anywhere under the demo, which is the invariant that
+#: actually matters. A chart library is the one thing fjkit's budget will not
+#: carry (CHARTER §7), so the demo carries it, vendored and committed, the same
+#: way the kit carries htmx.
+APP_STATIC_URL = "/static"
 
 #: Where the kit's assets are served from. Spelled out rather than left to the
 #: default because the picker below builds URLs under the same prefix, and two
@@ -120,11 +131,16 @@ def create_app() -> FastAPI:
     app.state.flash = flash
 
     # Serves fjkit's stylesheet and the vendored htmx/Basecoat JS straight out
-    # of the installed package, and builds the Jinja Environment once. The app
-    # has no static assets of its own.
+    # of the installed package, and builds the Jinja Environment once.
     mount_fjkit(app, replace(config, plugins=(flash, auth)))
 
+    # Mounted after the kit, under a separate prefix, so the two static trees
+    # never shadow each other: `/static/...` is this app's, `/_fjkit/...` is the
+    # package's. Only the charts page requests anything from here.
+    app.mount(APP_STATIC_URL, StaticFiles(directory=APP_DIR / "static"), name="static")
+
     app.include_router(dashboard_router)
+    app.include_router(charts_router)
     app.include_router(tasks_router)
     app.include_router(jobs_router)
     app.include_router(auth_router)

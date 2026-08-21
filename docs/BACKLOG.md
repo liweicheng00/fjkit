@@ -189,6 +189,107 @@ swap 落錯地方的起點），所以側欄那個 `sidebar` id 是逐條寫進 
   `tests/test_styles.py`：八個選項都要有人服務、預選的那個要等於 shell 真的 link
   的那個、htmx 的 partial 不能夾帶第二顆。
 
+### demo 的 charts 頁 / Plotly（2026-08-20，使用者指定）
+
+問的是「可以整合 Plotly.js 嗎」。答案分兩層，這一筆記的是第二層怎麼做的。
+
+- **不進 wheel，進 app。** §7 把使用者端 JS 封在 htmx + basecoat；
+  `plotly.js-basic-dist-min@3.7.0` 是 1,119,926 bytes，完整包 4,851,164——差兩個
+  數量級，不是預算裡放得下的東西。所以它 vendored 在 `examples/board/app/static/`，
+  由 `scripts/vendor_plotly.py` 釘版本，跟 kit vendored htmx 是同一套規矩：committed、
+  離線跑得起來、瀏覽器載什麼在 diff 裡看得到。只有 charts 頁 `{% block scripts %}`
+  載它，其他頁一個位元組都不付。
+- **送出去的就是 Plotly 的 figure，但裡面不含顏色。** `figure: PlotlyFigure`／
+  `roles: list[ChartRole]` 兩個欄位並排：前者是 `plotly.py` 產的 `data` + `layout`，
+  後者說每個 series 是什麼意思。瀏覽器在畫的時候才把 role 解析成當下的 token
+  （`static/js/charts.js`）。因此深色模式是重畫而不是第二份 figure，htmx 端點對一個
+  URL 只有一個答案。分工一句話講完：**Python 決定形狀，JavaScript 決定顏色**。
+- **`dict[str, Any]` 和封閉 spec 之間選了中間點。** `PlotlyTrace` 把這個 app 真的會讀
+  的欄位型別化（`type` 是 `Literal["bar","scatter","pie"]`），其餘走 `extra="allow"`
+  的尾巴——OpenAPI 誠實地報 `additionalProperties: true`，而不是聳肩。
+  代價寫在 schemas.py 的 docstring 裡：**尾巴擋不住顏色**，`#1F77B4` 是完全合法的
+  `str`。所以 `test_no_figure_on_the_page_contains_a_colour` 從「有比較好」升級成必要
+  條件——它掃的是**算完的 JSON**，不管位元組從哪個欄位來。另外補了結構性的一條
+  （`marker` 裡不得有 `color`／`colors`），因為 regex 抓不到 `"red"` 這種具名色。
+- **`figure_of()` 會把 `template` 拔掉。** `plotly.py` 就算 `template=None` 也會寫一個
+  進去，而**預設的 template 是 7,621 bytes、裡面有 111 個色值字面值**（實測），全是
+  這頁不畫的 trace 的 colorscale。拔掉之後三張圖的 payload 是 290／460／408 bytes。
+- **整數刻度改由 Python 決定。** Plotly 會把一個計數標成「1.5」。哪些刻度合法是關於
+  資料的事實不是畫法，所以由手上有資料的那邊算一次（`_integer_axis`），而不是讓畫的
+  那邊各自再推一次——那正是兩個渲染器會漂移的地方。
+- **量過才發現的一件事：`fillStyle` 來回不會把 oklch 轉成 rgb。** 原本用的是經典招式
+  ——把值指給 canvas 的 `fillStyle` 再讀回來，靠瀏覽器正規化成 `#rrggbb`。它只對
+  legacy 格式成立；CSS Color 4 的顏色函式會**原樣保留**，`oklch(0.72 0.15 275)` 進、
+  `oklch(0.72 0.15 275)` 出。Plotly 用的是 tinycolor2，不認識 oklch，於是**不報錯**，
+  直接改用自己的預設調色盤畫。三張圖都畫得好好的，只是顏色全是 Plotly 的
+  `rgb(31,119,180)`／`rgb(255,127,14)`／`rgb(44,160,44)`。
+  改成畫一個 1×1 像素再 `getImageData` 讀回 sRGB 位元組——那條路對任何瀏覽器解析得了
+  的記法都成立，順便就是正確的色域裁切（Plotly 吐的 SVG 本來就是 sRGB）。
+  **這個 bug 沒有任何測試會抓到，也沒有截圖抓得到**，除非你知道 fjkit 的 primary
+  應該長什麼樣。是逐元素比對 headless Chrome 的 DOM 才看出來的。
+- **第二件量出來的事：Plotly 的圓餅 `textfont` 預設 #444，不繼承 `layout.font`。**
+  切片上的數字因此在深色模式下是深灰壓在飽和色上。沒有補一套 per-role foreground
+  token（basecoat 根本沒有 `--destructive-foreground`），而是把標籤移到切片外——放在
+  卡片上，那裡只有一個前景色，而它已經解析好了。
+- **先做了自訂的封閉 spec，再換成 Plotly 的 figure。** 第一版是自己的
+  `Spec`／`Trace`／`TraceKind`，`charts.js` 裡有一張 spec→Plotly 的對照表。換掉的理由
+  是：一旦把真的會用到的欄位型別化，那份 spec 就收斂成「換了名字的 Plotly」——
+  `kind` 對 `type`、`x`/`y` 一模一樣——差別只剩尾巴開不開。開尾巴才拿得到整個
+  函式庫，而尾巴唯一的風險（顏色）本來就是測試在守，不是型別在守。
+  自訂 spec 真正的價值在「將來會有第二個渲染器（伺服器端 SVG）」那天才兌現，
+  那天還沒到。
+- **role 整套移除，六張圖全部用 Plotly 預設調色盤（2026-08-21，使用者指定）。**
+  `ChartRole`、`Chart.roles`、`data-roles`、`charts.js` 的 `paint()` 全部刪掉。
+  我先只把新的三張改成預設色並保留狀態色（理由是 A3：「綠色代表完成」要撐過改品牌），
+  使用者明確指示那三張也一起改，照辦。
+  **保留下來的是外框**：軸文字、格線、圓餅切片間隙與標籤仍然從 token 解析。那些是
+  卡片的屬性不是序列的屬性，而 Plotly 對它們的預設是 `#444` 文字配 `#eee` 格線——
+  為白底畫的圖，放在可能是深色的頁面上。所以主題切換仍然重畫，重畫的是外框。
+  `palette()` 那段 1×1 canvas 轉 oklch 的程式碼因此還在，只是從六個 role 縮成三個
+  外框色。
+  **代價**：資料色不隨主題變，深淺兩色模式的圖表顏色一模一樣。
+  **沒有改變的**：figure 裡仍然一個顏色都沒有，掃色值那兩條測試原封不動繼續有效。
+- **文案裡指名顏色的那一句壞了。** `workload` 的說明本來寫「a tall bar of grey is a
+  queue」——role 拿掉之後灰色就不存在了，句子變成假的。改成不指名顏色的講法。
+  這是「調色盤不是自己的」最便宜的一種代價，也是唯一沒有任何測試抓得到的一種：
+  只有把頁面看過一遍才會發現。
+- （已作廢的中間版本）**`roles` 曾經改成可選，六張圖分兩種。**
+  有語意的三張（狀態、堆疊、趨勢）給 role，顏色從 token 解析，跟著主題走；沒語意的
+  三張（owner 佔比、intake、最舊未完成）不給，Plotly 用自己的調色盤。判準寫在
+  `Chart.roles` 的註解裡：**四個 owner 就是四個 owner，沒有哪個 role 屬於「kai」，
+  硬指派一個等於讓圖表宣稱資料沒說的事**。代價也寫下來了——那三張不跟著深色模式變。
+  狀態色沒有一起拿掉是因為 A3：「綠色代表完成」要能撐過改品牌，那是章程明文保護的。
+  **仍然照樣不變的**：figure 裡一個顏色都沒有，兩種圖都是。切片間隙與標籤文字也照樣
+  跟著 token——它們是卡片的屬性不是序列的屬性。
+- **頁面上那句說明有兩處是錯的，已改。** 「The figures name a role」——改成 B 之後
+  figure 裡沒有 role 了；「and the style picker」——**八個風格包在 `styles/*.css` 裡
+  一個顏色 token 都沒定義**（查證過），它們只差幾何，所以換包不可能改變圖表讀到的顏色。
+  `charts.js` 的註解寫的正是這件事，頁面上卻寫了相反的話。兩句都留了註解說明為什麼
+  不要再寫一次。
+- **加一張水平長條圖，逼出了型別的一個錯誤假設。** `x: list[str]`／`y: list[float]`
+  看起來很對，直到第一張 `orientation="h"`——Plotly 的 `x`／`y` 是**軸**，不是「類別」
+  和「數值」，水平長條把數字放 `x`、標籤放 `y`。兩邊都放寬成 `list[str | float]`。
+  這是整個模組在講的那件事的縮小版：**別人 schema 的型別化子集是一個猜測，尾巴是
+  猜錯時不會致命的原因**。`orientation` 和 `hovertemplate` 本身就是走尾巴的，
+  `test_the_typed_subset_survives_a_horizontal_bar` 守著這條路真的通。
+- **刪掉一條自己發明的測試。** 本來寫了「每個 `ChartRole` 都要有圖用到」，套用 §6.6。
+  那條規矩是給元件的封閉參數用的，套到 app 的領域列舉上會**為了湊滿列舉而逼出圖表**，
+  方向反了。role 的 token 缺漏本來就有 `test_every_role_the_server_can_send_has_a_token`
+  在守。
+- **驗證是在真的瀏覽器裡跑的**，用 CDP 驅動 headless Chrome：三張圖都畫出來、翻
+  `.dark` 之後線色從 `rgb(138,155,255)` 變成 `rgb(78,86,211)`（就是兩個主題的
+  `--primary`）、htmx swap 之後三張都重新初始化且 x 軸換成 priority、`hx-push-url`
+  有更新網址。swap 出去的那半邊（`Plotly.purge`）掛在 `htmx:beforeCleanupElement`
+  上——圖表放在 partial 裡最常忘的就是這一半。
+- **`test_conventions.py` 那條 `app/static` 不得存在改了。** 它的 docstring 講的是
+  stylesheet 與建置步驟，斷言卻是整個目錄。改成斷言真正的不變量：`app/` 底下沒有
+  任何 `.css`、repo 裡沒有 `package.json`、沒有 `node_modules`。另外加一條——
+  `static/vendor/` 底下的每個檔案都要有腳本說得出它從哪來。
+- **CSS 預算與 parity 都沒動。** build 掃的是 `packages/fjkit` 的模板不是 demo 的，
+  而且模板一個新 class 都沒寫（`fjkit check` 18 個模板 0 違規）。parity 的三個 probe
+  是 `/`、`/tasks`、`/tasks/report`，側欄多一條連結只增加 href 與字詞（增加是允許的），
+  那三頁沒有新的 id，`ALLOWED_CONTRACT_DRIFT` 一行都沒加。
+
 ### CSS 體積：實測與問題
 
 拆解量測（把各個 `@source` 拿掉分別重建）：
