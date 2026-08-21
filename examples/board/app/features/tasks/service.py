@@ -11,17 +11,25 @@ from datetime import UTC, datetime, timedelta
 from itertools import count
 from threading import Lock
 
-from app.features.tasks.schemas import BoardStats, Priority, Status, Task, TaskCreate
+from app.features.tasks.schemas import BoardStats, Priority, Status, Task, TaskCreate, TaskUpdate
 
+#: title, status, priority, owner, notes, blocked
 _SEED = [
-    ("Ship the render benchmark", Status.DONE, Priority.HIGH, "livy"),
-    ("Wire Basecoat tokens to the brand knob", Status.DONE, Priority.NORMAL, "livy"),
-    ("Move component includes to macros", Status.DOING, Priority.HIGH, "mei"),
-    ("Turn off auto_reload in the prod image", Status.DOING, Priority.NORMAL, "kai"),
-    ("Warm the bytecode cache at build time", Status.TODO, Priority.HIGH, "kai"),
-    ("Stream the CSV export instead of buffering", Status.TODO, Priority.NORMAL, "mei"),
-    ("Audit templates for hard-coded hues", Status.TODO, Priority.LOW, "unassigned"),
-    ("Add a dark-mode screenshot to the README", Status.TODO, Priority.LOW, "unassigned"),
+    ("Ship the render benchmark", Status.DONE, Priority.HIGH, "livy", "", False),
+    ("Wire Basecoat tokens to the brand knob", Status.DONE, Priority.NORMAL, "livy", "", False),
+    ("Move component includes to macros", Status.DOING, Priority.HIGH, "mei", "", False),
+    (
+        "Turn off auto_reload in the prod image",
+        Status.DOING,
+        Priority.NORMAL,
+        "kai",
+        "Needs the bytecode cache warmed first, or the first request pays for every template.",
+        True,
+    ),
+    ("Warm the bytecode cache at build time", Status.TODO, Priority.HIGH, "kai", "", False),
+    ("Stream the CSV export instead of buffering", Status.TODO, Priority.NORMAL, "mei", "", False),
+    ("Audit templates for hard-coded hues", Status.TODO, Priority.LOW, "unassigned", "", False),
+    ("Add a dark-mode screenshot to the README", Status.TODO, Priority.LOW, "unassigned", "", False),
 ]
 
 
@@ -31,13 +39,15 @@ class TaskService:
         self._ids = count(1)
         self._tasks: dict[int, Task] = {}
         now = datetime.now(UTC)
-        for offset, (title, status, priority, owner) in enumerate(_SEED):
+        for offset, (title, status, priority, owner, notes, blocked) in enumerate(_SEED):
             task = Task(
                 id=next(self._ids),
                 title=title,
                 status=status,
                 priority=priority,
                 owner=owner,
+                notes=notes,
+                blocked=blocked,
                 created_at=now - timedelta(hours=offset * 7),
             )
             self._tasks[task.id] = task
@@ -66,6 +76,31 @@ class TaskService:
                 created_at=datetime.now(UTC),
             )
             self._tasks[task.id] = task
+            return task
+
+    def update(self, task_id: int, payload: TaskUpdate) -> Task | None:
+        """Apply the edit form. `None` if the task is gone — the router 404s.
+
+        `model_copy(update=…)` over named fields, not over the whole payload:
+        `TaskUpdate` is the closed list of what an edit may touch, so status, id
+        and created_at survive an edit by construction rather than by the form
+        happening not to post them.
+        """
+        with self._lock:
+            task = self._tasks.get(task_id)
+            if task is None:
+                return None
+            task = task.model_copy(
+                update={
+                    "title": payload.title.strip(),
+                    "priority": payload.priority,
+                    "owner": payload.owner.strip() or "unassigned",
+                    "notes": payload.notes.strip(),
+                    "blocked": payload.blocked,
+                    "watching": payload.watching,
+                }
+            )
+            self._tasks[task_id] = task
             return task
 
     def advance(self, task_id: int) -> Task | None:
