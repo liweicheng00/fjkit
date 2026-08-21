@@ -24,3 +24,6 @@ packages/fjkit/src/fjkit/static/dist/
 # templates and the renderers are the source; this is the rendered previews on
 # their way into docs/assets/data.js, which IS committed.
 packages/fjkit/docs/workbench/data.json
+
+# 私人目標文件 — 刻意不進版控
+/goal/
