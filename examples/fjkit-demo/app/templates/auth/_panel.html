@@ -1,0 +1,52 @@
+{#
+  The session panel, in its two states. Returned bare by POST /session and
+  DELETE /session, and included by auth/page.html for the first paint.
+
+  One container with a stable id, swapped whole. Signing in and signing out
+  change which half of this file renders, and re-rendering the container is
+  what keeps the form, the badge and the button from ever disagreeing about
+  whether there is a session — there is no client-side copy of that answer.
+
+  It reads `signed_in` and `username` from its router, not the `session` global
+  the plugin adds. Both would work here; a partial reading only what its route
+  put in the context is the rule, and the global is shown off where no route
+  could have supplied it — the sidebar, on every page.
+#}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import badge, bullet_list, card, kbd, list_item %}
+{% from "ui/form.html" import form, field_row, text_field %}
+{% from "ui/layout.html" import stack %}
+
+{% call stack(3, id="session-panel") %}
+  {% if signed_in %}
+    {% set who %}{{ badge(username, variant="success") }}{% endset %}
+    {% call card("Signed in", "The cookie is HttpOnly, so nothing on this page can read it.", actions=who) %}
+      {% call stack(3) %}
+        {% call bullet_list() %}
+          {% call list_item() %}
+            The browser holds one opaque id — {{ kbd("document.cookie") }} shows you
+            nothing useful.
+          {% endcall %}
+          {% call list_item() %}
+            The claims live in the session store on the server, which is why signing
+            out can take effect immediately.
+          {% endcall %}
+        {% endcall %}
+        {{ button("Sign out", variant="outline", icon_name="log-out",
+                  hx_delete=url_for(request, "session_logout"),
+                  hx_target="#session-panel", hx_swap="outerHTML") }}
+      {% endcall %}
+    {% endcall %}
+  {% else %}
+    {% call form(action=url_for(request, "session_login"), target="#session-panel") %}
+      {% call stack(3) %}
+        {% call field_row("two") %}
+          {{ text_field("username", label="Username", value=demo_username, required=true) }}
+          {{ text_field("password", label="Password", value=demo_password, type="password",
+                        required=true, error=error) }}
+        {% endcall %}
+        {{ button("Sign in", variant="primary", type="submit", icon_name="log-in") }}
+      {% endcall %}
+    {% endcall %}
+  {% endif %}
+{% endcall %}

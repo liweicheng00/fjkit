@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="zh-Hant" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fjkit 元件 · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css">
+  <link rel="stylesheet" href="../assets/brand.css">
+  <script defer src="../assets/vendor/htmx/htmx.min.js"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js"></script>
+  <meta name="description" content="每一個 fjkit macro 都有實際渲染的預覽、產生它的那行 Jinja，以及吐出來的 HTML——全部由 kit 自己渲染，所以這裡的簽名不可能跟套件對不上。">
+  <meta property="og:title" content="fjkit 元件">
+  <meta property="og:description" content="每一個 fjkit macro 都有實際渲染的預覽、產生它的那行 Jinja，以及吐出來的 HTML——全部由 kit 自己渲染，所以這裡的簽名不可能跟套件對不上。">
+  <meta property="og:type" content="article">
+  <script src="../assets/mock-server.js"></script>
+</head>
+<body class="min-h-full antialiased">
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
+    <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>上手</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>外掛</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>元件</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
+    <a href="components.html#macros">      <span>每個 macro：呼叫與 HTML</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#layout">      <span>版面：stack、row、grid、split</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#structure">      <span>page_header、section、divider</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#display">      <span>empty_state、metric_group、清單</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#icons">      <span>icon()：任何 Lucide 名字，直接內嵌</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#cheatsheet">      <span>ui/ 裡的每個 macro，按檔案列</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="語言"><h3>語言</h3>    <ul>      <li>
+    <a href="../components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>English</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-screen flex-col px-5">
+      <header class="flex items-center gap-6 py-5">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>        <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit 的 GitHub 原始碼">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>        </div>
+      </header>
+
+    <main class="flex-1 pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">每個 macro，以及產生它的那行呼叫</h1>
+<p class="text-muted-foreground text-sm">    每一個 macro，都有實際渲染的預覽與產生它的那行呼叫。
+    轉動旋鈕，兩件事會一起變：元件本身，以及你要打出這個結果會寫的那行 Jinja。
+    底下每一個預覽都是 build 時由 fjkit 自己的 Environment 渲染出來的。
+</p>    </div>
+  </div>
+
+<div id="macros">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">每個 macro：呼叫與 HTML</h2><p class="text-muted-foreground text-sm">沒有任何 macro 收 class 字串，所以沒有任何呼叫端能自己發明一個顏色。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        底下每一個參數都是<strong>封閉列舉</strong>。沒有 <code>class=</code> 這個逃生口，也沒有色相可以傳。
+        你挑一個 variant，長什麼樣由 token 層決定。多傳給 macro 的東西一律變成 HTML 屬性：
+        <code>hx_post="/tasks"</code> 會渲染成 <code>hx-post="/tasks"</code>。
+        這就是 htmx 從頭到尾不必出現在任何一個 macro 定義裡的原因。
+      </p>
+</div>
+<div class="card">            <div class="tabs" id="macro-picker">
+        <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
+      </div>
+
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>預覽</h3>      </div>
+    </header>      <section>        <div id="macro-preview"></div>
+
+</section>
+  </div>
+<div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="Representation"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="macro-jinja"
+                aria-selected="true">你寫的</button>
+        <button type="button" role="tab" aria-controls="macro-html"
+                aria-selected="false">它吐出來的</button>
+    </nav><div id="macro-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="macro-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>      <footer id="macro-caption"></footer>
+
+  </div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="layout">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">版面：stack、row、grid、split</h2><p class="text-muted-foreground text-sm">你打下 <code>grid gap-4</code> 的那一刻，零建置這個承諾就結束了。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        光有元件到不了封閉詞彙表。你第一次要把兩張 card 並排，手就伸向 utility class，
+        而 fjkit 出貨的那份 stylesheet 根本不知道你想要它。所以間距與欄數也是 macro。
+        每一個值都是查表，表裡的字串<em>原封不動</em>出現在 kit 的原始碼裡，Tailwind 掃得到。
+      </p>
+      <p>
+        虛線方塊代表你的內容。轉旋鈕，看著底下那行原始碼跟著變。
+      </p>
+</div>
+<div class="card">            <div id="layout-controls"></div>
+
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>預覽</h3>      </div>
+    </header>      <section>        <div id="layout-preview"></div>
+
+</section>
+  </div>
+<div class="card">            <pre class="code-block scrollbar" tabindex="0" id="layout-code"></pre>
+      <footer id="layout-caption"></footer>
+
+  </div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="structure">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">page_header、section、divider</h2><p class="text-muted-foreground text-sm">標題、分隔線與群組也是元件——不然它們就會是 utility class。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        這三個是資料還沒進來以前，一頁就已經由它們組成的部分。
+        <code>page_header</code> 收一個 block，那個 block 就是它的動作區。
+        所以標題、說明與一排按鈕在任何寬度下都待在同一行，呼叫端不必量任何東西。
+        這一頁最上面那個 header 就是同一個 macro，平鋪直敘地呼叫，沒有動作要放。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>page_header(title, description) · block = actions</h3>      </div>
+    </header>      <section>    <div data-showcase="page_header"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="page_header"></pre>
+  <footer data-showcase-caption="page_header"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>section(title, description, gap=4) · block</h3>      </div>
+    </header>      <section>    <div data-showcase="section"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="section"></pre>
+  <footer data-showcase-caption="section"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>divider()</h3>      </div>
+    </header>      <section>    <div data-showcase="divider"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="divider"></pre>
+  <footer data-showcase-caption="divider"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="display">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">empty_state、metric_group、清單</h2><p class="text-muted-foreground text-sm"><code>data.html</code> 裡剩下的——負責把一個值顯示出來的那些。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        一張塞滿 row 的表格是簡單的那種情況。這些是另外幾種：後面還沒有任何 row 的那個數字、
+        表格上方那排數值、句子裡夾著一組按鍵的那種說明。
+      </p>
+      <p>
+        <code>empty_state</code> 值得在你需要它之前就先知道。<code>rows</code> 是空的時候，
+        <code>table</code> 會自己把它渲染出來，所以沒有任何呼叫端要寫 if-rows-else 那段分支。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>empty_state(title, description, icon_name)</h3>      </div>
+    </header>      <section>    <div data-showcase="empty_state"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="empty_state"></pre>
+  <footer data-showcase-caption="empty_state"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>metric_group(items, cols=3)</h3>      </div>
+    </header>      <section>    <div data-showcase="metric_group"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="metric_group"></pre>
+  <footer data-showcase-caption="metric_group"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>bullet_list(tone) / list_item() · blocks</h3>      </div>
+    </header>      <section>    <div data-showcase="bullet_list"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="bullet_list"></pre>
+  <footer data-showcase-caption="bullet_list"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>link(label, href) · kbd(keys)</h3>      </div>
+    </header>      <section>    <div data-showcase="inline"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="inline"></pre>
+  <footer data-showcase-caption="inline"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="icons">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">icon()：任何 Lucide 名字，直接內嵌</h2><p class="text-muted-foreground text-sm">1,767 個名字，沒有 sprite sheet，沒有 icon font，一個請求都不用發。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>icon("plus")</code> 會把 Lucide 的路徑當成 <code>&lt;svg&gt;</code> 內嵌進去。
+        它繼承 <code>currentColor</code>，所以放進 primary 按鈕裡的 icon 顏色本來就是對的，
+        而且不管多大都不用付一個網路請求。
+      </p>
+      <p>
+        大部分 macro 直接收 <code>icon_name=</code>：<code>button</code>、<code>stat</code>、
+        <code>empty_state</code>、<code>brand</code>、<code>sidebar_link</code>。
+        所以你很少會自己呼叫這一個。這個站側欄裡的圖示全部是那樣來的。
+        底下是其中一小撮，任何 Lucide 名字都可以。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>icon(name, size=16)</h3>      </div>
+    </header>      <section>        <div id="icon-grid"></div>
+
+</section>
+  </div>
+<div class="card">            <pre class="code-block scrollbar" tabindex="0" id="icon-code"></pre>
+      <footer>
+        名字打錯會在渲染時直接丟例外，而不是印出一個空格子——所以錯字是讓那一頁掛掉，
+        而不是讓介面上出現一個洞就這樣出貨。
+      </footer>
+
+  </div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="cheatsheet">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">ui/ 裡的每個 macro，按檔案列</h2><p class="text-muted-foreground text-sm">七個檔案。如果這裡沒有，那就是你還沒找到的某個參數。</p>      </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>packages/fjkit/src/fjkit/templates/ui/</h3>      </div>
+    </header>      <div class="border-t">      <pre class="code-block scrollbar" tabindex="0" id="cheatsheet-code"></pre>
+</div>
+  </div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>接著讀</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>上手</h4><p><a href="learn.html">各個零件怎麼接，以及 htmx 送出什麼</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>examples/fjkit-demo/</h4><p>同一批 macro 放在一支能跑的 app 裡，在 repo 中</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>src/fjkit/templates/ui/</h4><p>macro 原始碼——每一個都以自己的簽名註解開頭</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>src/fjkit/static/src/fjkit.css</h4><p>每個 variant 背後那張 token 表</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>找不到想要的 macro 時</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>先看參數</h4><p>多數需求其實是一個已經存在的關鍵字——size、tone、padded、align</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>直接傳過去</h4><p>任何多的關鍵字都會變成屬性，這涵蓋了所有 hx-*、aria-* 與 data-*</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit eject</h4><p>把元件複製進你的 app 再改——代價是之後上游的修正你拿不到</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>開一張 issue</h4><p>被擋下來的 class 指名了那個還不存在的元件；那就是最好的回報內容</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.1.0.dev0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">原始碼與 issues</a>.
+  這個站本身就是一支 fjkit app：它 extends <code class="kbd">ui/shell.html</code>，而且通過 <code class="kbd">fjkit check</code>——所以它不可能展示套件裡沒有的元件。
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script defer src="../assets/data.js"></script>
+  <script defer src="../assets/common.js"></script>
+  <script defer src="../assets/components.js"></script>
+</body>
+</html>

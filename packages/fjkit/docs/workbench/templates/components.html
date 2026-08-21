@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% from "_parts.html" import defs, lesson, prose, stage %}
+{% from "ui/data.html" import card, code_block %}
+{% from "ui/tabs.html" import tab_panel, tabs %}
+{% from "ui/layout.html" import grid, page_header, stack %}
+
+{% set sections = [
+  {"id": "macros",     "title": "Every macro: the call and the HTML"},
+  {"id": "layout",     "title": "Layout: stack, row, grid, split"},
+  {"id": "structure",  "title": "page_header, section, divider"},
+  {"id": "display",    "title": "empty_state, metric_group, lists"},
+  {"id": "icons",      "title": "icon(): any Lucide name, inlined"},
+  {"id": "cheatsheet", "title": "Every macro in ui/, by file"},
+] %}
+
+{#
+  One showcase = one macro that has nothing to configure. The preview and the
+  code are both filled from `SHOWCASE` in components.js, which reads the same
+  data.json every other preview on the site comes from — so adding one here
+  never means pasting markup.
+#}
+{% macro showcase(key, name) %}
+{# Preview and source are two cards, like 02 and 05: a preview needs the card's
+   own padding around it, and a code block needs the card's edge. One card
+   cannot give both, and a padded=false card hands the preview to the border. #}
+{% call stage(name) %}
+  <div data-showcase="{{ key }}"></div>
+{% endcall %}
+{% call card(padded=false) %}
+  {{ code_block("", data_showcase_code=key) }}
+  <footer data-showcase-caption="{{ key }}"></footer>
+{% endcall %}
+{% endmacro %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    Every macro, with a live preview and the call that produced it. Turn the knobs and two things
+    change together: the component, and the Jinja you would have typed to get it. Every preview was
+    rendered by fjkit's own Environment at build time.
+  {% endset %}
+  {{ page_header("Every macro, and the call that made it", intro) }}
+
+  {# ============================================================== 01 #}
+  {% set c01 %}No macro accepts a class string, so no call site can invent a colour.{% endset %}
+  {% call lesson("macros", "01", "Every macro: the call and the HTML", c01) %}
+    {% call prose() %}
+      <p>
+        Every parameter below is a <strong>closed enumeration</strong>. There is no
+        <code>class=</code> escape hatch and no hue to pass. You pick a variant, and the token layer
+        decides what that looks like. Anything extra you hand a macro becomes an HTML attribute:
+        <code>hx_post="/tasks"</code> renders as <code>hx-post="/tasks"</code>. That is how htmx
+        stays out of every macro definition.
+      </p>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      {#
+        The tablist and its panels are filled by components.js, because the list
+        of macros lives there — a hardcoded list here would be a second source
+        of truth that silently loses a tab the day one is added. So this is the
+        `.tabs` skeleton only, and the script writes the aria contract that
+        Basecoat's own tab behaviour reads.
+      #}
+      <div class="tabs" id="macro-picker">
+        <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
+      </div>
+    {% endcall %}
+
+    {% call stage("Preview") %}
+      <div id="macro-preview"></div>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      {% call tabs([{"id": "macro-jinja", "label": "what you write"},
+                    {"id": "macro-html", "label": "what it emits"}], label="Representation") %}
+        {% call tab_panel("macro-jinja") %}{{ code_block("", label="the Jinja call") }}{% endcall %}
+        {% call tab_panel("macro-html") %}{{ code_block("", label="the HTML it emits", wrap=true) }}{% endcall %}
+      {% endcall %}
+      <footer id="macro-caption"></footer>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 02 #}
+  {% set c02 %}The moment you type <code>grid gap-4</code>, the no-build promise is over.{% endset %}
+  {% call lesson("layout", "02", "Layout: stack, row, grid, split", c02) %}
+    {% call prose() %}
+      <p>
+        Components alone do not get you to a closed vocabulary. The first time you need two cards
+        side by side you reach for a utility class, and the stylesheet fjkit shipped has no idea you
+        wanted it. So spacing and columns are macros too. Every value is a lookup whose entries
+        appear <em>verbatim</em> in the kit's source, where Tailwind can see them.
+      </p>
+      <p>
+        The dashed tiles are your content. Change the knobs and watch the source line change with them.
+      </p>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      <div id="layout-controls"></div>
+    {% endcall %}
+
+    {% call stage("Preview") %}
+      <div id="layout-preview"></div>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      {{ code_block("", id="layout-code") }}
+      <footer id="layout-caption"></footer>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 03 #}
+  {% set c03 %}A heading, a rule and a group are components too — or they are utility classes.{% endset %}
+  {% call lesson("structure", "03", "page_header, section, divider", c03) %}
+    {% call prose() %}
+      <p>
+        These three are what a page is made of before any of its data arrives.
+        <code>page_header</code> takes a block, and the block is its actions. A title, a description
+        and a row of buttons stay on one line at every width, with no caller measuring anything. The
+        header at the top of this page is the same macro, called plainly, with no actions to place.
+      </p>
+    {% endcall %}
+
+    {{ showcase("page_header", "page_header(title, description) · block = actions") }}
+    {{ showcase("section", "section(title, description, gap=4) · block") }}
+    {{ showcase("divider", "divider()") }}
+  {% endcall %}
+
+  {# ============================================================== 04 #}
+  {% set c04 %}Everything else in <code>data.html</code> — the pieces that display a value.{% endset %}
+  {% call lesson("display", "04", "empty_state, metric_group, lists", c04) %}
+    {% call prose() %}
+      <p>
+        A table full of rows is the easy case. These are the others: the count that has no rows
+        behind it yet, the row of numbers above a table, the sentence with a key combination in it.
+      </p>
+      <p>
+        <code>empty_state</code> is worth knowing before you need it. <code>table</code> renders it
+        for you when <code>rows</code> is empty, so no caller writes the if-rows-else branch.
+      </p>
+    {% endcall %}
+
+    {{ showcase("empty_state", "empty_state(title, description, icon_name)") }}
+    {{ showcase("metric_group", "metric_group(items, cols=3)") }}
+    {{ showcase("bullet_list", "bullet_list(tone) / list_item() · blocks") }}
+    {{ showcase("inline", "link(label, href) · kbd(keys)") }}
+  {% endcall %}
+
+  {# ============================================================== 05 #}
+  {% set c05 %}1,767 names, no sprite sheet, no icon font, no request.{% endset %}
+  {% call lesson("icons", "05", "icon(): any Lucide name, inlined", c05) %}
+    {% call prose() %}
+      <p>
+        <code>icon("plus")</code> inlines the Lucide path as an <code>&lt;svg&gt;</code>. It
+        inherits <code>currentColor</code>, so an icon inside a primary button is already the right
+        colour, and it costs no network request at any size.
+      </p>
+      <p>
+        Most macros take <code>icon_name=</code> directly: <code>button</code>, <code>stat</code>,
+        <code>empty_state</code>, <code>brand</code>, <code>sidebar_link</code>. So you rarely call
+        this one yourself. The links in this site's sidebar are all of them. A sample of the set is
+        below, and any Lucide name works.
+      </p>
+    {% endcall %}
+
+    {% call stage("icon(name, size=16)") %}
+      <div id="icon-grid"></div>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      {{ code_block("", id="icon-code") }}
+      <footer>
+        An unknown name raises at render time rather than printing an empty box, so a typo fails the
+        page that has it instead of shipping a hole in the interface.
+      </footer>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 06 #}
+  {% set c06 %}Seven files. If it isn't here, it's a parameter you haven't found yet.{% endset %}
+  {% call lesson("cheatsheet", "06", "Every macro in ui/, by file", c06) %}
+    {% call card("packages/fjkit/src/fjkit/templates/ui/", padded=false) %}
+      {{ code_block("", id="cheatsheet-code") }}
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set d_learn %}<a href="{{ url_for(request, "learn") }}">how the pieces fit, and what htmx sends</a>{% endset %}
+      {{ defs("Read next", [
+        ("Learn", d_learn),
+        ("examples/fjkit-demo/", "these macros inside a working app, in the repo"),
+        ("src/fjkit/templates/ui/", "the macro source — each one opens with its signature comment"),
+        ("src/fjkit/static/src/fjkit.css", "the token table behind every variant"),
+      ]) }}
+      {{ defs("When a macro is missing", [
+        ("check the parameters", "most requests are a keyword that already exists — size, tone, padded, align"),
+        ("pass it through", "any extra keyword becomes an attribute, which covers every hx-*, aria-* and data-*"),
+        ("fjkit eject", "copy the component into your app to edit it — and lose upstream fixes to it"),
+        ("open an issue", "a blocked class names the component that does not exist yet; that is the report"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}
+
+{% block page_scripts %}
+  <script defer src="{{ fjkit_static('components.js') }}"></script>
+{% endblock %}

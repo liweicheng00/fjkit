@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+{% from "_parts.html" import code, defs, files, lesson, prose, stage, stage_with %}
+{% from "ui/button.html" import button, button_group %}
+{% from "ui/data.html" import badge, card, code_block, link %}
+{% from "ui/form.html" import field_row %}
+{% from "ui/layout.html" import grid, page_header, row, stack %}
+{% from "ui/table.html" import cell, table %}
+
+{#
+  「上手」的中文版。id、控制項與腳本掛點跟英文版逐字相同——learn.js 是同一支，
+  兩個語言共用它，所以這裡只有文字不同。
+#}
+{% set sections = [
+  {"id": "wiring",   "title": "接線：config、mount、templates"},
+  {"id": "exchange", "title": "htmx 的請求與回應"},
+  {"id": "targets",  "title": "hx-target 與 hx-swap"},
+  {"id": "triggers", "title": "hx-trigger：打字、捲動、輪詢"},
+  {"id": "partials", "title": "partial：一份檔案，整頁與局部共用"},
+  {"id": "json",     "title": "沒有 HX-Request：同一條路由回 JSON"},
+  {"id": "patterns", "title": "九種 htmx 模式，以及對應的 handler"},
+  {"id": "knob",     "title": "換品牌：品牌 token 與狀態 token"},
+  {"id": "gate",     "title": "fjkit check：封閉詞彙表"},
+] %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    九課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 掛掉的指令。
+    底下每個示範都是活的。
+  {% endset %}
+  {{ page_header("在寫路由的地方，把介面一起寫完", intro) }}
+
+  {% call card("這一頁就是它在講的那個東西", "不是它的截圖。") %}
+    {% call prose() %}
+      <p>
+        底下每一個預覽都是真的 macro 輸出，build 時由 fjkit 自己的 Jinja Environment 渲染。
+        它周圍這一頁也是。側欄、這些 card、表格與分頁列，都是 demo app 呼叫的同一批 macro。
+        <code>fjkit check</code> 在 CI 裡掃這個站的模板，所以這裡不可能出現套件沒有的元件。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 01 #}
+  {% set t01 %}其餘你寫的東西都是你的 app，不是你的前端。{% endset %}
+  {% call lesson("wiring", "01", "接線：config、mount、templates", t01) %}
+    {% call prose() %}
+      <p>
+        一支 fjkit app 只在三個地方碰到 kit。<code>FjkitConfig</code> 收下所有旋鈕。
+        <code>mount_fjkit()</code> 直接從安裝好的套件裡供應 stylesheet 與 vendored JS，
+        並且每個 process 建一次 Jinja environment。<code>@render</code> 指名路由要用的模板。
+      </p>
+      <p>
+        四個檔案點過去看。沒有 <code>package.json</code>，也沒有 watcher 要開著。
+        repo 裡的 <code>examples/fjkit-demo</code> 就是同樣這四個，放在一支能跑的 app 裡。
+      </p>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      <div class="tabs">
+        <nav role="tablist" aria-label="File" aria-orientation="horizontal" id="wiring-tabs"></nav>
+        <div id="wiring-panel" role="tabpanel">
+          {{ code_block("", id="wiring-code") }}
+          <footer id="wiring-caption"></footer>
+        </div>
+      </div>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 02 #}
+  {% set t02 %}伺服器用 HTML 回應一次 swap。這中間沒有序列化，也沒有要同步的前端狀態。{% endset %}
+  {% call lesson("exchange", "02", "htmx 的請求與回應", t02, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        整個想法就是這樣，而且比看起來小。一個元素說明<em>要發哪個請求</em>，以及<em>答案要放在哪裡</em>。
+        伺服器回一段 HTML，就是它本來會放進整頁的那段標記。htmx 把那段放進你指名的元素裡。
+      </p>
+      <p>
+        這中間沒有東西被序列化。前端沒有重新渲染。也沒有狀態同時活在兩個地方。
+        同一條路由很樂意用 JSON 回應一支腳本，那是<a href="#json">第 06 課</a>，是另一道門，
+        不是這段交換裡的一個步驟。按下按鈕：<strong>底下那個請求是真的</strong>。
+        這一頁載了 htmx，而瀏覽器裡有一支 mock server 扮演 FastAPI 那一側。
+      </p>
+    {% endcall %}
+
+    {% call stage("一次來回", "前端唯一會變的，只有 hx-target 指名的那棵子樹。") %}
+      {% include "_diagram.html" %}
+    {% endcall %}
+
+    {% set fire %}
+      {% call row(gap=2) %}
+        {{ badge("idle", variant="outline", id="dg-stage-label") }}
+        {{ button("送出請求", variant="primary", size="sm", icon_name="arrow-right",
+                  icon_end=true, id="dg-run") }}
+      {% endcall %}
+    {% endset %}
+    {% call stage_with("試一次", fire, "底下這段來回是一個貨真價實的 htmx 請求。") %}
+      {% call stack(4) %}
+        <div id="dg-live"></div>
+        <div class="item-group scrollbar" id="dg-log"></div>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        那些 <code>HX-*</code> 標頭，就是一條路由用來分辨「這是局部更新」還是「這是整頁載入」的依據。
+        其餘部分是一個再普通不過的 POST。兩端都沒有任何前端框架參與。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 03 #}
+  {% set t03 %}兩個屬性決定一切：換哪個元素，以及怎麼換。{% endset %}
+  {% call lesson("targets", "03", "hx-target 與 hx-swap", t03, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        {{ link("hx-target", "https://htmx.org/attributes/hx-target/") }} 挑元素。
+        {{ link("hx-swap", "https://htmx.org/attributes/hx-swap/") }} 說明要拿它怎麼辦。
+        htmx 的困惑大多住在這一對上，所以拿底下這塊真的板子試。
+        每一種組合都會發出真的請求，換進去的也是真的回應。
+      </p>
+      <p>
+        <code>outerHTML</code> 換掉目標元素本身，所以回應必須包含那層外框。
+        <code>innerHTML</code>（預設）換掉它裡面的東西，所以回應<em>不能</em>包。
+        把這兩個搞混就是那個經典 bug：你會得到一塊板子裡面又一塊板子。
+      </p>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      <div id="swap-controls"></div>
+    {% endcall %}
+
+    {% call stage("那塊板子") %}
+      <div id="swap-live"></div>
+    {% endcall %}
+
+    {% call stage("這組合怎麼寫，以及回來了什麼", padded=false) %}
+      {{ code_block("", id="swap-code") }}
+      <div class="item-group scrollbar" id="swap-log"></div>
+      <footer id="swap-caption"></footer>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 04 #}
+  {% set t04 %}預設值夠用，其餘情況都靠一個屬性。{% endset %}
+  {% call lesson("triggers", "04", "hx-trigger：打字、捲動、輪詢", t04, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        多數時候你根本不寫 trigger。<code>button</code> 在 click 時發，<code>form</code> 在 submit 時發，
+        <code>input</code> 或 <code>select</code> 在 change 時發。
+        {{ link("hx-trigger", "https://htmx.org/attributes/hx-trigger/") }} 是給其餘情況用的。
+        它也是那個讓你不寫一行 JavaScript 就換到「邊打邊搜」、延後載入與輪詢的屬性。
+        底下三個都是活的。
+      </p>
+    {% endcall %}
+
+    {% set searching %}{{ badge("搜尋中…", variant="info", id="demo-searching") }}{% endset %}
+    {% call stage_with("keyup changed delay:400ms", searching,
+                       "changed 會在值沒變時略過請求；delay:400ms 讓每一次按鍵都把倒數重新開始。") %}
+      {% call stack(4) %}
+        <div id="demo-search-field"></div>
+        <div id="demo-results"></div>
+      {% endcall %}
+    {% endcall %}
+
+    {% set lazy_reset %}{{ button("重來", variant="ghost", size="xs", id="demo-lazy-reset") }}{% endset %}
+    {% call stage_with("revealed —— 捲到看得見時才載入", lazy_reset,
+                       "跟圖片的 loading=\"lazy\" 是同一個想法，只是延後的東西是一段渲染好的片段。") %}
+      <div id="demo-lazy-host"></div>
+    {% endcall %}
+
+    {% set poll_toggle %}{{ button("開始輪詢", variant="outline", size="xs", id="demo-poll-toggle") }}{% endset %}
+    {% call stage_with("every 2s —— 輪詢", poll_toggle,
+                       "元素被移除時輪詢就停了。要更頻繁的東西，改用 SSE。") %}
+      <div id="demo-poll-host">
+        <p>建置狀態，由伺服器重新整理。</p>
+      </div>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 05 #}
+  {% set t05 %}整頁 include 的，就是 htmx 端點回傳的那份 fragment——所以它們長不歪。{% endset %}
+  {% call lesson("partials", "05", "partial：一份檔案，整頁與局部共用", t05, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        接下來是 fjkit 那一半。partial 就是名字以底線開頭的模板。它不 extends 外殼，自己宣告 import，
+        並且把自己包在「會被換掉的那個元素」裡。整頁用
+        {% raw %}<code>{% include %}</code>{% endraw %} 把它放進去；每個 htmx 端點則是光禿禿地回它。
+      </p>
+      <p>
+        這就是為什麼 fjkit app 裡沒有「更新那一列」這條程式路徑。
+        每一次異動都重新渲染整塊板子的 partial 再換進去。
+        「板子長什麼樣」只有一份定義，第一次上色用它，之後每個請求也用它。
+        真正的檔案在 repo 的 <code>examples/fjkit-demo/app/templates/tasks/</code>。
+      </p>
+    {% endcall %}
+
+    {% set flow_picker %}
+      {% call button_group(id="flow-picker", role="group", aria_label="Request type") %}
+        {{ button("GET /tasks", variant="secondary", size="sm", data_flow="page", aria_pressed="true") }}
+        {{ button("POST /tasks (hx-post)", variant="ghost", size="sm", data_flow="swap", aria_pressed="false") }}
+      {% endcall %}
+    {% endset %}
+    {% call stage_with("請求", flow_picker) %}
+      {% call stack(4) %}
+        <div id="flow-nodes"></div>
+        {{ code_block("", id="flow-code") }}
+        <footer id="flow-caption"></footer>
+      {% endcall %}
+    {% endcall %}
+
+    {% set board_busy %}{{ badge("處理中…", variant="info", id="demo-board-busy") }}{% endset %}
+    {% call stage_with("活的板子——新增、推進、刪除", board_busy,
+                       "每個控制項都 target #demo-board，而每個回應都是整塊板子的 partial。") %}
+      {% call stack(4) %}
+        <div id="demo-form"></div>
+        <div id="demo-board-host"></div>
+      {% endcall %}
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set trap_page %}從 htmx 路由回傳 <code>page.html</code>，等於把一整份文件塞進你的 div 裡——回 partial{% endset %}
+      {% set trap_wrapper %}<code>outerHTML</code> 需要回應裡帶著那層外框，否則目標會直接消失{% endset %}
+      {{ defs("值得先知道的陷阱", [
+        ("整頁跑回來", trap_page),
+        ("4xx 不會換", "htmx 預設忽略錯誤回應；表單錯誤請回 200，並把重繪過的表單一起帶回來"),
+        ("外框弄丟", trap_wrapper),
+        ("篩選條件掉了", "列上的動作必須帶著目前的篩選，否則換進去的內容會默默把畫面重設"),
+      ]) }}
+      {{ defs("伺服器端的幫手", [
+        ("HX-Request", "讓路由知道自己正在回應一個局部更新的那個標頭"),
+        ("HX-Trigger", "回應標頭，會在前端觸發一個事件——toast 就是這樣被叫起來的（fjkit 0.6）"),
+        ("HX-Redirect", "從局部更新的回應裡做整頁轉址"),
+        ("hx-swap-oob", "用同一個回應更新第二個元素——一個計數、一個標籤"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 06 #}
+  {% set t06 %}handler 回傳的是 model，不是標記。要送出什麼，只取決於一個問題：這個呼叫端有沒有在等標記？{% endset %}
+  {% call lesson("json", "06", "沒有 HX-Request：同一條路由回 JSON", t06, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        第 02 課說這段交換裡沒有 JSON，就 swap 本身而言是對的。
+        但看一眼 handler 真正回傳的東西：是一個 <code>BoardResponse</code>，不是一串 HTML。
+        把前者變成後者的是 <code>@render</code>。當呼叫端不是一個在等標記的瀏覽器時，
+        就沒有東西可以<em>渲染進去</em>，model 便直接以 JSON 送出。
+      </p>
+      <p>
+        這就是 <code>render_mode="auto"</code>，<code>FjkitConfig</code> 的預設值。決定它的有兩件事，
+        兩件都不是 <code>Accept</code> 標頭：<strong>這條路由是什麼</strong>，以及
+        <strong>請求上有沒有 <code>HX-Request: true</code></strong>。頁面路由永遠有標記在等，
+        因為它存在的理由就是回應一次冷啟導覽，用 JSON 回應只會換來一片空白的瀏覽器視窗。
+        片段路由則只有在 htmx 開口時才有。
+      </p>
+    {% endcall %}
+
+    {% call stage("auto 會回什麼", "第一欄由路由決定，第二欄由標頭決定。") %}
+      {% call table([{"label": "路由"}, {"label": "HX-Request"}, {"label": "Content-Type"}, {"label": "內容"}]) %}
+        <tr>
+          {{ cell("@render(\"tasks/page.html\", partial=\"tasks/_board.html\")", tone="strong") }}
+          {{ cell(badge("沒有", variant="outline")) }}
+          {{ cell("text/html", tone="muted") }}
+          {{ cell("整頁，連 shell 一起") }}
+        </tr>
+        <tr>
+          {{ cell("同一條路由", tone="strong") }}
+          {{ cell(badge("true", variant="info")) }}
+          {{ cell("text/html", tone="muted") }}
+          {{ cell("只有 _board.html——那個 swap") }}
+        </tr>
+        <tr>
+          {{ cell("@render(\"tasks/_board.html\")", tone="strong") }}
+          {{ cell(badge("沒有", variant="outline")) }}
+          {{ cell("application/json", tone="muted") }}
+          {{ cell("序列化後的 BoardResponse——這條路由的 response_model") }}
+        </tr>
+        <tr>
+          {{ cell("同一條路由", tone="strong") }}
+          {{ cell(badge("true", variant="info")) }}
+          {{ cell("text/html", tone="muted") }}
+          {{ cell("只有 _board.html——那個 swap") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        第三列值得再看一次，因為那是真正拿到手的東西：<strong>這個 app 裡每一個 htmx 端點，
+        本來就已經是一個 JSON 端點。</strong><code>GET /tasks/board</code> 對 htmx 回一塊看板，
+        對 <code>curl</code> 回它背後那個 model。沒有第二條路由、沒有 serializer，
+        也沒有一份會跟模板走鐘的 DTO。回傳標註是兩者唯一的描述，所以 FastAPI 早就把
+        <code>BoardResponse</code> 放進 <code>/docs</code> 了。
+      </p>
+    {% endcall %}
+
+    {{ files([
+      {"id": "json-route", "label": "router.py", "lang": "python", "source": wire.route,
+       "note": "兩條路由共用一份 handler 內容。第一條同時指定了頁面與 partial，所以永遠有標記可以回給導覽；第二條只指定片段——這正是它落在 auto 的 JSON 那一半的原因。"},
+      {"id": "json-curl", "label": "沒有 HX-Request \u2192 JSON", "lang": "text", "source": wire.json,
+       "note": "status_variant 與 priority_variant 是 model 上的 @computed_field，所以模板需要的那個顯示決定也會到達 JSON，而不是只活在 Jinja 裡。"},
+      {"id": "json-htmx", "label": "HX-Request: true \u2192 HTML", "lang": "text", "source": wire.html,
+       "note": "同一個網址、同一個 handler、同一個 model——只是被渲染而不是被序列化。"},
+    ]) }}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set force_html %}decorator 上寫 <code>mode="html"</code>——一個絕不能被序列化的片段{% endset %}
+      {% set force_json %}<code>mode="json"</code>——一條就只是 API 的路由，對 htmx 也一樣{% endset %}
+      {% set app_wide %}<code>FjkitConfig(render_mode="html")</code> 把整個行為關掉{% endset %}
+      {{ defs("怎麼覆蓋它", [
+        ("強制 HTML", force_html),
+        ("強制 JSON", force_json),
+        ("整個 app", app_wide),
+        ("請求贏不了設定", "寫死 html 或 json 的路由沒有商量餘地——只有 auto 會去讀那個標頭"),
+      ]) }}
+      {% set vary_note %}凡是形狀取決於該標頭的回應，fjkit 都會補上 <code>Vary: HX-Request</code>{% endset %}
+      {{ defs("兩件要知道的事", [
+        ("快取", vary_note),
+        ("為什麼重要", "少了它，CDN 會把快取起來的片段送進一次導覽——一個沒有 shell 的頁面，而且哪裡都不會報錯"),
+        ("hx-boosted", "boost 過的連結是 htmx 在做一次普通導覽：就這個問題而言它算瀏覽器，所以拿到的是整頁，不是 partial"),
+        ("命名規則", "檔名以 _ 開頭的模板就是片段——test_conventions.py 本來就在管這條慣例"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set t07 %}畫面各有不同；形狀沒有。每一種都是一個 trigger、一個 target 與一份 partial。{% endset %}
+  {% call lesson("patterns", "07", "九種 htmx 模式，以及對應的 handler", t07, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        整套屬性詞彙一個螢幕就放得下，
+        <a href="{{ url_for(request, "components#cheatsheet") }}">「元件」那一頁把它印出來了</a>。
+        比較花時間學的是它反覆組成的那幾種排列。這裡把它們連同 fjkit 的寫法一起列出來：
+        一個分頁是 macro 呼叫，另一個是回應它的 handler。
+      </p>
+      <p>
+        底下每個 handler 都回一份 partial，而且都是普通的 <code>def</code>，
+        所以 Starlette 會把它丟進 threadpool。每種模式都連到它出處的 htmx 頁面。上游的
+        {{ link("文件", "https://htmx.org/docs/") }} 與
+        {{ link("屬性參考", "https://htmx.org/reference/") }} 短到可以整份讀完，而且值得。
+      </p>
+    {% endcall %}
+
+    {% set pattern_doc %}
+      {% call row(gap=2) %}
+        {{ badge("", variant="outline", id="pattern-tag") }}
+        <a id="pattern-doc" href="https://htmx.org/docs/" target="_blank" rel="noopener"></a>
+      {% endcall %}
+    {% endset %}
+    {% call stage_with("模式", pattern_doc) %}
+      {% call grid(cols=2, gap=4) %}
+        <div class="button-group" data-orientation="vertical" id="pattern-list" role="group" aria-label="Pattern"></div>
+        <div>
+          <footer id="pattern-when"></footer>
+          <div class="tabs">
+            <nav role="tablist" aria-label="File" aria-orientation="horizontal" id="pattern-tabs"></nav>
+            <div id="pattern-panel" role="tabpanel">
+              {{ code_block("", id="pattern-code") }}
+              <footer id="pattern-caption"></footer>
+            </div>
+          </div>
+        </div>
+      {% endcall %}
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {{ defs("它們的共通點", [
+        ("一份 partial", "頁面 include 它，端點回傳它——同一段 fragment 絕不存在兩種渲染"),
+        ("前端沒有狀態", "游標、篩選與編輯模式，全都活在 URL 裡，或活在「畫面上是哪一份 partial」裡"),
+        ("狀態放在 URL", "任何必須撐過重新整理的東西，都是一個整頁 GET 答得出來的 query string"),
+        ("退化得下去", "把 hx-* 關鍵字拿掉，同一批 macro 吐出的表單與連結照樣能用"),
+      ]) }}
+      {{ defs("刻意還沒做的", [
+        ("欄位錯誤", "每個欄位 macro 都已經收 error=；Pydantic 那趟來回是 0.3"),
+        ("toast", "HX-Trigger 標頭今天就有；元件是 0.6"),
+        ("對話框", "在那之前用 hx-confirm——那是瀏覽器自己的，而且它能用"),
+        ("排序", "換一組 query 參數的篩選列；table macro 會在 0.4 學會"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 08 #}
+  {% set t08 %}換品牌是一個 CSS 變數。「綠色代表完成」不在那個轉盤上。{% endset %}
+  {% call lesson("knob", "08", "換品牌：品牌 token 與狀態 token", t08, tag="theming") %}
+    {% call prose() %}
+      <p>
+        拉拉看色相。你正在編輯 <code>:root</code> 上的 <code>--primary</code>，
+        就是一支 app 會寫在自己 stylesheet 裡的那三行，中間沒有任何建置步驟。
+        整頁都會動，包括這個側欄與這些 card，因為這一頁本來就蓋在同一組 token 上。
+      </p>
+      <p>
+        盯著狀態標籤：它們不動。狀態顏色刻意<em>沒有</em>接到品牌上，
+        因為「綠色代表完成」必須撐過一次改版。
+      </p>
+    {% endcall %}
+
+    {#
+      `.field > input[type="range"]` is Basecoat's — the slider needs no class
+      of its own, and its JS binds the fill track. The same is true of the
+      checkbox in the playground on the Components page.
+    #}
+    {% call card("你會寫的那三行") %}
+      {# field_row has no "four" template — two columns, twice. #}
+      {% call field_row("two") %}
+        <div class="field">
+          <label class="label" for="hue">品牌色相</label>
+          <input type="range" id="hue" min="0" max="360" value="275" step="1">
+        </div>
+        <div class="field">
+          <label class="label" for="chroma">彩度</label>
+          <input type="range" id="chroma" min="0" max="30" value="19" step="1">
+        </div>
+        <div class="field">
+          <span class="label">預設組</span>
+          <div class="button-group" id="swatches" role="group" aria-label="Preset brand colours"></div>
+        </div>
+        <div class="field">
+          <span class="label">配色</span>
+          {% call button_group(id="theme-picker") %}
+            {{ button("淺色", variant="ghost", size="sm", data_theme_choice="light") }}
+            {{ button("深色", variant="ghost", size="sm", data_theme_choice="dark") }}
+            {{ button("自動", variant="secondary", size="sm", data_theme_choice="auto", aria_pressed="true") }}
+          {% endcall %}
+        </div>
+      {% endcall %}
+    {% endcall %}
+
+    {% call stage("重新上色後的頁面") %}
+      <div id="knob-preview"></div>
+    {% endcall %}
+
+    {% call stage("你換品牌的完整流程", padded=false) %}
+      {{ code_block("", id="knob-code") }}
+      <footer>一份掛在 fjkit 後面的 stylesheet。沒有 Tailwind 設定、沒有重建、沒有 watcher。</footer>
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set d_primary %}品牌填色，外加 focus 用的 <code>ring</code>{% endset %}
+      {# `fjkit check` scans every line for colour literals, not just class attributes,
+   so prose cannot name the utility it is warning you off. Recorded in
+   docs/BACKLOG.md: the colour rules should skip comments and text nodes. #}
+      {% set d_pfg %}品牌填色上的文字——絕不是一個絕對的白{% endset %}
+      {{ defs("在旋鈕上", [
+        ("primary", d_primary),
+        ("primary-foreground", d_pfg),
+        ("background · card", "頁底與各種表面，往品牌色帶一點"),
+        ("muted · border", "安靜的表面、細線、次要文字"),
+      ]) }}
+      {{ defs("刻意不在旋鈕上", [
+        ("success", "完成、通過、健康"),
+        ("warning", "需要注意，但還沒壞"),
+        ("info", "進行中、中性的提示"),
+        ("destructive", "刪除、失敗、無法回復"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 09 #}
+  {% set t09 %}一條沒有人能不小心違反的慣例，比一條寫下來的慣例值錢。{% endset %}
+  {% call lesson("gate", "09", "fjkit check：封閉詞彙表", t09) %}
+    {% call prose() %}
+      <p>
+        <code>fjkit check</code> 讀你的模板，然後拒絕兩種東西：顏色字面值，以及元件詞彙表以外的任何 class。
+        utility class <strong>即使今天能用也一樣被拒</strong>。如果你的 app 靠某個間距 utility 撐著，
+        只因為 fjkit 的外殼剛好吐了它，那麼外殼哪天不吐了，你的 app 就會安靜地壞掉。
+      </p>
+      <p>
+        改改看底下的標記。這支檢查器跑的是 fjkit 自己的規則，用的是它真正的 class 清單
+        ——<span id="vocab-count">…</span>——跟 CI 裡跑的是同一份程式碼，也跟掃這個站模板的是同一份。
+      </p>
+    {% endcall %}
+
+    {% set samples %}
+      {% call button_group() %}
+        {{ button("誘人的那個版本", variant="ghost", size="xs", data_sample="bad") }}
+        {{ button("fjkit 的版本", variant="ghost", size="xs", data_sample="good") }}
+      {% endcall %}
+    {% endset %}
+    {% call stage_with("app/templates/tasks/_board.html", samples) %}
+      {% call grid(cols=2, gap=4) %}
+        <textarea class="textarea scrollbar" id="checker-input" spellcheck="false"
+                  aria-label="Template markup" rows="18"></textarea>
+        {# The checker appends one `alert` per violation. Without a gap their
+           borders butt together and every boundary renders as a doubled line
+           with the two rounded corners colliding, so the container is a
+           `stack` rather than a bare div. #}
+        {% call stack(gap=2, id="checker-output", aria_live="polite") %}{% endcall %}
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        被擋下來的 class 是一種情報。它指名了那個還不存在的元件或參數。
+        0.1 落地時，改寫前的模板被判了 258 條違規；改寫後是 0。
+      </p>
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {{ defs("指令", [
+        ("fastapi dev", "把 app 跑起來——旁邊沒有東西要一起重建"),
+        ("fjkit check", "每個 class 都在詞彙表裡"),
+        ("fjkit eject", "把元件複製進來改——代價是拿不到上游的修正"),
+        ("fjkit build-css", "fjkit 自己的發佈步驟，永遠不是你的"),
+      ]) }}
+      {% set d_components %}<a href="{{ url_for(request, "components") }}">每個簽名與列舉，實際渲染</a>{% endset %}
+      {{ defs("接著讀", [
+        ("元件", d_components),
+        ("examples/fjkit-demo/", "同樣這些模式放在一支能跑的 app 裡，在 repo 中"),
+        ("src/fjkit/static/src/fjkit.css", "每個 token 只定義一次——換品牌覆蓋的就是這支檔案"),
+        ("docs/jinja-performance.md", "page() 對 stream()，以及那些建議背後的數字"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}
+
+{% block page_scripts %}
+  <script defer src="{{ fjkit_static('learn.js') }}"></script>
+{% endblock %}

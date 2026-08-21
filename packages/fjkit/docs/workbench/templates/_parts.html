@@ -1,0 +1,123 @@
+{#
+  The docs site's own macros.
+
+  Same discipline the kit asks of any app: anything that appears more than once
+  is a macro, and every one of these is composed from `ui/*` macros or from a
+  Basecoat component class. There is no hand-written chrome here — if one of
+  these needed a utility class, that would be the kit missing a component, and
+  `tests/test_docs_site.py` would say so.
+
+  Markup arguments (a thesis with a <code> in it, a note with a link) are passed
+  as `{% set x %}…{% endset %}` blocks, which yield Markup — the same trick
+  tasks/page.html uses, and the reason none of these need |safe.
+#}
+{% from "ui/data.html" import badge, card, code_block, item, item_list %}
+{% from "ui/tabs.html" import tab_panel, tabs %}
+{% from "ui/layout.html" import divider, row, section, stack %}
+
+{#
+  One numbered band. The id is the anchor the sidebar's "On this page" group
+  links to; `sections` in the page template is the list those links come from,
+  so the rail and the headings are the same data.
+#}
+{% macro lesson(id, num, title, thesis="", tag="") %}
+{# `caller` is rebound inside a {% call %} body, so capture ours first. #}
+{% set body = caller() %}
+<div id="{{ id }}">
+  {% call stack(5) %}
+    {% call row(gap=2) %}
+      {{ badge(num, variant="outline") }}
+      {% if tag %}{{ badge(tag, variant="secondary") }}{% endif %}
+    {% endcall %}
+    {% call section(title, thesis, gap=6) %}
+      {{ body }}
+    {% endcall %}
+  {% endcall %}
+</div>
+{{ divider() }}
+{% endmacro %}
+
+{#
+  Body copy. Bare <p> inside a stack: the gap is the component's, and the
+  measure is set on `main` in brand.css — an element rule, so no paragraph on
+  the site carries a class.
+#}
+{% macro prose(gap=3) %}
+  {% set body = caller() %}
+  {% call stack(gap) %}{{ body }}{% endcall %}
+{% endmacro %}
+
+{#
+  A source pane. `code_block` is the kit's now — it carries the scroll region,
+  its focusability and its label. All this adds is `data-lang`, which is the
+  highlighter's cue: common.js reads the source back out of `textContent` and
+  marks up the tokens, so the code stays legible with scripting off.
+#}
+{% macro code(source, lang="python", label=none) %}
+{{ code_block(source, label=label, data_lang=lang) }}
+{% endmacro %}
+
+{#
+  Several files behind tabs — now one `tabs()` call.
+
+  The aria wiring, the skin and the keyboard handling all belong to the kit;
+  this only has to name the panels. `entries` is a list of
+  {name, lang, source, note}.
+#}
+{% macro files(entries, label="File") %}
+{% call card(padded=false) %}
+  {#
+    `entries` goes straight to `tabs()` — it already carries `id` and `label`,
+    and the macro ignores the rest. No parallel list is built here, because a
+    template that assembles data is a template doing the router's job.
+  #}
+  {% call tabs(entries, label=label) %}
+    {% for entry in entries %}
+      {% call tab_panel(entry.id) %}
+        {{ code(entry.source, entry.lang | default("python"), label=entry.label) }}
+        {% if entry.note %}<footer>{{ entry.note }}</footer>{% endif %}
+      {% endcall %}
+    {% endfor %}
+  {% endcall %}
+{% endcall %}
+{% endmacro %}
+
+{#
+  A titled list of term/definition pairs. `items` is a list of (term, body)
+  where body may be Markup.
+
+  `clamp=false` is why the kit's `item` grew that parameter: Basecoat clamps a
+  row's description to two lines, which is right for a feed and wrong for a
+  definition that runs to three.
+#}
+{% macro defs(heading, items) %}
+{% call card(heading, padded=false) %}
+  {% call item_list() %}
+    {% for term, body in items %}{{ item(term, body, clamp=false) }}{% endfor %}
+  {% endcall %}
+{% endcall %}
+{% endmacro %}
+
+{#
+  A live preview. Just a card: whatever is inside is the kit's own output, and
+  the card around it is the kit's own too — which is the strongest way to show
+  that a component looks right in the surface it will actually live in.
+#}
+{% macro stage(label=none, description=none, padded=true) %}
+{% set body = caller() %}
+{% call card(label, description, padded=padded) %}
+  {{ body }}
+{% endcall %}
+{% endmacro %}
+
+{#
+  A card with something in its header, for the stages that carry a control —
+  "Fire the request", a filter, a reset. `actions` takes pre-rendered markup,
+  like every other fjkit slot that is not the body.
+#}
+{% macro stage_with(label, actions, description=none, padded=true) %}
+{% set body = caller() %}
+{% call card(label, description, actions=actions, padded=padded) %}
+  {{ body }}
+{% endcall %}
+{% endmacro %}

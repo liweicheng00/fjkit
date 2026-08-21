@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="zh-Hant" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fjkit 外掛 · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css">
+  <link rel="stylesheet" href="../assets/brand.css">
+  <script defer src="../assets/vendor/htmx/htmx.min.js"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js"></script>
+  <meta name="description" content="用一個物件、一個註冊點，加上 middleware、exception handler，或每個模板都拿得到的值——以及第一個需要它的 session 外掛。">
+  <meta property="og:title" content="fjkit 外掛">
+  <meta property="og:description" content="用一個物件、一個註冊點，加上 middleware、exception handler，或每個模板都拿得到的值——以及第一個需要它的 session 外掛。">
+  <meta property="og:type" content="article">
+  <script src="../assets/mock-server.js"></script>
+</head>
+<body class="min-h-full antialiased">
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
+    <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>上手</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>外掛</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>元件</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
+    <a href="plugins.html#why">      <span>plugin 是什麼</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#mount">      <span>mount()：app 那一側</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#extend">      <span>extend()：Jinja 與每一次渲染</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#rules">      <span>順序、碰撞與界線</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#auth">      <span>auth plugin</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#write">      <span>flash plugin</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="語言"><h3>語言</h3>    <ul>      <li>
+    <a href="../plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>English</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-screen flex-col px-5">
+      <header class="flex items-center gap-6 py-5">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>        <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit 的 GitHub 原始碼">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>        </div>
+      </header>
+
+    <main class="flex-1 pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">Plugins</h1>
+<p class="text-muted-foreground text-sm">    有些東西不是 macro。plugin 加的是 middleware、exception handler，或是每個模板都該拿到的值——
+    一個物件，一個地方註冊。
+</p>    </div>
+  </div>
+
+<div id="why">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">plugin 是什麼</h2><p class="text-muted-foreground text-sm">兩個貢獻時機，因為 kit 真的有兩個時機。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        macro 管的是一頁畫出什麼。它管不到 handler 執行之前發生的事，也管不到「每個模板都該知道、
+        但不該由每條路由傳過去」的東西。session 兩者都要，flash、語系、feature flag 也是。
+      </p>
+      <p>
+        plugin 是一個物件，兩個方法都可選。<code>mount()</code> 在 app 建構時執行，
+        <code>extend()</code> 在 Jinja environment 建立時執行。只想給每個模板一個值的 plugin，
+        就只寫後面那個。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">config = FjkitConfig(
+    template_dir=APP_DIR / &#34;templates&#34;,
+    plugins=(auth, flash),
+)
+mount_fjkit(app, config)</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        註冊就這樣而已。<code>mount_fjkit()</code> 本來就要讀這份 config 來掛靜態檔與建
+        environment，所以 plugin 不需要第二個呼叫，也沒有 import 順序要記。
+      </p>
+      <p>
+        分成兩個時機是刻意讓它看得見的。藏起來會比較友善——直到某個人的 <code>mount()</code>
+        靜悄悄地沒有執行為止。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="mount">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">mount()：app 那一側</h2><p class="text-muted-foreground text-sm">middleware、handler、路由——而且都記在加它的那個 plugin 頭上。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>AppSetup</code> 基本上就是 FastAPI 的轉手。它多做的事是署名：出問題的 plugin 會被
+        指名，而不是靠一個一個拔掉來找。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>AppSetup</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>add_middleware(cls, **options)</h4><p>Starlette 依註冊的反序執行 middleware，所以 plugins= 裡排在後面的 plugin 包在前面那些的外層</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_exception_handler(exc, handler)</h4><p>注意 middleware 裡拋出的例外永遠到不了 handler——Starlette 的 handler 那一層在使用者 middleware 的內側</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>include_router(router)</h4><p>給自帶端點的 plugin</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>mount_static(url, directory)</h4><p>給自帶資產的 plugin，掛載名稱由 plugin 名字衍生</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>warn(message)</h4><p>啟動期的設定檢查；訊息會冠上 plugin 名稱，以 PluginWarning 發出</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>app, config</h4><p>活的 FastAPI app 與 FjkitConfig，給上面兩個表達不了的檢查用</p>    </section>  </div></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        <code>warn()</code> 是給「只有這個 plugin 認得出來」的組合用的。例如正式設定配上記憶體版
+        session store：在你的筆電上完全正常，換到四個 worker 後面就會隨機把人登出，而且 traceback
+        裡沒有任何一行指向原因。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="extend">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">extend()：Jinja 與每一次渲染</h2><p class="text-muted-foreground text-sm">per-request 的 context，是原本缺的那一塊。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>FjkitConfig.globals</code> 每個 process 只算一次。對版本字串來說剛剛好，對「現在登入
+        的是誰」來說毫無用處。<code>add_context_processor()</code> 是另外那一半：每次渲染執行一次，
+        拿得到當下的 request。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>EnvSetup</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>add_template_dir(path)</h4><p>搜尋順序排在 app 的模板之後、kit 的之前——plugin 可以蓋掉 kit 的 macro，永遠蓋不掉 app 自己寫的檔案</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_global(name, value)</h4><p>整個 process 一個值</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_filter(name, fn)</h4><p>一個 Jinja filter</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_context_processor(fn, provides=[…])</h4><p>併進每個模板的 context，每次渲染一次</p>    </section>  </div></div></div>
+  </div>
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="auth plugin 的 extend()，全部" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
+    setup.add_context_processor(
+        lambda request: {&#34;session&#34;: getattr(request.state, &#34;auth&#34;, None)},
+        provides=[&#34;session&#34;],
+    )</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        兩個限制，都是刻意的。processor 必須是<strong>同步</strong>的：它在
+        <code>Templates.page()</code> 裡執行，而那是 <code>def</code> handler 從 threadpool 進來的。
+        需要 I/O 的 plugin 在 middleware 裡做完，把結果留在 <code>request.state</code> 上——上面那
+        一行讀的正是這個。
+      </p>
+      <p>
+        <code>provides=</code> 是強制宣告而不是自動推得。沒有它，兩個 plugin 默默搶同一個
+        <code>user</code>，只能靠渲染一頁然後剛好注意到才會發現；有了它，衝突是一個點名雙方的啟動
+        期錯誤。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="rules">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">順序、碰撞與界線</h2><p class="text-muted-foreground text-sm">所有可能撞在一起的東西，都在啟動時炸，不會留到正式環境。</p>      </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>模板搜尋順序</h3><p>先找到的贏。</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">順序</th>
+              <th class=" ">屬於</th>
+              <th class=" ">可以蓋掉</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="text-muted-foreground tabular-nums">1</td>
+          <td class="font-medium">app 的 template_dir</td>
+          <td class="">全部——這就是 fjkit eject</td>
+        </tr>
+        <tr>
+          <td class="text-muted-foreground tabular-nums">2</td>
+          <td class="font-medium">每個 plugin，依 plugins= 的順序</td>
+          <td class="">kit 的 macro，永遠不含 app 的檔案</td>
+        </tr>
+        <tr>
+          <td class="text-muted-foreground tabular-nums">3</td>
+          <td class="font-medium">kit</td>
+          <td class="">沒有</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>啟動時就拒絕</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>兩個 plugin 同名</h4><p>它們會在 request.state.&lt;name&gt; 上撞在一起，之後每一則錯誤訊息都變得沒辦法分辨</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>兩個 plugin 搶同一個 global、filter 或 context key</h4><p>錯誤訊息會點名雙方，並要你改名或拿掉一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>processor 回傳沒宣告過的 key</h4><p>在 strict_undefined 下會被抓到，所以是在開發階段浮現</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>plugin 做不到的事</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>注入 markup</h4><p>      沒有任何一個 hook 能把 markup 塞進 shell。有的話，任何 plugin 都能在每一頁放一段
+      <code>&lt;script&gt;</code>——「你這端零建置」與封閉詞彙表會同時從那道側門走掉。要出 UI 的
+      plugin 出的是<em>模板</em>，而且跟其他東西一樣得過 <code>fjkit check</code>。
+</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>依賴另一個 plugin</h4><p>順序就是你寫的順序，沒有解析步驟——因為目前還沒有東西需要</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>在啟動時開連線</h4><p>沒有 lifespan hook。plugin 收的是 app 已經建好的 client，這也是 RedisStore 有一個 client 參數的原因</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="auth">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+<span class="badge" data-variant="secondary">fjkit.auth</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">auth plugin</h2><p class="text-muted-foreground text-sm">瀏覽器拿 cookie，token 留在伺服器。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        內建的第一個 plugin，也是這個接縫存在的理由。瀏覽器只拿到一個不透明、簽名過的
+        <code>HttpOnly</code> cookie；access token、refresh token 與你的 claims 全部留在伺服器端的
+        session store 裡。
+      </p>
+      <p>
+        這正是 htmx app 要的形狀。不需要 <code>htmx:configRequest</code> 去掛 header、不需要
+        refresh 重試的膠水、DOM 裡沒有 token——瀏覽器每個請求都會帶上 cookie，因為瀏覽器本來就會。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">auth = AuthPlugin(
+    secret=os.environ[&#34;FJKIT_SECRET&#34;],
+    store=RedisStore(redis.from_url(REDIS_URL)),
+    source=MyOIDCSource(),
+    trusted_origins=[&#34;https://app.example.com&#34;],
+)
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
+
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>三個各自可換的接縫</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>SessionStore</h4><p>開發用 MemoryStore、正式用 RedisStore，或你自己的——五個 async 方法</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>TokenSource</h4><p>憑證怎麼變成 session：比對密碼、OIDC code 交換、跟上游換 token。預設的 LocalSource 根本沒有上游</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Csrf</h4><p>cookie 是 ambient credential，所以 CSRF 回來了。SameSite=Lax 加上精確的 Origin 比對——兩者漏掉的東西不一樣</p>    </section>  </div></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        路由完全看不到這些。在 router 上掛 <code>Depends(auth.required)</code>，底下的 handler
+        簽名一個字都不用改；session 在 <code>request.state.auth</code> 上，在每個模板裡叫
+        <code>session</code>。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>未登入的請求怎麼被拒絕</h3><p>@render 拿來決定線上格式的那個問題，換個角度問：該怎麼說不。</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">誰在問</th>
+              <th class=" ">回什麼</th>
+              <th class=" ">為什麼不是 401</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">htmx</td>
+          <td class=""><span class="badge" data-variant="info">401 + HX-Redirect</span></td>
+          <td class="">——htmx 在讀狀態碼之前就處理 HX-Redirect，所以這一格兩者兼得</td>
+        </tr>
+        <tr>
+          <td class="font-medium">瀏覽器導覽</td>
+          <td class=""><span class="badge" data-variant="info">303</span></td>
+          <td class="">沒有 body 的 401 就是一片空白；人要的是登入表單</td>
+        </tr>
+        <tr>
+          <td class="font-medium">腳本、curl、另一個服務</td>
+          <td class=""><span class="badge" data-variant="outline">401</span></td>
+          <td class="">——401 就是為這個呼叫端存在的</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        只有中間那一列不能是 401：一般導覽沒有任何機制可以對它做出反應，只會停在一片空白上。
+        htmx 那一列才有意思——它處理完 <code>HX-Redirect</code> 就 return，<em>還沒讀到</em>狀態碼，
+        所以狀態碼可以誠實，而瀏覽器照樣整頁移動。導覽的判定是 <code>Sec-Fetch-Mode: navigate</code>，
+        沒有的話退而看 <code>Accept</code> 有沒有提到 <code>text/html</code>；其餘都是
+        <code>render_mode="auto"</code> 下會拿到 JSON 的那個呼叫端。那個 401 不帶
+        <code>WWW-Authenticate</code>：RFC 9110 要求這個欄位，但所有已註冊的機制在這裡都是錯的。
+        <code>Basic</code> 會讓瀏覽器跳出它自己的帳密對話框，而那正是這個 plugin 要取代掉的登入表單。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>動手之前值得知道的</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>每個請求一次 store 查詢</h4><p>這是「刪一筆就能撤銷 session」與「refresh token 永不上線」的代價</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>refresh 有鎖</h4><p>否則同時發出的四個 swap 會送出四次 refresh，而有輪替的上游在第二次到達時就撤銷整個 family</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>refresh 期間不換 session id</h4><p>換了的話並行的 swap 會各帶回一張不同的 Set-Cookie，最後一張贏，其餘變孤兒</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>登入路由是 async def</h4><p>它們要 await store，真正的 TokenSource 還要 await 身分提供者。只負責渲染的路由維持 def</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="write">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<span class="badge" data-variant="secondary">fjkit.flash</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">flash plugin</h2><p class="text-muted-foreground text-sm">一則活得比產生它的那個回應更久的訊息。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        轉址是訊息的墳場。<code>HX-Trigger</code> 是叫頁面去觸發一個事件，但頁面在那個標頭抵達之前
+        就被換掉了；一般導覽更是從頭到尾沒有 JavaScript 參與。唯一跨得過去的只有 cookie。
+      </p>
+      <p>
+        所以 flash 是一個短命的簽名 cookie：在轉址的那個回應上種下去，在落地的那個請求上讀回來，
+        渲染進下一頁，並在同一個回應裡清掉——這就是它只出現一次、重新整理不會再跳的原因。
+        <code>ui/shell.html</code> 已經帶了 toaster 區域並從 <code>flash</code> 填它，所以註冊
+        plugin 就是全部的設定，你的模板一個字都不用改。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">flash = FlashPlugin(secret=os.environ[&#34;FJKIT_SECRET&#34;])
+auth = AuthPlugin(secret=…, trusted_origins=…, flash=flash)
+
+config = FjkitConfig(template_dir=…, plugins=(flash, auth))</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        <code>auth</code> 是被交給 flash，而不是自己 import 它。兩個 plugin 誰也不依賴誰——auth
+        沒有 flash 也能跑，而一條剛存好資料的路由想要的是
+        <code>flash.add(response, "Saved")</code>，跟 session 毫無關係。把它們接起來的是 app，
+        這也是第 04 節裡沒有相依解析的同一個理由。
+      </p>
+      <p>
+        它在 Jinja 這一側只有一個 processor，而它交出去的是一個小物件而不是一個 list，理由值得
+        知道：一次頁面載入發出的請求不只頁面本身——htmx 的輪詢、prefetch、樣式表都算——如果「消耗」
+        的定義是「這個請求帶了那個 cookie」，其中任何一個都會把訊息吃掉。所以那個佇列是在被
+        <em>迭代</em>時才標記為已讀，而那只發生在真正畫出 toast 的地方。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="fjkit/flash.py" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
+    setup.add_context_processor(self._read, provides=[&#34;flash&#34;])
+
+def _read(self, request: Request) -&gt; dict[str, object]:
+    # 是佇列不是 list：有東西迭代它的時候，它會把自己標記成已讀。
+    return {&#34;flash&#34;: _Queue(getattr(request.state, &#34;flash&#34;, ()), request)}</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        在任何地方發一則——<code>flash.add(response, "Saved", category="success")</code>——它就會
+        出現在瀏覽器接下來落地的那一頁上，長成一個 toast，而那一頁的路由對它一無所知。這也是判斷
+        一樣東西該不該做成 plugin 的標準：這個值，路由自己傳得過去嗎？這裡傳不過去，因為發出訊息
+        的那條路由，不是渲染它的那條。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>鴨子型別，不是繼承</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>name</h4><p>一個 str 屬性——必要，而且只有這一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>mount / extend</h4><p>要寫哪個都行，兩個都不寫也行；沒有的那個就不會被呼叫</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>沒有基底類別</h4><p>Plugin 是 Protocol，所以一個 plugin 不需要 import fjkit 才能成為 plugin</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.1.0.dev0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">原始碼與 issues</a>.
+  這個站本身就是一支 fjkit app：它 extends <code class="kbd">ui/shell.html</code>，而且通過 <code class="kbd">fjkit check</code>——所以它不可能展示套件裡沒有的元件。
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script defer src="../assets/data.js"></script>
+  <script defer src="../assets/common.js"></script>
+</body>
+</html>

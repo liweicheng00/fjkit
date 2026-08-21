@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% from "_parts.html" import defs, lesson, prose, stage %}
+{% from "ui/data.html" import card, code_block %}
+{% from "ui/tabs.html" import tab_panel, tabs %}
+{% from "ui/layout.html" import grid, page_header, stack %}
+
+{#
+  Components 的中文版。結構、id、macro 呼叫與腳本掛點必須跟英文版逐字對應——
+  頁面骨架是同一份 `base.html` 與同一支 components.js，這裡只有文字不同。
+#}
+{% set sections = [
+  {"id": "macros",     "title": "每個 macro：呼叫與 HTML"},
+  {"id": "layout",     "title": "版面：stack、row、grid、split"},
+  {"id": "structure",  "title": "page_header、section、divider"},
+  {"id": "display",    "title": "empty_state、metric_group、清單"},
+  {"id": "icons",      "title": "icon()：任何 Lucide 名字，直接內嵌"},
+  {"id": "cheatsheet", "title": "ui/ 裡的每個 macro，按檔案列"},
+] %}
+
+{#
+  One showcase = one macro that has nothing to configure. The preview and the
+  code are both filled from `SHOWCASE` in components.js, which reads the same
+  data.json every other preview on the site comes from — so adding one here
+  never means pasting markup.
+#}
+{% macro showcase(key, name) %}
+{# Preview and source are two cards, like 02 and 05: a preview needs the card's
+   own padding around it, and a code block needs the card's edge. One card
+   cannot give both, and a padded=false card hands the preview to the border. #}
+{% call stage(name) %}
+  <div data-showcase="{{ key }}"></div>
+{% endcall %}
+{% call card(padded=false) %}
+  {{ code_block("", data_showcase_code=key) }}
+  <footer data-showcase-caption="{{ key }}"></footer>
+{% endcall %}
+{% endmacro %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    每一個 macro，都有實際渲染的預覽與產生它的那行呼叫。
+    轉動旋鈕，兩件事會一起變：元件本身，以及你要打出這個結果會寫的那行 Jinja。
+    底下每一個預覽都是 build 時由 fjkit 自己的 Environment 渲染出來的。
+  {% endset %}
+  {{ page_header("每個 macro，以及產生它的那行呼叫", intro) }}
+
+  {# ============================================================== 01 #}
+  {% set c01 %}沒有任何 macro 收 class 字串，所以沒有任何呼叫端能自己發明一個顏色。{% endset %}
+  {% call lesson("macros", "01", "每個 macro：呼叫與 HTML", c01) %}
+    {% call prose() %}
+      <p>
+        底下每一個參數都是<strong>封閉列舉</strong>。沒有 <code>class=</code> 這個逃生口，也沒有色相可以傳。
+        你挑一個 variant，長什麼樣由 token 層決定。多傳給 macro 的東西一律變成 HTML 屬性：
+        <code>hx_post="/tasks"</code> 會渲染成 <code>hx-post="/tasks"</code>。
+        這就是 htmx 從頭到尾不必出現在任何一個 macro 定義裡的原因。
+      </p>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      {#
+        The tablist and its panels are filled by components.js, because the list
+        of macros lives there — a hardcoded list here would be a second source
+        of truth that silently loses a tab the day one is added. So this is the
+        `.tabs` skeleton only, and the script writes the aria contract that
+        Basecoat's own tab behaviour reads.
+      #}
+      <div class="tabs" id="macro-picker">
+        <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
+      </div>
+    {% endcall %}
+
+    {% call stage("預覽") %}
+      <div id="macro-preview"></div>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      {% call tabs([{"id": "macro-jinja", "label": "你寫的"},
+                    {"id": "macro-html", "label": "它吐出來的"}], label="Representation") %}
+        {% call tab_panel("macro-jinja") %}{{ code_block("", label="那行 Jinja 呼叫") }}{% endcall %}
+        {% call tab_panel("macro-html") %}{{ code_block("", label="產生的 HTML", wrap=true) }}{% endcall %}
+      {% endcall %}
+      <footer id="macro-caption"></footer>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 02 #}
+  {% set c02 %}你打下 <code>grid gap-4</code> 的那一刻，零建置這個承諾就結束了。{% endset %}
+  {% call lesson("layout", "02", "版面：stack、row、grid、split", c02) %}
+    {% call prose() %}
+      <p>
+        光有元件到不了封閉詞彙表。你第一次要把兩張 card 並排，手就伸向 utility class，
+        而 fjkit 出貨的那份 stylesheet 根本不知道你想要它。所以間距與欄數也是 macro。
+        每一個值都是查表，表裡的字串<em>原封不動</em>出現在 kit 的原始碼裡，Tailwind 掃得到。
+      </p>
+      <p>
+        虛線方塊代表你的內容。轉旋鈕，看著底下那行原始碼跟著變。
+      </p>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      <div id="layout-controls"></div>
+    {% endcall %}
+
+    {% call stage("預覽") %}
+      <div id="layout-preview"></div>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      {{ code_block("", id="layout-code") }}
+      <footer id="layout-caption"></footer>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 03 #}
+  {% set c03 %}標題、分隔線與群組也是元件——不然它們就會是 utility class。{% endset %}
+  {% call lesson("structure", "03", "page_header、section、divider", c03) %}
+    {% call prose() %}
+      <p>
+        這三個是資料還沒進來以前，一頁就已經由它們組成的部分。
+        <code>page_header</code> 收一個 block，那個 block 就是它的動作區。
+        所以標題、說明與一排按鈕在任何寬度下都待在同一行，呼叫端不必量任何東西。
+        這一頁最上面那個 header 就是同一個 macro，平鋪直敘地呼叫，沒有動作要放。
+      </p>
+    {% endcall %}
+
+    {{ showcase("page_header", "page_header(title, description) · block = actions") }}
+    {{ showcase("section", "section(title, description, gap=4) · block") }}
+    {{ showcase("divider", "divider()") }}
+  {% endcall %}
+
+  {# ============================================================== 04 #}
+  {% set c04 %}<code>data.html</code> 裡剩下的——負責把一個值顯示出來的那些。{% endset %}
+  {% call lesson("display", "04", "empty_state、metric_group、清單", c04) %}
+    {% call prose() %}
+      <p>
+        一張塞滿 row 的表格是簡單的那種情況。這些是另外幾種：後面還沒有任何 row 的那個數字、
+        表格上方那排數值、句子裡夾著一組按鍵的那種說明。
+      </p>
+      <p>
+        <code>empty_state</code> 值得在你需要它之前就先知道。<code>rows</code> 是空的時候，
+        <code>table</code> 會自己把它渲染出來，所以沒有任何呼叫端要寫 if-rows-else 那段分支。
+      </p>
+    {% endcall %}
+
+    {{ showcase("empty_state", "empty_state(title, description, icon_name)") }}
+    {{ showcase("metric_group", "metric_group(items, cols=3)") }}
+    {{ showcase("bullet_list", "bullet_list(tone) / list_item() · blocks") }}
+    {{ showcase("inline", "link(label, href) · kbd(keys)") }}
+  {% endcall %}
+
+  {# ============================================================== 05 #}
+  {% set c05 %}1,767 個名字，沒有 sprite sheet，沒有 icon font，一個請求都不用發。{% endset %}
+  {% call lesson("icons", "05", "icon()：任何 Lucide 名字，直接內嵌", c05) %}
+    {% call prose() %}
+      <p>
+        <code>icon("plus")</code> 會把 Lucide 的路徑當成 <code>&lt;svg&gt;</code> 內嵌進去。
+        它繼承 <code>currentColor</code>，所以放進 primary 按鈕裡的 icon 顏色本來就是對的，
+        而且不管多大都不用付一個網路請求。
+      </p>
+      <p>
+        大部分 macro 直接收 <code>icon_name=</code>：<code>button</code>、<code>stat</code>、
+        <code>empty_state</code>、<code>brand</code>、<code>sidebar_link</code>。
+        所以你很少會自己呼叫這一個。這個站側欄裡的圖示全部是那樣來的。
+        底下是其中一小撮，任何 Lucide 名字都可以。
+      </p>
+    {% endcall %}
+
+    {% call stage("icon(name, size=16)") %}
+      <div id="icon-grid"></div>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      {{ code_block("", id="icon-code") }}
+      <footer>
+        名字打錯會在渲染時直接丟例外，而不是印出一個空格子——所以錯字是讓那一頁掛掉，
+        而不是讓介面上出現一個洞就這樣出貨。
+      </footer>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 06 #}
+  {% set c06 %}七個檔案。如果這裡沒有，那就是你還沒找到的某個參數。{% endset %}
+  {% call lesson("cheatsheet", "06", "ui/ 裡的每個 macro，按檔案列", c06) %}
+    {% call card("packages/fjkit/src/fjkit/templates/ui/", padded=false) %}
+      {{ code_block("", id="cheatsheet-code") }}
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set d_learn %}<a href="{{ url_for(request, "learn") }}">各個零件怎麼接，以及 htmx 送出什麼</a>{% endset %}
+      {{ defs("接著讀", [
+        ("上手", d_learn),
+        ("examples/fjkit-demo/", "同一批 macro 放在一支能跑的 app 裡，在 repo 中"),
+        ("src/fjkit/templates/ui/", "macro 原始碼——每一個都以自己的簽名註解開頭"),
+        ("src/fjkit/static/src/fjkit.css", "每個 variant 背後那張 token 表"),
+      ]) }}
+      {{ defs("找不到想要的 macro 時", [
+        ("先看參數", "多數需求其實是一個已經存在的關鍵字——size、tone、padded、align"),
+        ("直接傳過去", "任何多的關鍵字都會變成屬性，這涵蓋了所有 hx-*、aria-* 與 data-*"),
+        ("fjkit eject", "把元件複製進你的 app 再改——代價是之後上游的修正你拿不到"),
+        ("開一張 issue", "被擋下來的 class 指名了那個還不存在的元件；那就是最好的回報內容"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}
+
+{% block page_scripts %}
+  <script defer src="{{ fjkit_static('components.js') }}"></script>
+{% endblock %}

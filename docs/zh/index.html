@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-Hant" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fjkit — 給 FastAPI 的快速 UI · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css">
+  <link rel="stylesheet" href="../assets/brand.css">
+  <script defer src="../assets/vendor/htmx/htmx.min.js"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js"></script>
+  <meta name="description" content="fjkit 把 Jinja、Tailwind CSS 與 shadcn 風格元件整合給 FastAPI 用：頁面、表格、表單、導覽與 htmx 局部更新全部是 Jinja macro，而且你這端零建置。">
+  <meta property="og:title" content="fjkit — 給 FastAPI 的快速 UI">
+  <meta property="og:description" content="fjkit 把 Jinja、Tailwind CSS 與 shadcn 風格元件整合給 FastAPI 用：頁面、表格、表單、導覽與 htmx 局部更新全部是 Jinja macro，而且你這端零建置。">
+  <meta property="og:type" content="article">
+  <script src="../assets/mock-server.js"></script>
+</head>
+<body class="min-h-full antialiased">
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
+    <a href="index.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>上手</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>外掛</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>元件</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
+    <a href="index.html#who">      <span>給誰用</span>
+    </a>
+  </li>
+        <li>
+    <a href="index.html#box">      <span>wheel 裡裝了什麼</span>
+    </a>
+  </li>
+        <li>
+    <a href="index.html#next">      <span>接下來去哪</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="語言"><h3>語言</h3>    <ul>      <li>
+    <a href="../index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>English</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-screen flex-col px-5">
+      <header class="flex items-center gap-6 py-5">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>        <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit 的 GitHub 原始碼">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>        </div>
+      </header>
+
+    <main class="flex-1 pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">給 FastAPI 的快速 UI</h1>
+<p class="text-muted-foreground text-sm">    把 Jinja、Tailwind CSS 與 shadcn 風格元件整合起來，給 FastAPI 用。
+</p>    </div>
+  </div>
+
+  <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>主要特色</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>零建置</h4><p>沒有 package.json、沒有 node_modules、沒有 watcher。stylesheet 在 fjkit 發佈時就編譯好了，不是在你的 app 執行時。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>一個顏色旋鈕</h4><p>每個顏色都是 token。換品牌是改一個檔案，而且改完綠色仍然代表完成。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>掛在你現有的 API 上</h4><p>每一個 htmx 端點都會用 JSON 回應 curl。同一條路由、同一個 handler、同一個回傳標註。</p>    </section>  </div></div></div>
+  </div>
+
+<div id="who">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">給誰用</h2><p class="text-muted-foreground text-sm">會寫後端、需要一個像樣的介面、又不想碰前端工具鏈的人。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        你已經會寫 FastAPI。你需要導覽、深色模式、一張可篩選的表格，以及一個會驗證的表單。
+        這是給你的。
+      </p>
+      <p>
+        如果你要帶 React、Vue 或 Svelte 進來，那這一層就選錯了。這是一個決定，不是一個缺口。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>它應該花你多少</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>第一頁</h4><p>大約二十行 Python 就有導覽與深色模式，而且沒有建置步驟</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>一個後台畫面</h4><p>列表、篩選、新增表單與 htmx 更新，一個下午。不寫 CSS，也不寫 JavaScript。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>換品牌</h4><p>一份覆寫 token 的 stylesheet，掛在 kit 的後面</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>升級</h4><p>改一個版本號。stylesheet 在 wheel 裡，不在你的 repo 裡。</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="box">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">wheel 裡裝了什麼</h2><p class="text-muted-foreground text-sm">一個 wheel、兩個執行期依賴，沒有任何東西要你自己編譯。</p>      </div>
+      <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>套件裡帶的</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>templates/ui/</h4><p>那些 macro：版面、按鈕、資料、表單、表格、分頁、導覽、側欄、回饋、圖示，以及文件外殼</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>編譯好的 stylesheet，每個風格包一份。234 KB 原始、23.9 KB gzip，在 build 自己守著的 28 KB 預算內。一頁只載一份。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/vendor/</h4><p>htmx 與 Basecoat 的 JavaScript，版本釘死，直接從套件裡供應</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>1,767 個圖示</h4><p>Lucide，按名字內嵌。沒有 icon font、沒有 sprite 請求、執行期沒有 JS。</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>你會碰到的全部表面</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>FjkitConfig、mount_fjkit</h4><p>接線，每支 app 一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>@render</h4><p>在裝飾器上指名模板；handler 只回資料</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit check</h4><p>詞彙表關卡。放進你的 CI。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit eject</h4><p>逃生口：把元件複製進你的 app 再改</p>    </section>  </div></div></div>
+  </div>
+</div>
+<div class="flex flex-col gap-3">      <p>
+        需求：Python 3.13 以上，以及兩個執行期依賴——FastAPI 與 Jinja2。要加第三個，需要一個到
+        目前為止還沒有人提得出來的理由。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="next">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">接下來去哪</h2><p class="text-muted-foreground text-sm">兩頁。一頁給你看接線，一頁給你看每一個 macro。</p>      </div>
+          <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>這個站上</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>上手</h4><p><a href="learn.html">kit 怎麼接、htmx 送出什麼，以及那個會讓 build 掛掉的關卡</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>元件</h4><p><a href="components.html">每個 macro，實際渲染，附上產生它的那行呼叫</a></p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.1.0.dev0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">原始碼與 issues</a>.
+  這個站本身就是一支 fjkit app：它 extends <code class="kbd">ui/shell.html</code>，而且通過 <code class="kbd">fjkit check</code>——所以它不可能展示套件裡沒有的元件。
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script defer src="../assets/data.js"></script>
+  <script defer src="../assets/common.js"></script>
+</body>
+</html>

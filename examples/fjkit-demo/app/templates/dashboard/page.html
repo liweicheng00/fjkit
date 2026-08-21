@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import badge, bullet_list, card, link, list_item, progress, stat %}
+{% from "ui/layout.html" import grid, page_header, row, split, stack %}
+{% from "ui/table.html" import table %}
+{% from "tasks/macros.html" import task_row, TASK_COLUMNS %}
+
+{% block title %}Overview{% endblock %}
+
+{% block content %}
+  {{ page_header("Overview",
+     "FastAPI renders these pages with Jinja2. fjkit supplies the components; htmx supplies the interactivity.") }}
+
+  {# Two layout blocks in one page: stack them, or they render flush against
+     each other — a layout macro is a bare div with no margin of its own. #}
+     
+  {% call stack(4) %}
+
+  {% call grid(cols=4, gap=4) %}
+    {{ stat("Total", stats.total, icon_name="list") }}
+    {{ stat("To do", stats.todo, icon_name="circle-dot") }}
+    {{ stat("In progress", stats.doing, hint="active right now", icon_name="sparkle", tone="info") }}
+    {{ stat("Done", stats.done, hint=stats.done_pct ~ "% of the board", icon_name="check", tone="success") }}
+  {% endcall %}
+
+  {% call(slot) split(gap=4) %}
+    {% if slot == "main" %}
+
+      {% set all_tasks %}
+        {{ button("All tasks", variant="ghost", size="xs", icon_name="arrow-right", icon_end=true,
+                  href=url_for(request, "tasks_page")) }}
+      {% endset %}
+
+      {% call card("Recent", actions=all_tasks, padded=false) %}
+        {# Same row as the board, without mutations — those live on /tasks. #}
+        {% call table(TASK_COLUMNS[:-1]) %}
+          {% for task in recent %}{{ task_row(request, task, show_actions=false) }}{% endfor %}
+        {% endcall %}
+      {% endcall %}
+
+    {% else %}
+
+      {% call stack(4) %}
+        {% call card("Completion", none, size="sm") %}
+          {{ progress(stats.done_pct, label="Done") }}
+        {% endcall %}
+
+        {% call card("Owners", none, size="sm") %}
+          {% call row(gap=2) %}
+            {% for owner in owners %}{{ badge(owner, variant="outline") }}{% endfor %}
+          {% endcall %}
+        {% endcall %}
+
+        {% call card("Rendering", "how this page was produced", size="sm") %}
+          {% call bullet_list() %}
+            {% call list_item() %}Templates compiled once per process, cached on disk as bytecode.{% endcall %}
+            {% call list_item() %}Components are macros, so a row costs a function call.{% endcall %}
+            {% call list_item() %}
+              Large pages stream — try the
+              {{ link("20k-row report", url_for(request, "tasks_report") ~ "?rows=20000") }}.
+            {% endcall %}
+          {% endcall %}
+        {% endcall %}
+      {% endcall %}
+
+    {% endif %}
+  {% endcall %}
+
+  {% endcall %}
+{% endblock %}

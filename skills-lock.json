@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "technical-documentation": {
+      "source": "openclaw/openclaw",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/technical-documentation/SKILL.md",
+      "computedHash": "70b11b1a762b62cbaeb4c27bcd19dc7465f7616b2ad8a36c6f86130841c7864e"
+    }
+  }
+}

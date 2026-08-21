@@ -1,0 +1,13 @@
+{#
+  icon(name, size, cls) — one inline Lucide glyph.
+
+  The path data comes from Python (`fjkit_icon_path`), not from a Jinja dict:
+  the full set is ~1500 entries, and a literal that size would be compiled into
+  every template that imports this one.
+
+  `stroke="currentColor"` means an icon is always the colour of its context,
+  which is why icons never needed a token of their own.
+#}
+{%- macro icon(name, size=16, cls="") -%}
+<svg xmlns="http://www.w3.org/2000/svg" width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"{% if cls %} class="{{ cls }}"{% endif %} aria-hidden="true">{{ fjkit_icon_path(name) }}</svg>
+{%- endmacro -%}

@@ -1,0 +1,50 @@
+{#
+  Full page. Same three jobs as every other page here: extend the shell, set
+  the title, drop in the partial the htmx endpoints return.
+#}
+{% extends "base.html" %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import kbd %}
+{% from "ui/feedback.html" import spinner %}
+{% from "ui/form.html" import form, field_row, select_field %}
+{% from "ui/layout.html" import page_header, row, stack %}
+
+{% block title %}Jobs{% endblock %}
+
+{% block content %}
+  {% set note %}
+    The work runs after the response is sent. Each card then re-requests
+    {{ kbd("GET /jobs/{id}") }} once a second, and stops when it is finished.
+    {{ kbd("Details") }} opens a panel the browser owns and htmx fills.
+  {% endset %}
+
+  {% call page_header("Jobs", note) %}
+    {{ button("Clear finished", variant="outline", size="sm", icon_name="trash",
+              hx_delete=url_for(request, "jobs_clear"),
+              hx_target="#job-list", hx_swap="outerHTML") }}
+  {% endcall %}
+
+  {% call stack(4) %}
+    {#
+      `hx-indicator` names the element htmx marks while this request is in
+      flight; the spinner below carries htmx's own indicator class, so it is
+      hidden until then and needs no CSS or JS from us.
+
+      Expect it to barely flash — the handler queues the job and returns. That
+      is the point of the page, not a fault in the indicator: what takes four
+      seconds is happening after the response, which is why the card polls.
+    #}
+    {% call form(action=url_for(request, "jobs_start"), target="#job-list",
+                 hx_indicator="#job-busy") %}
+      {% call field_row("field-and-button") %}
+        {{ select_field("kind", label="Background job", options=kind_options, selected="export") }}
+        {% call row(gap=2) %}
+          {{ button("Start", variant="primary", type="submit", icon_name="play") }}
+          {{ spinner(indicator=true, id="job-busy", label="Starting the job") }}
+        {% endcall %}
+      {% endcall %}
+    {% endcall %}
+
+    {% include "jobs/_jobs.html" %}
+  {% endcall %}
+{% endblock %}

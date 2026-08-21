@@ -1,0 +1,74 @@
+{#
+  Full page. Same three jobs as every other page here: extend the shell, set
+  the title, drop in the partial the htmx endpoints return.
+#}
+{% extends "base.html" %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import bullet_list, card, empty_state, kbd, list_item %}
+{% from "ui/layout.html" import page_header, split, stack %}
+
+{% block title %}Session{% endblock %}
+
+{% block content %}
+  {% set note %}
+    Signing in is an htmx swap like any other. The reply is a fragment; the
+    cookie rides out on the same response.
+  {% endset %}
+
+  {{ page_header("Session", note) }}
+
+  {% call(slot) split(gap=4) %}
+    {% if slot == "main" %}
+      {% call stack(4) %}
+        {% include "auth/_panel.html" %}
+
+        {#
+          The protected route. The button is shown either way on purpose —
+          pressing it while signed out is the demonstration, not a mistake to
+          prevent. htmx gets 204 + HX-Redirect and moves the whole page to the
+          login screen, which is the behaviour that stops a login form being
+          swapped into a card.
+        #}
+        {% set fetch %}
+          {{ button("Fetch it", variant="outline", size="sm", icon_name="lock",
+                    hx_get=url_for(request, "session_secret"),
+                    hx_target="#secret", hx_swap="innerHTML") }}
+        {% endset %}
+        {% call card("A route behind Depends", "One line on the router. The handler never mentions auth.", actions=fetch) %}
+          {# The empty state lives inside the target, so the fragment replaces
+             it rather than landing underneath a card still saying it is empty. #}
+          <div id="secret">
+            {{ empty_state("Nothing fetched yet",
+                           "Press Fetch it. Then sign out and press it again — the answer changes from a fragment to a redirect.",
+                           icon_name="lock") }}
+          </div>
+        {% endcall %}
+      {% endcall %}
+    {% else %}
+      {% call card("What just happened") %}
+        {% call bullet_list() %}
+          {% call list_item() %}
+            The password never reaches a template. It is posted once, exchanged for a
+            session, and forgotten.
+          {% endcall %}
+          {% call list_item() %}
+            The browser gets one signed, opaque id in an {{ kbd("HttpOnly") }} cookie.
+            Nothing else — no token in the DOM, no {{ kbd("localStorage") }}.
+          {% endcall %}
+          {% call list_item() %}
+            Every later request carries it automatically, so no route on this site
+            mentions a header and no JavaScript here attaches one.
+          {% endcall %}
+          {% call list_item() %}
+            Signing out is a {{ kbd("DELETE") }}, so it is checked against this app's
+            trusted origins first. The same request from another site gets a 403.
+          {% endcall %}
+          {% call list_item() %}
+            Bounce off it while signed out and the toast on the next page came from a
+            context processor — the page it lands on has no route that knows about sessions.
+          {% endcall %}
+        {% endcall %}
+      {% endcall %}
+    {% endif %}
+  {% endcall %}
+{% endblock %}

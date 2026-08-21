@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="zh-Hant" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>學會 fjkit · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css">
+  <link rel="stylesheet" href="../assets/brand.css">
+  <script defer src="../assets/vendor/htmx/htmx.min.js"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js"></script>
+  <meta name="description" content="不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。">
+  <meta property="og:title" content="學會 fjkit">
+  <meta property="og:description" content="不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。">
+  <meta property="og:type" content="article">
+  <script src="../assets/mock-server.js"></script>
+</head>
+<body class="min-h-full antialiased">
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
+    <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>上手</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>外掛</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>元件</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
+    <a href="learn.html#wiring">      <span>接線：config、mount、templates</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#exchange">      <span>htmx 的請求與回應</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#targets">      <span>hx-target 與 hx-swap</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#triggers">      <span>hx-trigger：打字、捲動、輪詢</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#partials">      <span>partial：一份檔案，整頁與局部共用</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#json">      <span>沒有 HX-Request：同一條路由回 JSON</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#patterns">      <span>九種 htmx 模式，以及對應的 handler</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#knob">      <span>換品牌：品牌 token 與狀態 token</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#gate">      <span>fjkit check：封閉詞彙表</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="語言"><h3>語言</h3>    <ul>      <li>
+    <a href="../learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>English</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-screen flex-col px-5">
+      <header class="flex items-center gap-6 py-5">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>        <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit 的 GitHub 原始碼">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>        </div>
+      </header>
+
+    <main class="flex-1 pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">在寫路由的地方，把介面一起寫完</h1>
+<p class="text-muted-foreground text-sm">    九課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 掛掉的指令。
+    底下每個示範都是活的。
+</p>    </div>
+  </div>
+
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>這一頁就是它在講的那個東西</h3><p>不是它的截圖。</p>      </div>
+    </header>      <section><div class="flex flex-col gap-3">      <p>
+        底下每一個預覽都是真的 macro 輸出，build 時由 fjkit 自己的 Jinja Environment 渲染。
+        它周圍這一頁也是。側欄、這些 card、表格與分頁列，都是 demo app 呼叫的同一批 macro。
+        <code>fjkit check</code> 在 CI 裡掃這個站的模板，所以這裡不可能出現套件沒有的元件。
+      </p>
+</div></section>
+  </div>
+<div id="wiring">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">接線：config、mount、templates</h2><p class="text-muted-foreground text-sm">其餘你寫的東西都是你的 app，不是你的前端。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        一支 fjkit app 只在三個地方碰到 kit。<code>FjkitConfig</code> 收下所有旋鈕。
+        <code>mount_fjkit()</code> 直接從安裝好的套件裡供應 stylesheet 與 vendored JS，
+        並且每個 process 建一次 Jinja environment。<code>@render</code> 指名路由要用的模板。
+      </p>
+      <p>
+        四個檔案點過去看。沒有 <code>package.json</code>，也沒有 watcher 要開著。
+        repo 裡的 <code>examples/fjkit-demo</code> 就是同樣這四個，放在一支能跑的 app 裡。
+      </p>
+</div>
+<div class="card">            <div class="tabs">
+        <nav role="tablist" aria-label="File" aria-orientation="horizontal" id="wiring-tabs"></nav>
+        <div id="wiring-panel" role="tabpanel">
+          <pre class="code-block scrollbar" tabindex="0" id="wiring-code"></pre>
+          <footer id="wiring-caption"></footer>
+        </div>
+      </div>
+
+  </div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="exchange">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">htmx 的請求與回應</h2><p class="text-muted-foreground text-sm">伺服器用 HTML 回應一次 swap。這中間沒有序列化，也沒有要同步的前端狀態。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        整個想法就是這樣，而且比看起來小。一個元素說明<em>要發哪個請求</em>，以及<em>答案要放在哪裡</em>。
+        伺服器回一段 HTML，就是它本來會放進整頁的那段標記。htmx 把那段放進你指名的元素裡。
+      </p>
+      <p>
+        這中間沒有東西被序列化。前端沒有重新渲染。也沒有狀態同時活在兩個地方。
+        同一條路由很樂意用 JSON 回應一支腳本，那是<a href="#json">第 06 課</a>，是另一道門，
+        不是這段交換裡的一個步驟。按下按鈕：<strong>底下那個請求是真的</strong>。
+        這一頁載了 htmx，而瀏覽器裡有一支 mock server 扮演 FastAPI 那一側。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>一次來回</h3><p>前端唯一會變的，只有 hx-target 指名的那棵子樹。</p>      </div>
+    </header>      <section>  <svg viewBox="0 0 720 320" role="img" fill="none"
+     font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+     aria-label="瀏覽器帶著 HX-Request 標頭送出 POST /tasks；FastAPI 的路由呼叫 service，渲染 _board.html 這份 partial，回傳一段 HTML fragment，htmx 再把它換進 hx-target 指名的那個元素裡。">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+    </marker>
+  </defs>
+
+  <g id="dg-browser" data-lit="true">
+    <rect x="8" y="30" width="268" height="266" rx="8" fill="var(--card)" stroke="currentColor"></rect>
+    <text x="24" y="52" font-size="10" fill="var(--muted-foreground)">瀏覽器</text>
+    <rect x="24" y="66" width="236" height="52" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="36" y="88" font-size="12" fill="currentColor">&lt;button hx-post&gt;</text>
+    <text x="36" y="105" font-size="10" fill="var(--muted-foreground)">觸發——一次點擊</text>
+
+    <g id="dg-target">
+      <rect data-accent x="24" y="196" width="236" height="84" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+      <text data-accent x="36" y="220" font-size="12" fill="currentColor">#board</text>
+      <text x="36" y="238" font-size="10" fill="var(--muted-foreground)">hx-target——會被</text>
+      <text x="36" y="253" font-size="10" fill="var(--muted-foreground)">換掉的那個元素</text>
+    </g>
+  </g>
+
+  <g id="dg-request" data-lit="false">
+    <line data-accent x1="276" y1="92" x2="440" y2="92" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <text data-accent x="288" y="72" font-size="11" fill="currentColor">POST /tasks</text>
+    <text x="288" y="86" font-size="10" fill="var(--muted-foreground)">HX-Request: true</text>
+    <text x="288" y="112" font-size="10" fill="var(--muted-foreground)">HX-Target: board</text>
+    <text x="288" y="126" font-size="10" fill="var(--muted-foreground)">title=Ship+it（表單內容）</text>
+  </g>
+
+  <g id="dg-server" data-lit="false">
+    <rect x="440" y="30" width="272" height="266" rx="8" fill="var(--card)" stroke="currentColor"></rect>
+    <text x="456" y="52" font-size="10" fill="var(--muted-foreground)">FASTAPI</text>
+
+    <rect x="456" y="66" width="240" height="40" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="468" y="91" font-size="12" fill="currentColor">router.py</text>
+
+    <line x1="576" y1="106" x2="576" y2="130" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <rect x="456" y="130" width="240" height="40" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="468" y="155" font-size="12" fill="currentColor">service——真正做事的地方</text>
+
+    <line x1="576" y1="170" x2="576" y2="194" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <rect data-accent x="456" y="194" width="240" height="56" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text data-accent x="468" y="217" font-size="12" fill="currentColor">tasks/_board.html</text>
+    <text x="468" y="235" font-size="10" fill="var(--muted-foreground)">頁面 include 的同一份 partial</text>
+  </g>
+
+  <g id="dg-response" data-lit="false">
+    <line data-accent x1="440" y1="272" x2="276" y2="272" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <text data-accent x="288" y="290" font-size="11" fill="currentColor">200 text/html</text>
+    <text x="288" y="306" font-size="10" fill="var(--muted-foreground)">&lt;div id=&#34;board&#34;&gt;…&lt;/div&gt;——一段 fragment，不是一頁</text>
+  </g>
+
+  <g id="dg-swap" data-lit="false">
+    <path data-accent d="M 268 272 C 300 272 300 238 268 238" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></path>
+    <text data-accent x="150" y="180" font-size="11" fill="currentColor" text-anchor="middle">swap: outerHTML</text>
+  </g>
+</svg>
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>試一次</h3><p>底下這段來回是一個貨真價實的 htmx 請求。</p>      </div>
+<div class="flex flex-wrap gap-2 items-center">        <span class="badge" data-variant="outline" id="dg-stage-label">idle</span>
+        <button class="btn" data-variant="primary" data-size="sm" type="button" id="dg-run">送出請求<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+</div>    </header>      <section>  <div class="flex flex-col gap-4">        <div id="dg-live"></div>
+        <div class="item-group scrollbar" id="dg-log"></div>
+</div>
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        那些 <code>HX-*</code> 標頭，就是一條路由用來分辨「這是局部更新」還是「這是整頁載入」的依據。
+        其餘部分是一個再普通不過的 POST。兩端都沒有任何前端框架參與。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="targets">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">hx-target 與 hx-swap</h2><p class="text-muted-foreground text-sm">兩個屬性決定一切：換哪個元素，以及怎麼換。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-target/">hx-target</a> 挑元素。
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-swap/">hx-swap</a> 說明要拿它怎麼辦。
+        htmx 的困惑大多住在這一對上，所以拿底下這塊真的板子試。
+        每一種組合都會發出真的請求，換進去的也是真的回應。
+      </p>
+      <p>
+        <code>outerHTML</code> 換掉目標元素本身，所以回應必須包含那層外框。
+        <code>innerHTML</code>（預設）換掉它裡面的東西，所以回應<em>不能</em>包。
+        把這兩個搞混就是那個經典 bug：你會得到一塊板子裡面又一塊板子。
+      </p>
+</div>
+<div class="card">            <div id="swap-controls"></div>
+
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>那塊板子</h3>      </div>
+    </header>      <section>        <div id="swap-live"></div>
+
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>這組合怎麼寫，以及回來了什麼</h3>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" id="swap-code"></pre>
+      <div class="item-group scrollbar" id="swap-log"></div>
+      <footer id="swap-caption"></footer>
+
+</div>
+  </div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="triggers">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">hx-trigger：打字、捲動、輪詢</h2><p class="text-muted-foreground text-sm">預設值夠用，其餘情況都靠一個屬性。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        多數時候你根本不寫 trigger。<code>button</code> 在 click 時發，<code>form</code> 在 submit 時發，
+        <code>input</code> 或 <code>select</code> 在 change 時發。
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-trigger/">hx-trigger</a> 是給其餘情況用的。
+        它也是那個讓你不寫一行 JavaScript 就換到「邊打邊搜」、延後載入與輪詢的屬性。
+        底下三個都是活的。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>keyup changed delay:400ms</h3><p>changed 會在值沒變時略過請求；delay:400ms 讓每一次按鍵都把倒數重新開始。</p>      </div>
+<span class="badge" data-variant="info" id="demo-searching">搜尋中…</span>    </header>      <section>  <div class="flex flex-col gap-4">        <div id="demo-search-field"></div>
+        <div id="demo-results"></div>
+</div>
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>revealed —— 捲到看得見時才載入</h3><p>跟圖片的 loading=&#34;lazy&#34; 是同一個想法，只是延後的東西是一段渲染好的片段。</p>      </div>
+<button class="btn" data-variant="ghost" data-size="xs" type="button" id="demo-lazy-reset">重來</button>    </header>      <section>        <div id="demo-lazy-host"></div>
+
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>every 2s —— 輪詢</h3><p>元素被移除時輪詢就停了。要更頻繁的東西，改用 SSE。</p>      </div>
+<button class="btn" data-variant="outline" data-size="xs" type="button" id="demo-poll-toggle">開始輪詢</button>    </header>      <section>        <div id="demo-poll-host">
+        <p>建置狀態，由伺服器重新整理。</p>
+      </div>
+
+</section>
+  </div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="partials">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">partial：一份檔案，整頁與局部共用</h2><p class="text-muted-foreground text-sm">整頁 include 的，就是 htmx 端點回傳的那份 fragment——所以它們長不歪。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        接下來是 fjkit 那一半。partial 就是名字以底線開頭的模板。它不 extends 外殼，自己宣告 import，
+        並且把自己包在「會被換掉的那個元素」裡。整頁用
+<code>{% include %}</code> 把它放進去；每個 htmx 端點則是光禿禿地回它。
+      </p>
+      <p>
+        這就是為什麼 fjkit app 裡沒有「更新那一列」這條程式路徑。
+        每一次異動都重新渲染整塊板子的 partial 再換進去。
+        「板子長什麼樣」只有一份定義，第一次上色用它，之後每個請求也用它。
+        真正的檔案在 repo 的 <code>examples/fjkit-demo/app/templates/tasks/</code>。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>請求</h3>      </div>
+<div class="flex flex-wrap gap-2 items-center" id="flow-picker" role="group" aria-label="Request type">        <button class="btn" data-variant="secondary" data-size="sm" type="button" data-flow="page" aria-pressed="true">GET /tasks</button>
+        <button class="btn" data-variant="ghost" data-size="sm" type="button" data-flow="swap" aria-pressed="false">POST /tasks (hx-post)</button>
+</div>    </header>      <section>  <div class="flex flex-col gap-4">        <div id="flow-nodes"></div>
+        <pre class="code-block scrollbar" tabindex="0" id="flow-code"></pre>
+        <footer id="flow-caption"></footer>
+</div>
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>活的板子——新增、推進、刪除</h3><p>每個控制項都 target #demo-board，而每個回應都是整塊板子的 partial。</p>      </div>
+<span class="badge" data-variant="info" id="demo-board-busy">處理中…</span>    </header>      <section>  <div class="flex flex-col gap-4">        <div id="demo-form"></div>
+        <div id="demo-board-host"></div>
+</div>
+</section>
+  </div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>值得先知道的陷阱</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>整頁跑回來</h4><p>從 htmx 路由回傳 <code>page.html</code>，等於把一整份文件塞進你的 div 裡——回 partial</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>4xx 不會換</h4><p>htmx 預設忽略錯誤回應；表單錯誤請回 200，並把重繪過的表單一起帶回來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>外框弄丟</h4><p><code>outerHTML</code> 需要回應裡帶著那層外框，否則目標會直接消失</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>篩選條件掉了</h4><p>列上的動作必須帶著目前的篩選，否則換進去的內容會默默把畫面重設</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>伺服器端的幫手</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>HX-Request</h4><p>讓路由知道自己正在回應一個局部更新的那個標頭</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>HX-Trigger</h4><p>回應標頭，會在前端觸發一個事件——toast 就是這樣被叫起來的（fjkit 0.6）</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>HX-Redirect</h4><p>從局部更新的回應裡做整頁轉址</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>hx-swap-oob</h4><p>用同一個回應更新第二個元素——一個計數、一個標籤</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="json">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">沒有 HX-Request：同一條路由回 JSON</h2><p class="text-muted-foreground text-sm">handler 回傳的是 model，不是標記。要送出什麼，只取決於一個問題：這個呼叫端有沒有在等標記？</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        第 02 課說這段交換裡沒有 JSON，就 swap 本身而言是對的。
+        但看一眼 handler 真正回傳的東西：是一個 <code>BoardResponse</code>，不是一串 HTML。
+        把前者變成後者的是 <code>@render</code>。當呼叫端不是一個在等標記的瀏覽器時，
+        就沒有東西可以<em>渲染進去</em>，model 便直接以 JSON 送出。
+      </p>
+      <p>
+        這就是 <code>render_mode="auto"</code>，<code>FjkitConfig</code> 的預設值。決定它的有兩件事，
+        兩件都不是 <code>Accept</code> 標頭：<strong>這條路由是什麼</strong>，以及
+        <strong>請求上有沒有 <code>HX-Request: true</code></strong>。頁面路由永遠有標記在等，
+        因為它存在的理由就是回應一次冷啟導覽，用 JSON 回應只會換來一片空白的瀏覽器視窗。
+        片段路由則只有在 htmx 開口時才有。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>auto 會回什麼</h3><p>第一欄由路由決定，第二欄由標頭決定。</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">路由</th>
+              <th class=" ">HX-Request</th>
+              <th class=" ">Content-Type</th>
+              <th class=" ">內容</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)</td>
+          <td class=""><span class="badge" data-variant="outline">沒有</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">整頁，連 shell 一起</td>
+        </tr>
+        <tr>
+          <td class="font-medium">同一條路由</td>
+          <td class=""><span class="badge" data-variant="info">true</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">只有 _board.html——那個 swap</td>
+        </tr>
+        <tr>
+          <td class="font-medium">@render(&#34;tasks/_board.html&#34;)</td>
+          <td class=""><span class="badge" data-variant="outline">沒有</span></td>
+          <td class="text-muted-foreground">application/json</td>
+          <td class="">序列化後的 BoardResponse——這條路由的 response_model</td>
+        </tr>
+        <tr>
+          <td class="font-medium">同一條路由</td>
+          <td class=""><span class="badge" data-variant="info">true</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">只有 _board.html——那個 swap</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        第三列值得再看一次，因為那是真正拿到手的東西：<strong>這個 app 裡每一個 htmx 端點，
+        本來就已經是一個 JSON 端點。</strong><code>GET /tasks/board</code> 對 htmx 回一塊看板，
+        對 <code>curl</code> 回它背後那個 model。沒有第二條路由、沒有 serializer，
+        也沒有一份會跟模板走鐘的 DTO。回傳標註是兩者唯一的描述，所以 FastAPI 早就把
+        <code>BoardResponse</code> 放進 <code>/docs</code> 了。
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="json-route"
+                aria-selected="true">router.py</button>
+        <button type="button" role="tab" aria-controls="json-curl"
+                aria-selected="false">沒有 HX-Request → JSON</button>
+        <button type="button" role="tab" aria-controls="json-htmx"
+                aria-selected="false">HX-Request: true → HTML</button>
+    </nav><div id="json-route" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.get(&#34;/tasks&#34;, name=&#34;tasks_page&#34;)
+@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)
+def tasks_page(service: ServiceDep, status: Status | None = None) -&gt; BoardResponse:
+    # A page route: it names a page and a partial, so it always has markup
+    # waiting. A navigation gets the page; htmx gets the board.
+    return _board(service, status)
+
+
+@router.get(&#34;/tasks/board&#34;, name=&#34;tasks_board&#34;)
+@render(&#34;tasks/_board.html&#34;)
+def tasks_board(service: ServiceDep, status: Status | None = None) -&gt; BoardResponse:
+    # A fragment route: it names only a partial. htmx gets the board, and
+    # anyone else gets BoardResponse as JSON — the API, at no extra cost.
+    return _board(service, status)</pre>
+
+<footer>兩條路由共用一份 handler 內容。第一條同時指定了頁面與 partial，所以永遠有標記可以回給導覽；第二條只指定片段——這正是它落在 auto 的 JSON 那一半的原因。</footer></div><div id="json-curl" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="沒有 HX-Request → JSON" data-lang="text">$ curl -s localhost:8000/tasks/board?status=doing
+
+content-type: application/json
+vary: HX-Request
+
+{
+  &#34;tasks&#34;: [
+    {
+      &#34;id&#34;: 4,
+      &#34;title&#34;: &#34;Turn off auto_reload in the prod image&#34;,
+      &#34;status&#34;: &#34;doing&#34;,
+      &#34;priority&#34;: &#34;normal&#34;,
+      &#34;owner&#34;: &#34;kai&#34;,
+      &#34;created_at&#34;: &#34;2026-08-18T19:38:42.562805Z&#34;,
+      &#34;status_variant&#34;: &#34;info&#34;,
+      &#34;priority_variant&#34;: &#34;secondary&#34;
+    }
+  ],
+  &#34;stats&#34;: {&#34;total&#34;: 8, &#34;todo&#34;: 4, &#34;doing&#34;: 2, &#34;done&#34;: 2, &#34;done_pct&#34;: 25},
+  &#34;owners&#34;: [&#34;kai&#34;, &#34;mei&#34;],
+  &#34;active_status&#34;: &#34;doing&#34;,
+  &#34;filter_query&#34;: &#34;?status=doing&#34;
+}</pre>
+
+<footer>status_variant 與 priority_variant 是 model 上的 @computed_field，所以模板需要的那個顯示決定也會到達 JSON，而不是只活在 Jinja 裡。</footer></div><div id="json-htmx" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="HX-Request: true → HTML" data-lang="text">$ curl -s -H &#39;HX-Request: true&#39; localhost:8000/tasks/board?status=doing
+
+content-type: text/html; charset=utf-8
+vary: HX-Request
+
+&lt;div id=&#34;board&#34;&gt;
+  &lt;div class=&#34;grid gap-6 lg:grid-cols-[1fr_19rem]&#34;&gt;
+    &lt;form class=&#34;card&#34; hx-post=&#34;/tasks&#34; hx-target=&#34;#board&#34; hx-swap=&#34;outerHTML&#34;&gt;
+      ...
+    &lt;/form&gt;
+    &lt;table class=&#34;table&#34;&gt;
+      &lt;tr&gt;&lt;td&gt;Turn off auto_reload in the prod image&lt;/td&gt;
+          &lt;td&gt;&lt;span class=&#34;badge&#34; data-variant=&#34;info&#34;&gt;Doing&lt;/span&gt;&lt;/td&gt;
+      ...
+    &lt;/table&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+
+<footer>同一個網址、同一個 handler、同一個 model——只是被渲染而不是被序列化。</footer></div></div>
+  </div>
+
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>怎麼覆蓋它</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>強制 HTML</h4><p>decorator 上寫 <code>mode="html"</code>——一個絕不能被序列化的片段</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>強制 JSON</h4><p><code>mode="json"</code>——一條就只是 API 的路由，對 htmx 也一樣</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>整個 app</h4><p><code>FjkitConfig(render_mode="html")</code> 把整個行為關掉</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>請求贏不了設定</h4><p>寫死 html 或 json 的路由沒有商量餘地——只有 auto 會去讀那個標頭</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>兩件要知道的事</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>快取</h4><p>凡是形狀取決於該標頭的回應，fjkit 都會補上 <code>Vary: HX-Request</code></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>為什麼重要</h4><p>少了它，CDN 會把快取起來的片段送進一次導覽——一個沒有 shell 的頁面，而且哪裡都不會報錯</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>hx-boosted</h4><p>boost 過的連結是 htmx 在做一次普通導覽：就這個問題而言它算瀏覽器，所以拿到的是整頁，不是 partial</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>命名規則</h4><p>檔名以 _ 開頭的模板就是片段——test_conventions.py 本來就在管這條慣例</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="patterns">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">九種 htmx 模式，以及對應的 handler</h2><p class="text-muted-foreground text-sm">畫面各有不同；形狀沒有。每一種都是一個 trigger、一個 target 與一份 partial。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        整套屬性詞彙一個螢幕就放得下，
+        <a href="components.html#cheatsheet">「元件」那一頁把它印出來了</a>。
+        比較花時間學的是它反覆組成的那幾種排列。這裡把它們連同 fjkit 的寫法一起列出來：
+        一個分頁是 macro 呼叫，另一個是回應它的 handler。
+      </p>
+      <p>
+        底下每個 handler 都回一份 partial，而且都是普通的 <code>def</code>，
+        所以 Starlette 會把它丟進 threadpool。每種模式都連到它出處的 htmx 頁面。上游的
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/docs/">文件</a> 與
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/reference/">屬性參考</a> 短到可以整份讀完，而且值得。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>模式</h3>      </div>
+<div class="flex flex-wrap gap-2 items-center">        <span class="badge" data-variant="outline" id="pattern-tag"></span>
+        <a id="pattern-doc" href="https://htmx.org/docs/" target="_blank" rel="noopener"></a>
+</div>    </header>      <section>  <div class="grid gap-4 sm:grid-cols-2">        <div class="button-group" data-orientation="vertical" id="pattern-list" role="group" aria-label="Pattern"></div>
+        <div>
+          <footer id="pattern-when"></footer>
+          <div class="tabs">
+            <nav role="tablist" aria-label="File" aria-orientation="horizontal" id="pattern-tabs"></nav>
+            <div id="pattern-panel" role="tabpanel">
+              <pre class="code-block scrollbar" tabindex="0" id="pattern-code"></pre>
+              <footer id="pattern-caption"></footer>
+            </div>
+          </div>
+        </div>
+</div>
+</section>
+  </div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>它們的共通點</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>一份 partial</h4><p>頁面 include 它，端點回傳它——同一段 fragment 絕不存在兩種渲染</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>前端沒有狀態</h4><p>游標、篩選與編輯模式，全都活在 URL 裡，或活在「畫面上是哪一份 partial」裡</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>狀態放在 URL</h4><p>任何必須撐過重新整理的東西，都是一個整頁 GET 答得出來的 query string</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>退化得下去</h4><p>把 hx-* 關鍵字拿掉，同一批 macro 吐出的表單與連結照樣能用</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>刻意還沒做的</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>欄位錯誤</h4><p>每個欄位 macro 都已經收 error=；Pydantic 那趟來回是 0.3</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>toast</h4><p>HX-Trigger 標頭今天就有；元件是 0.6</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>對話框</h4><p>在那之前用 hx-confirm——那是瀏覽器自己的，而且它能用</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>排序</h4><p>換一組 query 參數的篩選列；table macro 會在 0.4 學會</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="knob">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+<span class="badge" data-variant="secondary">theming</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">換品牌：品牌 token 與狀態 token</h2><p class="text-muted-foreground text-sm">換品牌是一個 CSS 變數。「綠色代表完成」不在那個轉盤上。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        拉拉看色相。你正在編輯 <code>:root</code> 上的 <code>--primary</code>，
+        就是一支 app 會寫在自己 stylesheet 裡的那三行，中間沒有任何建置步驟。
+        整頁都會動，包括這個側欄與這些 card，因為這一頁本來就蓋在同一組 token 上。
+      </p>
+      <p>
+        盯著狀態標籤：它們不動。狀態顏色刻意<em>沒有</em>接到品牌上，
+        因為「綠色代表完成」必須撐過一次改版。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>你會寫的那三行</h3>      </div>
+    </header>      <section><div class="grid gap-3 sm:grid-cols-2 sm:items-end">        <div class="field">
+          <label class="label" for="hue">品牌色相</label>
+          <input type="range" id="hue" min="0" max="360" value="275" step="1">
+        </div>
+        <div class="field">
+          <label class="label" for="chroma">彩度</label>
+          <input type="range" id="chroma" min="0" max="30" value="19" step="1">
+        </div>
+        <div class="field">
+          <span class="label">預設組</span>
+          <div class="button-group" id="swatches" role="group" aria-label="Preset brand colours"></div>
+        </div>
+        <div class="field">
+          <span class="label">配色</span>
+<div class="flex flex-wrap gap-2 items-center" id="theme-picker">            <button class="btn" data-variant="ghost" data-size="sm" type="button" data-theme-choice="light">淺色</button>
+            <button class="btn" data-variant="ghost" data-size="sm" type="button" data-theme-choice="dark">深色</button>
+            <button class="btn" data-variant="secondary" data-size="sm" type="button" data-theme-choice="auto" aria-pressed="true">自動</button>
+</div>        </div>
+</div></section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>重新上色後的頁面</h3>      </div>
+    </header>      <section>        <div id="knob-preview"></div>
+
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>你換品牌的完整流程</h3>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" id="knob-code"></pre>
+      <footer>一份掛在 fjkit 後面的 stylesheet。沒有 Tailwind 設定、沒有重建、沒有 watcher。</footer>
+
+</div>
+  </div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>在旋鈕上</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>primary</h4><p>品牌填色，外加 focus 用的 <code>ring</code></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>primary-foreground</h4><p>品牌填色上的文字——絕不是一個絕對的白</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>background · card</h4><p>頁底與各種表面，往品牌色帶一點</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>muted · border</h4><p>安靜的表面、細線、次要文字</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>刻意不在旋鈕上</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>success</h4><p>完成、通過、健康</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>warning</h4><p>需要注意，但還沒壞</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>info</h4><p>進行中、中性的提示</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>destructive</h4><p>刪除、失敗、無法回復</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="gate">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">fjkit check：封閉詞彙表</h2><p class="text-muted-foreground text-sm">一條沒有人能不小心違反的慣例，比一條寫下來的慣例值錢。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>fjkit check</code> 讀你的模板，然後拒絕兩種東西：顏色字面值，以及元件詞彙表以外的任何 class。
+        utility class <strong>即使今天能用也一樣被拒</strong>。如果你的 app 靠某個間距 utility 撐著，
+        只因為 fjkit 的外殼剛好吐了它，那麼外殼哪天不吐了，你的 app 就會安靜地壞掉。
+      </p>
+      <p>
+        改改看底下的標記。這支檢查器跑的是 fjkit 自己的規則，用的是它真正的 class 清單
+        ——<span id="vocab-count">…</span>——跟 CI 裡跑的是同一份程式碼，也跟掃這個站模板的是同一份。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>app/templates/tasks/_board.html</h3>      </div>
+<div class="flex flex-wrap gap-2 items-center">        <button class="btn" data-variant="ghost" data-size="xs" type="button" data-sample="bad">誘人的那個版本</button>
+        <button class="btn" data-variant="ghost" data-size="xs" type="button" data-sample="good">fjkit 的版本</button>
+</div>    </header>      <section>  <div class="grid gap-4 sm:grid-cols-2">        <textarea class="textarea scrollbar" id="checker-input" spellcheck="false"
+                  aria-label="Template markup" rows="18"></textarea>
+<div class="flex flex-col gap-2" id="checker-output" aria-live="polite"></div></div>
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        被擋下來的 class 是一種情報。它指名了那個還不存在的元件或參數。
+        0.1 落地時，改寫前的模板被判了 258 條違規；改寫後是 0。
+      </p>
+</div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>指令</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>fastapi dev</h4><p>把 app 跑起來——旁邊沒有東西要一起重建</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit check</h4><p>每個 class 都在詞彙表裡</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit eject</h4><p>把元件複製進來改——代價是拿不到上游的修正</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit build-css</h4><p>fjkit 自己的發佈步驟，永遠不是你的</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>接著讀</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>元件</h4><p><a href="components.html">每個簽名與列舉，實際渲染</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>examples/fjkit-demo/</h4><p>同樣這些模式放在一支能跑的 app 裡，在 repo 中</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>src/fjkit/static/src/fjkit.css</h4><p>每個 token 只定義一次——換品牌覆蓋的就是這支檔案</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>docs/jinja-performance.md</h4><p>page() 對 stream()，以及那些建議背後的數字</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.1.0.dev0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">原始碼與 issues</a>.
+  這個站本身就是一支 fjkit app：它 extends <code class="kbd">ui/shell.html</code>，而且通過 <code class="kbd">fjkit check</code>——所以它不可能展示套件裡沒有的元件。
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script defer src="../assets/data.js"></script>
+  <script defer src="../assets/common.js"></script>
+  <script defer src="../assets/learn.js"></script>
+</body>
+</html>

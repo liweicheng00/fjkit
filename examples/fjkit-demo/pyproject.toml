@@ -1,0 +1,31 @@
+[project]
+name = "fjkit-demo"
+version = "0.1.0"
+description = "The fjkit demo — a task board with htmx swaps, and the kit's acceptance test"
+requires-python = ">=3.13"
+
+# What a fjkit app actually needs is still two lines, and neither of them is a
+# front-end tool: the stylesheet, htmx and Basecoat ship inside fjkit.
+#
+# `plotly` is the third, and it is this demo's own choice rather than
+# something fjkit asks for. It builds the figure the charts page sends; the
+# 1.1 MB of JavaScript that draws it is vendored separately by
+# `scripts/vendor_plotly.py`. Neither is a build step — there is still no npm
+# here, and no app author inherits either one by using fjkit.
+dependencies = [
+    "fastapi[standard]>=0.141.1",
+    "fjkit",
+    "plotly>=6.9.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.10.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+# fjkit comes from the workspace, never from PyPI, so a change to the kit is
+# visible here on the next request with no publish step in between.
+[tool.uv.sources]
+fjkit = { workspace = true }

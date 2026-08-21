@@ -1,0 +1,79 @@
+{#
+  table(columns, rows, …) — the basic data table.
+
+  0.1 scope: structure, column specs, and the zero-row case. Sorting, pagination
+  and batch selection land in 0.4.
+
+      {% call table(
+           columns=[{"label": "Task"}, {"label": "Owner"}, {"width": "min"}],
+           rows=tasks,
+           empty_title="Nothing here",
+           empty_description="No task matches this filter.") %}
+        {% for task in tasks %}{{ task_row(request, task) }}{% endfor %}
+      {% endcall %}
+
+  Passing `rows` lets the macro own the empty case, so no caller ever repeats
+  the "if there are rows … else …" branch. Pass `rows=none` to always render
+  the body yourself.
+
+  Rows are a macro call in the caller's loop, never `{% include %}` — include is
+  a template lookup plus a fresh context object per iteration, and the gap
+  widens linearly with row count.
+#}
+{% from "ui/attrs.html" import attrs %}
+{% from "ui/data.html" import empty_state %}
+
+{% set _ALIGN = {"start": "text-left", "center": "text-center", "end": "text-right"} %}
+{% set _WIDTH = {"min": "w-px", "narrow": "w-16", "auto": ""} %}
+
+{% macro table(columns, rows=none, empty_title="Nothing here", empty_description=none, empty_icon="list") -%}
+  {% if rows is none or rows %}
+    <div class="table-container">
+      <table class="table"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+        <thead>
+          <tr>
+            {% for column in columns %}
+              <th class="{{ _WIDTH.get(column.get("width"), "") }} {{ _ALIGN.get(column.get("align"), "") }}"
+                  {%- if column.get("width") == "min" %} aria-label="Actions"{% endif %}>{{ column.get("label", "") }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>{{ caller() }}</tbody>
+      </table>
+    </div>
+  {% else %}
+    {{ empty_state(empty_title, empty_description, empty_icon) }}
+  {% endif %}
+{%- endmacro %}
+
+{#
+  cell(value, tone, numeric, align) — one <td>.
+
+  Exists so a row macro never writes `class="text-muted-foreground"`. tone is a
+  closed lookup; there is no way to pass a colour through.
+#}
+{% set _TONES = {
+  "strong": "font-medium",
+  "muted": "text-muted-foreground",
+  "success": "text-success",
+  "warning": "text-warning",
+  "destructive": "text-destructive",
+} %}
+
+{% macro cell(value=none, tone=none, numeric=false, align=none) -%}
+  <td class="{{ _TONES.get(tone, "") }}{{ " tabular-nums" if numeric }}{{ " " ~ _ALIGN.get(align, "") if align }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if value is not none %}{{ value }}{% else %}{{ caller() }}{% endif -%}
+  </td>
+{%- endmacro %}
+
+{#
+  row_actions() — the trailing cell of per-row buttons.
+
+  Right-aligned and tight, because a column of actions that drifts left of the
+  table edge reads as a data column.
+#}
+{% macro row_actions() -%}
+  <td>
+    <div class="flex justify-end gap-1">{{ caller() }}</div>
+  </td>
+{%- endmacro %}

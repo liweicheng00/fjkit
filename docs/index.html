@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fjkit — a fast UI for FastAPI · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css">
+  <link rel="stylesheet" href="assets/brand.css">
+  <script defer src="assets/vendor/htmx/htmx.min.js"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js"></script>
+  <meta name="description" content="fjkit integrates Jinja, Tailwind CSS and shadcn-style components with FastAPI: pages, tables, forms, navigation and htmx swaps as Jinja macros, with no build step on your side.">
+  <meta property="og:title" content="fjkit — a fast UI for FastAPI">
+  <meta property="og:description" content="fjkit integrates Jinja, Tailwind CSS and shadcn-style components with FastAPI: pages, tables, forms, navigation and htmx swaps as Jinja macros, with no build step on your side.">
+  <meta property="og:type" content="article">
+  <script src="assets/mock-server.js"></script>
+</head>
+<body class="min-h-full antialiased">
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="Documentation"><h3>Documentation</h3>    <ul>        <li>
+    <a href="index.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>Introduction</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>Learn</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>Plugins</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>Components</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
+    <a href="index.html#who">      <span>Who it is for</span>
+    </a>
+  </li>
+        <li>
+    <a href="index.html#box">      <span>What ships in the wheel</span>
+    </a>
+  </li>
+        <li>
+    <a href="index.html#next">      <span>Where to go next</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="Language"><h3>Language</h3>    <ul>      <li>
+    <a href="zh/index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>中文</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-screen flex-col px-5">
+      <header class="flex items-center gap-6 py-5">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>        <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit on GitHub">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>        </div>
+      </header>
+
+    <main class="flex-1 pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">A Fast UI for FastAPI</h1>
+<p class="text-muted-foreground text-sm">    An integration of Jinja, Tailwind CSS and shadcn-style components, for FastAPI.
+</p>    </div>
+  </div>
+
+  <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The key features are:</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>No build step</h4><p>No package.json, no node_modules, no watcher. The stylesheet is compiled when fjkit is released, not when your app runs.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>One colour knob</h4><p>Every colour is a token. Rebranding is one file, and green still means done afterwards.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Mounts on your existing API</h4><p>Every htmx endpoint answers curl with JSON. Same route, same handler, same return annotation.</p>    </section>  </div></div></div>
+  </div>
+
+<div id="who">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Who it is for</h2><p class="text-muted-foreground text-sm">A back-end developer who needs a real interface and no front-end toolchain.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        You already write FastAPI. You need navigation, dark mode, a filterable table and a form that
+        validates. This is for you.
+      </p>
+      <p>
+        If you are bringing React, Vue or Svelte, this is the wrong layer. That is a decision, not a
+        gap.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What it should cost you</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>a first page</h4><p>navigation and dark mode in about twenty lines of Python, with no build step</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>an admin screen</h4><p>list, filters, a create form and htmx updates in an afternoon. No CSS, no JavaScript.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a rebrand</h4><p>one stylesheet of token overrides, loaded after the kit&#39;s</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>an upgrade</h4><p>a version bump. The stylesheet lives in the wheel, not in your repository.</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="box">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">What ships in the wheel</h2><p class="text-muted-foreground text-sm">One wheel, two runtime dependencies, and nothing for you to compile.</p>      </div>
+      <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Shipped in the package</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>templates/ui/</h4><p>the macros: layout, buttons, data, forms, tables, tabs, navigation, sidebar, feedback, icons, and the document shell</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>the compiled stylesheet, one per style pack. 234 KB raw, 23.9 KB gzip, under a 28 KB budget the build enforces. A page loads one.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/vendor/</h4><p>htmx and Basecoat&#39;s JavaScript, pinned and served out of the package</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>1,767 icons</h4><p>Lucide, inlined by name. No icon font, no sprite request, no runtime JS.</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The whole surface you touch</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>FjkitConfig, mount_fjkit</h4><p>the wiring, once per app</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>@render</h4><p>name a template on the decorator; the handler returns data</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit check</h4><p>the vocabulary gate. Run it in your CI.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit eject</h4><p>the escape hatch: copy a component into your app and edit it</p>    </section>  </div></div></div>
+  </div>
+</div>
+<div class="flex flex-col gap-3">      <p>
+        Requirements: Python 3.13 or newer, and two runtime dependencies — FastAPI and Jinja2. A third
+        one needs an argument nobody has made yet.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="next">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Where to go next</h2><p class="text-muted-foreground text-sm">Two pages. One shows you the wiring, the other shows you every macro.</p>      </div>
+          <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>On this site</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>Learn</h4><p><a href="learn.html">how the kit is wired, what htmx sends, and the gate that fails a build</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Components</h4><p><a href="components.html">every macro, live, with the call that made it</a></p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.1.0.dev0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
+  This site is a fjkit app: it extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script defer src="assets/data.js"></script>
+  <script defer src="assets/common.js"></script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "_parts.html" import defs, lesson, prose %}
+{% from "ui/layout.html" import grid, page_header, stack %}
+
+{#
+  The landing page: what fjkit is, who it is for, and where to go next.
+
+  Nothing is explained here for the only time. Every claim on this page is
+  demonstrated on one of the other two — the wiring on Learn, the signatures on
+  Components — so this page's job is to be short and to hand over.
+
+  House style, and it is the whole reason this page reads the way it does: one
+  idea per sentence, the takeaway first, and no aside that a full stop could
+  have been. A reader who stops after the feature list should still know what
+  this is.
+#}
+{% set sections = [
+  {"id": "who",       "title": "Who it is for"},
+  {"id": "box",       "title": "What ships in the wheel"},
+  {"id": "next",      "title": "Where to go next"},
+] %}
+
+{#
+  Three, and they are the three that decide whether someone keeps reading.
+  Every other promise this project makes is on Learn, where it is demonstrated
+  instead of asserted, and in CHARTER.md §2, where the reasoning is.
+
+  Plain strings, not Markup: a feature that needs a <code> in it is a feature
+  that has not been written plainly enough for a landing page.
+#}
+{% set features = [
+  ("No build step",
+   "No package.json, no node_modules, no watcher. The stylesheet is compiled when fjkit is released, not when your app runs."),
+  ("One colour knob",
+   "Every colour is a token. Rebranding is one file, and green still means done afterwards."),
+  ("Mounts on your existing API",
+   "Every htmx endpoint answers curl with JSON. Same route, same handler, same return annotation."),
+] %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    An integration of Jinja, Tailwind CSS and shadcn-style components, for FastAPI.
+  {% endset %}
+  {{ page_header("A Fast UI for FastAPI", intro) }}
+
+  {{ defs("The key features are:", features) }}
+
+  {# ============================================================== 01 #}
+  {% set i01 %}A back-end developer who needs a real interface and no front-end toolchain.{% endset %}
+  {% call lesson("who", "01", "Who it is for", i01) %}
+    {% call prose() %}
+      <p>
+        You already write FastAPI. You need navigation, dark mode, a filterable table and a form that
+        validates. This is for you.
+      </p>
+      <p>
+        If you are bringing React, Vue or Svelte, this is the wrong layer. That is a decision, not a
+        gap.
+      </p>
+    {% endcall %}
+
+    {{ defs("What it should cost you", [
+      ("a first page", "navigation and dark mode in about twenty lines of Python, with no build step"),
+      ("an admin screen", "list, filters, a create form and htmx updates in an afternoon. No CSS, no JavaScript."),
+      ("a rebrand", "one stylesheet of token overrides, loaded after the kit's"),
+      ("an upgrade", "a version bump. The stylesheet lives in the wheel, not in your repository."),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 02 #}
+  {% set i02 %}One wheel, two runtime dependencies, and nothing for you to compile.{% endset %}
+  {% call lesson("box", "02", "What ships in the wheel", i02) %}
+    {% call grid(cols=2, gap=4) %}
+      {{ defs("Shipped in the package", [
+        ("templates/ui/", "the macros: layout, buttons, data, forms, tables, tabs, navigation, sidebar, feedback, icons, and the document shell"),
+        ("static/dist/fjkit-<pack>.css", "the compiled stylesheet, one per style pack. 234 KB raw, 23.9 KB gzip, under a 28 KB budget the build enforces. A page loads one."),
+        ("static/vendor/", "htmx and Basecoat's JavaScript, pinned and served out of the package"),
+        ("1,767 icons", "Lucide, inlined by name. No icon font, no sprite request, no runtime JS."),
+      ]) }}
+      {{ defs("The whole surface you touch", [
+        ("FjkitConfig, mount_fjkit", "the wiring, once per app"),
+        ("@render", "name a template on the decorator; the handler returns data"),
+        ("fjkit check", "the vocabulary gate. Run it in your CI."),
+        ("fjkit eject", "the escape hatch: copy a component into your app and edit it"),
+      ]) }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        Requirements: Python 3.13 or newer, and two runtime dependencies — FastAPI and Jinja2. A third
+        one needs an argument nobody has made yet.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 03 #}
+  {% set i03 %}Two pages. One shows you the wiring, the other shows you every macro.{% endset %}
+  {% call lesson("next", "03", "Where to go next", i03) %}
+    {% set n_learn %}<a href="{{ url_for(request, "learn") }}">how the kit is wired, what htmx sends, and the gate that fails a build</a>{% endset %}
+    {% set n_components %}<a href="{{ url_for(request, "components") }}">every macro, live, with the call that made it</a>{% endset %}
+    {{ defs("On this site", [
+      ("Learn", n_learn),
+      ("Components", n_components),
+    ]) }}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}

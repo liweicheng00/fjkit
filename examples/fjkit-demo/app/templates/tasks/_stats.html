@@ -1,0 +1,25 @@
+{#
+  Sidebar partial. Included by _board.html rather than owned by it, because the
+  dashboard renders the same block from a different route.
+#}
+{% from "ui/data.html" import badge, card, metric_group, progress %}
+{% from "ui/layout.html" import row, stack %}
+
+{% call stack(4) %}
+  {% call card("Progress", stats.done ~ " of " ~ stats.total ~ " done", size="sm") %}
+    {% call stack(4) %}
+      {{ progress(stats.done_pct) }}
+      {{ metric_group([
+        ("To do", stats.todo),
+        ("Doing", stats.doing),
+        ("Done", stats.done),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {% call card("Owners", none, size="sm") %}
+    {% call row(gap=2) %}
+      {% for owner in owners %}{{ badge(owner, variant="outline") }}{% endfor %}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}

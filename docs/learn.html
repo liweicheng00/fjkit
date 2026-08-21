@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learn fjkit · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css">
+  <link rel="stylesheet" href="assets/brand.css">
+  <script defer src="assets/vendor/htmx/htmx.min.js"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js"></script>
+  <meta name="description" content="Build a FastAPI interface without a front-end toolchain: how the kit is wired, what htmx actually sends, a brand knob that repaints the page, and the vocabulary checker.">
+  <meta property="og:title" content="Learn fjkit">
+  <meta property="og:description" content="Build a FastAPI interface without a front-end toolchain: how the kit is wired, what htmx actually sends, a brand knob that repaints the page, and the vocabulary checker.">
+  <meta property="og:type" content="article">
+  <script src="assets/mock-server.js"></script>
+</head>
+<body class="min-h-full antialiased">
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="Documentation"><h3>Documentation</h3>    <ul>        <li>
+    <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>Introduction</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>Learn</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>Plugins</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>Components</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
+    <a href="learn.html#wiring">      <span>Wiring: config, mount, templates</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#exchange">      <span>The htmx request and response</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#targets">      <span>hx-target and hx-swap</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#triggers">      <span>hx-trigger: typing, scrolling, polling</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#partials">      <span>Partials: one file, page and swap</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#json">      <span>No HX-Request: the same route answers JSON</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#patterns">      <span>Nine htmx patterns, and their handlers</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#knob">      <span>Rebranding: brand and status tokens</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#gate">      <span>fjkit check: the closed vocabulary</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="Language"><h3>Language</h3>    <ul>      <li>
+    <a href="zh/learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>中文</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-screen flex-col px-5">
+      <header class="flex items-center gap-6 py-5">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>        <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit on GitHub">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>        </div>
+      </header>
+
+    <main class="flex-1 pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">Build the interface where you build the routes</h1>
+<p class="text-muted-foreground text-sm">    Nine lessons: how a fjkit app is wired, what htmx actually sends, how a rebrand works, and the
+    command that fails a build. Every demo below is live.
+</p>    </div>
+  </div>
+
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>This page is the thing it documents</h3><p>Not a screenshot of it.</p>      </div>
+    </header>      <section><div class="flex flex-col gap-3">      <p>
+        Every preview below is real macro output, rendered by fjkit's own Jinja environment at build
+        time. So is the page around them. The sidebar, these cards, the tables and the tab strips
+        are the same macros the demo app calls, and <code>fjkit check</code> runs over this site's
+        templates in CI. Nothing here can show you a component the package does not ship.
+      </p>
+</div></section>
+  </div>
+<div id="wiring">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Wiring: config, mount, render</h2><p class="text-muted-foreground text-sm">Everything else you write is your app, not your front end.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        A fjkit app touches the kit in exactly three places. <code>FjkitConfig</code> holds every
+        knob. <code>mount_fjkit()</code> serves the stylesheet and the vendored JS straight out of
+        the installed package, and builds the Jinja environment once per process.
+        <code>@render</code> names the template a route answers with.
+      </p>
+      <p>
+        Click through the four files. There is no <code>package.json</code> and no watcher to keep
+        running. <code>examples/fjkit-demo</code> in the repository is the same four files in a working
+        app.
+      </p>
+</div>
+<div class="card">            <div class="tabs">
+        <nav role="tablist" aria-label="File" aria-orientation="horizontal" id="wiring-tabs"></nav>
+        <div id="wiring-panel" role="tabpanel">
+          <pre class="code-block scrollbar" tabindex="0" id="wiring-code"></pre>
+          <footer id="wiring-caption"></footer>
+        </div>
+      </div>
+
+  </div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="exchange">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">The htmx request and response</h2><p class="text-muted-foreground text-sm">The server answers a swap with HTML. Nothing is serialised for it, and no client-side state is kept in sync.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        This is the whole idea, and it is smaller than it looks. An element says <em>which</em>
+        request to make, and <em>where to put the answer</em>. The server answers with a piece of
+        HTML, the same markup it would have put in the page. htmx drops that piece into the element
+        you named.
+      </p>
+      <p>
+        Nothing is serialised for the swap. Nothing is re-rendered on the client. No state lives in two
+        places. The same route will happily answer a script in JSON — that is <a href="#json">lesson 06</a>
+        — but that is a second door, not a step in this exchange. Press the button:
+        <strong>the request below is real</strong>. htmx is loaded on this page, and a mock server in the
+        browser plays the FastAPI side.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>One round trip</h3><p>The only thing that changes on the client is the subtree named by hx-target.</p>      </div>
+    </header>      <section>  <svg viewBox="0 0 720 320" role="img" fill="none"
+     font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+     aria-label="A browser sends POST /tasks with HX-Request headers; the FastAPI route calls the service, renders the _board.html partial, and returns an HTML fragment, which htmx swaps into the element named by hx-target.">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+    </marker>
+  </defs>
+
+  <g id="dg-browser" data-lit="true">
+    <rect x="8" y="30" width="268" height="266" rx="8" fill="var(--card)" stroke="currentColor"></rect>
+    <text x="24" y="52" font-size="10" fill="var(--muted-foreground)">BROWSER</text>
+    <rect x="24" y="66" width="236" height="52" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="36" y="88" font-size="12" fill="currentColor">&lt;button hx-post&gt;</text>
+    <text x="36" y="105" font-size="10" fill="var(--muted-foreground)">the trigger — a click</text>
+
+    <g id="dg-target">
+      <rect data-accent x="24" y="196" width="236" height="84" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+      <text data-accent x="36" y="220" font-size="12" fill="currentColor">#board</text>
+      <text x="36" y="238" font-size="10" fill="var(--muted-foreground)">hx-target — the element</text>
+      <text x="36" y="253" font-size="10" fill="var(--muted-foreground)">that gets replaced</text>
+    </g>
+  </g>
+
+  <g id="dg-request" data-lit="false">
+    <line data-accent x1="276" y1="92" x2="440" y2="92" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <text data-accent x="288" y="72" font-size="11" fill="currentColor">POST /tasks</text>
+    <text x="288" y="86" font-size="10" fill="var(--muted-foreground)">HX-Request: true</text>
+    <text x="288" y="112" font-size="10" fill="var(--muted-foreground)">HX-Target: board</text>
+    <text x="288" y="126" font-size="10" fill="var(--muted-foreground)">title=Ship+it (form body)</text>
+  </g>
+
+  <g id="dg-server" data-lit="false">
+    <rect x="440" y="30" width="272" height="266" rx="8" fill="var(--card)" stroke="currentColor"></rect>
+    <text x="456" y="52" font-size="10" fill="var(--muted-foreground)">FASTAPI</text>
+
+    <rect x="456" y="66" width="240" height="40" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="468" y="91" font-size="12" fill="currentColor">router.py</text>
+
+    <line x1="576" y1="106" x2="576" y2="130" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <rect x="456" y="130" width="240" height="40" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="468" y="155" font-size="12" fill="currentColor">service — the real work</text>
+
+    <line x1="576" y1="170" x2="576" y2="194" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <rect data-accent x="456" y="194" width="240" height="56" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text data-accent x="468" y="217" font-size="12" fill="currentColor">tasks/_board.html</text>
+    <text x="468" y="235" font-size="10" fill="var(--muted-foreground)">the same partial the page embeds</text>
+  </g>
+
+  <g id="dg-response" data-lit="false">
+    <line data-accent x1="440" y1="272" x2="276" y2="272" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></line>
+    <text data-accent x="288" y="290" font-size="11" fill="currentColor">200 text/html</text>
+    <text x="288" y="306" font-size="10" fill="var(--muted-foreground)">&lt;div id=&#34;board&#34;&gt;…&lt;/div&gt; — a fragment, not a page</text>
+  </g>
+
+  <g id="dg-swap" data-lit="false">
+    <path data-accent d="M 268 272 C 300 272 300 238 268 238" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)"></path>
+    <text data-accent x="150" y="180" font-size="11" fill="currentColor" text-anchor="middle">swap: outerHTML</text>
+  </g>
+</svg>
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Try it</h3><p>The exchange below is a genuine htmx request.</p>      </div>
+<div class="flex flex-wrap gap-2 items-center">        <span class="badge" data-variant="outline" id="dg-stage-label">idle</span>
+        <button class="btn" data-variant="primary" data-size="sm" type="button" id="dg-run">Fire the request<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+</div>    </header>      <section>  <div class="flex flex-col gap-4">        <div id="dg-live"></div>
+        <div class="item-group scrollbar" id="dg-log"></div>
+</div>
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        Those <code>HX-*</code> headers are how a route tells a swap from a full page load.
+        Everything else is an ordinary POST. No client framework is involved on either side.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="targets">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">hx-target and hx-swap</h2><p class="text-muted-foreground text-sm">Two attributes decide everything: which element, and how it is replaced.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-target/">hx-target</a> picks the element.
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-swap/">hx-swap</a> says what to do with it. This pair is
+        where most htmx confusion lives, so try them against a live board. Every combination below runs a
+        real request and swaps the real response.
+      </p>
+      <p>
+        <code>outerHTML</code> replaces the target itself, so the response has to include the
+        wrapper. <code>innerHTML</code> (the default) replaces what is inside it, so the response
+        must <em>not</em>. Mixing those two up is the classic bug: you get a board inside a board.
+      </p>
+</div>
+<div class="card">            <div id="swap-controls"></div>
+
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The board</h3>      </div>
+    </header>      <section>        <div id="swap-live"></div>
+
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What that spells, and what came back</h3>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" id="swap-code"></pre>
+      <div class="item-group scrollbar" id="swap-log"></div>
+      <footer id="swap-caption"></footer>
+
+</div>
+  </div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="triggers">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">hx-trigger: typing, scrolling, polling</h2><p class="text-muted-foreground text-sm">Sensible defaults, and one attribute for everything else.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        You usually write no trigger at all. A <code>button</code> fires on click, a <code>form</code> on
+        submit, an <code>input</code> or <code>select</code> on change.
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-trigger/">hx-trigger</a> is for the other cases. It is
+        the attribute that buys you search-as-you-type, lazy loading and polling, with no JavaScript. All
+        three below are live.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>keyup changed delay:400ms</h3><p>changed skips the request when the value did not change; delay:400ms restarts the countdown on every keystroke.</p>      </div>
+<span class="badge" data-variant="info" id="demo-searching">searching…</span>    </header>      <section>  <div class="flex flex-col gap-4">        <div id="demo-search-field"></div>
+        <div id="demo-results"></div>
+</div>
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>revealed — load when scrolled into view</h3><p>Same idea as an image&#39;s loading=&#34;lazy&#34;, except the thing deferred is a rendered fragment.</p>      </div>
+<button class="btn" data-variant="ghost" data-size="xs" type="button" id="demo-lazy-reset">reset</button>    </header>      <section>        <div id="demo-lazy-host"></div>
+
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>every 2s — polling</h3><p>Polling stops when the element is removed. For anything chattier, reach for SSE.</p>      </div>
+<button class="btn" data-variant="outline" data-size="xs" type="button" id="demo-poll-toggle">start polling</button>    </header>      <section>        <div id="demo-poll-host">
+        <p>Build status, refreshed by the server.</p>
+      </div>
+
+</section>
+  </div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="partials">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Partials: one file, page and swap</h2><p class="text-muted-foreground text-sm">The page embeds the fragment the htmx endpoint returns — so they cannot drift.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Now the fjkit half. A partial is any template whose name starts with an underscore. It never
+        extends the shell, it declares its own imports, and it wraps itself in the element the swap
+        replaces. The full page <code>{% include %}</code>s it; every htmx
+        endpoint returns it bare.
+      </p>
+      <p>
+        That is why a fjkit app has no "update the row" code path. Every mutation re-renders the
+        whole board partial and swaps it. One definition of what a board looks like, used by the
+        first paint and by every request after it. The real files are
+        <code>examples/fjkit-demo/app/templates/tasks/</code> in the repository.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Request</h3>      </div>
+<div class="flex flex-wrap gap-2 items-center" id="flow-picker" role="group" aria-label="Request type">        <button class="btn" data-variant="secondary" data-size="sm" type="button" data-flow="page" aria-pressed="true">GET /tasks</button>
+        <button class="btn" data-variant="ghost" data-size="sm" type="button" data-flow="swap" aria-pressed="false">POST /tasks (hx-post)</button>
+</div>    </header>      <section>  <div class="flex flex-col gap-4">        <div id="flow-nodes"></div>
+        <pre class="code-block scrollbar" tabindex="0" id="flow-code"></pre>
+        <footer id="flow-caption"></footer>
+</div>
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The board, live — add, advance, delete</h3><p>Every control targets #demo-board, and every response is the whole board partial.</p>      </div>
+<span class="badge" data-variant="info" id="demo-board-busy">working…</span>    </header>      <section>  <div class="flex flex-col gap-4">        <div id="demo-form"></div>
+        <div id="demo-board-host"></div>
+</div>
+</section>
+  </div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Traps worth knowing</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>full page back</h4><p>returning <code>page.html</code> from an htmx route nests a whole document inside your div — return the partial</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>4xx does not swap</h4><p>htmx ignores error responses by default; for form errors, answer 200 with the re-rendered form</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>lost wrapper</h4><p><code>outerHTML</code> needs the wrapper in the response, or the target disappears</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>stale filter</h4><p>a row action must carry the active filter, or the swap silently resets the view</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Server-side helpers</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>HX-Request</h4><p>the header that tells a route it is answering a swap</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>HX-Trigger</h4><p>response header that fires a client event — how a toast gets raised (fjkit 0.6)</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>HX-Redirect</h4><p>full-page redirect from inside a swap response</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>hx-swap-oob</h4><p>update a second element — a counter, a badge — from the same response</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="json">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">No HX-Request: the same route answers JSON</h2><p class="text-muted-foreground text-sm">A handler returns a model, not markup. One question decides what goes on the wire: does this caller have markup waiting?</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Lesson 02 said the exchange carries no JSON, and of the swap itself that is true. But look
+        at what the handler actually returned: a <code>BoardResponse</code>, not a string of HTML.
+        <code>@render</code> is what turns one into the other. When the caller is not a browser
+        waiting for markup, there is nothing to render <em>into</em>, so the model goes out as JSON.
+      </p>
+      <p>
+        That is <code>render_mode="auto"</code>, the default on <code>FjkitConfig</code>. Two things
+        decide it, and neither of them is an <code>Accept</code> header: <strong>what the route
+        is</strong>, and <strong>whether the request carries <code>HX-Request: true</code></strong>.
+        A page route always has markup waiting, because a cold navigation is the request it exists
+        for, and answering that with JSON would be a blank browser window. A fragment route only has
+        markup waiting when htmx asked for it.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What auto answers</h3><p>The route decides the first column; the header decides the second.</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">The route</th>
+              <th class=" ">HX-Request</th>
+              <th class=" ">Content-Type</th>
+              <th class=" ">Body</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)</td>
+          <td class=""><span class="badge" data-variant="outline">absent</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">the whole page, shell and all</td>
+        </tr>
+        <tr>
+          <td class="font-medium">the same route</td>
+          <td class=""><span class="badge" data-variant="info">true</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">_board.html on its own — the swap</td>
+        </tr>
+        <tr>
+          <td class="font-medium">@render(&#34;tasks/_board.html&#34;)</td>
+          <td class=""><span class="badge" data-variant="outline">absent</span></td>
+          <td class="text-muted-foreground">application/json</td>
+          <td class="">BoardResponse, serialised — the route&#39;s response_model</td>
+        </tr>
+        <tr>
+          <td class="font-medium">the same route</td>
+          <td class=""><span class="badge" data-variant="info">true</span></td>
+          <td class="text-muted-foreground">text/html</td>
+          <td class="">_board.html on its own — the swap</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        Read the third row again, because it is the one worth having: <strong>every htmx endpoint in
+        the app is already a JSON endpoint.</strong> <code>GET /tasks/board</code> answers htmx with
+        a board, and answers <code>curl</code> with the model behind it. No second route, no
+        serialiser, no DTO that drifts from the template. The return annotation is the only
+        description of either, so FastAPI has already put <code>BoardResponse</code> in
+        <code>/docs</code>.
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="json-route"
+                aria-selected="true">router.py</button>
+        <button type="button" role="tab" aria-controls="json-curl"
+                aria-selected="false">no HX-Request → JSON</button>
+        <button type="button" role="tab" aria-controls="json-htmx"
+                aria-selected="false">HX-Request: true → HTML</button>
+    </nav><div id="json-route" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.get(&#34;/tasks&#34;, name=&#34;tasks_page&#34;)
+@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)
+def tasks_page(service: ServiceDep, status: Status | None = None) -&gt; BoardResponse:
+    # A page route: it names a page and a partial, so it always has markup
+    # waiting. A navigation gets the page; htmx gets the board.
+    return _board(service, status)
+
+
+@router.get(&#34;/tasks/board&#34;, name=&#34;tasks_board&#34;)
+@render(&#34;tasks/_board.html&#34;)
+def tasks_board(service: ServiceDep, status: Status | None = None) -&gt; BoardResponse:
+    # A fragment route: it names only a partial. htmx gets the board, and
+    # anyone else gets BoardResponse as JSON — the API, at no extra cost.
+    return _board(service, status)</pre>
+
+<footer>Two routes over one handler body. The first names a page and a partial, so it always has markup for a navigation. The second names only a fragment — which is what puts it in auto’s JSON half.</footer></div><div id="json-curl" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="no HX-Request → JSON" data-lang="text">$ curl -s localhost:8000/tasks/board?status=doing
+
+content-type: application/json
+vary: HX-Request
+
+{
+  &#34;tasks&#34;: [
+    {
+      &#34;id&#34;: 4,
+      &#34;title&#34;: &#34;Turn off auto_reload in the prod image&#34;,
+      &#34;status&#34;: &#34;doing&#34;,
+      &#34;priority&#34;: &#34;normal&#34;,
+      &#34;owner&#34;: &#34;kai&#34;,
+      &#34;created_at&#34;: &#34;2026-08-18T19:38:42.562805Z&#34;,
+      &#34;status_variant&#34;: &#34;info&#34;,
+      &#34;priority_variant&#34;: &#34;secondary&#34;
+    }
+  ],
+  &#34;stats&#34;: {&#34;total&#34;: 8, &#34;todo&#34;: 4, &#34;doing&#34;: 2, &#34;done&#34;: 2, &#34;done_pct&#34;: 25},
+  &#34;owners&#34;: [&#34;kai&#34;, &#34;mei&#34;],
+  &#34;active_status&#34;: &#34;doing&#34;,
+  &#34;filter_query&#34;: &#34;?status=doing&#34;
+}</pre>
+
+<footer>status_variant and priority_variant are @computed_field on the model, so a view decision the template needs reaches the JSON too instead of existing only in Jinja.</footer></div><div id="json-htmx" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="HX-Request: true → HTML" data-lang="text">$ curl -s -H &#39;HX-Request: true&#39; localhost:8000/tasks/board?status=doing
+
+content-type: text/html; charset=utf-8
+vary: HX-Request
+
+&lt;div id=&#34;board&#34;&gt;
+  &lt;div class=&#34;grid gap-6 lg:grid-cols-[1fr_19rem]&#34;&gt;
+    &lt;form class=&#34;card&#34; hx-post=&#34;/tasks&#34; hx-target=&#34;#board&#34; hx-swap=&#34;outerHTML&#34;&gt;
+      ...
+    &lt;/form&gt;
+    &lt;table class=&#34;table&#34;&gt;
+      &lt;tr&gt;&lt;td&gt;Turn off auto_reload in the prod image&lt;/td&gt;
+          &lt;td&gt;&lt;span class=&#34;badge&#34; data-variant=&#34;info&#34;&gt;Doing&lt;/span&gt;&lt;/td&gt;
+      ...
+    &lt;/table&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+
+<footer>Same URL, same handler, same model — rendered instead of serialised.</footer></div></div>
+  </div>
+
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Overriding it</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>force HTML</h4><p><code>mode="html"</code> on the decorator — a fragment that must never serialise</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>force JSON</h4><p><code>mode="json"</code> — a route that is an API and nothing else, even to htmx</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>app-wide</h4><p><code>FjkitConfig(render_mode="html")</code> turns the whole behaviour off</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>no request wins</h4><p>a route that said html or json is not negotiable — only auto reads the header</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Two things to know</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>caching</h4><p>fjkit sets <code>Vary: HX-Request</code> on every reply whose shape depended on the header</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>why it matters</h4><p>without it a CDN serves a cached fragment into a navigation — a page with no shell, and no error anywhere</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>hx-boosted</h4><p>a boosted link is htmx doing a navigation: it counts as a browser for this question, so it gets the page, not the partial</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the naming rule</h4><p>a template whose name starts with _ is a fragment — the same convention test_conventions.py already enforces</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="patterns">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Nine htmx patterns, and their handlers</h2><p class="text-muted-foreground text-sm">Screens differ; the shapes do not. Each one is a trigger, a target and a partial.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        The whole attribute vocabulary fits on one screen, and
+        <a href="components.html#cheatsheet">the Components page prints it</a>. What
+        takes longer to learn is the handful of arrangements it keeps forming. Here they are with the fjkit
+        spelling: the macro call on one tab, the handler that answers it on the other.
+      </p>
+      <p>
+        Every handler below returns a partial and is a plain <code>def</code>, so Starlette runs it in the
+        threadpool. Each pattern links out to the htmx page it comes from. The upstream
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/docs/">docs</a> and
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/reference/">attribute reference</a> are short enough to read whole,
+        and worth it.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Pattern</h3>      </div>
+<div class="flex flex-wrap gap-2 items-center">        <span class="badge" data-variant="outline" id="pattern-tag"></span>
+        <a id="pattern-doc" href="https://htmx.org/docs/" target="_blank" rel="noopener"></a>
+</div>    </header>      <section>  <div class="grid gap-4 sm:grid-cols-2">        <div class="button-group" data-orientation="vertical" id="pattern-list" role="group" aria-label="Pattern"></div>
+        <div>
+          <footer id="pattern-when"></footer>
+          <div class="tabs">
+            <nav role="tablist" aria-label="File" aria-orientation="horizontal" id="pattern-tabs"></nav>
+            <div id="pattern-panel" role="tabpanel">
+              <pre class="code-block scrollbar" tabindex="0" id="pattern-code"></pre>
+              <footer id="pattern-caption"></footer>
+            </div>
+          </div>
+        </div>
+</div>
+</section>
+  </div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What they have in common</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>one partial</h4><p>the page includes it, the endpoint returns it — never two renderings of the same fragment</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>no client state</h4><p>the cursor, the filter and the edit mode all live in the URL or in which partial is on screen</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>state in the URL</h4><p>anything a reload has to survive is a query string a full GET can answer</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>degrades</h4><p>drop the hx-* keywords and the same macros emit a form and links that still work</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Not yet, on purpose</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>field errors</h4><p>every field macro already takes error=; the Pydantic round trip is 0.3</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>toasts</h4><p>the HX-Trigger header is there today; the component is 0.6</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>dialogs</h4><p>hx-confirm until then — it is the browser&#39;s own, and it works</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>sorting</h4><p>a filter bar with different query params; the table macro learns it in 0.4</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="knob">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+<span class="badge" data-variant="secondary">theming</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Rebranding: brand and status tokens</h2><p class="text-muted-foreground text-sm">Rebranding is a CSS variable. "Green means done" is not on the dial.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Drag the hue. You are editing <code>--primary</code> on <code>:root</code>, which is the
+        same three lines an app writes in its own stylesheet. There is no build step in between. The
+        whole page moves, including this sidebar and these cards, because the page is built on the
+        same tokens.
+      </p>
+      <p>
+        Watch the status badges. They do not move. Status colour is deliberately <em>not</em> wired
+        to the brand, because "green means done" has to survive a rebrand.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The three lines you would write</h3>      </div>
+    </header>      <section><div class="grid gap-3 sm:grid-cols-2 sm:items-end">        <div class="field">
+          <label class="label" for="hue">Brand hue</label>
+          <input type="range" id="hue" min="0" max="360" value="275" step="1">
+        </div>
+        <div class="field">
+          <label class="label" for="chroma">Chroma</label>
+          <input type="range" id="chroma" min="0" max="30" value="19" step="1">
+        </div>
+        <div class="field">
+          <span class="label">Presets</span>
+          <div class="button-group" id="swatches" role="group" aria-label="Preset brand colours"></div>
+        </div>
+        <div class="field">
+          <span class="label">Scheme</span>
+<div class="flex flex-wrap gap-2 items-center" id="theme-picker">            <button class="btn" data-variant="ghost" data-size="sm" type="button" data-theme-choice="light">Light</button>
+            <button class="btn" data-variant="ghost" data-size="sm" type="button" data-theme-choice="dark">Dark</button>
+            <button class="btn" data-variant="secondary" data-size="sm" type="button" data-theme-choice="auto" aria-pressed="true">Auto</button>
+</div>        </div>
+</div></section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The page, repainted</h3>      </div>
+    </header>      <section>        <div id="knob-preview"></div>
+
+</section>
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Your whole rebranding procedure</h3>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" id="knob-code"></pre>
+      <footer>A stylesheet loaded after fjkit's. No Tailwind config, no rebuild, no watcher.</footer>
+
+</div>
+  </div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>On the knob</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>primary</h4><p>brand fill, plus <code>ring</code> for focus</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>primary-foreground</h4><p>text on a brand fill — never an absolute white</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>background · card</h4><p>page ground and surfaces, tinted toward the brand</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>muted · border</h4><p>quiet surfaces, hairlines, secondary text</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Off the knob, on purpose</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>success</h4><p>done, passing, healthy</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>warning</h4><p>needs attention, not yet broken</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>info</h4><p>in progress, neutral notice</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>destructive</h4><p>delete, fail, irreversible</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="gate">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">fjkit check: the closed vocabulary</h2><p class="text-muted-foreground text-sm">A convention nobody can violate by accident is worth more than one written down.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>fjkit check</code> reads your templates and rejects two things: colour literals, and
+        any class outside the component vocabulary. Utilities are rejected <strong>even when they
+        work today</strong>. If your app leans on a spacing utility because fjkit's shell happens to
+        emit it, your app breaks silently the day the shell stops.
+      </p>
+      <p>
+        Edit the markup. The checker below runs fjkit's own rules against its real class list —
+        <span id="vocab-count">…</span> — and it is the same code that runs in CI, and the same code
+        that runs over this site's templates.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>app/templates/tasks/_board.html</h3>      </div>
+<div class="flex flex-wrap gap-2 items-center">        <button class="btn" data-variant="ghost" data-size="xs" type="button" data-sample="bad">the tempting version</button>
+        <button class="btn" data-variant="ghost" data-size="xs" type="button" data-sample="good">the fjkit version</button>
+</div>    </header>      <section>  <div class="grid gap-4 sm:grid-cols-2">        <textarea class="textarea scrollbar" id="checker-input" spellcheck="false"
+                  aria-label="Template markup" rows="18"></textarea>
+<div class="flex flex-col gap-2" id="checker-output" aria-live="polite"></div></div>
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        A blocked class is information. It names the component or the parameter that does not exist
+        yet. When 0.1 landed, the pre-fjkit templates scored 258 violations; the rewrite scores 0.
+      </p>
+</div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Commands</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>fastapi dev</h4><p>run the app — nothing to rebuild alongside it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit check</h4><p>every class is part of the vocabulary</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit eject</h4><p>copy a component in to edit it — and lose upstream fixes</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit build-css</h4><p>fjkit&#39;s own release step, never yours</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Read next</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>Components</h4><p><a href="components.html">every signature and enumeration, live</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>examples/fjkit-demo/</h4><p>the same patterns in a working app, in the repo</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>src/fjkit/static/src/fjkit.css</h4><p>every token, defined once — the file a rebrand overrides</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>docs/jinja-performance.md</h4><p>page() against stream(), and the numbers behind the advice</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.1.0.dev0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
+  This site is a fjkit app: it extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script defer src="assets/data.js"></script>
+  <script defer src="assets/common.js"></script>
+  <script defer src="assets/learn.js"></script>
+</body>
+</html>

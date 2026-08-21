@@ -1,0 +1,227 @@
+{#
+  The feedback layer: what the page says while it is busy, and afterwards.
+  0.6 fills the rest in (alert, toast, skeleton). 0.1 lands `spinner` and
+  `dialog` because htmx makes both first-week states: "a request is in flight",
+  and "show me this row without leaving the page". Without a component for
+  either, the app writes its own <svg> and its own overlay — a colour literal
+  and a stack of utilities outside the closed vocabulary.
+#}
+{% from "ui/attrs.html" import attrs %}
+{% from "ui/icon.html" import icon %}
+
+{#
+  spinner(size, tone, label, indicator, **html_attrs)
+
+  size:  xs | sm | default | lg
+  tone:  muted | primary | success | warning | info | destructive
+
+  One Lucide arc plus `animate-spin` — no second SVG asset, no runtime JS, and
+  `stroke="currentColor"` means it takes the colour of whatever it sits in, so
+  a spinner inside a primary button needs no tone at all.
+
+  Two accessibility modes, chosen by `label`:
+
+  * no label — `aria-hidden`, decorative. Correct when text beside it already
+    says what is happening ("Saving…"), because announcing the glyph too would
+    say it twice.
+  * a label  — `role="status"` and a visually hidden name. Correct when the
+    spinner *is* the only announcement. `role="status"` already implies a
+    polite live region, so `aria-live` would be redundant.
+
+  `indicator=true` adds htmx's `htmx-indicator` class, which is the whole of
+  what `hx-indicator` needs: htmx injects the show/hide rule itself, so the
+  spinner renders hidden and appears only while the request it names is in
+  flight. That is the loading state with no JavaScript of ours and no
+  server round trip to reveal it.
+
+      {{ button("Start", hx_post=…, hx_indicator="#busy") }}
+      {{ spinner(indicator=true, id="busy", label="Starting") }}
+#}
+{% macro spinner(size="default", tone="muted", label=none, indicator=false) -%}
+  {#
+    Closed lookups, not interpolation. Tailwind finds a class by scanning this
+    file's text, so `text-{{ tone }}` would be absent from the stylesheet while
+    still rendering happily. Every value below appears here literally, and an
+    unknown key falls back rather than emitting a class that does not exist.
+  #}
+  {%- set sizes = {"xs": 12, "sm": 14, "default": 16, "lg": 24} -%}
+  {%- set tones = {
+    "muted": "text-muted-foreground",
+    "primary": "text-primary",
+    "success": "text-success",
+    "warning": "text-warning",
+    "info": "text-info",
+    "destructive": "text-destructive",
+    "current": "",
+  } -%}
+  {%- set tone_class = tones.get(tone, tones["muted"]) -%}
+  <span class="inline-flex items-center{% if tone_class %} {{ tone_class }}{% endif %}{% if indicator %} htmx-indicator{% endif %}"
+    {%- if label %} role="status"{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {{- icon("loader-circle", sizes.get(size, 16), "animate-spin") -}}
+    {%- if label %}<span class="sr-only">{{ label }}</span>{% endif -%}
+  </span>
+{%- endmacro %}
+
+{#
+  dialog(id, title, description, size, footer, dismissible, **html_attrs)
+
+  size: sm | default | lg
+
+  A panel over the page, opened and closed by the browser, with no JavaScript
+  from us and none from the app:
+
+      {{ button("Details", popovertarget="task-7") }}
+
+      {% call dialog("task-7", title="Ship the render benchmark") %}
+        …
+      {% endcall %}
+
+  `popovertarget` is a plain HTML attribute, so it needs no macro of its own —
+  it passes through `**attrs` on whatever button you already have. Closing is
+  the same attribute plus `popovertargetaction="hide"`, which is what the ✕ in
+  the corner uses.
+
+  **What the Popover API gives us, and what it does not.** Open state, the top
+  layer, the backdrop, Escape-to-close, click-outside-to-close and returning
+  focus to the trigger are all the browser's. What is missing compared with
+  `showModal()` is *modality*: the page behind stays reachable by Tab and by a
+  screen reader, so this is `role="dialog"` without `aria-modal`. That is the
+  honest label for what the markup does. It is the right trade for showing a
+  record, and the wrong one for a confirmation that must not be dodged —
+  `hx-confirm` still covers that case, and a real modal is a decision about
+  shipping JavaScript (CHARTER.md §11.3), not something to fake with CSS.
+
+  **The body carries `id="<id>-body"`**, which is the seam htmx needs: the
+  trigger fetches the content and targets that id, so a list of rows renders
+  one shell per row and pays for the contents only when one is opened.
+
+      {{ button("Details", popovertarget="task-7",
+                hx_get=url_for(request, "task_detail", task_id=7),
+                hx_target="#task-7-body") }}
+
+  Both halves happen on the one click, in the order that reads best: the panel
+  opens immediately with whatever the shell holds (a spinner), and the response
+  replaces it. htmx does not cancel the click's default action on a plain
+  button — it only does that for anchors and submit buttons — so the popover
+  still opens.
+
+  A shell per row also means an open panel can never show the previous row's
+  data while a request is in flight. One shared dialog re-targeted at each row
+  is the right shape for a long list; it just has to accept that flash.
+
+  One trap, and it is silent: `hx-swap` is inherited. A trigger nested inside an
+  element that swaps itself with `outerHTML` — a row that polls, say — replaces
+  the body element rather than its contents, id and all, so the first open works
+  and none of the others do. Spell out `hx_swap="innerHTML"` there.
+#}
+{% macro dialog(id, title=none, description=none, size="default", footer=none, dismissible=true) -%}
+  {#
+    Basecoat sizes `.dialog > *` and gives `.alert-dialog` a `data-size`; the
+    two extra widths extend that same attribute API rather than inventing a
+    `dialog-lg` class. `default` deliberately emits nothing, so the common case
+    inherits whatever Basecoat's own rule says.
+  #}
+  {%- set sizes = {"sm": "sm", "default": "", "lg": "lg"} -%}
+  {%- set size_attr = sizes.get(size, "") -%}
+  <div class="dialog" popover id="{{ id }}" role="dialog"
+    {%- if size_attr %} data-size="{{ size_attr }}"{% endif %}
+    {%- if title %} aria-labelledby="{{ id }}-title"{% endif %}
+    {%- if description %} aria-describedby="{{ id }}-description"{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {#
+      The inner element is the panel. Basecoat styles `.dialog > *`, so this
+      wrapper is load-bearing: the outer element is only a positioning context
+      and the backdrop's owner, which is also why it can be a <div> rather than
+      a <dialog> — nothing here calls showModal(), and `<dialog popover>` mixes
+      two open-state mechanisms for no gain.
+    #}
+    <div>
+      {%- if title or description %}
+      <header>
+        {% if title %}<h2 id="{{ id }}-title">{{ title }}</h2>{% endif %}
+        {% if description %}<p id="{{ id }}-description">{{ description }}</p>{% endif %}
+      </header>
+      {%- endif %}
+      <section id="{{ id }}-body">{{ caller() }}</section>
+      {%- if footer %}<footer>{{ footer }}</footer>{% endif %}
+      {%- if dismissible %}
+      {#
+        `autofocus` is what moves focus into the panel when it opens — a
+        popover does not do that on its own, and a dialog nobody is focused in
+        is one a screen reader never announces. It is inert until the panel is
+        shown, because a closed popover is display:none and therefore not
+        focusable, so eight of these on a page still fight over nothing.
+      #}
+      <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+              popovertarget="{{ id }}" popovertargetaction="hide"
+              aria-label="Close" autofocus>{{ icon("x", 16) }}</button>
+      {%- endif %}
+    </div>
+  </div>
+{%- endmacro %}
+
+{#
+  toaster(align) — the region toasts appear in. One per page, in the shell.
+
+  `id="toaster"` is not a choice: Basecoat registers its controller against
+  `#toaster` specifically, and the CSS is written as `.toaster .toast`, so a
+  toast outside this element gets neither the behaviour nor the skin.
+
+  Empty is the normal state. It costs one element and no CSS, and having it
+  always present is what lets a server-rendered toast arrive without the page
+  needing to know in advance that one might.
+#}
+{% macro toaster(align="end") -%}
+  <div id="toaster" class="toaster" data-align="{{ align }}">{{ caller() if caller else "" }}</div>
+{%- endmacro %}
+
+{#
+  toast(title, description, category, duration, action_label, action_href)
+
+  category: info | success | warning | error
+
+  Server-rendered, and that is the whole point of it. Basecoat scans the DOM
+  for `.toast` and initialises whatever it finds, so a toast written into the
+  page by a template behaves exactly like one raised by script — it animates
+  in, times out, and dismisses on click. No JavaScript of ours, and nothing to
+  call after the page has loaded.
+
+  That is what makes a message survive a redirect. `HX-Trigger` cannot: the
+  document it would fire into is replaced before it arrives. Markup in the next
+  page is the only carrier a full navigation leaves intact.
+
+  `duration` is milliseconds, or -1 to stay until dismissed. Left unset,
+  Basecoat uses 3s, and 5s for `error`.
+
+  The icon is fjkit's, not Basecoat's inline SVG: one icon set on the page
+  keeps stroke weight and corner radius consistent, and it costs nothing
+  because `icon()` is already resolved per render.
+#}
+{% set _TOAST_ICONS = {
+  "info": "info",
+  "success": "circle-check",
+  "warning": "triangle-alert",
+  "error": "circle-x",
+} %}
+
+{% macro toast(title, description=none, category="info", duration=none, action_label=none, action_href=none) -%}
+  <div class="toast"
+       role="{{ "alert" if category == "error" else "status" }}"
+       aria-atomic="true"
+       data-category="{{ category }}"
+       {%- if duration is not none %} data-duration="{{ duration }}"{% endif %}>
+    <div class="toast-content">
+      {{ icon(_TOAST_ICONS.get(category, "info"), 16) }}
+      <section>
+        <h2>{{ title }}</h2>
+        {% if description %}<p>{{ description }}</p>{% endif %}
+      </section>
+      {% if action_label and action_href %}
+        <footer>
+          <a href="{{ action_href }}" class="btn" data-toast-action>{{ action_label }}</a>
+        </footer>
+      {% endif %}
+    </div>
+  </div>
+{%- endmacro %}

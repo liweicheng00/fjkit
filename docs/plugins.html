@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fjkit plugins · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css">
+  <link rel="stylesheet" href="assets/brand.css">
+  <script defer src="assets/vendor/htmx/htmx.min.js"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js"></script>
+  <meta name="description" content="Add middleware, an exception handler or a value every template gets, in one object registered in one place — and the session plugin that was the first to need it.">
+  <meta property="og:title" content="fjkit plugins">
+  <meta property="og:description" content="Add middleware, an exception handler or a value every template gets, in one object registered in one place — and the session plugin that was the first to need it.">
+  <meta property="og:type" content="article">
+  <script src="assets/mock-server.js"></script>
+</head>
+<body class="min-h-full antialiased">
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="Documentation"><h3>Documentation</h3>    <ul>        <li>
+    <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>Introduction</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>Learn</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>Plugins</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>Components</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
+    <a href="plugins.html#why">      <span>What a plugin is</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#mount">      <span>mount(): the app side</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#extend">      <span>extend(): Jinja, and every render</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#rules">      <span>Order, collisions, and limits</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#auth">      <span>The auth plugin</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#write">      <span>The flash plugin</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="Language"><h3>Language</h3>    <ul>      <li>
+    <a href="zh/plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>中文</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-screen flex-col px-5">
+      <header class="flex items-center gap-6 py-5">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>        <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit on GitHub">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>        </div>
+      </header>
+
+    <main class="flex-1 pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">Plugins</h1>
+<p class="text-muted-foreground text-sm">    Some things are not a macro. A plugin adds middleware, an exception handler, or a value every
+    template gets — in one object, registered in one place.
+</p>    </div>
+  </div>
+
+<div id="why">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">What a plugin is</h2><p class="text-muted-foreground text-sm">Two contribution points, because the kit has two moments.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        A macro covers what a page draws. It does not cover what happens before the handler runs, or
+        what every template should know without a route passing it along. Sessions need both. So do
+        flash messages, locales and feature flags.
+      </p>
+      <p>
+        A plugin is one object with two optional methods. <code>mount()</code> runs when the app is
+        constructed. <code>extend()</code> runs when the Jinja environment is built. Both are
+        optional — a plugin that only puts a value in every template writes only the second.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">config = FjkitConfig(
+    template_dir=APP_DIR / &#34;templates&#34;,
+    plugins=(auth, flash),
+)
+mount_fjkit(app, config)</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        That is the whole registration. <code>mount_fjkit()</code> already reads this config for the
+        static mount and the environment, so a plugin needs no second call and no import order to
+        get right.
+      </p>
+      <p>
+        The split is visible on purpose. Hiding it would be friendlier right up until someone's
+        <code>mount()</code> silently never ran.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="mount">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">mount(): the app side</h2><p class="text-muted-foreground text-sm">Middleware, handlers, routes — attributed to the plugin that added them.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>AppSetup</code> is a thin pass-through to FastAPI. What it adds is attribution: a
+        misbehaving plugin is named rather than found by elimination.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>AppSetup</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>add_middleware(cls, **options)</h4><p>Starlette runs middleware in reverse registration order, so a plugin listed later in plugins= wraps the ones before it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_exception_handler(exc, handler)</h4><p>note that an exception raised inside middleware never reaches one — Starlette&#39;s handler layer sits inside the user stack</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>include_router(router)</h4><p>for a plugin that ships endpoints of its own</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>mount_static(url, directory)</h4><p>for a plugin that ships assets, mounted under a name derived from the plugin&#39;s</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>warn(message)</h4><p>startup configuration checks; the message is prefixed with the plugin&#39;s name and raised as PluginWarning</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>app, config</h4><p>the live FastAPI app and the FjkitConfig, for the checks the two above cannot express</p>    </section>  </div></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        <code>warn()</code> is for the combinations only the plugin can recognise. An in-memory
+        session store under a production config, say: it works on your laptop and logs users out at
+        random behind four workers, and nothing in the traceback points at the cause.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="extend">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">extend(): Jinja, and every render</h2><p class="text-muted-foreground text-sm">The per-request context is the part that was missing.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>FjkitConfig.globals</code> is resolved once per process. That is right for a version
+        string and useless for the signed-in user. <code>add_context_processor()</code> is the
+        other half: a callable run once per render, with the live request.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>EnvSetup</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>add_template_dir(path)</h4><p>searched after the app&#39;s templates and before the kit&#39;s — a plugin may replace a kit macro, never a file the app wrote</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_global(name, value)</h4><p>one value for the whole process</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_filter(name, fn)</h4><p>a Jinja filter</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_context_processor(fn, provides=[…])</h4><p>merged into every template&#39;s context, once per render</p>    </section>  </div></div></div>
+  </div>
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the auth plugin&#39;s whole extend()" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
+    setup.add_context_processor(
+        lambda request: {&#34;session&#34;: getattr(request.state, &#34;auth&#34;, None)},
+        provides=[&#34;session&#34;],
+    )</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        Two constraints, both deliberate. A processor is <strong>synchronous</strong>: it runs inside
+        <code>Templates.page()</code>, which a <code>def</code> handler reaches from the threadpool. A
+        plugin needing I/O does it in middleware and leaves the result on
+        <code>request.state</code> — which is exactly what the line above reads.
+      </p>
+      <p>
+        And <code>provides=</code> is required rather than inferred. Without it, two plugins quietly
+        fighting over <code>user</code> is discoverable only by rendering a page and noticing. With
+        it, the clash is a startup error naming both.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="rules">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Order, collisions, and limits</h2><p class="text-muted-foreground text-sm">Everything a plugin can collide over fails at startup, not in production.</p>      </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Template search order</h3><p>First match wins.</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">Searched</th>
+              <th class=" ">Belongs to</th>
+              <th class=" ">May shadow</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="text-muted-foreground tabular-nums">1</td>
+          <td class="font-medium">the app&#39;s template_dir</td>
+          <td class="">everything — this is fjkit eject</td>
+        </tr>
+        <tr>
+          <td class="text-muted-foreground tabular-nums">2</td>
+          <td class="font-medium">each plugin, in plugins= order</td>
+          <td class="">the kit&#39;s macros, never the app&#39;s files</td>
+        </tr>
+        <tr>
+          <td class="text-muted-foreground tabular-nums">3</td>
+          <td class="font-medium">the kit</td>
+          <td class="">nothing</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Refused at startup</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>two plugins with one name</h4><p>they would collide on request.state.&lt;name&gt; and make every later error ambiguous</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>two plugins claiming one global, filter or context key</h4><p>the error names both, and says to rename one or drop one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a context key a processor did not declare</h4><p>caught under strict_undefined, so it surfaces in development</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What a plugin cannot do</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>inject markup</h4><p>      There is no hook to inject markup into the shell. With one, any plugin could put a
+      <code>&lt;script&gt;</code> on every page — and both <em>no build step on your side</em> and
+      the closed vocabulary would leave through it. A plugin that ships UI ships
+      <em>templates</em>, and they pass <code>fjkit check</code> like everything else.
+</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>depend on another plugin</h4><p>order is the order you wrote; there is no resolution step, because nothing has needed one yet</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>open a connection at startup</h4><p>no lifespan hook — a plugin takes a client the app already built, which is why RedisStore has a client parameter</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="auth">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+<span class="badge" data-variant="secondary">fjkit.auth</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">The auth plugin</h2><p class="text-muted-foreground text-sm">The browser holds a cookie. The server holds the token.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        The first plugin in the box, and the reason the seam exists. The browser is given one
+        opaque, signed, <code>HttpOnly</code> cookie. The access token, the refresh token and your
+        claims stay in a session store on the server.
+      </p>
+      <p>
+        This is what an htmx app wants. No <code>htmx:configRequest</code> hook attaching a header,
+        no refresh-and-retry glue, no token in the DOM — the browser sends the cookie on every
+        request because that is what browsers do.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">auth = AuthPlugin(
+    secret=os.environ[&#34;FJKIT_SECRET&#34;],
+    store=RedisStore(redis.from_url(REDIS_URL)),
+    source=MyOIDCSource(),
+    trusted_origins=[&#34;https://app.example.com&#34;],
+)
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
+
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Three seams, replaceable independently</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>SessionStore</h4><p>MemoryStore for development, RedisStore for production, or your own — five async methods</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>TokenSource</h4><p>how credentials become a session: a password check, an OIDC code exchange, an upstream token swap. LocalSource is the default and has no upstream at all</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Csrf</h4><p>a cookie is an ambient credential, so CSRF returns. SameSite=Lax plus an exact Origin comparison — the two miss different things</p>    </section>  </div></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        Routes see none of it. Put <code>Depends(auth.required)</code> on a router and its handlers
+        keep the signatures they had; the session is on <code>request.state.auth</code>, and in
+        every template as <code>session</code>.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>How an anonymous request is refused</h3><p>The same question @render asks about the wire, asked about how to say no.</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">Who asked</th>
+              <th class=" ">Answer</th>
+              <th class=" ">Why not 401</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">htmx</td>
+          <td class=""><span class="badge" data-variant="info">401 + HX-Redirect</span></td>
+          <td class="">— htmx acts on HX-Redirect before it reads the status, so this one is both</td>
+        </tr>
+        <tr>
+          <td class="font-medium">a browser navigation</td>
+          <td class=""><span class="badge" data-variant="info">303</span></td>
+          <td class="">a 401 with no body is a blank page; people want the login form</td>
+        </tr>
+        <tr>
+          <td class="font-medium">a script, curl, a service</td>
+          <td class=""><span class="badge" data-variant="outline">401</span></td>
+          <td class="">— this is the caller 401 is for</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        Only the middle row cannot be a 401: a plain navigation has no way to act on one, so it
+        would land on a blank page. htmx is the interesting case — it reads <code>HX-Redirect</code>
+        and returns <em>before</em> it looks at the status code, so the status is free to be honest
+        while the browser still moves the whole page. A navigation is recognised by
+        <code>Sec-Fetch-Mode: navigate</code>, or failing that by <code>Accept</code> mentioning
+        <code>text/html</code>; anything else is the caller a route in
+        <code>render_mode="auto"</code> answers in JSON. The 401 carries no
+        <code>WWW-Authenticate</code>: the field is required by RFC 9110, and every registered
+        scheme is wrong here. <code>Basic</code> would make the browser open its own credential
+        dialog, which is the login form this plugin exists to replace.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Worth knowing before you reach for it</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>one store read per request</h4><p>the price of revoking a session by deleting a row, and of keeping refresh tokens off the wire</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>refresh is locked</h4><p>four swaps firing at once would otherwise send four refreshes, and an upstream that rotates refresh tokens revokes the family when the second arrives</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the session id does not change on refresh</h4><p>concurrent swaps would each return a different Set-Cookie, the last would win, and the rest would be orphaned</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>login routes are async def</h4><p>they await the store, and a real TokenSource awaits an identity provider. Routes that only render stay def</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="write">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<span class="badge" data-variant="secondary">fjkit.flash</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">The flash plugin</h2><p class="text-muted-foreground text-sm">A message that outlives the response that raised it.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        A redirect is where messages go to die. <code>HX-Trigger</code> names an event for the page
+        to fire, and the page is replaced before the header arrives; a plain navigation has no
+        JavaScript involved at all. The cookie jar is the only thing that crosses.
+      </p>
+      <p>
+        So a flash is written as a short-lived signed cookie, read back on the request that lands,
+        rendered into the next page, and cleared in the same breath — which is why it appears once
+        and not again on reload. <code>ui/shell.html</code> already carries a toaster region and
+        fills it from <code>flash</code>, so registering the plugin is the entire setup and no
+        template in your app changes.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">flash = FlashPlugin(secret=os.environ[&#34;FJKIT_SECRET&#34;])
+auth = AuthPlugin(secret=…, trusted_origins=…, flash=flash)
+
+config = FjkitConfig(template_dir=…, plugins=(flash, auth))</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        <code>auth</code> is handed the flash rather than importing it. Neither plugin depends on
+        the other — auth works without one, and a route that just saved something wants
+        <code>flash.add(response, "Saved")</code> with no session in sight. The app is what
+        connects them, which is the same reason there is no dependency resolution in section 04.
+      </p>
+      <p>
+        The whole of its Jinja side is one processor, and the reason it hands over a small object
+        rather than a list is worth knowing: a page load fires more requests than the page — an
+        htmx poll, a prefetch, a stylesheet — and any of them would consume the message if
+        consumption meant "a request carried the cookie". So the queue is marked read when it is
+        <em>iterated</em>, which only happens where the toasts are actually drawn.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="fjkit/flash.py" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
+    setup.add_context_processor(self._read, provides=[&#34;flash&#34;])
+
+def _read(self, request: Request) -&gt; dict[str, object]:
+    # A queue, not a list: it marks itself read when something iterates it.
+    return {&#34;flash&#34;: _Queue(getattr(request.state, &#34;flash&#34;, ()), request)}</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        Raise one from anywhere — <code>flash.add(response, "Saved", category="success")</code> —
+        and it appears on whatever page the browser lands on next, as a toast, with no route on
+        that page knowing anything about it. That is the test of whether something should be a
+        plugin at all: could a route have passed it instead? Here it could not, because the route
+        that raises the message is not the route that renders it.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Duck-typed, not inherited</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>name</h4><p>a str attribute — required, and the only one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>mount / extend</h4><p>implement either, both, or neither; missing ones are simply not called</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>no base class</h4><p>Plugin is a Protocol, so a plugin never imports fjkit to be one</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.1.0.dev0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
+  This site is a fjkit app: it extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script defer src="assets/data.js"></script>
+  <script defer src="assets/common.js"></script>
+</body>
+</html>

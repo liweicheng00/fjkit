@@ -1,0 +1,222 @@
+/* ============================================================================
+ * The documentation site's own stylesheet.
+ *
+ * This is the fourth contact point the kit documents: "your own brand.css |
+ * overrides the --primary tokens". It is loaded after fjkit.css through the
+ * shell's `stylesheets` block, and it is the only CSS this site has.
+ *
+ * It is in two halves, and the split is the point.
+ *
+ *   PART 1 — BRAND. Token overrides and element-level typography. Exactly what
+ *            an app is supposed to write, and nothing here substitutes for a
+ *            component. No class selectors.
+ *
+ *   PART 2 — GAPS. Rules that exist only because the kit has no component for
+ *            the thing being styled. Every block is labelled with what the
+ *            missing macro would be. This half should shrink with each release;
+ *            docs/BACKLOG.md tracks it. If you are looking for the honest
+ *            answer to "is the vocabulary actually closed?", it is the length
+ *            of part 2.
+ * ========================================================================= */
+
+/* ---------------------------------------------------------------- PART 1 */
+
+:root {
+  --docs-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+/* The shell drops its `max-w-6xl` when a sidebar is present, because the
+   sidebar owns the left edge. A documentation page still wants a measure. */
+main {
+  max-width: 72rem;
+}
+
+/* Tailwind's preflight zeroes these; a docs page is mostly prose. Element
+   selectors, so no paragraph on this site carries a class. */
+main p {
+  max-width: 74ch;
+  line-height: 1.65;
+}
+
+main li {
+  line-height: 1.6;
+}
+
+code {
+  font-family: var(--docs-mono);
+  font-size: 0.875em;
+  /* The file tree prints its own indentation. */
+  white-space: pre;
+}
+
+/* `code_block` sets the type and the scroll region; this is only the tree's
+   monospace measure and the site's own tab-size preference. */
+.code-block {
+  font-family: var(--docs-mono);
+}
+
+/* `footer` is this site's caption element: the note under a code pane, the
+   line under a preview. Inside a card it sits below the body. */
+main footer {
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+main .card > footer:first-child {
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* htmx puts `htmx-request` on whatever `hx-indicator` names. fjkit ships no
+   indicator styling yet (roadmap 0.6) — these two badges are named by id
+   rather than by a class, so the templates stay inside the vocabulary. */
+#demo-searching,
+#demo-board-busy {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+#demo-searching.htmx-request,
+#demo-board-busy.htmx-request {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ PART 2
+ *
+ * Four left. `code_block`, `tabs` and a vertical `button_group` used to live
+ * here; they are components now, so their rules moved into `fjkit.css` and this
+ * half got shorter. That is the loop this file exists to drive.
+ *
+ * GAP 1 — syntax highlighting.
+ *
+ * `code_block` is the kit's, and it deliberately knows no languages: it renders
+ * text. Which tokens are keywords is a question the kit should never answer, so
+ * the highlighter is this site's, and it marks tokens with `data-t` rather than
+ * a class so nothing it injects can be mistaken for vocabulary. Not a gap the
+ * kit should close — recorded here so the reason is on the record.
+ */
+.code-block [data-t="k"] { color: var(--primary); }
+.code-block [data-t="s"] { color: var(--success); }
+.code-block [data-t="c"] { color: var(--muted-foreground); font-style: italic; }
+.code-block [data-t="a"] { color: var(--info); }
+
+/*
+ * GAP 2 — a diagram surface.
+ *
+ * `_diagram.html` is an SVG, and no component library should be drawing one.
+ * What is missing is only the frame and the "stage lighting" the request demo
+ * drives — both keyed off `data-lit`, so the markup carries no class either
+ * way. Arguably a `figure()` macro; more likely this stays an app's problem.
+ */
+svg[role="img"] {
+  display: block;
+  width: 100%;
+  max-width: 46rem;
+  height: auto;
+  margin: 0 auto;
+  color: var(--foreground);
+}
+
+svg [data-lit="false"] { opacity: 0.32; transition: opacity 0.25s; }
+svg [data-lit="true"] { opacity: 1; transition: opacity 0.25s; }
+svg [data-lit="true"] [data-accent] { stroke: var(--primary); }
+svg [data-lit="true"] text[data-accent] { fill: var(--primary); stroke: none; }
+
+/*
+ * GAP 3 — a `tile` placeholder, and an `icon_grid`.
+ *
+ * The layout playground needs something to put *in* a stack or a grid, and a
+ * gallery of named things needs a cell. Both fail the inclusion test — a
+ * back office does not need either in week one — so they stay here rather than
+ * becoming macros nobody else would call.
+ */
+[data-tile] {
+  border: 1px dashed var(--primary);
+  border-radius: var(--radius, 6px);
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
+  color: var(--primary);
+  font-family: var(--docs-mono);
+  font-size: 0.72rem;
+  padding: 0.9rem 0.75rem;
+  text-align: center;
+}
+
+#icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+#icon-grid figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.75rem 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 6px);
+}
+
+#icon-grid figcaption {
+  font-family: var(--docs-mono);
+  font-size: 0.66rem;
+  color: var(--muted-foreground);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * GAP 4 — a `field_row` a script can reach. **The one that matters.**
+ *
+ * `field_row("three")` is the right component and this site cannot call it: the
+ * playground controls are built in the browser from a data structure, not by a
+ * template. Copying the macro's utility classes into a .js file would put the
+ * markup outside the vocabulary in the one place `fjkit check` does not look —
+ * it reads templates, never scripts. So this is both a missing capability and a
+ * hole in the gate, and the second half is the more serious one.
+ *
+ * Two ways out, neither a macro: render the controls server-side and only bind
+ * them in the browser, or teach `fjkit check` to read script files too.
+ */
+[data-field-row] {
+  display: grid;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+@media (min-width: 640px) {
+  [data-field-row] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+#layout-controls,
+#swap-controls {
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+#layout-controls,
+#macro-picker > [role="tabpanel"] {
+  display: grid;
+  gap: 0.75rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  align-items: end;
+  padding: 0.85rem 1rem;
+}
+
+/* No `border-top` on the macro panels, unlike the two above: the tablist above
+   them already draws one, and a second sits a hairline under the first. */
+
+#pattern-list {
+  padding: 0.5rem;
+}
