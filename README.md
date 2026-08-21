@@ -111,5 +111,4 @@ numbers and method: [docs/jinja-performance.md](docs/jinja-performance.md).
 ## Status
 
 Pre-release (0.1.0.dev0), not yet on PyPI. Macro signatures are not frozen until
-1.0. The roadmap and the rules this project holds itself to are in
-[CHARTER.md](CHARTER.md).
+1.0.

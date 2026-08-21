@@ -136,7 +136,7 @@ svg [data-lit="true"] text[data-accent] { fill: var(--primary); stroke: none; }
  * GAP 3 — a `tile` placeholder, and an `icon_grid`.
  *
  * The layout playground needs something to put *in* a stack or a grid, and a
- * gallery of named things needs a cell. Both fail CHARTER §8's second test — a
+ * gallery of named things needs a cell. Both fail the inclusion test — a
  * back office does not need either in week one — so they stay here rather than
  * becoming macros nobody else would call.
  */

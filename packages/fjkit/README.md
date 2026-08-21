@@ -73,4 +73,4 @@ uv run fjkit check app/templates
 
 **[Docs](https://liweicheng00.github.io/fjkit/)**
 
-Status: pre-release, under active development. See `CHARTER.md` in the repo.
+Status: pre-release, under active development.

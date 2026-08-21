@@ -1,6 +1,6 @@
 # BACKLOG — 階段一
 
-進度追蹤。階段二會轉成 GitHub Issues。規則見 `CHARTER.md`。
+進度追蹤。階段二會轉成 GitHub Issues。
 
 **目前範圍：0.1 骨架**
 
@@ -87,7 +87,7 @@
 
 ### 載入指示提前（2026-08-17，使用者指定）
 
-`spinner` 在路線圖上屬於 **0.6 回饋層**，這次提前做（章程 §11.7 的順序調整，由使用者
+`spinner` 在路線圖上屬於 **0.6 回饋層**，這次提前做（路線圖順序的調整，由使用者
 直接指定，非我自行決定）。理由與代價：
 
 - htmx 讓「請求在飛」變成第一週就會遇到的狀態。沒有元件，app 只能自己寫 `<svg>`——
@@ -101,17 +101,17 @@
 
 **未做，需要人決定**：workbench（`page.template.html` 的 `MACROS` 與
 `build_data.py` 的 `misc`）還沒加 spinner 條目，因為那兩支檔案目前有未 commit 的
-編輯中內容（新的 Lesson 08 patterns）。章程 §6.8 的「文件頁」這一項因此尚未打勾；
+編輯中內容（新的 Lesson 08 patterns）。元件完成定義的「文件頁」這一項因此尚未打勾；
 `packages/fjkit/docs/components.md` 與 `htmx.md` 已經寫好。
 
 ### `dialog` 提前（2026-08-18，使用者指定）
 
-同樣是 **0.6 回饋層** 提前落地（章程 §11.7，由使用者直接指定）。設計上的取捨：
+同樣是 **0.6 回饋層** 提前落地（路線圖順序的調整，由使用者直接指定）。設計上的取捨：
 
 - **零 JavaScript，用 Popover API。** `popovertarget` 開、
   `popovertargetaction="hide"` 關，都是純 HTML 屬性；top layer、backdrop、Esc、
-  點外面關閉、焦點回到觸發元素全部由瀏覽器負責。fjkit 一行 JS 都沒加，也就不必動
-  章程 §11.3。
+  點外面關閉、焦點回到觸發元素全部由瀏覽器負責。fjkit 一行 JS 都沒加，也就不必動到
+  「引入自己寫的 JavaScript 要先問人」那條界線。
 - **代價是「不是 modal」。** popover 不會把背景 inert，Tab 與螢幕閱讀器仍然到得了
   後面的頁面，所以標的是 `role="dialog"` 而**不寫** `aria-modal`——寫了就是對螢幕
   閱讀器說謊。真正的 modal 需要 `showModal()`，那是要不要出貨 JS 的決定，留給人類。
@@ -133,9 +133,9 @@
 
 ### `sidebar` 提前（2026-08-18，使用者指定）
 
-**0.5 應用外殼** 的第一件，提前落地（章程 §11.7，由使用者直接指定）。
+**0.5 應用外殼** 的第一件，提前落地（路線圖順序的調整，由使用者直接指定）。
 
-- **成本只有模板。** `.sidebar` 的 CSS basecoat 早就出貨（§7 那個「棘輪已經扣完」的
+- **成本只有模板。** `.sidebar` 的 CSS basecoat 早就出貨（CSS 預算那個「棘輪已經扣完」的
   推論第三次被驗證），JS 也在 vendored 的 `all.min.js` 裡。所以這次新增的不是元件，
   是 fjkit 形狀的門：路由名而不是 URL、icon 用名字、封閉列舉、簽名裡沒有 class 字串。
 - **shell 用「block 是不是空的」切換版型。** Jinja 問不到一個 block 有沒有被填，
@@ -155,7 +155,7 @@
   改掉之後 A3 仍然成立：一顆旋鈕連側欄一起換。`:root` 與 `.dark` 各寫一份——basecoat
   自己的 `.dark` 會把 `:root` 的定義蓋掉。
 - **唯一的 JS 是 trigger 的 `onclick`**，呼叫 basecoat 自己掛在元素上的 `toggle()`，
-  跟 `theme_toggle` 同一個形狀。沒有新增任何 fjkit 自己的邏輯，但這條靠近章程 §11.3，
+  跟 `theme_toggle` 同一個形狀。沒有新增任何 fjkit 自己的邏輯，但這條靠近「不自己寫 JavaScript」那條界線，
   記在這裡讓人類看得到。
 
 **demo 的 parity**：`ids` 是 exact 欄位（id 就是 htmx target，靜靜多一個或改名正是
@@ -173,7 +173,7 @@ swap 落錯地方的起點），所以側欄那個 `sidebar` id 是逐條寫進 
   shell 仍然 link `fjkit-vega.css`。換掉的是瀏覽器裡那個 `<link>` 的 href，所以
   config.py 那句「style 不是 per-request 的值」仍然成立——同一頁從來不會有兩份
   stylesheet。
-- **手寫 JS，章程 §11.3，由使用者直接指定。** 15 行，全在 `examples/board` 的
+- **手寫 JS——需要人類授權的那一類，由使用者直接指定。** 15 行，全在 `examples/board` 的
   `base.html`，套件裡一行都沒加。放在 `head` 而不是 body 尾巴：跟 shell 的深色
   flash-guard 同一個理由，晚一步套用就是看得見的幾何閃動。
 - **包名對 URL 的對照表由 Python 建**（`main.py` 的 `STYLE_SHEETS`），JS 只做查表。
@@ -193,7 +193,7 @@ swap 落錯地方的起點），所以側欄那個 `sidebar` id 是逐條寫進 
 
 問的是「可以整合 Plotly.js 嗎」。答案分兩層，這一筆記的是第二層怎麼做的。
 
-- **不進 wheel，進 app。** §7 把使用者端 JS 封在 htmx + basecoat；
+- **不進 wheel，進 app。** 品質預算把使用者端 JS 封在 htmx + basecoat；
   `plotly.js-basic-dist-min@3.7.0` 是 1,119,926 bytes，完整包 4,851,164——差兩個
   數量級，不是預算裡放得下的東西。所以它 vendored 在 `examples/board/app/static/`，
   由 `scripts/vendor_plotly.py` 釘版本，跟 kit vendored htmx 是同一套規矩：committed、
@@ -258,7 +258,7 @@ swap 落錯地方的起點），所以側欄那個 `sidebar` id 是逐條寫進 
   三張（owner 佔比、intake、最舊未完成）不給，Plotly 用自己的調色盤。判準寫在
   `Chart.roles` 的註解裡：**四個 owner 就是四個 owner，沒有哪個 role 屬於「kai」，
   硬指派一個等於讓圖表宣稱資料沒說的事**。代價也寫下來了——那三張不跟著深色模式變。
-  狀態色沒有一起拿掉是因為 A3：「綠色代表完成」要能撐過改品牌，那是章程明文保護的。
+  狀態色沒有一起拿掉是因為 A3：「綠色代表完成」要能撐過改品牌，那是刻意保護的。
   **仍然照樣不變的**：figure 裡一個顏色都沒有，兩種圖都是。切片間隙與標籤文字也照樣
   跟著 token——它們是卡片的屬性不是序列的屬性。
 - **頁面上那句說明有兩處是錯的，已改。** 「The figures name a role」——改成 B 之後
@@ -272,7 +272,7 @@ swap 落錯地方的起點），所以側欄那個 `sidebar` id 是逐條寫進 
   這是整個模組在講的那件事的縮小版：**別人 schema 的型別化子集是一個猜測，尾巴是
   猜錯時不會致命的原因**。`orientation` 和 `hovertemplate` 本身就是走尾巴的，
   `test_the_typed_subset_survives_a_horizontal_bar` 守著這條路真的通。
-- **刪掉一條自己發明的測試。** 本來寫了「每個 `ChartRole` 都要有圖用到」，套用 §6.6。
+- **刪掉一條自己發明的測試。** 本來寫了「每個 `ChartRole` 都要有圖用到」，套用「封閉列舉的每個值都渲染一次」。
   那條規矩是給元件的封閉參數用的，套到 app 的領域列舉上會**為了湊滿列舉而逼出圖表**，
   方向反了。role 的 token 缺漏本來就有 `test_every_role_the_server_can_send_has_a_token`
   在守。
@@ -307,11 +307,11 @@ swap 落錯地方的起點），所以側欄那個 `sidebar` id 是逐條寫進 
 不做 tree-shaking，所以 38 個元件的樣式一律出貨。
 
 沒有便宜的裁剪路徑：`styles/vega.css` 是單一檔案涵蓋所有元件，要拆就得手改
-vendored 檔案——那是章程明文禁止的。
+vendored 檔案——那是明文禁止的。
 
 兩個重要推論：
 
-1. **章程的 100 KB raw 上限從一開始就不可能達成**，那是我在量測前寫的數字。
+1. **原訂的 100 KB raw 上限從一開始就不可能達成**，那是我在量測前寫的數字。
 2. **「只增不減的單向棘輪」這個擔憂大致是錯的**——棘輪已經扣完了。之後補
    `tabs`、`dialog`、`accordion` 等元件，CSS 幾乎不會變大，因為它們的樣式已經在裡面了。
    還會成長的只有我自己模板用到的 utility，實測整批模板才 8 KB。
@@ -320,7 +320,7 @@ vendored 檔案——那是章程明文禁止的。
 23.2 KB gzip / 18.3 KB brotli——線上傳輸量比 Bootstrap 小。
 
 **已核可的處置**（2026-08-16）：預算改以 **gzip** 為管制數字（stdlib 就能量、可重現、
-不需額外依賴），brotli 當參考值。章程 §7 已更新為 gzip ≤ 28 KB、raw ≤ 260 KB（防暴衝用）。
+不需額外依賴），brotli 當參考值。品質預算已更新為 gzip ≤ 28 KB、raw ≤ 260 KB（防暴衝用）。
 `fjkit build-css` 每次建置都會印出兩個數字並在超標時回傳非零。
 
 ---
@@ -358,7 +358,7 @@ profile 顯示儀表板一次渲染做 **126 次 macro 呼叫**（舊版 inline 
 
 絕對值是每頁 0.3–0.4 ms，在任何一次 DB 查詢面前可以忽略。
 
-**待決（章程 §11.8，需人類決定）**：章程 §7 寫「單頁渲染回歸不得慢超過 10%」。
+**待決（放寬品質預算需人類決定）**：預算寫「單頁渲染回歸不得慢超過 10%」。
 這條規則原意應該是「fjkit 不得一版比一版慢」，而不是「fjkit 必須追平手寫 inline markup」
 ——後者在元件化的前提下不可能成立。建議：
 
@@ -423,14 +423,14 @@ handler 分不出差別。`hx-boosted` 刻意排除——boost 是 htmx 在做�
 3. **`status_code=` 與 handler 設的 header 要自己併。** FastAPI 只把它們併進「自己組出來的」
    回應；這裡回應是裝飾器組的，不併就會靜靜消失。優先序：handler → route → 200。
 
-**章程 §1 非目標已改寫（已由人類核可）**：原文「不輸出 JSON API 給前端框架用」與
+**非目標的敘述已改寫（已由人類核可）**：原文「不輸出 JSON API 給前端框架用」與
 一份有文件的雙協定契約直接衝突。改成：不為了餵前端框架而設計 API，但同一條路由的
 JSON 表現形式是一等公民，描述的是**這個頁面被交到手上的資料**，由回傳型別註解定義。
 判準因此很明確：頁面不需要的欄位不會為了 JSON 而加進 response model。
 
 **尚未處理**：`status_filters` / `priority_options` 仍是 `(value, label)` tuple，
 因為那是 `ui/form.html` 的 `select_field` 吃的形狀，OpenAPI 上會呈現成兩元素陣列。
-改成 `Option` 物件會動到已發佈的 macro 簽名（章程 §11.1），而且 tuple 字面值
+改成 `Option` 物件會動到已發佈的 macro 簽名（那需要人類核可），而且 tuple 字面值
 （`options=[("a", "A")]`）在模板與測試裡直接可寫，換成物件就得多一個 Jinja global
 才能保住同樣的寫法——收益（兩個欄位的 JSON 形狀）小於代價，等真的有客戶端在讀
 這份 JSON 時再決定。
@@ -477,7 +477,7 @@ HTML，Pages 直接從分支發佈。
 成立了）。
 
 **待人類決定**：`CLAUDE.md` 與 `README.md` 的倉庫地圖仍寫著「index.html（the
-published workbench）」。依章程 §0，手寫檔案要先問過。
+published workbench）」。手寫檔案要先問過。
 → 已由使用者指示更新，見下方〈文件站加上 Introduction 首頁〉。
 
 ---
@@ -544,17 +544,17 @@ pragma。`examples/board` 撞不到只是因為 app 模板不會討論顏色。
 ## 把文件站的自訂 component 補進 library
 
 上一輪列出七個「詞彙表講不出來」的洞。使用者直接指示把它們補進套件，所以做了——
-章程 §11.7（路線圖順序調整超過一版要先問）的授權路徑跟 spinner 那次一樣：**由使用者
+「路線圖順序調整超過一版要先問」的授權路徑跟 spinner 那次一樣：**由使用者
 直接指定，非我自行決定**。
 
 牽動的路線圖版本：`tabs` 是 0.7，程式碼區塊與 `item`／清單是 0.9，文件站本身是 0.11。
 
 ### 補進去的
 
-| 新增 | 檔案 | 路線圖 | 為什麼過 §8 |
+| 新增 | 檔案 | 路線圖 | 為什麼過收錄標準 |
 |---|---|---|---|
 | `tabs(items, label, selected, orientation)` ／ `tab_panel(id)` | `ui/tabs.html` | 0.7 | Basecoat 的 `.tabs` **只給結構、完全沒有皮**。行為（選取、方向鍵）是 vendored JS 免費附的，外觀每個 app 都得自己畫一次 |
-| `code_block(source, label, wrap)` | `ui/data.html` | 0.9 | 不是「把 `<pre>` 包一層」——捲動容器沒有 `tabindex="0"` 就完全無法用鍵盤捲動，這是它避開 §8 拒絕標準第三條的原因 |
+| `code_block(source, label, wrap)` | `ui/data.html` | 0.9 | 不是「把 `<pre>` 包一層」——捲動容器沒有 `tabindex="0"` 就完全無法用鍵盤捲動，這是它避開拒絕標準第三條的原因 |
 | `item_list()` ／ `item(title, description, …, clamp)` | `ui/data.html` | 0.9 | Basecoat 有 `.item` CSS 沒有 macro，而 `.item > section`／`> figure`／`> aside` 的契約正是 app 不該自己重新推導的東西 |
 | `button_group(orientation="vertical")` | `ui/button.html` | — | Basecoat 早就吃 `data-orientation="vertical"`，只是沒開出來 |
 | `button_group(**attrs)` | `ui/button.html` | — | **它是唯一一個不吃 pass-through 屬性的元件**，連掛個 id 都不行 |
@@ -573,7 +573,7 @@ pragma。`examples/board` 撞不到只是因為 app 模板不會討論顏色。
 |---|---|
 | 語法高亮 | `code_block` 刻意不認得任何語言。「哪些 token 是關鍵字」不該由 kit 回答 |
 | 圖表外框 | SVG 本來就不該由元件庫畫 |
-| `tile` placeholder、`icon_grid` | 過不了 §8 第二條：後台第一週不會需要 |
+| `tile` placeholder、`icon_grid` | 過不了收錄標準第二條：後台第一週不會需要 |
 | **腳本搆得到的 `field_row`** | 不是 macro 能解的，見下 |
 
 ### 剩下的那個洞比較嚴重
