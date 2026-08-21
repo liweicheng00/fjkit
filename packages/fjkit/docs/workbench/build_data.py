@@ -178,8 +178,12 @@ tables = {
     ),
 }
 
-FORM = '{% from "ui/form.html" import form, field_row, text_field, select_field %}'
+FORM = (
+    '{% from "ui/form.html" import form, field_row, text_field, select_field,'
+    ' textarea_field, checkbox_field, switch_field, radio_group, fieldset %}'
+)
 PRIORITIES = '[("low", "Low"), ("normal", "Normal"), ("high", "High")]'
+OWNERS = '[("ana", "Ana"), ("kai", "Kai"), ("unassigned", "Unassigned")]'
 forms = {
     "board": render(
         f'{FORM}{BUTTON}{{% call form(action="/tasks", target="#board", reset_on_success=true) %}}'
@@ -196,6 +200,43 @@ forms = {
         f'error="Give the task a title.") }}}}'
         f'{{{{ text_field("owner", label="Owner", value="ana", hint="Leave blank for unassigned.") }}}}'
         f"{{% endcall %}}{{% endcall %}}"
+    ),
+    #: The three controls a create form runs out of `text_field` for. Stacked
+    #: rather than in a `field_row`, because a textarea and a checkbox want
+    #: different widths and a grid would give them the same one.
+    "long": render(
+        f'{FORM}{LAYOUT}{BUTTON}{{% call form(card=true) %}}{{% call stack(4) %}}'
+        f'{{{{ textarea_field("notes", label="Notes", placeholder="What changed, and why?", '
+        f'hint="Grows with what you type — no rows to guess at.") }}}}'
+        f'{{{{ checkbox_field("blocked", label="Blocked on something else", '
+        f'hint="Shows a marker on the board.") }}}}'
+        f'{{% call row(justify="end") %}}'
+        f'{{{{ button("Save", variant="primary", type="submit") }}}}'
+        f"{{% endcall %}}{{% endcall %}}{{% endcall %}}"
+    ),
+    #: Radios and a select over the same `options` list, side by side. The point
+    #: of the pair is that swapping one for the other is a one-word edit.
+    "choice": render(
+        f'{FORM}{LAYOUT}{{% call form(card=true) %}}{{% call field_row("two") %}}'
+        f'{{{{ radio_group("priority", label="Priority", options={PRIORITIES}, '
+        f'selected="normal", hint="Three options — show them all.") }}}}'
+        f'{{{{ select_field("owner", label="Owner", options={OWNERS}, selected="ana", '
+        f'hint="Twelve of them — collapse the list.") }}}}'
+        f"{{% endcall %}}{{% endcall %}}"
+    ),
+    #: A settings panel: switches grouped by subject, each group a real
+    #: <fieldset> so the legend belongs to the controls under it.
+    "settings": render(
+        f'{FORM}{LAYOUT}{{% call form(card=true) %}}{{% call stack(6) %}}'
+        f'{{% call fieldset("Notifications", hint="Applies to this board only.") %}}'
+        f'{{{{ switch_field("email", label="Email me when a task moves", checked=true) }}}}'
+        f'{{{{ switch_field("digest", label="Weekly digest", '
+        f'hint="Monday morning, one message.") }}}}'
+        f"{{% endcall %}}"
+        f'{{% call fieldset("Danger zone") %}}'
+        f'{{{{ switch_field("archive", label="Archive done tasks nightly", '
+        f'error="Pick a retention window first.") }}}}'
+        f"{{% endcall %}}{{% endcall %}}{{% endcall %}}"
     ),
 }
 

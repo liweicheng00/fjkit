@@ -2,7 +2,7 @@
 
 進度追蹤。階段二會轉成 GitHub Issues。
 
-**目前範圍：0.1 骨架**
+**目前範圍：0.1 骨架 → 0.2 表單基礎（已完成，見文末）**
 
 ---
 
@@ -84,6 +84,7 @@
 | 2026-08-18 | `ui/feedback.html` 的 `dialog` + jobs 詳情面板 | 230,838 (225.4 KB) | 23,988 gzip | **+218 raw / +54 gzip**，23.4 / 28 KB。只有兩條 `sm:max-w-*` 與一條 `overflow-y-auto`——`.dialog` 的樣式本來就在 basecoat 裡，正好是第 7 節「棘輪已經扣完」那個推論的驗證 |
 | 2026-08-18 | `ui/sidebar.html` + demo 改用側欄外殼 | 231,586 (226.2 KB) | 24,090 gzip | **+748 raw / +102 gzip**，23.5 / 28 KB。全部是 `--sidebar-*` 那 16 條 token；`.sidebar` 的樣式本來就在 basecoat 裡，模板沒帶進任何新 utility |
 | 2026-08-19 | 刪掉 `templates/ui/basecoat/` 的 9 個上游 Jinja macro | 233,863 (228.4 KB) | 24,410 gzip | **−186 raw / −39 gzip**，23.8 / 28 KB。同一份原始碼帶著那些檔案編是 234,049 / 24,449——它們沒被任何地方 import，卻落在 `@source "../../templates"` 的掃描範圍內，替永遠不會渲染的標記留了 utility。同列的絕對值比上一列高，是因為 tabs 元件那批工作沒進表 |
+| 2026-08-21 | 0.2 表單基礎：`textarea_field`／`checkbox_field`／`switch_field`／`radio_group`／`fieldset` | 234,335 (228.8 KB) | 24,487 gzip | **+472 raw / +77 gzip**，23.9 / 28 KB。五支欄位的樣式本來就在 basecoat 的 `checkbox`／`radio`／`switch`／`textarea`／`field` 裡，模板只是開始寫出對應的標記；增量全在 `data-orientation` 那幾條 `:has()` 與 `[role=radiogroup]` 的 grid 上 |
 
 ### 載入指示提前（2026-08-17，使用者指定）
 
@@ -839,3 +840,49 @@ htmx 的示範仍然用絕對路徑 `/demo/board`，這在 Pages 上沒問題：
 `copy-en.js`／`copy-zh.js` 之類的表再由腳本取用。`data.json` 裡渲染好的預覽（"Add task"、
 板子上的那幾列）同理，那要 `build_data.py` 也跑兩次。兩件都是機械性的工，但都會動到
 現在共用的那一份檔案，所以另外一筆做。
+
+---
+
+## 0.2 表單基礎（2026-08-21）
+
+路線圖 0.2 補完。`ui/form.html` 從兩支欄位變成七支：
+
+- [x] `textarea_field` — 不預設 `rows`，靠 basecoat 的 `field-sizing-content` 自己長高
+- [x] `checkbox_field` — 框在前、字在後，`.field[data-orientation="horizontal"]`
+- [x] `switch_field` — 同一個 `<input type="checkbox">`，只多一個 `role="switch"`。
+      對路由來說兩者無法分辨，所以換外觀不會動到 handler
+- [x] `radio_group` — 真的 `<fieldset>`／`<legend>`，不是 div 配 label。吃的
+      `options` 跟 `select_field` 同一個形狀，所以兩者互換是改一個字
+- [x] `fieldset` — 一張表單裡不只一個主題時才用
+
+一條貫穿的契約：七支欄位都吃 `label`／`hint`／`error`／`id`，都只發**一個** `<p>`，
+`error` 取代 `hint` 而不疊加，控制項用 `aria-describedby` 指到它。`_message()` 是
+那個 `<p>` 的唯一定義，原有的 `text_field`／`select_field` 也改成呼叫它。0.3 落地時
+要做的就只是把 `ValidationError` 填進 `error=`。
+
+### 順手修掉的一個真 bug：`form()` 沒有 `target` 時仍然發 `hx-post`
+
+macro 自己的註解寫著「a form with a target is an htmx form; one without is an
+ordinary POST」，但程式碼只要有 `action` 就發 `hx-post`，從來不發 `action=`／
+`method=`。沒有 target 的 `hx-post` 會把回應塞進表單自己（htmx 的預設 target 就是
+觸發元素），沒有人會是這個意思。
+
+沒被發現是因為 **demo 裡每一張表單都有 target**——三張都是 htmx swap，所以那半條
+路從來沒被走過。這次補的 `/tasks/{id}/edit` 就是走它的那一頁：同一個 macro、同一批
+欄位，不帶 `target`，關掉 JavaScript 照樣能用。
+
+### demo 端
+
+新的 `/tasks/{id}/edit` 頁（`tasks/edit.html`，`test_edit.py` 8 條）。它是這五支欄位的
+驗收場，也是 demo 第一張非 htmx 的表單：POST 完 303 導回板子，重新整理不會重送。
+`Task` 多了 `notes`／`blocked`／`watching` 三個欄位，寫入走 `TaskUpdate` 這個封閉清單，
+所以 `status`／`id`／`created_at` 是**結構上**改不到，而不是靠表單剛好沒送。
+
+板子每一列多一支鉛筆，是 `<a>` 不是 swap——所以 `test_parity.py` 的 `hx_attrs`／
+`ids` 那幾欄一個字都沒動。
+
+### 文件站
+
+Components 頁的 form 選單從兩個狀態變五個：htmx 表單、錯誤、textarea + checkbox、
+radios vs select、fieldset 裡的 switch。每一個的 Jinja 片段跟預覽都是同一份
+`build_data.py` 產的，所以頁面教不出 kit 沒有的簽名。

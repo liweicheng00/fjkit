@@ -1,6 +1,81 @@
 /* ------------------------------------------------------------ 02 · macros */
 const ICON_CHOICES = Object.keys(DATA.icons);
 
+/* The form picker's five states. Kept out of the entry itself because each one
+   carries a Jinja snippet, and five of those inline turn one macro's definition
+   into half the file. */
+const FORM_STATE = {
+  "htmx form": "board",
+  "with an error": "error",
+  "textarea + checkbox": "long",
+  "radios vs select": "choice",
+  "switches in a fieldset": "settings",
+};
+
+const FORM_JINJA = {
+  "htmx form": `{% from "ui/form.html" import form, field_row, text_field, select_field %}
+
+{% call form(action=url_for(request, "tasks_create"),
+             target="#board", reset_on_success=true) %}
+  {% call field_row("wide-then-actions") %}
+    {{ text_field("title", label="New task", required=true) }}
+    {{ select_field("priority", label="Priority", options=priority_options) }}
+    {{ text_field("owner", label="Owner", placeholder="unassigned") }}
+    {{ button("Add", variant="primary", type="submit", icon_name="plus") }}
+  {% endcall %}
+{% endcall %}`,
+
+  "with an error": `{{ text_field("title", label="Title", required=true,
+             error="Give the task a title.") }}`,
+
+  "textarea + checkbox": `{% from "ui/form.html" import form, textarea_field, checkbox_field %}
+{% from "ui/layout.html" import stack, row %}
+
+{% call form(action=url_for(request, "tasks_update", task_id=task.id)) %}
+  {% call stack(4) %}
+    {{ textarea_field("notes", label="Notes",
+                      hint="Grows with what you type — no rows to guess at.") }}
+    {{ checkbox_field("blocked", label="Blocked on something else",
+                      checked=task.blocked) }}
+    {% call row(justify="end") %}
+      {{ button("Save", variant="primary", type="submit") }}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}`,
+
+  "radios vs select": `{% from "ui/form.html" import radio_group, select_field %}
+
+{# One options shape for both, so this is a one-word edit either way.
+   Radios show every choice and cost a line each: they win up to about
+   five and lose after that. #}
+{{ radio_group("priority", label="Priority", options=priority_options,
+               selected=task.priority) }}
+
+{{ select_field("owner", label="Owner", options=owner_options,
+                selected=task.owner) }}`,
+
+  "switches in a fieldset": `{% from "ui/form.html" import form, fieldset, switch_field %}
+{% from "ui/layout.html" import stack %}
+
+{% call form(action=url_for(request, "settings_save")) %}
+  {% call stack(6) %}
+    {% call fieldset("Notifications", hint="Applies to this board only.") %}
+      {{ switch_field("email", label="Email me when a task moves",
+                      checked=prefs.email) }}
+      {{ switch_field("digest", label="Weekly digest",
+                      hint="Monday morning, one message.") }}
+    {% endcall %}
+
+    {% call fieldset("Danger zone") %}
+      {# error= replaces the hint rather than stacking on it, and marks the
+         control aria-invalid. Same three parameters on every field. #}
+      {{ switch_field("archive", label="Archive done tasks nightly",
+                      error=errors.archive) }}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}`,
+};
+
 const MACROS = {
   button: {
     label: "button",
@@ -122,24 +197,11 @@ const MACROS = {
   form: {
     label: "form",
     controls: [
-      { key: "state", type: "select", label: "state", options: ["htmx form", "with an error"], value: "htmx form" },
+      { key: "state", type: "select", label: "state", options: ["htmx form", "with an error", "textarea + checkbox", "radios vs select", "switches in a fieldset"], value: "htmx form" },
     ],
-    render: (p) => (p.state === "htmx form" ? DATA.forms.board : DATA.forms.error),
-    jinja: (p) => (p.state === "htmx form"
-      ? `{% from "ui/form.html" import form, field_row, text_field, select_field %}
-
-{% call form(action=url_for(request, "tasks_create"),
-             target="#board", reset_on_success=true) %}
-  {% call field_row("wide-then-actions") %}
-    {{ text_field("title", label="New task", required=true) }}
-    {{ select_field("priority", label="Priority", options=priority_options) }}
-    {{ text_field("owner", label="Owner", placeholder="unassigned") }}
-    {{ button("Add", variant="primary", type="submit", icon_name="plus") }}
-  {% endcall %}
-{% endcall %}`
-      : `{{ text_field("title", label="Title", required=true,
-             error="Give the task a title.") }}`),
-    caption: "target= is what makes it an htmx form; drop it and the same macro emits an ordinary POST that works without JavaScript. Every field already takes error= — wiring it to Pydantic is 0.3.",
+    render: (p) => DATA.forms[FORM_STATE[p.state]],
+    jinja: (p) => FORM_JINJA[p.state],
+    caption: "target= is what makes it an htmx form; drop it and the same macro emits an ordinary POST that works without JavaScript. Every field takes the same label/hint/error trio, an error replaces the hint rather than stacking on it, and wiring error= to Pydantic is 0.3.",
   },
 };
 
