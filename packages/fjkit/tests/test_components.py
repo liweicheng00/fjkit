@@ -16,7 +16,10 @@ BUTTON = '{% from "ui/button.html" import button %}'
 DATA = '{% from "ui/data.html" import badge, card, stat, progress, empty_state, metric_group, link, kbd %}'
 LAYOUT = '{% from "ui/layout.html" import stack, row, grid, split, page_header, section, divider %}'
 TABLE = '{% from "ui/table.html" import table, cell, row_actions %}'
-FORM = '{% from "ui/form.html" import text_field, select_field, form, field_row %}'
+FORM = (
+    '{% from "ui/form.html" import text_field, select_field, form, field_row,'
+    ' textarea_field, checkbox_field, switch_field, radio_group, fieldset %}'
+)
 FEEDBACK = '{% from "ui/feedback.html" import spinner %}'
 FEEDBACK_DIALOG = '{% from "ui/feedback.html" import dialog %}'
 SIDEBAR = (
@@ -170,6 +173,100 @@ class TestForm:
         assert 'method="get"' in plain
         swapped = render(f'{FORM}{{% call form(action="/x", method="get", target="#t") %}}f{{% endcall %}}')
         assert 'hx-get="/x"' in swapped
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            'textarea_field("t", label="L", error="E")',
+            'checkbox_field("t", label="L", error="E")',
+            'switch_field("t", label="L", error="E")',
+            'radio_group("t", label="L", options=[("a", "A")], error="E")',
+        ],
+    )
+    def test_every_field_reports_an_error_the_same_way(self, render, call):
+        """One contract across the set: aria-invalid on the control, the message
+        in a <p> the control names. A caller that learns it once for `text_field`
+        knows it for all of them, which is what 0.3 will fill in mechanically."""
+        html = render(f"{FORM}{{{{ {call} }}}}")
+        assert 'aria-invalid="true"' in html
+        described = re.search(r'aria-describedby="([^"]+)"', html).group(1)
+        assert f'id="{described}"' in html
+        assert "E" in html
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            'textarea_field("t", label="L", hint="H", error="E")',
+            'checkbox_field("t", label="L", hint="H", error="E")',
+            'switch_field("t", label="L", hint="H", error="E")',
+            'radio_group("t", label="L", options=[("a", "A")], hint="H", error="E")',
+        ],
+    )
+    def test_every_field_replaces_the_hint_with_the_error(self, render, call):
+        html = render(f"{FORM}{{{{ {call} }}}}")
+        assert ">E<" in html
+        assert ">H<" not in html
+
+    def test_textarea_holds_its_value_as_content_not_an_attribute(self, render):
+        html = render(f'{FORM}{{{{ textarea_field("notes", value="two\nlines") }}}}')
+        assert ">two\nlines</textarea>" in html
+        assert "value=" not in html
+
+    def test_checkbox_and_switch_are_the_same_control_to_a_route(self, render):
+        """Only `role` separates them, so a handler reads one name either way and
+        swapping the presentation never touches the router."""
+        box = render(f'{FORM}{{{{ checkbox_field("done", checked=true) }}}}')
+        switch = render(f'{FORM}{{{{ switch_field("done", checked=true) }}}}')
+        for html in (box, switch):
+            assert 'type="checkbox"' in html
+            assert 'name="done"' in html
+            assert " checked" in html
+        assert 'role="switch"' in switch
+        assert 'role="switch"' not in box
+
+    def test_switch_puts_the_control_after_its_label(self, render):
+        """A settings row lines its switches up on one edge; a checkbox sits in
+        front of the words it qualifies. That is the whole visual difference."""
+        html = render(f'{FORM}{{{{ switch_field("d", label="Digest") }}}}')
+        assert html.index("Digest") < html.index("<input")
+        html = render(f'{FORM}{{{{ checkbox_field("d", label="Digest") }}}}')
+        assert html.index("<input") < html.index("Digest")
+
+    def test_radio_group_is_a_fieldset_with_one_name_and_distinct_ids(self, render):
+        html = render(
+            f'{FORM}{{{{ radio_group("p", label="Priority",'
+            ' options=[("low", "Low"), ("high", "High")], selected="high") }}'
+        )
+        assert "<fieldset" in html and "<legend" in html
+        assert 'role="radiogroup"' in html
+        assert html.count('name="p"') == 2
+        ids = re.findall(r'<input[^>]*id="([^"]+)"', html)
+        assert len(set(ids)) == 2
+        assert re.search(r'value="high"[^>]* checked', html)
+        assert not re.search(r'value="low"[^>]* checked', html)
+
+    def test_radio_group_takes_the_same_options_shape_as_select(self, render):
+        """One shape for both, so swapping a select for radios is a one-word edit."""
+        options = '[("a", "A"), ("b", "B")]'
+        selected = "b"
+        radios = render(f'{FORM}{{{{ radio_group("p", options={options}, selected="{selected}") }}}}')
+        select = render(f'{FORM}{{{{ select_field("p", options={options}, selected="{selected}") }}}}')
+        for html in (radios, select):
+            assert ">A<" in html and ">B<" in html
+
+    def test_fieldset_wraps_what_it_is_called_with(self, render):
+        html = render(f'{FORM}{{% call fieldset("Group", hint="Why") %}}INNER{{% endcall %}}')
+        assert "<fieldset" in html
+        assert ">Group</legend>" in html
+        assert html.index("Why") < html.index("INNER")
+
+    def test_a_group_legend_outranks_a_field_legend(self, render):
+        """`fieldset` names a section of the form; `radio_group`'s legend *is* a
+        field label and has to match the labels beside it."""
+        group = render(f'{FORM}{{% call fieldset("Group") %}}x{{% endcall %}}')
+        field = render(f'{FORM}{{{{ radio_group("p", label="P", options=[("a", "A")]) }}}}')
+        assert 'data-variant="legend"' in group
+        assert 'data-variant="label"' in field
 
 
 class TestData:
