@@ -157,8 +157,19 @@ class TestForm:
         assert 'hx-target="#board"' in html
 
     def test_form_without_a_target_is_a_plain_form(self, render):
-        html = render(f"{FORM}{{% call form() %}}f{{% endcall %}}")
-        assert "hx-target" not in html
+        """No target, no htmx: `action`/`method` and nothing else. An `hx-post`
+        here would swap the reply into the form itself, which is never what a
+        caller who omitted `target` meant."""
+        html = render(f'{FORM}{{% call form(action="/x") %}}f{{% endcall %}}')
+        assert 'action="/x"' in html
+        assert 'method="post"' in html
+        assert "hx-" not in html
+
+    def test_form_method_reaches_both_kinds(self, render):
+        plain = render(f'{FORM}{{% call form(action="/x", method="get") %}}f{{% endcall %}}')
+        assert 'method="get"' in plain
+        swapped = render(f'{FORM}{{% call form(action="/x", method="get", target="#t") %}}f{{% endcall %}}')
+        assert 'hx-get="/x"' in swapped
 
 
 class TestData:

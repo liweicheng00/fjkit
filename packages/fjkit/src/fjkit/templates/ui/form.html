@@ -15,13 +15,25 @@
         {% call field_row("1fr auto") %}…{% endcall %}
       {% endcall %}
 
-  `target`/`swap` emit hx-target/hx-swap. A form with a target is an htmx form;
-  one without is an ordinary POST. Same macro either way — that symmetry is
-  what makes progressive enhancement cheap.
+  `target` is what decides which kind of form this is, and it decides the whole
+  of it:
+
+      form(action=…, target="#board")  ->  hx-post + hx-target + hx-swap
+      form(action=…)                   ->  action= + method=
+
+  A form with a target is an htmx form; one without is an ordinary POST that
+  needs no JavaScript. Same macro and the same fields either way — that
+  symmetry is what makes progressive enhancement cheap. `hx-post` without a
+  target would swap the reply into the form itself, which is never what a
+  caller who omitted `target` meant.
 #}
 {% macro form(action=none, method="post", target=none, swap="outerHTML", reset_on_success=false, card=true) -%}
   <form class="{{ "card" if card else "" }}"
-    {%- if action %} {{ "hx-post" if method == "post" else "hx-get" }}="{{ action }}"{% endif %}
+    {%- if action %}
+      {%- if target %} {{ "hx-post" if method == "post" else "hx-get" }}="{{ action }}"
+      {%- else %} action="{{ action }}" method="{{ method }}"
+      {%- endif %}
+    {%- endif %}
     {%- if target %} hx-target="{{ target }}" hx-swap="{{ swap }}"{% endif %}
     {%- if reset_on_success %} hx-on::after-request="this.reset()"{% endif %}
     {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
