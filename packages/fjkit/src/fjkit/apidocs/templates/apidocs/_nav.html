@@ -1,0 +1,66 @@
+{#
+  The index: every operation, grouped by tag, plus the schemas underneath.
+
+  A partial of its own because the filter box swaps it. Everything it reads is
+  in the context the router built — `groups` is already filtered, and it is
+  filtered there rather than here so that no template can accidentally render
+  the unfiltered `docs.groups` and produce a list that ignores what was typed.
+
+  It renders standalone: the page embeds it and `GET …/nav?q=` returns it.
+#}
+{% from "apidocs/macros.html" import model_link, op_link %}
+{% from "ui/sidebar.html" import sidebar_group %}
+
+{#
+  `hx-swap-oob` when a panel swap brought this along.
+
+  Clicking an operation replaces only the detail panel, so without this the
+  sidebar keeps pointing at whatever was open three clicks ago — the highlight
+  is correct on a cold load and stale for the rest of the session, which is the
+  kind of wrong that reads as the page being confused about where you are. The
+  operation route renders this alongside the panel and htmx puts it back in the
+  sidebar by id.
+#}
+<div id="{{ ids.nav }}"{% if oob_nav %} hx-swap-oob="true"{% endif %}>
+  {% for group in groups %}
+    {% call sidebar_group(group.name) %}
+      {% for entry in group.operations %}
+        {{ op_link(request, routes.operation, entry, ids.detail, query=query,
+                   active=operation is not none and operation.id == entry.id) }}
+      {% endfor %}
+    {% endcall %}
+  {% endfor %}
+
+  {#
+    The types the API exchanges. Swagger puts them in a slab at the bottom of
+    the page; here they are a branch of the same index the operations are in,
+    because a hundred models is navigation and because a reader who arrived
+    from a `$ref` link needs a way back to the rest of them.
+
+    Hidden while the filter is running: the box filters operations, and a
+    Schemas group that never shrinks would read as "no match" being wrong.
+  #}
+  {% if docs.models and not query %}
+    {#
+      Split by kind. An object is a shape you are about to send or parse; an
+      enum is a closed vocabulary you check a spelling against — and in one
+      alphabetical run of thirty names the handful of enums are scattered
+      through it. `model_groups` does the splitting in `spec.py`, so this stays
+      markup.
+    #}
+    {% for label, members in docs.model_groups %}
+      {% call sidebar_group(label) %}
+        {% for entry in members %}
+          {{ model_link(request, routes.model, entry, ids.detail, query=query,
+                        active=model is not none and model.slug == entry.slug) }}
+        {% endfor %}
+      {% endcall %}
+    {% endfor %}
+  {% endif %}
+
+  {% if query and not groups %}
+    <p class="text-muted-foreground px-2 py-1 text-xs" role="status">
+      Nothing matches “{{ query }}”.
+    </p>
+  {% endif %}
+</div>

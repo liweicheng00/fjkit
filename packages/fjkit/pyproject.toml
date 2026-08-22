@@ -50,5 +50,6 @@ packages = ["src/fjkit"]
 # wheel — that is what makes "no build step" true for consumers.
 artifacts = [
     "src/fjkit/templates/**/*",
+    "src/fjkit/apidocs/templates/**/*",
     "src/fjkit/static/**/*",
 ]

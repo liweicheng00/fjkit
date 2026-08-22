@@ -1,0 +1,396 @@
+{#
+  The shapes this page repeats: an operation's method, its identity line, its
+  entry in the navigation, and one parameter's input.
+
+  Macros and not includes, because two of them run once per operation and an
+  API with two hundred routes renders the navigation two hundred times on every
+  page load — the exact case `{% include %}` in a loop is wrong for.
+#}
+{% from "ui/attrs.html" import attrs %}
+{% from "ui/data.html" import badge, code_block, link %}
+{% from "ui/form.html" import select_field, text_field %}
+{% from "ui/icon.html" import icon %}
+{% from "ui/layout.html" import stack %}
+{% from "ui/table.html" import cell, table %}
+{% from "ui/tabs.html" import tab_panel, tabs %}
+
+{#
+  Closed lookup, never interpolation. `badge(variant=method|lower)` would emit
+  `data-variant="get"`, which the stylesheet has no rule for — the badge would
+  quietly lose its colour and nothing would say why.
+
+  The pairing is the one every API tool has settled on and is worth keeping:
+  green reads, red destroys. HEAD and OPTIONS take the neutral variant, because
+  nobody scans a list for them.
+#}
+{% set METHOD_VARIANT = {
+  "GET": "info",
+  "POST": "success",
+  "PUT": "warning",
+  "PATCH": "warning",
+  "DELETE": "destructive",
+  "HEAD": "secondary",
+  "OPTIONS": "secondary",
+} %}
+
+{# method(name) — the coloured verb, wherever an operation is named. #}
+{% macro method(name) -%}
+  {{ badge(name, METHOD_VARIANT.get(name, "secondary")) }}
+{%- endmacro %}
+
+{#
+  op_line(operation) — verb plus path, the way an API is read aloud.
+
+  The path is a `kbd` because it is a literal: a reader has to be able to tell
+  `{task_id}` from prose without counting braces.
+#}
+{% macro op_line(operation) -%}
+  <div class="flex flex-wrap items-center gap-2">
+    {{ method(operation.method) }}
+    <code class="kbd">{{ operation.path }}</code>
+    {% if operation.deprecated %}{{ badge("deprecated", "outline") }}{% endif %}
+    {#
+      The padlock. An operation the document declares `security` on is one a
+      client has to authenticate to reach, and every API browser marks it —
+      because the alternative is finding out from a 401. The scheme names ride
+      in the tooltip rather than on screen: on a list where nearly everything
+      is secured, the same three words after every path is noise.
+    #}
+    {% if operation.security %}
+      <span class="text-muted-foreground inline-flex items-center gap-1 text-xs"
+            title="Requires {{ operation.security | join(', ') }}">
+        {{ icon("lock", 14) }}<span>{{ operation.security | join(", ") }}</span>
+      </span>
+    {% endif %}
+  </div>
+{%- endmacro %}
+
+{#
+  op_link(request, route, operation, target) — one row of the sidebar.
+
+  Basecoat's `li > a` sidebar contract written out rather than a call to
+  `ui/sidebar.html`'s `sidebar_link`, for one reason: that macro takes a route
+  *name* and calls `url_for(request, route)` with no parameters. Every
+  operation here is the same route with a different `operation_id`, so it has
+  nothing to tell them apart by.
+
+  `hx-*` on the anchor over a real `href`: the swap replaces only the detail
+  panel, and the same URL still serves the whole page to a cold navigation, a
+  crawler, or a middle-click.
+#}
+{% macro op_link(request, route, operation, target, active=false, query="") -%}
+  {#
+    The filter's text rides along in the link. Two things depend on it: a
+    reload of a pushed URL comes back to the list you were looking at, and the
+    out-of-band nav that follows a click renders filtered rather than snapping
+    back to all two hundred rows.
+  #}
+  {%- set href = url_for(request, route, operation_id=operation.id) ~ ("?q=" ~ query | urlencode if query else "") -%}
+  {#
+    Aligned by giving the method a fixed-width cell, and *not* by turning the
+    row into a grid.
+
+    `GET` and `DELETE` are different widths, so Basecoat's plain flex row starts
+    every name at a different x and the list reads as ragged — the one thing a
+    two-hundred-row index cannot afford. Both a grid column and a fixed-width
+    flex cell fix that. They differ in how they fail.
+
+    A `grid grid-cols-4` row with the name on `col-span-3` breaks *badly* if
+    `col-span-3` is not in the stylesheet the browser happens to be holding: the
+    name falls back to a single column, about 55px, and every entry truncates to
+    "Charts …". That is a worse page than the ragged one, and nothing on it says
+    why. A fixed-width cell degrades the other way — lose `w-18` and the cell
+    shrinks to its content, which is exactly the ragged-but-entirely-readable
+    list we started from.
+
+    `w-18` is 72px against a 63px `DELETE`: the badge plus a gutter, and nothing
+    spare. Sized against the widest method rather than each row's own, which is
+    the point — `GET` leaves more air, and that difference is what makes it a
+    column. `shrink-0` because a long summary must take its space out of its own
+    cell, not out of this one.
+
+    Plain utilities, no `[...]` arbitrary values: an arbitrary value never shows
+    up in `emitted_classes()`, so the stylesheet check cannot vouch for it.
+
+    `title` is the path, not the summary — the sidebar shows the summary, so
+    repeating it would say nothing, while the path is the thing you actually
+    want on hover and the only place it is not on screen.
+  #}
+  <li>
+    <a href="{{ href }}" title="{{ operation.method }} {{ operation.path }}"
+       hx-get="{{ href }}" hx-target="#{{ target }}" hx-swap="outerHTML" hx-push-url="true"
+       {%- if active %} aria-current="page"{% endif %}
+       {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+      <span class="flex w-18 shrink-0">{{ method(operation.method) }}</span>
+      {# Still the last span, which is what Basecoat's `:last-child` truncate rule finds. #}
+      <span class="min-w-0">{{ operation.summary or operation.path }}</span>
+    </a>
+  </li>
+{%- endmacro %}
+
+{#
+  model_link(request, route, model, target) — one row of the Schemas branch.
+
+  The same shape as `op_link` and for the same reasons: a real `href` that
+  serves the whole page, plus the `hx-*` that swaps only the panel. Kept
+  separate rather than generalised over "thing with an id", because the two
+  take different route parameters and a macro that took both would be a
+  parameter pair where one is always `none`.
+#}
+{#
+  Closed lookup, like every other one here. `{ }` on `Status` is a lie — an
+  enum is a list of permitted spellings, not an object — and the group heading
+  above it should not be the only thing saying so.
+#}
+{% set KIND_ICON = {"object": "braces", "enum": "list"} %}
+
+{% macro model_link(request, route, model, target, active=false, query="") -%}
+  {%- set href = url_for(request, route, model_slug=model.slug) ~ ("?q=" ~ query | urlencode if query else "") -%}
+  {#
+    `title` because this is the one row that genuinely does not fit. FastAPI
+    names a form body after the route that declared it —
+    `Body_tasks_update_tasks__task_id__edit_post` is 43 characters — and no
+    sidebar width worth having accommodates that. Truncation is the right
+    answer; being unable to read the whole name anywhere is not.
+  #}
+  <li>
+    <a href="{{ href }}" title="{{ model.name }}"
+       hx-get="{{ href }}" hx-target="#{{ target }}" hx-swap="outerHTML" hx-push-url="true"
+       {%- if active %} aria-current="page"{% endif %}>
+      {{ icon(KIND_ICON.get(model.kind, "braces"), 16) }}
+      <span>{{ model.name }}</span>
+    </a>
+  </li>
+{%- endmacro %}
+
+{#
+  facts(rows) — label/value pairs: who you are signed in as, what a response
+  carried.
+
+  A wrapping line rather than a stack of `item()` rows. These are three or four
+  short values, and one feed row each cost 74px apiece — enough to push the
+  operation below the fold on the one panel that has to stay visible while you
+  read the rest of the page. Wrapping is what keeps that honest when a value is
+  long: nothing is truncated, it simply takes the next line.
+
+  `<dl>` with a `<div>` per pair, which is the grouping HTML defines for exactly
+  this — the label and its value stay associated when a screen reader reads
+  them, and the flex wrap cannot separate a `dt` from its `dd`.
+#}
+{% macro facts(rows) -%}
+  <dl class="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-xs">
+    {% for label, value in rows %}
+      <div class="flex items-baseline gap-2">
+        <dt class="text-muted-foreground">{{ label }}</dt>
+        <dd class="font-medium">{{ value }}</dd>
+      </div>
+    {% endfor %}
+  </dl>
+{%- endmacro %}
+
+{#
+  field(param) — one parameter's input in the try-it form.
+
+  A `select` when the schema named an enum or a boolean, a number box when it
+  said integer, a text box otherwise. `param.control` decides, in
+  `fjkit.apidocs.spec`, and it is a closed lookup there for the same reason the
+  variants above are: the value lands in `type="…"`, where an unrecognised one
+  degrades differently in every browser.
+
+  A blank option exists on every optional parameter, and choosing it is how you
+  say "do not send this at all" — which is a different request from sending it
+  empty, and the console treats it as one.
+#}
+{% macro field(param) -%}
+  {#
+    Where it goes and what it is, always — the label is only the name, and
+    `limit` in the query and `limit` in the body are the same word for two
+    different things. `param.detail` carries location, type, format, whether it
+    is required, whether it is on its way out, and the bounds a 422 would
+    otherwise be the first news of. The description and the document's own
+    example follow when it wrote them.
+  #}
+  {%- set hint %}
+    {{- param.detail -}}
+    {%- if param.multi %} · one per line or comma-separated{% endif -%}
+    {%- if param.description %} — {{ param.description }}{% endif -%}
+    {%- if param.example %} · e.g. {{ param.example }}{% endif -%}
+  {%- endset %}
+  {% if param.control == "select" %}
+    {{ select_field(param.field_name, label=param.name, options=param.pairs,
+                    selected=param.default, blank=none if param.required else "—", hint=hint) }}
+  {% elif param.control == "file" %}
+    {#
+      A real upload. The empty `value` the shared macro renders is not a
+      compromise here — an empty string is the only value HTML lets a file
+      input carry, so `text_field` is already correct for this control rather
+      than merely tolerable, and the plugin re-encodes what was picked into the
+      multipart body the endpoint declared.
+    #}
+    {{ text_field(param.field_name, label=param.name, type="file",
+                  required=param.required, hint=hint) }}
+  {% else %}
+    {{ text_field(param.field_name, label=param.name, value=param.default,
+                  type="number" if param.control == "number" else "text",
+                  required=param.required, placeholder=param.name, hint=hint) }}
+  {% endif %}
+{%- endmacro %}
+
+{#
+  param_table(params) — the parameters as a reference table rather than a form.
+
+  What the console renders when it is switched off, and what the Schema half of
+  a form body shows: the same facts, minus the controls.
+#}
+{% macro param_table(params) -%}
+  {% call table(columns=[{"label": "Name"}, {"label": "In"}, {"label": "Type"}, {"label": "Description"}],
+                rows=params) %}
+    {% for param in params %}
+      <tr>
+        {% call cell() %}
+          <code class="kbd">{{ param.name }}</code>
+          {%- if param.required %} <span class="text-destructive" aria-label="required">*</span>{% endif %}
+        {% endcall %}
+        {{ cell(param.location, tone="muted") }}
+        {% call cell() %}
+          <span class="text-muted-foreground text-xs">{{ param.type_detail }}</span>
+        {% endcall %}
+        {% call cell() %}
+          {{ param.description }}
+          {%- if param.choices %}
+            <span class="text-muted-foreground text-xs">{{ param.choices | join(" | ") }}</span>
+          {% endif %}
+        {% endcall %}
+      </tr>
+    {% endfor %}
+  {% endcall %}
+{%- endmacro %}
+
+{#
+  field_table(request, routes, docs, fields) — a model's properties.
+
+  The Schema view, one level deep. A property that is itself a model renders as
+  a link rather than as a nested table: `Task` holding an `owner: User` holding
+  an `avatar: Image` is three tables before anybody has scrolled, and the reader
+  came for the first one.
+#}
+{% macro field_table(request, routes, docs, fields) -%}
+  {% call table(columns=[{"label": "Field"}, {"label": "Type"}, {"label": "Description"}], rows=fields) %}
+    {% for row in fields %}
+      <tr>
+        {% call cell() %}
+          <code class="kbd">{{ row.name }}</code>
+          {%- if row.required %} <span class="text-destructive" aria-label="required">*</span>{% endif %}
+        {% endcall %}
+        {% call cell() %}
+          {%- set target = docs.by_name.get(row.ref) if row.ref else none -%}
+          {% if target %}
+            {{ link(target.name, url_for(request, routes.model, model_slug=target.slug)) }}
+            {%- if row.qualifiers %}
+              <span class="text-muted-foreground text-xs">{{ row.qualifiers }}</span>
+            {% endif %}
+          {% else %}
+            <span class="text-muted-foreground text-xs">{{ row.detail }}</span>
+          {% endif %}
+          {%- if row.default %}
+            <span class="text-muted-foreground text-xs">· default {{ row.default }}</span>
+          {% endif %}
+        {% endcall %}
+        {% call cell() %}
+          {{ row.description }}
+          {%- if row.choices %}
+            <span class="text-muted-foreground text-xs">{{ row.choices | join(" | ") }}</span>
+          {% endif %}
+        {% endcall %}
+      </tr>
+    {% endfor %}
+  {% endcall %}
+{%- endmacro %}
+
+{#
+  shape_view(request, routes, docs, shape) — the "Schema" half of a body.
+
+  Swagger's Example Value / Schema toggle exists because the two answer
+  different questions: the example says what to send, the schema says what is
+  allowed, and you need the second one the moment the first stops working.
+  `shape` is already flattened one level in `fjkit.apidocs.spec`, so this only
+  has to choose between a table, a link, and the raw JSON for a shape that is
+  genuinely neither.
+#}
+{% macro shape_view(request, routes, docs, shape) -%}
+  {% call stack(gap=2) %}
+    <p class="text-muted-foreground text-sm">
+      {{- shape.label -}}
+      {%- set target = docs.by_name.get(shape.model) if shape.model else none -%}
+      {%- if target %} — {{ link("the " ~ target.name ~ " schema",
+                                 url_for(request, routes.model, model_slug=target.slug)) }}{% endif -%}
+    </p>
+    {% if shape.has_rows %}
+      {{ field_table(request, routes, docs, shape.fields) }}
+    {% elif not shape.model %}
+      {{ code_block(shape.source, label="Schema for " ~ shape.label, wrap=true) }}
+    {% endif %}
+  {% endcall %}
+{%- endmacro %}
+
+{#
+  payload(request, routes, docs, id, example, shape, example_label)
+
+  Example and Schema side by side as tabs, wherever a body is described. Tabs
+  rather than two stacked blocks because a documented 200 with a 15-line
+  example and a 20-row schema is 35 lines of a page whose subject is the
+  endpoint, and only one of the two is being read at a time.
+
+  `id` has to be unique on the page — the tab's `aria-controls` finds its panel
+  by it — so callers prefix with the status or the word "body".
+#}
+{% macro payload(request, routes, docs, id, example, shape, example_label="Example", extra=()) -%}
+  {#
+    Built by concatenation rather than `{% do items.append(…) %}`: the `do`
+    extension is not on this Environment, and turning it on for one macro would
+    be a kit-wide Jinja change made from inside a plugin.
+
+    `extra` is the document's other named examples — `openapi_examples=` in
+    FastAPI. Swagger puts them in a dropdown; here each is a tab, which is the
+    same thing minus a control that has to be opened to find out what is behind
+    it. They are shown, not loaded into the box: the box is prefilled with the
+    first one, and copying from a tab is one gesture against a route that would
+    have to exist to swap a textarea's value.
+  #}
+  {#
+    A `namespace` and a loop, because Jinja has neither list comprehensions nor
+    `list.append` without the `do` extension. Reassigning a namespace attribute
+    is the one form of accumulation the language does have.
+  #}
+  {%- set ns = namespace(items=[{"id": id ~ "-example", "label": example_label}] if example else []) -%}
+  {%- for label, value in extra -%}
+    {%- set ns.items = ns.items + [{"id": id ~ "-x" ~ loop.index0, "label": label}] -%}
+  {%- endfor -%}
+  {%- set items = ns.items + ([{"id": id ~ "-schema", "label": "Schema"}] if shape else []) -%}
+  {% if items | length > 1 %}
+    {% call tabs(items, label="Body view") %}
+      {% if example %}
+        {% call tab_panel(id ~ "-example") %}
+          {{ code_block(example, label=example_label) }}
+        {% endcall %}
+      {% endif %}
+      {% for label, value in extra %}
+        {% call tab_panel(id ~ "-x" ~ loop.index0) %}
+          {{ code_block(value, label=label) }}
+        {% endcall %}
+      {% endfor %}
+      {% if shape %}
+        {% call tab_panel(id ~ "-schema") %}
+          {{ shape_view(request, routes, docs, shape) }}
+        {% endcall %}
+      {% endif %}
+    {% endcall %}
+  {% elif example %}
+    {% call stack(gap=2) %}
+      <span class="label">{{ example_label }}</span>
+      {{ code_block(example, label=example_label) }}
+    {% endcall %}
+  {% elif shape %}
+    {{ shape_view(request, routes, docs, shape) }}
+  {% endif %}
+{%- endmacro %}

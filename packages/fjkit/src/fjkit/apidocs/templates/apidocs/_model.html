@@ -1,0 +1,97 @@
+{#
+  One entry from `components.schemas` — a type the API exchanges.
+
+  Half of an API's contract is its endpoints and the other half is its types:
+  every generated client is built from these, and a reference that documents
+  the paths but not the payloads has documented the easy half. Swagger calls
+  this section "Schemas"; it lands in the same panel an operation does, so the
+  sidebar stays the one index for both.
+
+  A partial, carrying the detail panel's id and swapped `outerHTML` — the same
+  contract `_operation.html` follows, which is what lets one sidebar swap
+  either kind of thing into the same place.
+#}
+{% from "apidocs/macros.html" import field_table, op_line %}
+{% from "ui/data.html" import badge, card, code_block, empty_state %}
+{% from "ui/layout.html" import section, stack %}
+{% from "ui/tabs.html" import tab_panel, tabs %}
+
+<div id="{{ ids.detail }}">
+  {% call stack(gap=5) %}
+
+    {% call stack(gap=2) %}
+      <div class="flex flex-wrap items-center gap-2">
+        <code class="kbd">{{ model.name }}</code>
+        {{ badge(model.kind, "secondary") }}
+      </div>
+      {% if model.description %}
+        <p class="text-muted-foreground text-sm">{{ model.description }}</p>
+      {% endif %}
+    {% endcall %}
+
+    {% if model.kind == "enum" %}
+      {% call section("Values", "The complete set. Anything else is a 422.") %}
+        <div class="flex flex-wrap items-center gap-2">
+          {% for choice in model.choices %}<code class="kbd">{{ choice }}</code>{% endfor %}
+        </div>
+      {% endcall %}
+    {% elif model.fields %}
+      {% call section("Fields") %}
+        {{ field_table(request, routes, docs, model.fields) }}
+      {% endcall %}
+    {% else %}
+      {#
+        A model with no properties is not a broken page. It is an alias for a
+        scalar, or a free-form object — `additionalProperties: true` — and the
+        raw schema below says which. Saying so beats an empty table.
+      #}
+      {{ empty_state("No declared fields",
+                     "This schema is an alias or accepts any properties. The definition below is all of it.",
+                     "braces") }}
+    {% endif %}
+
+    {% if model.used_by %}
+      {#
+        The document knows which endpoints carry this type and no viewer of it
+        usually says so — which leaves "who returns a Task?" as a question you
+        answer by reading every operation. Directly exchanged only: a type
+        nested inside another is one link away, under the type that holds it.
+      #}
+      {% call section("Exchanged by") %}
+        {% call stack(gap=2) %}
+          {% for entry in model.used_by %}
+            {%- set carrier = docs.index.get(entry) -%}
+            {% if carrier %}
+              <a href="{{ url_for(request, routes.operation, operation_id=carrier.id) }}"
+                 hx-get="{{ url_for(request, routes.operation, operation_id=carrier.id) }}"
+                 hx-target="#{{ ids.detail }}" hx-swap="outerHTML" hx-push-url="true">
+                {{ op_line(carrier) }}
+              </a>
+            {% endif %}
+          {% endfor %}
+        {% endcall %}
+      {% endcall %}
+    {% endif %}
+
+    {#
+      A value of this type, and the rules that value obeys. The example is
+      first because it is what gets pasted into a request body; the definition
+      behind it is what a validator or a client generator reads.
+    #}
+    {% call card("Definition") %}
+      {% call tabs([{"id": "model-example", "label": "Example"},
+                    {"id": "model-source", "label": "Schema"}], label="Model view") %}
+        {% call tab_panel("model-example") %}
+          {{ code_block(model.example, label="An example " ~ model.name) }}
+        {% endcall %}
+        {% call tab_panel("model-source") %}
+          {{ code_block(model.source, label="The " ~ model.name ~ " schema", wrap=true) }}
+        {% endcall %}
+      {% endcall %}
+    {% endcall %}
+
+  {% endcall %}
+</div>
+
+{# The sidebar, out of band — see the note in `_operation.html`. #}
+{% if oob_nav %}{% include "apidocs/_nav.html" %}{% endif %}

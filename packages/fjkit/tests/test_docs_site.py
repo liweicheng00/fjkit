@@ -191,5 +191,9 @@ def test_every_asset_link_is_relative_to_its_page():
             if ref.startswith(("http://", "https://", "#", "mailto:", "data:")):
                 continue
             assert not ref.startswith("/"), f"{page.name} links to {ref}, which breaks under /fjkit/"
-            target = (page.parent / ref.split("#")[0]).resolve()
+            # The fragment and the query are not part of the path. `fjkit_static`
+            # stamps every asset with `?v=<mtime>` so a browser cannot serve a
+            # stale stylesheet against current markup; a static host ignores the
+            # query and serves the file, and so must this check.
+            target = (page.parent / ref.split("#")[0].split("?")[0]).resolve()
             assert target.exists(), f"{page.relative_to(out)} links to {ref}, which is not there"

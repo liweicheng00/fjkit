@@ -52,7 +52,9 @@ def test_shell_links_the_configured_pack(pack: str):
     env = build_environment(FjkitConfig(style=pack, auto_reload=False))
     html = env.get_template("ui/shell.html").render(request=None)
 
-    assert f'href="/_fjkit/dist/fjkit-{pack}.css"' in html
+    # `?v=<mtime>` follows the path — `fjkit_static` stamps every asset so a
+    # browser cannot pair a cached stylesheet with newer markup.
+    assert f'href="/_fjkit/dist/fjkit-{pack}.css?v=' in html
     # Exactly one stylesheet from the kit. Two would mean two full downloads
     # and one of them silently losing the cascade.
     assert html.count("/_fjkit/dist/") == 1

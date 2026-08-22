@@ -21,7 +21,7 @@ from jinja2 import (
     select_autoescape,
 )
 
-from fjkit.config import TEMPLATE_DIR, FjkitConfig
+from fjkit.config import STATIC_DIR, TEMPLATE_DIR, FjkitConfig
 from fjkit.icons import path as _icon_path
 from fjkit.plugins import collect_env
 from fjkit.styles import resolve_style
@@ -80,7 +80,7 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     # belongs here rather than in every route's context dict.
     env.globals["url_for"] = _url_for
     env.globals["is_active"] = _is_active
-    env.globals["fjkit_static"] = _static_url(config.static_url)
+    env.globals["fjkit_static"] = _static_url(config.static_url, auto_reload=config.auto_reload)
     env.globals["fjkit_icon_path"] = _icon_path
     env.globals["fjkit_version"] = _versions()
     # The shell builds its stylesheet URL from this. Exposed as the pack
@@ -118,20 +118,57 @@ def _is_active(request: Request, name: str) -> bool:
     return getattr(route, "name", None) == name
 
 
-def _static_url(prefix: str):
+def _static_url(prefix: str, *, auto_reload: bool = False):
     """Bind the configured prefix once, so templates just name the file.
 
     Not `request.url_for` on purpose: the kit's assets are mounted by
     `mount_fjkit()` at a path the config already knows, and going through the
     route table would make a missing mount fail deep inside a template render
     instead of at startup.
+
+    **Every URL carries `?v=<mtime>`**, and it is not decoration. `StaticFiles`
+    sends `ETag` and `Last-Modified` but no `Cache-Control`, so a browser is
+    free to apply heuristic caching and keep a stylesheet it was never told the
+    lifetime of. The failure that produces is the worst kind: the page renders,
+    the markup is current, and the rules for half of it are missing — so a
+    layout silently degrades and nothing anywhere says why. It costs a day the
+    first time and ten minutes every time after.
+
+    The mtime is the right key in both places this runs. Developing fjkit, the
+    version never changes but `fjkit build-css` rewrites the file, so a version
+    stamp would pin the very asset that is being iterated on. In an installed
+    wheel the mtime is fixed at install time and moves on upgrade, which is
+    exactly the boundary a cache should break at.
+
+    Stat'd once per path and remembered, except under `auto_reload` — the same
+    trade Jinja makes for templates, and for the same reason: a `stat` per
+    render is unwanted in production and unavoidable in development.
     """
     base = prefix.rstrip("/")
+    stamps: dict[str, str] = {}
 
     def fjkit_static(path: str) -> str:
-        return f"{base}/{path.lstrip('/')}"
+        clean = path.lstrip("/")
+        stamp = stamps.get(clean)
+        if stamp is None or auto_reload:
+            stamp = stamps[clean] = _stamp(clean)
+        return f"{base}/{clean}?v={stamp}"
 
     return fjkit_static
+
+
+def _stamp(path: str) -> str:
+    """A cache key for one asset — its mtime, or the kit's version if it is gone.
+
+    A missing file is not this function's problem to report: `mount_fjkit`
+    already refuses to start without the stylesheet, and a template naming an
+    asset that is not there should 404 visibly rather than raise inside a
+    render.
+    """
+    try:
+        return str(int((STATIC_DIR / path).stat().st_mtime))
+    except OSError:
+        return _versions()["fjkit"]
 
 
 def _versions() -> dict[str, str]:

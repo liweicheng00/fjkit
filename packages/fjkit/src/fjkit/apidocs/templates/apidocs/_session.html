@@ -1,0 +1,116 @@
+{#
+  The sign-in panel — the part Swagger UI cannot have.
+
+  Everything on it comes from `AuthFlow.state()`, which is the app's own code:
+  what the headline says, which fields there are, which facts are worth showing.
+  This template knows none of it, which is the point — a flow that signs in with
+  one API key and a flow that runs an OIDC password grant render through the
+  same file.
+
+  A partial, so it renders standalone: the page embeds it, and the POST that
+  signs in or out swaps it in place. Nothing else on the page moves.
+#}
+{% from "apidocs/macros.html" import facts %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import badge, card %}
+{% from "ui/feedback.html" import spinner %}
+{% from "ui/form.html" import form, text_field %}
+{% from "ui/icon.html" import icon %}
+
+<div id="{{ ids.session }}">
+  {#
+    The badge and the way out, both in the header.
+
+    This panel sits above the operation on every load, so every row it spends is
+    a row the thing you came to read loses. Sign-out is one button whose whole
+    job is to be findable — next to the badge that says there is a session to
+    end is where it is findable, and it costs the body nothing.
+  #}
+  {%- set status %}
+    <div class="flex flex-wrap items-center gap-2">
+      {{ badge("signed in" if flow_state.signed_in else "anonymous",
+               "success" if flow_state.signed_in else "outline") }}
+      {% if flow_state.signed_in and flow_state.can_sign_out %}
+        {% call form(action=url_for(request, routes.auth), target="#" ~ ids.session, card=false) %}
+          <input type="hidden" name="action" value="sign_out">
+          {{ button(flow_state.sign_out_label, variant="outline", size="sm",
+                    type="submit", icon_name="log-out") }}
+        {% endcall %}
+      {% endif %}
+    </div>
+  {%- endset %}
+  {% call card(flow.label, flow_state.headline, actions=status, size="sm") %}
+    <div class="flex flex-col gap-3">
+      {% if flow_state.detail %}
+        <p class="text-muted-foreground text-xs">{{ flow_state.detail }}</p>
+      {% endif %}
+
+      {% if flow_state.error %}
+        {#
+          Beside the fields rather than replacing them: whatever was typed is
+          gone (the panel was re-rendered), but the form has to still be there
+          to try again. `role="alert"` so a screen reader hears the refusal —
+          the swap is silent otherwise, and the visible change is off-screen.
+        #}
+        <p class="text-destructive flex items-center gap-2 text-sm" role="alert">
+          {{ icon("circle-alert", 16) }}<span>{{ flow_state.error }}</span>
+        </p>
+      {% endif %}
+
+      {% if flow_state.facts %}{{ facts(flow_state.facts) }}{% endif %}
+
+      {% if not flow_state.signed_in and flow_state.fields %}
+        {% call form(action=url_for(request, routes.auth), target="#" ~ ids.session, card=false) %}
+          {#
+            Fields and the submit button on one line — a wrapping flex row, and
+            deliberately not `grid` or `field_row`.
+
+            A username and a password are short values: a fixed `sm:w-64` is
+            about as wide as either is ever typed, and one per half card width
+            reads as though something long is expected. The row wraps rather
+            than reflowing to a column count, so it is right for one field and
+            for four — which matters, because the flow decides how many there
+            are, not this template.
+
+            `items-end` aligns the *bottoms*, which is what puts the button on
+            the inputs' line. The hints are why the fields carry no `hint=`: one
+            field with a hint and one without have different heights, and
+            bottom-aligning those two would leave their inputs on different
+            lines. So the hints are collected under the row instead — one line
+            however many fields carry one, in the reading order they were
+            declared in.
+
+            Each stays wired to its own input: `aria-describedby` names the id
+            `text_field` would itself have given the hint, so a screen reader
+            still hears "the demo account" on the field it belongs to rather
+            than as loose text after the form.
+          #}
+          {%- set hints = flow_state.fields | selectattr("hint") | list %}
+          <div class="flex flex-col gap-2">
+            <div class="flex flex-wrap items-end gap-3">
+              {% for entry in flow_state.fields %}
+                <div class="w-full sm:w-64">
+                  {{ text_field(entry.name, label=entry.label, type=entry.type,
+                                required=entry.required, placeholder=entry.placeholder,
+                                aria_describedby=("f-" ~ entry.name ~ "-hint") if entry.hint else none) }}
+                </div>
+              {% endfor %}
+              <div class="flex items-center gap-2">
+                {{ button(flow_state.submit_label, type="submit", icon_name="log-in", size="sm") }}
+                {{ spinner(size="sm", indicator=true) }}
+              </div>
+            </div>
+            {% if hints %}
+              <p class="text-muted-foreground text-xs">
+                {%- for entry in hints -%}
+                  {% if not loop.first %} · {% endif %}
+                  <span id="f-{{ entry.name }}-hint">{{ entry.label }}: {{ entry.hint }}</span>
+                {%- endfor -%}
+              </p>
+            {% endif %}
+          </div>
+        {% endcall %}
+      {% endif %}
+    </div>
+  {% endcall %}
+</div>

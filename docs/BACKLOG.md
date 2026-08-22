@@ -85,6 +85,7 @@
 | 2026-08-18 | `ui/sidebar.html` + demo 改用側欄外殼 | 231,586 (226.2 KB) | 24,090 gzip | **+748 raw / +102 gzip**，23.5 / 28 KB。全部是 `--sidebar-*` 那 16 條 token；`.sidebar` 的樣式本來就在 basecoat 裡，模板沒帶進任何新 utility |
 | 2026-08-19 | 刪掉 `templates/ui/basecoat/` 的 9 個上游 Jinja macro | 233,863 (228.4 KB) | 24,410 gzip | **−186 raw / −39 gzip**，23.8 / 28 KB。同一份原始碼帶著那些檔案編是 234,049 / 24,449——它們沒被任何地方 import，卻落在 `@source "../../templates"` 的掃描範圍內，替永遠不會渲染的標記留了 utility。同列的絕對值比上一列高，是因為 tabs 元件那批工作沒進表 |
 | 2026-08-21 | 0.2 表單基礎：`textarea_field`／`checkbox_field`／`switch_field`／`radio_group`／`fieldset` | 234,335 (228.8 KB) | 24,487 gzip | **+472 raw / +77 gzip**，23.9 / 28 KB。五支欄位的樣式本來就在 basecoat 的 `checkbox`／`radio`／`switch`／`textarea`／`field` 裡，模板只是開始寫出對應的標記；增量全在 `data-orientation` 那幾條 `:has()` 與 `[role=radiogroup]` 的 grid 上 |
+| 2026-08-22 | `fjkit.apidocs` API 主控台（模板隨外掛放在 `apidocs/templates/`，`fjkit.css` 因此多一條 `@source`） | 234,817 (229.3 KB) | 24,622 gzip | **+482 raw / +135 gzip**，24.0 / 28 KB。全部是主控台模板自己帶進來的 utility——側欄那欄固定寬的 `w-18`、登入列的 `sm:w-64`、facts 的 `items-baseline`／`gap-x-5`；`.card`／`.badge`／`.field` 的樣式本來就在 basecoat 裡 |
 
 ### 載入指示提前（2026-08-17，使用者指定）
 
@@ -886,3 +887,128 @@ ordinary POST」，但程式碼只要有 `action` 就發 `hx-post`，從來不�
 Components 頁的 form 選單從兩個狀態變五個：htmx 表單、錯誤、textarea + checkbox、
 radios vs select、fieldset 裡的 switch。每一個的 Jinja 片段跟預覽都是同一份
 `build_data.py` 產的，所以頁面教不出 kit 沒有的簽名。
+
+---
+
+## `fjkit.apidocs` — 取代 Swagger UI 的 API 主控台（2026-08-21）
+
+**痛點很具體：Swagger UI 的 Authorize 對話框只能表達 OpenAPI 文件說得出來的東西**——
+apiKey、http scheme、oauth2、openIdConnect，就這四種。`fjkit.auth` 發出去的憑證是一個
+簽章過的 HttpOnly cookie，四種都不是；而且就算文件寫得出來，Swagger 的 Try it out 是在
+瀏覽器裡跑 `fetch()`，那個 cookie 本來就不給 JavaScript 讀——那是 `AuthPlugin` 的設計，
+不是缺陷。
+
+所以這一版的作法是把兩件事都搬到伺服器：
+
+| | Swagger UI | `fjkit.apidocs` |
+|---|---|---|
+| 登入 | 貼一個你從別處拿到的 token | `AuthFlow`，一個 Python 物件 |
+| 送出請求 | 瀏覽器 `fetch()` | 伺服器行程內重放，帶上呼叫者自己的 cookie |
+| token 換發／撤銷／CSRF | 頁面自己想辦法 | 請求走過的 middleware 就做完了 |
+
+`SessionFlow` 直接呼叫 `AuthPlugin.issue`，也就是跑 app 自己的 `TokenSource`；登入完瀏覽器
+握著的就是 app 平常那顆 cookie。之後每一次 Try it 都只是把那顆 cookie 轉發進去，因此
+token 到期換發、session 撤銷、Origin 檢查全都是 `AuthPlugin` 在做，這裡一行都沒重寫。
+沒有 `AuthPlugin` 的 app 用 `HeaderFlow`：token 存在這個外掛自己的簽章 HttpOnly cookie，
+scope 限在文件頁的路徑底下，頁面上顯示的是遮罩過的值。
+
+### 自動掛載
+
+`FjkitConfig(plugins=(auth, ApiDocsPlugin()))` 就是全部的接線——沒有路由要寫、沒有模板要
+指定、沒有 static 要掛。外掛在 `mount` 裡 `include_router()` 自己那四條路由，並且從
+`setup.config.plugins` 裡把 `AuthPlugin` 找出來自動包成 `SessionFlow`。這是 `AppSetup`
+這個接縫第一次被用來加路由（`AuthPlugin` 只用了 middleware 與 exception handler）。
+
+網址預設 `/api-docs`，不是 `/docs`：FastAPI 在 `FastAPI()` 建構時就把 `/docs` 佔掉了，
+Starlette 比對到第一條就停，所以掛在那裡會是一個永遠不會渲染的頁面。真的掛過去時
+`setup.warn()` 會在啟動時說出來，而不是留給人點半天。
+
+### 三件實作上非做不可的事
+
+1. **重放用 ASGI scope 直接呼叫 `request.app`**，不開 socket。行程內、走完整條
+   middleware stack，所以 `AuthPlugin` 的 session 載入與換發照跑。防遞迴用兩道：路徑前綴
+   拒絕，加上 scope 裡的深度旗標。
+2. **scope 裡的 header 名稱一律小寫。** ASGI 規定如此，而 Starlette 是照字面做的——它把你
+   *要問* 的名字轉小寫去跟 raw bytes 比。`Authorization` 大寫 A 會在線上、卻對
+   `request.headers["authorization"]` 隱形，而且沒有任何地方會報錯。（這條是寫測試才抓到的。）
+3. **`$ref` 旁邊的關鍵字要跟著走。** OpenAPI 3.1 允許 `{"$ref": ".../Priority", "default":
+   "normal"}`，FastAPI 對 `priority: Priority = Priority.NORMAL` 就是這樣寫。只解 ref、把
+   兄弟鍵丟掉，select 就會渲染成沒有選項被選中——症狀只有「主控台起手就差一步」。
+
+### 表單 body 拆成欄位，不是一個文字框
+
+fjkit 的 app 大半是 `Annotated[str, Form()]`——每一個 htmx 表單都往那裡送。文件裡它是
+`application/x-www-form-urlencoded`，schema 是一個有 `properties` 的物件，所以拆回欄位跟
+query parameter 走同一個 `Param`：enum 變 select、integer 變數字框、default 預填。JSON body
+才留文字框。`multipart` 明講不支援，因為文字框裝不下檔案。
+
+### 驗收
+
+`examples/board` 註冊了它，`app/` 底下沒有為它寫任何一行路由或模板。守著的兩件事：
+
+- `packages/fjkit/tests/test_apidocs.py` — 文件解析、掛載、重放、三種 flow，外加一條
+  「這幾個模板裡的每一個 class 都真的在建置出來的 stylesheet 裡」。模板跟著外掛的程式碼放在
+  `src/fjkit/apidocs/templates/apidocs/`，由 `extend` 掛上 loader；代價是 `fjkit.css` 必須多
+  一行 `@source` 指到那裡——少了它會渲染、會看起來壞掉、不會有任何訊息，所以那條測試連
+  `@source` 本身也一起釘住。
+- `examples/board/tests/test_api_console.py` — `/session/secret` 這條 `Depends` 保護的路由，
+  在 Swagger 上拿不到，在這裡登入之後回 200。那一條就是整個外掛的理由。
+
+### 補：主控台拿到的是 model，不是頁面（2026-08-21）
+
+第一版有一個看起來對、其實答非所問的行為：`/tasks` 是 page route
+（`@render("tasks/page.html", partial=…)`），所以 `render_mode="auto"` 下主控台按
+Send 會拿回一整份 HTML 文件。`serves_a_page` 是**路由形狀**的屬性，它存在的理由是保護
+冷啟動的 navigation——而行程內重放不是 navigation。
+
+修法是給 `@render` 補一個中間層：ASGI scope 的 `SCOPE_RENDER_MODE`。優先序變成
+**decorator 的 `mode=` → scope 問的 → app 預設**。
+
+刻意不是 header、不是 query parameter：只有已經在這個 process 裡的東西寫得進 scope，
+所以這是「app 問自己要哪一種表現形式」，不是「client 要求被特別對待」。用 header 就等於
+開一個開關，讓任何人把整個 app 的頁面變成 JSON。
+
+`mode="html"` 仍然贏。那是 app 作者明講「這條路由沒有資料形式」，主控台不是推翻它的地方。
+兩條測試守著：page route 從主控台回 model、同一條路由給瀏覽器仍然回整頁。
+
+### 補：Swagger UI 有的，這裡也要有（2026-08-21）
+
+第一版贏在 Swagger 做不到的那一半——登入是 app 自己的 Python 物件，請求帶著
+HttpOnly cookie 在行程內重放。但那只有在**另一半也齊全**時才是換掉 Swagger 的理由：
+一個在驗證上贏、在其他每一件事上輸的主控台不是替代品。所以這一輪把缺口補完。
+
+| Swagger UI 有 | 這一輪補上 |
+|---|---|
+| Schemas 區塊 | `components.schemas` 變成側欄的第二個分支＋`/api-docs/schema/{slug}` 詳細頁 |
+| Example Value / Schema 切換 | `payload()` macro，用 0.7 提前落地的 `ui/tabs.html` |
+| 每個狀態碼各自的範例 | 每一條 response 一個區塊，不再只印 200 那一個 |
+| 回應 header 文件 | `ResponseDoc.headers` |
+| 上鎖圖示 | `operation.security` 渲染在 `op_line` |
+| filter 搜尋框 | 伺服器端過濾＋`hx-get` 換掉清單（`/api-docs/nav?q=`） |
+| servers 下拉 | 只列出、不選：行程內重放的目標永遠是正在回答的這個 app |
+| 檔案上傳 | `multipart` 重新編碼後送進 app，curl 片段給 `-F` |
+| 多個具名範例 | `openapi_examples=` 的每一個都是一個 tab |
+| contact／license／terms／externalDocs／tag description | 首頁的 masthead 與 Groups 卡 |
+
+三件實作上值得記下來的：
+
+1. **OpenAPI 3.1 不寫 `format: binary` 了。** 3.0 是 `format: binary`，3.1 改成
+   `contentMediaType`，而 FastAPI 現在吐 3.1。只讀 `format` 的話每一個 `UploadFile`
+   都會渲染成文字框——送出去的是檔名字串，錯誤發生在 endpoint 裡面，離原因很遠。
+   兩種拼法都要認。
+2. **陣列參數是同一個名字重複，不是逗號字串。** `?tag=a&tag=b` 才是 FastAPI 解回
+   `list[str]` 的形狀。一個框裝 `a,b` 會原封不動送出去，endpoint 收到一個元素的 list。
+   所以 `Param.multi` 為真時，`_compose` 把一個欄位攤成好幾個值。
+3. **面板 swap 要把側欄一起帶回去。** 點一條 operation 只換 detail panel，側欄不會重畫，
+   所以 highlight 會停在三次點擊之前那一條——冷載入是對的、之後整個 session 都是錯的。
+   `_nav.html` 在 swap 時掛 `hx-swap-oob`，並且把 `?q=` 帶在連結上，過濾狀態才不會被
+   點擊清掉。
+
+Jinja 上踩到的兩件事：這個 Environment 沒開 `do` extension（所以累積清單要用
+`namespace` 重新指派），也沒有 list comprehension。兩處都寫了註解，因為下一個人
+會再寫一次。
+
+**「Extra headers 不要那麼顯眼」**：它從一個永遠展開的兩行 textarea 變成一個
+`<details>`。上面每一個控制項都是文件要求的，這一個是文件沒要求的逃生口——它該在
+頁面上，但不該在閱讀動線上。summary 補了一個 chevron，因為 Basecoat 的 base layer
+把原生 marker 拿掉了，一行純文字看不出來可以打開；那是另一種壞法，不比太吵好。
