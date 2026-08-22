@@ -1068,3 +1068,51 @@ facet 的 badge variant 來自 `PRIORITY_VARIANT`，跟 task row 讀的是同一
 
 `test_search.py` 10 條。`test_parity.py` 沒有動：新路由不在 probe 清單裡，側欄多一個
 連結只多一個 href，而 href 只檢查「有沒有少」。
+
+---
+
+## `dist/` 曾經落後 apidocs 兩天（2026-08-22）
+
+`test_every_class_in_the_console_s_templates_exists_in_the_stylesheet` 是紅的，
+點名八個 class：`cursor-pointer`、`pt-3`、`w-full`、`gap-x-5`、`gap-y-1`、
+`min-w-0`、`shrink-0`、`w-18`。它們都在 API 主控台那一輪（`45ca443`、8/21）加的模板裡，
+而本機 `packages/fjkit/src/fjkit/static/dist/` 是 8/19 建的——主控台那幾處的樣式
+在本機是掉的。
+
+**不是版控問題。** `dist/` 在 `.gitignore` 裡，`fjkit.css` 的 `@source` 也一直
+正確指著 `../../apidocs/templates`（同一支測試的第一段就在守這件事），
+`docs/assets/dist/fjkit-vega.css`（有進版控的那份）也早就含這八個 class。
+純粹是本機沒重跑 `fjkit build-css`。重建後 620 條全綠。
+
+### 重建後的體積（八個包）
+
+| 包 | raw | gzip |
+|---|---|---|
+| vega（預設） | 234,817 | 24,622（24.0 KB）|
+| nova | 239,443 | 24,716（24.1 KB）|
+| maia | 233,912 | 24,656（24.1 KB）|
+| lyra | 235,027 | 24,319（23.7 KB）|
+| mira | 235,548 | 24,638（24.1 KB）|
+| luma | 237,538 | 24,882（24.3 KB）|
+| sera | 220,998 | 24,218（23.7 KB）|
+| rhea | 237,818 | 24,887（24.3 KB）|
+
+最大 **24.3 KB gzip**（上限 28），比 8/19 那次量的 24.1 KB 多 0.2 KB——主控台整批
+模板的 utility 就值這麼多，跟上面「棘輪已經扣完」的推論一致。
+
+### 順手發現：`?v=` 用的是 mtime，所以 `docs/` 永遠會被判定為 stale
+
+跑 `docs/workbench/build.py` 之後八頁 HTML 全部有 diff，但**內容一個字都沒變**，
+變的只有 cache-busting 的 `?v=`：
+
+```
+-<script defer src="assets/vendor/htmx/htmx.min.js?v=1787294618">
++<script defer src="assets/vendor/htmx/htmx.min.js?v=1786876367">
+```
+
+數字是本機檔案的 mtime。mtime 不進 git，clone 出來就是 checkout 的時間，所以
+**任何兩台機器建出來的 `docs/` 都不會一樣**——`.githooks/pre-push` 會在每一台新機器上
+擋一次，然後被 commit 一批純噪音的 diff，下一台再擋一次。
+
+這次沒有 commit 那批 diff（我沒有動到文件站的來源）。真正的修法是把 `?v=` 改成
+內容雜湊或版本號，但那是文件站建置的一筆改動，不是這次的範圍——記在這裡。
