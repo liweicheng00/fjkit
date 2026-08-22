@@ -21,7 +21,8 @@
   {% call page_header("Jobs", note) %}
     {{ button("Clear finished", variant="outline", size="sm", icon_name="trash",
               hx_delete=url_for(request, "jobs_clear"),
-              hx_target="#job-list", hx_swap="outerHTML") }}
+              hx_target="#job-list", hx_swap="outerHTML",
+              hx_disabled_elt="this") }}
   {% endcall %}
 
   {% call stack(4) %}
@@ -35,7 +36,7 @@
       seconds is happening after the response, which is why the card polls.
     #}
     {% call form(action=url_for(request, "jobs_start"), target="#job-list",
-                 hx_indicator="#job-busy") %}
+                 hx_indicator="#job-busy", hx_disabled_elt="find button[type=submit]") %}
       {% call field_row("field-and-button") %}
         {{ select_field("kind", label="Background job", options=kind_options, selected="export") }}
         {% call row(gap=2) %}

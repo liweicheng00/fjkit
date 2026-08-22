@@ -32,7 +32,8 @@
       {% call row_actions() %}
         {{ button("Advance", variant="ghost", size="xs", icon_name="arrow-right", icon_end=true,
                   hx_post=url_for(request, "tasks_advance", task_id=task.id) ~ filter_query,
-                  hx_target="#board", hx_swap="outerHTML") }}
+                  hx_target="#board", hx_swap="outerHTML",
+                  hx_disabled_elt="this") }}
         {#
           A link, not a swap: the edit form is a page of its own, so this is an
           <a> and the browser navigates. `button(href=…)` is the same macro
@@ -46,6 +47,7 @@
                   aria_label="Delete " ~ task.title,
                   hx_delete=url_for(request, "tasks_delete", task_id=task.id) ~ filter_query,
                   hx_target="#board", hx_swap="outerHTML",
+                  hx_disabled_elt="this",
                   hx_confirm="Delete “" ~ task.title ~ "”?") }}
       {% endcall %}
     {% endif %}

@@ -1138,3 +1138,65 @@ facet 的 badge variant 來自 `PRIORITY_VARIANT`，跟 task row 讀的是同一
 
 這次沒有 commit 那批 diff（我沒有動到文件站的來源）。真正的修法是把 `?v=` 改成
 內容雜湊或版本號，但那是文件站建置的一筆改動，不是這次的範圍——記在這裡。
+
+---
+
+## 雙擊防護，以及文件站補上兩課（2026-08-22，使用者指定）
+
+### `hx-disabled-elt`：demo 每一個會改資料的控制項
+
+一次 swap 是一趟來回，而這中間**沒有任何東西擋得住第二次點擊**。板子上的 Advance 連點兩下就推進兩次，
+新增表單連按兩下就送兩筆。修法是一個屬性：
+
+```jinja
+{{ button("Advance", hx_post=…, hx_target="#board", hx_disabled_elt="this") }}
+{% call form(action=…, target="#board", hx_disabled_elt="find button[type=submit]") %}
+```
+
+補上的地方：板子的新增表單／Advance／Delete、jobs 的 Start 與 Clear finished、session 的登入與登出。
+GET（篩選、搜尋）刻意不加——它們沒有副作用，擋住只會讓頁面變鈍。
+
+**沒有動 `form()` 的簽名。** `attrs()` 那條 kwargs 透傳的路本來就是為了這件事存在的
+（`ui/attrs.html` 的註解寫著「adding a new one never requires touching fjkit」），而把
+「送出時自動 disable」變成 `form()` 的預設行為會是改一個已發佈 macro 的行為，那要先問。
+
+選擇器寫 `find button[type=submit]` 而不是 `[type='submit']`：CSS 屬性選擇器的值可以是識別字，
+不加引號就不會在 HTML attribute 裡變成 `&#39;`。
+
+實測（瀏覽器裡量的，不是照文件抄的）：
+
+```
+before: disabled=false marker=false
+beforeSend: disabled=true  marker=true      ← data-disabled-by-htmx
+afterRequest: disabled=false marker=false
+```
+
+`test_htmx.py` 多兩條：板子上每一個帶 `hx-post`／`hx-delete` 的控制項都必須有 `hx-disabled-elt`；
+每一張用 `find button[type=submit]` 的表單裡都真的要有一顆 submit。第二條是因為選擇器沒中時
+htmx 只會在 console 警告，表單照樣連點得下去。
+
+**`test_parity.py` 擋了一次，這是它該做的事。** `hx_attrs` 是 EXACT 欄位，八個板子相關的 probe
+全部紅了。處理方式照第 0 節那條規則：寫進 `ALLOWED_CONTRACT_DRIFT`，並且說明理由。八個共用一個
+具名常數 `BOARD_HX_ATTRS`——它們渲染的是同一支 partial，這是一筆刻意的改動，不是八筆。
+`hx_targets`／`hx_urls` 仍然對著原始 baseline 比，所以這條例外不會變成「可以隨便改接線」的許可。
+
+### 文件站：Learn 從九課變十一課
+
+前面兩輪做完 oob 跟 indicator，但站上一個字都沒有——`hx-swap-oob` 只在第 05 課的
+「Server-side helpers」清單裡有一行。補上兩課（英文與中文各一份，共用同一支 `learn.js`）：
+
+| 課 | 標題 | 內容 |
+|---|---|---|
+| 06 | 一次回應，換掉好幾塊：hx-swap-oob | 主通道 vs 頻外、htmx 的三步驟處理順序、回應長什麼樣、page 與 `_results` 差一個變數、四個陷阱 |
+| 07 | 請求進行中的那段時間 | htmx 注入的那段 CSS（逐字）、兩個選擇器各管什麼、`hx-disabled-elt`、計數而非開關、不要放在 target 裡面 |
+
+06～09 因此往後推成 08～11，`sections` 清單、鋼印編號、`t0x` 變數名與導言的「九課」一起改。
+
+兩件寫的時候才發現的事：
+
+1. **`code_block()` 的 source 要傳普通字串，不能傳 `{% set %}…{% endset %}`。** 後者產出的是
+   Markup，`<div>` 會被當成真的標記渲染出去。Jinja 的字串字面值可以跨行、裡面放 `{%` 也沒事，
+   所以直接寫多行字串就對了。
+2. **`fjkit check` 抓到了寫在註解裡的反例。** `search/_detail.html` 有一段註解引用了
+   `<p class="text-muted-foreground text-sm">` 當作「不要這樣寫」的示範，檢查器照樣判違規——
+   它讀的是 attribute，不管在不在註解裡。那是檢查器在正常運作，註解改寫了。

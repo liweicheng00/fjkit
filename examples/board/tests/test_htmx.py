@@ -3,6 +3,8 @@ HTMX endpoints return must be the same one the full page embeds."""
 
 from __future__ import annotations
 
+import re
+
 
 def test_board_partial_has_no_shell(htmx):
     response = htmx.get("/tasks/board")
@@ -50,3 +52,34 @@ def test_empty_state_when_nothing_matches(htmx):
     for task_id in range(1, 20):
         htmx.delete(f"/tasks/{task_id}")
     assert "Nothing here" in htmx.get("/tasks/board").text
+
+
+# --------------------------------------------------------------------------- #
+# Double-submit: every mutating control disables itself for its own request.
+# --------------------------------------------------------------------------- #
+
+FORM = re.compile(r"<form\b[^>]*>.*?</form>", re.S)
+
+
+def test_every_mutating_control_disables_itself(htmx):
+    """A swap takes a round trip, and nothing stops a second click during it.
+    `hx-disabled-elt` is the whole fix — htmx sets `disabled` for the length of
+    the request and clears it after, counting overlapping requests so an early
+    reply cannot re-enable a control another request is still using."""
+    board = htmx.get("/tasks/board").text
+    mutating = re.findall(r"<(?:form|button)\b[^>]*hx-(?:post|delete)=[^>]*>", board)
+    assert mutating, "the board is where the mutations are"
+    for control in mutating:
+        assert "hx-disabled-elt=" in control, f"can be double-clicked: {control[:120]}"
+
+
+def test_a_form_s_disabled_selector_finds_something(client):
+    """`find button[type=submit]` resolving to nothing is not an error — htmx
+    logs a warning to a console nobody is reading and the form stays clickable.
+    So the selector is checked against the markup instead."""
+    for page in ("/tasks", "/jobs", "/session"):
+        for form in FORM.findall(client.get(page).text):
+            if "hx-disabled-elt=" not in form:
+                continue
+            assert 'find button[type=submit]' in form, "the only form selector this app uses"
+            assert 'type="submit"' in form, f"nothing for the selector to disable on {page}"
