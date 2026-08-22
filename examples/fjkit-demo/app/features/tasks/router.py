@@ -16,9 +16,18 @@ from typing import Annotated
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from fjkit import render
 
-from app.features.tasks.schemas import BoardResponse, Priority, ReportResponse, Status, TaskCreate
+from app.features.tasks.schemas import (
+    BoardResponse,
+    Priority,
+    ReportResponse,
+    Status,
+    TaskCreate,
+    TaskEditResponse,
+    TaskUpdate,
+)
 from app.features.tasks.service import TaskService
 
 router = APIRouter(tags=["tasks"])
@@ -120,6 +129,52 @@ def delete_task(
     if not service.delete(task_id):
         raise HTTPException(status_code=404, detail="task not found")
     return _board(service, status, owner)
+
+
+@router.get("/tasks/{task_id}/edit", name="tasks_edit")
+@render("tasks/edit.html")
+def edit_task(service: ServiceDep, task_id: int) -> TaskEditResponse:
+    """The edit form, on a page of its own.
+
+    Deliberately not an htmx swap. Everything else on this board is one, so
+    without this route the demo would only ever show half of what `ui/form.html`
+    does — `form()` with no `target=` emits an ordinary POST, and the fields do
+    not know the difference. This page needs no JavaScript at all.
+    """
+    task = service.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    owners = service.owners()
+    if task.owner not in owners:
+        owners.append(task.owner)
+    return TaskEditResponse(
+        task=task,
+        priority_options=PRIORITY_OPTIONS,
+        owner_options=[(o, o.capitalize()) for o in owners],
+    )
+
+
+@router.post("/tasks/{task_id}/edit", name="tasks_update")
+def update_task(
+    request: Request,
+    service: ServiceDep,
+    task_id: int,
+    title: Annotated[str, Form()],
+    priority: Annotated[Priority, Form()] = Priority.NORMAL,
+    owner: Annotated[str, Form()] = "unassigned",
+    notes: Annotated[str, Form()] = "",
+    # An unticked box posts nothing at all, so "absent" is what off looks like
+    # on the wire. A default of False is the whole of reading a checkbox — no
+    # hidden companion field, because this form posts every field it owns.
+    blocked: Annotated[bool, Form()] = False,
+    watching: Annotated[bool, Form()] = False,
+) -> RedirectResponse:
+    """Save, then redirect. No `@render` here — the answer is a Location, not
+    markup, and 303 is what stops a refresh from re-posting the form."""
+    payload = TaskUpdate(title=title, priority=priority, owner=owner, notes=notes, blocked=blocked, watching=watching)
+    if service.update(task_id, payload) is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    return RedirectResponse(url=str(request.url_for("tasks_page")), status_code=303)
 
 
 @router.get("/tasks/report", name="tasks_report")

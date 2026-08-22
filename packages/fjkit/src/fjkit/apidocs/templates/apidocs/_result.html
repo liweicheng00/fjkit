@@ -1,0 +1,95 @@
+{#
+  What came back — the panel the console swaps after a call.
+
+  It renders empty when there is no result, because the operation page includes
+  it as the placeholder the reply will replace. An `{% if %}` here rather than
+  two templates: the id has to exist in the document before the first call, and
+  an empty div carrying it is cheaper than a second file that renders one.
+#}
+{% from "apidocs/macros.html" import facts %}
+{% from "ui/data.html" import badge, card, code_block %}
+{% from "ui/icon.html" import icon %}
+{% from "ui/layout.html" import stack %}
+
+<div id="{{ ids.result }}">
+  {% if result %}
+    {#
+      The badge follows the *status*, not the error, because the two are not
+      alternatives. Starlette's ServerErrorMiddleware sends its 500 and then
+      re-raises, so a handler that blew up gives us both a real response and an
+      escaped exception. Reading `result.error` first said "no response" over a
+      reply that was sitting right there — which is the worst thing a debugging
+      tool can do: assert something false about what happened.
+
+      "no response" is now reserved for what it means: a timeout, or an
+      exception that escaped before a single byte was sent.
+    #}
+    {%- set status %}
+      {% if result.status %}
+        {{ badge(result.status ~ (" " ~ result.reason if result.reason else ""), result.tone) }}
+      {% else %}
+        {{ badge("no response", "destructive") }}
+      {% endif %}
+    {%- endset %}
+    {#
+      `aria-live="polite"` on the wrapper, not on the panel: the panel is what
+      gets replaced, and a live region that is itself swapped out is a live
+      region the screen reader stops watching. Announcing politely rather than
+      assertively because the person pressed the button — they are waiting for
+      this, not being interrupted by it.
+    #}
+    <div aria-live="polite">
+      {% call card("Response", result.method ~ " " ~ result.url, actions=status) %}
+        {% call stack(gap=4) %}
+
+          {% if result.error %}
+            <p class="text-destructive flex items-center gap-2 text-sm" role="alert">
+              {{ icon("circle-alert", 16) }}<span>{{ result.error }}</span>
+            </p>
+            {#
+              Where the rest of it is. An in-process replay has no server above
+              it to log what escaped, so the console logs it itself — and
+              saying so here is the difference between a one-line error and
+              knowing there is a stack to go and read. Without this the
+              indirection is exactly the liability it looks like.
+            #}
+            <p class="text-muted-foreground text-xs">
+              The traceback is in this app's log, under <code class="kbd">fjkit.apidocs.console</code>.
+            </p>
+          {% endif %}
+
+          {% if result.status %}
+            {{ facts([
+                 ("time", "%.0f ms" | format(result.elapsed_ms)),
+                 ("content type", result.media_type or "—"),
+               ]) }}
+            {% if result.body %}
+              {{ code_block(result.pretty, label="Response body") }}
+              {% if result.truncated %}
+                <p class="text-muted-foreground text-xs">
+                  Truncated. The body was larger than this console will hold — call it with curl for the rest.
+                </p>
+              {% endif %}
+            {% else %}
+              <p class="text-muted-foreground text-sm">Empty body.</p>
+            {% endif %}
+            {% if result.headers %}
+              {{ code_block(result.headers | map("join", ": ") | join("\n"), label="Response headers") }}
+            {% endif %}
+          {% endif %}
+
+          {% if curl %}
+            {#
+              The same call as a command. Credentials are placeholders, not
+              values — a snippet built for copying is a snippet that ends up in
+              a bug report, and the whole point of this plugin is that the
+              session cookie is not readable from the page.
+            #}
+            {{ code_block(curl, label="The same call with curl", wrap=true) }}
+          {% endif %}
+
+        {% endcall %}
+      {% endcall %}
+    </div>
+  {% endif %}
+</div>

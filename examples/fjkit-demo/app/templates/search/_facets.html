@@ -1,0 +1,25 @@
+{#
+  What the matches are made of. The counts and the badge variants both come
+  from the router's `Facet` list, so this template prints and never decides —
+  a "High" facet is destructive-red here because it is destructive-red on a
+  task row, from one map in `tasks/schemas.py`.
+#}
+{% set oob = oob | default(false) %}
+{% from "ui/data.html" import badge, card %}
+{% from "ui/layout.html" import row, stack %}
+
+<div id="search-facets"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% call stack(4) %}
+    {% call card("Owners", none if owners else "Nothing matched.", size="sm") %}
+      {% call row(gap=2) %}
+        {% for facet in owners %}{{ badge(facet.label ~ " · " ~ facet.count, variant="outline") }}{% endfor %}
+      {% endcall %}
+    {% endcall %}
+
+    {% call card("Priorities", none if priorities else "Nothing matched.", size="sm") %}
+      {% call row(gap=2) %}
+        {% for facet in priorities %}{{ badge(facet.label ~ " · " ~ facet.count, variant=facet.variant) }}{% endfor %}
+      {% endcall %}
+    {% endcall %}
+  {% endcall %}
+</div>

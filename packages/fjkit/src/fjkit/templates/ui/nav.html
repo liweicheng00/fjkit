@@ -69,3 +69,42 @@
     {{- icon("sun", 16, "hidden dark:block") }}{{ icon("moon", 16, "dark:hidden") -}}
   </button>
 {%- endmacro %}
+
+{#
+  breadcrumb(trail, separator)
+
+  `trail` is a list of `(label, href)` pairs. A pair whose href is none is the
+  current page: it renders as a `<span aria-current="page">`, not a link, so
+  the trail has exactly one non-navigable entry and assistive tech is told
+  which one it is. Passing the current page as a link is the usual way this
+  component goes wrong, and the shape of the parameter is what prevents it.
+
+  Separators are their own `<li aria-hidden="true">` rather than CSS `::after`
+  content, because generated content is read aloud by some screen readers and
+  a trail punctuated by "greater than" five times is worse than silence. That
+  is Basecoat's structure and this follows it.
+
+  The chevron mirrors under `dir="rtl"`; a dot has nothing to mirror, so the
+  flip is applied to the chevron only.
+#}
+{% set _CRUMB_SEPARATORS = {"chevron": "chevron-right", "slash": "slash", "dot": "dot"} %}
+
+{% macro breadcrumb(trail, separator="chevron", label="Breadcrumb") -%}
+  {%- set glyph = _CRUMB_SEPARATORS.get(separator, "chevron-right") -%}
+  <nav class="breadcrumb" aria-label="{{ label }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    <ol>
+      {%- for crumb_label, href in trail %}
+        {%- if not loop.first %}
+          <li aria-hidden="true">{{ icon(glyph, 16, "" if separator == "dot" else "rtl:rotate-180") }}</li>
+        {%- endif %}
+        <li>
+          {%- if href %}
+            <a href="{{ href }}">{{ crumb_label }}</a>
+          {%- else %}
+            <span aria-current="page">{{ crumb_label }}</span>
+          {%- endif %}
+        </li>
+      {%- endfor %}
+    </ol>
+  </nav>
+{%- endmacro %}

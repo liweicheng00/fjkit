@@ -25,7 +25,7 @@ which is what GitHub Pages serves (*Settings → Pages → Deploy from a branch 
 | Output | Page | Covers |
 |---|---|---|
 | `docs/index.html` | Introduction | the landing page — what fjkit is, who it is for, five decisions, what ships in the wheel |
-| `docs/learn.html` | Learn | wiring, the htmx exchange, hx-target/hx-swap/hx-trigger, partials, rebranding, `fjkit check` |
+| `docs/learn.html` | Learn | wiring, the htmx exchange, hx-target/hx-swap/hx-trigger, partials, `hx-swap-oob`, `hx-indicator`/`hx-disabled-elt`, rebranding, `fjkit check` |
 | `docs/components.html` | Components | every macro, live, with the Jinja call and the HTML it emits |
 | `docs/assets/dist/`, `docs/assets/vendor/` | — | the default pack's `fjkit-vega.css`, htmx and Basecoat's JS, byte-identical to the wheel |
 | `docs/assets/brand.css` | — | the site's own stylesheet — tokens, typography, and the gaps |

@@ -1,0 +1,24 @@
+{#
+  Feature-local markup: the one thing a search row does that a board row does
+  not.
+
+  A macro rather than a `{% set %}` block inside the loop — `{% set %}` builds
+  a fresh Markup buffer per iteration, a macro is a call on an already-compiled
+  module. Same reason `task_row` is a macro at all.
+
+  `request` is a parameter rather than inherited context, so this file can be
+  imported the cheap way.
+#}
+{% from "ui/button.html" import button %}
+
+{#
+  The trigger for the second swap. A real focusable button, not a clickable
+  `<tr>`: a row with an `hx-get` on it is unreachable by keyboard and unnamed
+  to a screen reader, and htmx will happily fire it anyway.
+#}
+{% macro detail_action(request, task) -%}
+  {{ button("", variant="ghost", size="icon-xs", icon_name="chevron-right",
+            aria_label="Open " ~ task.title,
+            hx_get=url_for(request, "search_detail", task_id=task.id),
+            hx_target="#search-detail", hx_swap="outerHTML") }}
+{%- endmacro %}

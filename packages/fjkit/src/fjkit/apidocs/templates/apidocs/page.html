@@ -1,0 +1,236 @@
+{#
+  The API console page.
+
+  `base_template` is a variable, not a literal: the kit's shell by default, or
+  the app's own `base.html` when `ApiDocsPlugin(base_template=…)` names it — so
+  the docs can sit inside the app's chrome without this file knowing anything
+  about it.
+
+  The layout is the shell's sidebar version, which the shell picks up simply
+  because the `sidebar` block below is not empty.
+#}
+{% extends base_template %}
+
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import card, empty_state, item, item_list, link %}
+{% from "ui/layout.html" import page_header, section, stack %}
+{% from "ui/nav.html" import brand %}
+{% from "ui/sidebar.html" import sidebar %}
+
+{% block title %}{{ operation.label if operation else (model.name if model else "API") }}{% endblock %}
+{% block site_title %}{{ docs_title }}{% endblock %}
+
+{#
+  The sidebar keeps `--sidebar-width` as it comes. This page is one of several
+  a host app serves, and a docs route that quietly widens the chrome makes the
+  sidebar jump every time someone navigates in or out of it. An app that wants
+  a wider one sets the token once, for every page it owns, and this page
+  inherits it like the others — which is what the token is for.
+#}
+{% block sidebar %}
+  {%- set mark %}
+    {{ brand(docs_title, url_for(request, routes.index), icon_name="braces") }}
+    {#
+      The filter. Swagger has one for the same reason: an app with two hundred
+      routes has a sidebar nobody scrolls, and the tag headings only help if you
+      already know which tag.
+
+      It filters on the server and swaps the list, which costs one round trip
+      per pause in typing and buys a list that is *actually* shorter — the
+      client-side version ships all two hundred rows and hides most of them.
+      `delay:250ms` is what makes it one request per pause rather than one per
+      keystroke. The input is outside the swapped region, so what was typed and
+      where the caret is both survive the swap.
+
+      A `name` and a real URL, so this is also a GET anybody can bookmark: the
+      page route reads the same `?q=`.
+    #}
+    <input class="input" type="search" name="{{ query_field }}" value="{{ query }}"
+           placeholder="Filter operations" aria-label="Filter operations"
+           hx-get="{{ url_for(request, routes.nav) }}"
+           hx-trigger="input changed delay:250ms, search"
+           hx-target="#{{ ids.nav }}" hx-swap="outerHTML">
+  {%- endset %}
+  {#
+    The way back out. The operation list has taken the sidebar, so without this
+    the docs are a room with no door — which is exactly the complaint people
+    have about a `/docs` page bookmarked out of context.
+  #}
+  {%- set exit %}
+    {% if home_url %}{{ button(home_label, variant="ghost", size="sm", href=home_url, icon_name="arrow-left") }}{% endif %}
+  {%- endset %}
+  {% call sidebar(header=mark, footer=exit if home_url else none, label="Operations") %}
+    {% include "apidocs/_nav.html" %}
+  {% endcall %}
+{% endblock %}
+
+{% block content %}
+  {% call stack(gap=6) %}
+
+    {#
+      The session panel is above the operation and stays put when one is
+      swapped in — the whole page is arranged around the one question Swagger
+      cannot answer, which is "who am I right now".
+    #}
+    {% include "apidocs/_session.html" %}
+
+    {% if operation %}
+      {% include "apidocs/_operation.html" %}
+    {% elif model %}
+      {% include "apidocs/_model.html" %}
+    {% else %}
+      {#
+        The landing state. It carries the detail panel's id so the first click
+        on an operation has something to swap, exactly as the operation partial
+        would.
+      #}
+      <div id="{{ ids.detail }}">
+        {% call stack(gap=5) %}
+          {#
+            `docs_title`, the same name the sidebar shows — `ApiDocsPlugin(title=…)`
+            when the app set one and the OpenAPI title when it did not. Reading
+            `docs.title` here would put two different names on one page.
+          #}
+          {{ page_header(docs_title ~ (" " ~ docs.version if docs.version else ""), docs.description or none) }}
+
+          {% if docs.count %}
+            {% call card("What this is") %}
+              {% call stack(gap=3) %}
+                <p class="text-muted-foreground text-sm">
+                  {{ docs.count }} operation{{ "" if docs.count == 1 else "s" }} across
+                  {{ docs.groups | length }} group{{ "" if docs.groups | length == 1 else "s" }}{%
+                  if docs.models %}, exchanging {{ docs.models | length }}
+                  type{{ "" if docs.models | length == 1 else "s" }}{% endif %},
+                  read from the same OpenAPI document
+                  {{ link("/openapi.json", "/openapi.json") }} serves. Pick one on the left.
+                </p>
+                <p class="text-muted-foreground text-sm">
+                  Calls you make here are replayed through this app on the server, carrying your own
+                  session. Nothing on this page can read the credential — which is why signing in
+                  above is a form your app defines rather than a box to paste a token into.
+                </p>
+              {% endcall %}
+            {% endcall %}
+          {% else %}
+            {{ empty_state("No operations",
+                           "Every route in this app is hidden from the schema, or there are none yet.",
+                           "list") }}
+          {% endif %}
+
+          {#
+            The masthead OpenAPI carries and almost nothing renders: who to ask,
+            what licence it is under, what the terms are, where the prose lives.
+            Somebody wrote each of these into the document meaning it to be
+            read, and dropping them is how a generated reference ends up less
+            informative than the file it was generated from.
+          #}
+          {%- set masthead = docs.contact or docs.license_name or docs.terms_url or docs.external_url -%}
+          {% if masthead %}
+            {% call card("About this API") %}
+              {% call item_list() %}
+                {% for label, value in docs.contact %}
+                  {{ item(label,
+                          link(value, ("mailto:" ~ value) if label == "email" else value)
+                            if label != "name" else value,
+                          clamp=false) }}
+                {% endfor %}
+                {% if docs.license_name %}
+                  {{ item("licence",
+                          link(docs.license_name, docs.license_url) if docs.license_url else docs.license_name,
+                          clamp=false) }}
+                {% endif %}
+                {% if docs.terms_url %}
+                  {{ item("terms of service", link(docs.terms_url, docs.terms_url), clamp=false) }}
+                {% endif %}
+                {% if docs.external_url %}
+                  {{ item("more", link(docs.external_label, docs.external_url), clamp=false) }}
+                {% endif %}
+              {% endcall %}
+            {% endcall %}
+          {% endif %}
+
+          {#
+            The tags, with the prose the document wrote for each.
+
+            A `tags=` list on `FastAPI()` is an information architecture and a
+            description on one of its entries is the paragraph explaining what
+            that group of endpoints is *for* — which the sidebar has no room for
+            and which is, on a large API, the first thing a newcomer needs. It
+            only renders when somebody wrote one: a list of bare tag names would
+            repeat the sidebar and say nothing.
+          #}
+          {%- set described = docs.groups | selectattr("description") | list -%}
+          {% if described %}
+            {% call card("Groups") %}
+              {% call item_list() %}
+                {% for group in described %}
+                  {%- set body %}
+                    {{ group.description }}
+                    {%- if group.external_url %} — {{ link(group.external_label, group.external_url) }}{% endif -%}
+                  {%- endset %}
+                  {{ item(group.name, body, clamp=false) }}
+                {% endfor %}
+              {% endcall %}
+            {% endcall %}
+          {% endif %}
+
+          {% if docs.servers %}
+            {#
+              Shown, not selected. Swagger's server dropdown chooses where its
+              `fetch()` goes; this console replays in-process against the app
+              answering right now, so a dropdown here would be a control that
+              changes nothing. The list is still worth printing — it is where a
+              real client is meant to point.
+            #}
+            {% call card("Servers", "Where a client sends. Try it always goes to this app.") %}
+              {% call item_list() %}
+                {% for server in docs.servers %}
+                  {{ item(server.url, server.description or none, clamp=false) }}
+                {% endfor %}
+              {% endcall %}
+            {% endcall %}
+          {% endif %}
+
+          {% if docs.schemes %}
+            {% call card("Security schemes", "What the document says. Not always the whole story.") %}
+              {% call stack(gap=3) %}
+                {% call item_list() %}
+                  {% for scheme in docs.schemes %}
+                    {{ item(scheme.name,
+                            scheme.type ~ (" · " ~ scheme.detail if scheme.detail else "")
+                                        ~ (" — " ~ scheme.description if scheme.description else ""),
+                            clamp=false) }}
+                  {% endfor %}
+                {% endcall %}
+                <p class="text-muted-foreground text-xs">
+                  OpenAPI can only describe an API key, an HTTP scheme, OAuth2 or OpenID Connect.
+                  A session cookie issued by your own login is none of those, so it will not appear
+                  here even when it is the thing that actually authenticates every call.
+                </p>
+              {% endcall %}
+            {% endcall %}
+          {% endif %}
+
+          {% if docs.models %}
+            {#
+              The types, on the landing page as well as in the sidebar. The
+              sidebar is for someone who knows the name; this is for someone
+              finding out that the section exists.
+            #}
+            {% call section("Schemas", "The types this API exchanges — what every generated client is built from.") %}
+              <div class="flex flex-wrap items-center gap-2">
+                {% for entry in docs.models %}
+                  <a class="btn" data-variant="outline" data-size="sm"
+                     href="{{ url_for(request, routes.model, model_slug=entry.slug) }}"
+                     hx-get="{{ url_for(request, routes.model, model_slug=entry.slug) }}"
+                     hx-target="#{{ ids.detail }}" hx-swap="outerHTML" hx-push-url="true">{{ entry.name }}</a>
+                {% endfor %}
+              </div>
+            {% endcall %}
+          {% endif %}
+        {% endcall %}
+      </div>
+    {% endif %}
+
+  {% endcall %}
+{% endblock %}

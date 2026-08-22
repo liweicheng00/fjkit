@@ -225,3 +225,92 @@
     </div>
   </div>
 {%- endmacro %}
+
+{#
+  alert(title, body, variant, icon_name)
+
+  Basecoat's alert is four optional slots under one `.alert` root: an icon, a
+  heading, a `<section>` of prose, and a `<footer>` of actions. The footer is
+  positioned absolutely against the root, which is why actions arrive through
+  `{% call %}` rather than as a parameter — a caller block is the only shape
+  that lets a button carry its own `hx-*` attributes.
+
+  `variant` is Basecoat's own `data-variant` plus the three fjkit adds in
+  `fjkit.css`, so the vocabulary matches `badge` exactly. The icon is chosen
+  from the variant when the caller does not name one: an alert that says
+  "destructive" and shows a tick is worse than no icon at all.
+#}
+{% set _ALERT_ICONS = {
+  "destructive": "circle-alert",
+  "success": "circle-check",
+  "warning": "triangle-alert",
+  "info": "info",
+} %}
+
+{% macro alert(title, body=none, variant="", icon_name=none) -%}
+  {%- set glyph = icon_name if icon_name is not none else _ALERT_ICONS.get(variant) -%}
+  <div class="alert"
+       {%- if variant %} data-variant="{{ variant }}"{% endif %}
+       {#
+         `alert` for destructive, `status` for the rest. The difference is that
+         a screen reader interrupts for the first and waits for a pause on the
+         second — which is the whole distinction the variant already draws.
+       #}
+       role="{{ "alert" if variant == "destructive" else "status" }}"
+       {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if glyph %}{{ icon(glyph, 16) }}{% endif %}
+    <h2>{{ title }}</h2>
+    {%- if body %}<section>{{ body }}</section>{% endif %}
+    {%- if caller is defined %}<footer>{{ caller() }}</footer>{% endif %}
+  </div>
+{%- endmacro %}
+
+{#
+  skeleton(shape, width, lines)
+
+  Upstream's skeleton is a bare `.skeleton` sized by whatever utilities the
+  caller writes — `h-4 w-[150px]`, `size-10 rounded-full`. An app template
+  cannot write those (A2), so the sizes are the parameter: `shape` picks the
+  geometry and `width` picks one of five fractions. Both are closed lookups,
+  which is also what keeps the classes in the stylesheet — Tailwind scans this
+  file's text, and an interpolated `w-{{ width }}` would be absent from the
+  build while still rendering happily.
+
+  `lines` > 1 renders a paragraph, with the last line short. That is the shape
+  real text has, and a placeholder that ignores it reads as a table.
+#}
+{% set _SKELETON_SHAPES = {
+  "text": "h-4 rounded-md",
+  "heading": "h-6 rounded-md",
+  "control": "h-9 rounded-md",
+  "avatar": "size-10 shrink-0 rounded-full",
+  "block": "aspect-video rounded-lg",
+} %}
+{% set _SKELETON_WIDTHS = {
+  "full": "w-full",
+  "three-quarters": "w-3/4",
+  "half": "w-1/2",
+  "third": "w-1/3",
+  "quarter": "w-1/4",
+} %}
+
+{% macro skeleton(shape="text", width="full", lines=1, label=none) -%}
+  {%- set geometry = _SKELETON_SHAPES.get(shape, _SKELETON_SHAPES["text"]) -%}
+  {%- set span = _SKELETON_WIDTHS.get(width, "w-full") -%}
+  {#
+    One `role="status"` on the group, not on every bar: a placeholder made of
+    six bars is one thing loading, and six live regions would be announced six
+    times. `aria-hidden` on the bars keeps their emptiness out of the tree.
+  #}
+  <div role="status"{% if label %} aria-label="{{ label }}"{% else %} aria-label="Loading"{% endif %}
+       class="flex flex-col gap-2"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- for line in range(lines) %}
+      {#
+        The last line of a multi-line block is short, so the paragraph ends
+        where a paragraph ends rather than squaring off.
+      #}
+      <div aria-hidden="true"
+           class="skeleton {{ geometry }} {{ "w-3/4" if lines > 1 and loop.last else span }}"></div>
+    {%- endfor %}
+  </div>
+{%- endmacro %}

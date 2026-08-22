@@ -13,6 +13,11 @@
   {"id": "layout",     "title": "版面：stack、row、grid、split"},
   {"id": "structure",  "title": "page_header、section、divider"},
   {"id": "display",    "title": "empty_state、metric_group、清單"},
+  {"id": "feedback",   "title": "回饋：alert、spinner、skeleton、dialog"},
+  {"id": "content",    "title": "內容：avatar、item_list、code_block、breadcrumb"},
+  {"id": "disclosure", "title": "顯示與收合：tabs、collapsible、tooltip"},
+  {"id": "overlay",    "title": "浮層：popover、選單、select、drawer、command"},
+  {"id": "fields",     "title": "剩下的兩個欄位"},
   {"id": "icons",      "title": "icon()：任何 Lucide 名字，直接內嵌"},
   {"id": "cheatsheet", "title": "ui/ 裡的每個 macro，按檔案列"},
 ] %}
@@ -151,8 +156,122 @@
   {% endcall %}
 
   {# ============================================================== 05 #}
-  {% set c05 %}1,767 個名字，沒有 sprite sheet，沒有 icon font，一個請求都不用發。{% endset %}
-  {% call lesson("icons", "05", "icon()：任何 Lucide 名字，直接內嵌", c05) %}
+  {% set c05 %}四種說「等一下」「好了」和「這件事沒成功」的方式。{% endset %}
+  {% call lesson("feedback", "05", "回饋：alert、spinner、skeleton、dialog", c05) %}
+    {% call prose() %}
+      <p>
+        這四個的差別在<em>誰在等、等什麼</em>，挑哪一個也是照這條分。<code>alert</code> 是一件留在頁面上的事實。
+        <code>spinner</code> 和 <code>skeleton</code> 都表示「還沒好」，選哪一個取決於你知不知道等一下會出現什麼形狀：
+        skeleton 把那個形狀畫出來，spinner 承認你畫不出來。<code>dialog</code> 則是打斷。
+      </p>
+      <p>
+        其中兩個替你做了無障礙的決定。<code>alert(variant="destructive")</code> 會拿到
+        <code>role="alert"</code>，那會打斷螢幕閱讀器正在唸的句子；其餘每個 variant 都是
+        <code>role="status"</code>，會等到一個停頓。而多行的 <code>skeleton</code> 是<strong>一個</strong>
+        即時區域而不是六個——六根長條是一件事在載入，不是六件。
+      </p>
+    {% endcall %}
+
+    {{ showcase("alert", "alert(title, body, variant, icon_name) · 區塊 = 動作") }}
+    {{ showcase("spinner", "spinner(size, tone, label, indicator)") }}
+    {{ showcase("skeleton", "skeleton(shape, width, lines)") }}
+    {{ showcase("dialog", "dialog(id, title, description, size, footer) · 區塊") }}
+  {% endcall %}
+
+  {# ============================================================== 06 #}
+  {% set c06 %}承載一個人、一則定義、一段程式或一條路徑的那幾個。{% endset %}
+  {% call lesson("content", "06", "內容：avatar、item_list、code_block、breadcrumb", c06) %}
+    {% call prose() %}
+      <p>
+        <code>avatar</code> 是值得先讀簽名的那一個。名字同時是 <code>alt</code> 文字和退回時的縮寫，
+        所以兩者不可能互相矛盾；而且一旦有圖片承載了名字，縮寫就會退出無障礙樹——否則同一個人會被唸兩次，
+        一次是正常的，一次是兩個沒頭沒尾的字母。
+      </p>
+      <p>
+        <code>breadcrumb</code> 收的是 <code>(label, href)</code> 成對的清單，其中 href 為 none 的那一項
+        <em>就是</em>當前頁。這是刻意的：這個元件最常見的做錯方式，就是麵包屑最後一項連到你已經在看的這一頁——
+        而參數的形狀讓那件事根本寫不出來。
+      </p>
+    {% endcall %}
+
+    {{ showcase("avatar", "avatar(name, src, size, badge_tone) · avatar_group(overflow)") }}
+    {{ showcase("item_list", "item_list() / item(term, clamp) · 區塊") }}
+    {{ showcase("code_block", "code_block(source, label, wrap)") }}
+    {{ showcase("breadcrumb", "breadcrumb(trail, separator) · none = 當前頁") }}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set c07 %}三個收合元件，中間沒有一行 fjkit 自己的 JavaScript。{% endset %}
+  {% call lesson("disclosure", "07", "顯示與收合：tabs、collapsible、tooltip", c07) %}
+    {% call prose() %}
+      <p>
+        <code>collapsible</code> 是原生的 <code>&lt;details&gt;</code>：開合狀態、鍵盤操作、disclosure 角色
+        全部來自那個元素，Basecoat 用 CSS 替它加動畫。<code>tooltip</code> 完全畫自一個
+        <code>data-tooltip</code> 屬性——根本不存在第二個元素。<code>tabs</code> 是 Basecoat 的，外殼已經載好了。
+      </p>
+      <p>
+        tooltip 的機制有一個後果要講白：CSS <code>content()</code> 從來不會進無障礙樹。
+        tooltip 是<em>提示</em>，永遠不能是一個控制項唯一的標籤。當 tooltip 是那個控制項身上唯一的文字時，
+        請另外給它 <code>aria_label</code>。
+      </p>
+    {% endcall %}
+
+    {{ showcase("tabs", "tabs(items, label) / tab_panel(id) · 區塊") }}
+    {{ showcase("collapsible", "accordion(multiple) / collapsible(summary, open) · 區塊") }}
+    {{ showcase("tooltip", "tooltip(text, side, align) · 區塊 = 觸發元素") }}
+  {% endcall %}
+
+  {# ============================================================== 08 #}
+  {% set c08 %}一個 id 進去，四個出來——而且對不上時不會出聲。{% endset %}
+  {% call lesson("overlay", "08", "浮層：popover、選單、select、drawer、command", c08) %}
+    {% call prose() %}
+      <p>
+        <code>ui/overlay.html</code> 裡的每一個都由 Basecoat 自己的 JavaScript 驅動，外殼已經載了它，
+        而且它會在 <code>htmx:afterSwap</code> 時重新掃描——所以由 swap 送進來的浮層不需要任何額外處理就能用。
+      </p>
+      <p>
+        它們共同的東西是 <strong>id 接線</strong>。一個觸發元素和它的面板靠四個相關的 id 互相找到對方，
+        錯一個就靜靜地失敗：面板打得開但永遠不會被唸出來，或者根本打不開。這裡每個 macro 都只收一個
+        <code>id</code> 再自己推導其餘的。這就是它們是 macro 而不是一段可以複製的標記的全部理由。
+      </p>
+      <p>
+        <code>select_menu</code> 和 <code>combobox</code> 把值放在一個<strong>預先填好</strong>的隱藏欄位裡——
+        上游出貨的是 <code>value=""</code> 再用 JS 寫進去，那會讓任何重繪這個片段的來回弄丟已經選好的值。
+        這兩個都不如 <code>select_field</code>：原生的 <code>&lt;select&gt;</code> 一開始就是正確的，
+        而且只花一個元素而不是三十個。
+      </p>
+    {% endcall %}
+
+    {{ showcase("popover", "popover(id, label, side, align, width) · 區塊") }}
+    {{ showcase("dropdown_menu", "dropdown_menu(id, label) · menu_item / menu_group / menu_separator") }}
+    {{ showcase("select_menu", "select_menu(name, options, selected)") }}
+    {{ showcase("combobox", "combobox(name, options, selected, empty)") }}
+    {{ showcase("drawer", "drawer(id, title, side) · drawer_trigger(label, target)") }}
+    {{ showcase("command", "command(id, dialog) · command_group / command_item") }}
+  {% endcall %}
+
+  {# ============================================================== 09 #}
+  {% set c09 %}再兩個欄位，形狀跟其他欄位一模一樣。{% endset %}
+  {% call lesson("fields", "09", "剩下的兩個欄位", c09) %}
+    {% call prose() %}
+      <p>
+        每一支欄位 macro 都收同樣的 <code>name</code>、<code>label</code>、<code>hint</code>、
+        <code>error</code>、<code>id</code>，而且 <code>error</code> 是<strong>取代</strong> hint 而不是疊在它上面，
+        同時把控制項標成 <code>aria-invalid</code>。這兩個也一樣；值得知道的是它們各自針對自己的機制做了什麼。
+      </p>
+      <p>
+        <code>range_field</code> 會替第一次繪製寫好軌道已填滿的那一段。Basecoat 是從一個自訂屬性去畫它，
+        而且只在拖曳時才用 JavaScript 更新——沒有這一步，長條會停在上游的預設值，跟旁邊那個數字對不上。
+      </p>
+    {% endcall %}
+
+    {{ showcase("range_field", "range_field(name, label, value, min, max, step, output)") }}
+    {{ showcase("input_group_field", "input_group_field(name, label, start, end)") }}
+  {% endcall %}
+
+  {# ============================================================== 10 #}
+  {% set c10 %}1,767 個名字，沒有 sprite sheet，沒有 icon font，一個請求都不用發。{% endset %}
+  {% call lesson("icons", "10", "icon()：任何 Lucide 名字，直接內嵌", c10) %}
     {% call prose() %}
       <p>
         <code>icon("plus")</code> 會把 Lucide 的路徑當成 <code>&lt;svg&gt;</code> 內嵌進去。
@@ -180,9 +299,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 06 #}
-  {% set c06 %}七個檔案。如果這裡沒有，那就是你還沒找到的某個參數。{% endset %}
-  {% call lesson("cheatsheet", "06", "ui/ 裡的每個 macro，按檔案列", c06) %}
+  {# ============================================================== 11 #}
+  {% set c11 %}十二個檔案。如果這裡沒有，那就是你還沒找到的某個參數。{% endset %}
+  {% call lesson("cheatsheet", "11", "ui/ 裡的每個 macro，按檔案列", c11) %}
     {% call card("packages/fjkit/src/fjkit/templates/ui/", padded=false) %}
       {{ code_block("", id="cheatsheet-code") }}
     {% endcall %}

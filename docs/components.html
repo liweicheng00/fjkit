@@ -11,20 +11,20 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css">
-  <link rel="stylesheet" href="assets/brand.css">
-  <script defer src="assets/vendor/htmx/htmx.min.js"></script>
-  <script defer src="assets/vendor/basecoat/js/all.min.js"></script>
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1787416553">
+  <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
+  <script defer src="assets/vendor/htmx/htmx.min.js?v=1786876367"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1786876367"></script>
   <meta name="description" content="Every fjkit macro with a live preview, the Jinja call that produced it and the HTML it emits — rendered by the kit itself, so a signature here cannot drift from the package.">
   <meta property="og:title" content="fjkit components">
   <meta property="og:description" content="Every fjkit macro with a live preview, the Jinja call that produced it and the HTML it emits — rendered by the kit itself, so a signature here cannot drift from the package.">
   <meta property="og:type" content="article">
-  <script src="assets/mock-server.js"></script>
+  <script src="assets/mock-server.js?v=0.1.0.dev0"></script>
 </head>
 <body class="min-h-full antialiased">
   <aside class="sidebar" id="sidebar" data-side="left"
          aria-hidden="false">
-    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png" width="28" height="28" alt="">
+    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png?v=1787150370" width="28" height="28" alt="">
 fjkit
   </a></header>      <section><div role="group" aria-label="Documentation"><h3>Documentation</h3>    <ul>        <li>
     <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>Introduction</span>
@@ -58,6 +58,26 @@ fjkit
   </li>
         <li>
     <a href="components.html#display">      <span>empty_state, metric_group, lists</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#feedback">      <span>Feedback: alert, spinner, skeleton, dialog</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#content">      <span>Content: avatar, item_list, code_block, breadcrumb</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#disclosure">      <span>Showing and hiding: tabs, collapsible, tooltip</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#overlay">      <span>Overlays: popover, menus, select, drawer, command</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#fields">      <span>The rest of the field set</span>
     </a>
   </li>
         <li>
@@ -277,8 +297,316 @@ fjkit
 </section></div></div>
 <hr class="border-border">
 
-<div id="icons">
+<div id="feedback">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Feedback: alert, spinner, skeleton, dialog</h2><p class="text-muted-foreground text-sm">Four ways of saying "wait", "done" and "that did not work".</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        These four differ in <em>who is waiting and for what</em>, which is also how you pick one.
+        <code>alert</code> is a fact that stays on the page. <code>spinner</code> and
+        <code>skeleton</code> both mean "not yet", and the choice between them is whether you know
+        the shape of what is coming: a skeleton draws that shape, a spinner admits you cannot.
+        <code>dialog</code> interrupts.
+      </p>
+      <p>
+        Two of them make an accessibility decision for you.
+        <code>alert(variant="destructive")</code> takes <code>role="alert"</code>, which interrupts
+        a screen reader mid-sentence; every other variant is <code>role="status"</code>, which
+        waits for a pause. And a multi-line <code>skeleton</code> is one live region, not six —
+        six bars are one thing loading.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>alert(title, body, variant, icon_name) · block = actions</h3>      </div>
+    </header>      <section>    <div data-showcase="alert"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="alert"></pre>
+  <footer data-showcase-caption="alert"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>spinner(size, tone, label, indicator)</h3>      </div>
+    </header>      <section>    <div data-showcase="spinner"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="spinner"></pre>
+  <footer data-showcase-caption="spinner"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>skeleton(shape, width, lines)</h3>      </div>
+    </header>      <section>    <div data-showcase="skeleton"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="skeleton"></pre>
+  <footer data-showcase-caption="skeleton"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>dialog(id, title, description, size, footer) · block</h3>      </div>
+    </header>      <section>    <div data-showcase="dialog"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="dialog"></pre>
+  <footer data-showcase-caption="dialog"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="content">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Content: avatar, item_list, code_block, breadcrumb</h2><p class="text-muted-foreground text-sm">The pieces that carry a person, a definition, a listing or a path.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>avatar</code> is the one to read the signature of. The name is both the
+        <code>alt</code> text and the fallback initials, so the two cannot disagree, and the
+        initials leave the accessibility tree the moment an image carries the name — otherwise the
+        same person is announced twice, once properly and once as two stray letters.
+      </p>
+      <p>
+        <code>breadcrumb</code> takes <code>(label, href)</code> pairs where a null href
+        <em>is</em> the current page. That is deliberate: the usual way this component goes wrong
+        is a trail whose last entry links to the page you are already on, and the shape of the
+        argument makes that unspellable.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>avatar(name, src, size, badge_tone) · avatar_group(overflow)</h3>      </div>
+    </header>      <section>    <div data-showcase="avatar"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="avatar"></pre>
+  <footer data-showcase-caption="avatar"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>item_list() / item(term, clamp) · blocks</h3>      </div>
+    </header>      <section>    <div data-showcase="item_list"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="item_list"></pre>
+  <footer data-showcase-caption="item_list"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>code_block(source, label, wrap)</h3>      </div>
+    </header>      <section>    <div data-showcase="code_block"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="code_block"></pre>
+  <footer data-showcase-caption="code_block"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>breadcrumb(trail, separator) · none = current page</h3>      </div>
+    </header>      <section>    <div data-showcase="breadcrumb"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="breadcrumb"></pre>
+  <footer data-showcase-caption="breadcrumb"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="disclosure">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Showing and hiding: tabs, collapsible, tooltip</h2><p class="text-muted-foreground text-sm">Three disclosures, and not one line of fjkit JavaScript between them.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>collapsible</code> is a native <code>&lt;details&gt;</code>: the open state, the
+        keyboard operation and the disclosure role all come from the element, and Basecoat animates
+        it with CSS. <code>tooltip</code> is drawn entirely from a <code>data-tooltip</code>
+        attribute — no second element exists. <code>tabs</code> is Basecoat's, and the shell
+        already loads it.
+      </p>
+      <p>
+        The tooltip's mechanism has one consequence worth stating plainly: CSS
+        <code>content()</code> is never in the accessibility tree. A tooltip is a <em>hint</em>,
+        never the only label a control has. Give the control an <code>aria_label</code> when the
+        tooltip is the only text on it.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>tabs(items, label) / tab_panel(id) · blocks</h3>      </div>
+    </header>      <section>    <div data-showcase="tabs"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tabs"></pre>
+  <footer data-showcase-caption="tabs"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>accordion(multiple) / collapsible(summary, open) · blocks</h3>      </div>
+    </header>      <section>    <div data-showcase="collapsible"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="collapsible"></pre>
+  <footer data-showcase-caption="collapsible"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>tooltip(text, side, align) · block = the trigger</h3>      </div>
+    </header>      <section>    <div data-showcase="tooltip"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tooltip"></pre>
+  <footer data-showcase-caption="tooltip"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="overlay">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Overlays: popover, menus, select, drawer, command</h2><p class="text-muted-foreground text-sm">One id in, four out — and a mismatch fails without a word.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Everything in <code>ui/overlay.html</code> is driven by Basecoat's own JavaScript, which
+        the shell already loads and which re-scans on <code>htmx:afterSwap</code> — so an overlay
+        that arrives in a swap works with nothing extra.
+      </p>
+      <p>
+        What they share is <strong>id wiring</strong>. A trigger and its panel find each other
+        through four related ids, and getting one wrong fails silently: the panel opens but is
+        never announced, or never opens at all. Every macro here takes one <code>id</code> and
+        derives the rest. That is the whole reason they are macros rather than markup to copy.
+      </p>
+      <p>
+        <code>select_menu</code> and <code>combobox</code> put their value in a hidden input,
+        pre-filled — upstream ships <code>value=""</code> and writes it from JS, which loses the
+        selection on any round trip that re-renders the fragment. Prefer
+        <code>select_field</code> to either: a native <code>&lt;select&gt;</code> is correct for
+        free and costs one element instead of thirty.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>popover(id, label, side, align, width) · block</h3>      </div>
+    </header>      <section>    <div data-showcase="popover"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="popover"></pre>
+  <footer data-showcase-caption="popover"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>dropdown_menu(id, label) · menu_item / menu_group / menu_separator</h3>      </div>
+    </header>      <section>    <div data-showcase="dropdown_menu"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="dropdown_menu"></pre>
+  <footer data-showcase-caption="dropdown_menu"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>select_menu(name, options, selected)</h3>      </div>
+    </header>      <section>    <div data-showcase="select_menu"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="select_menu"></pre>
+  <footer data-showcase-caption="select_menu"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>combobox(name, options, selected, empty)</h3>      </div>
+    </header>      <section>    <div data-showcase="combobox"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="combobox"></pre>
+  <footer data-showcase-caption="combobox"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>drawer(id, title, side) · drawer_trigger(label, target)</h3>      </div>
+    </header>      <section>    <div data-showcase="drawer"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="drawer"></pre>
+  <footer data-showcase-caption="drawer"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>command(id, dialog) · command_group / command_item</h3>      </div>
+    </header>      <section>    <div data-showcase="command"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="command"></pre>
+  <footer data-showcase-caption="command"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="fields">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">The rest of the field set</h2><p class="text-muted-foreground text-sm">Two more fields, on the same five-parameter shape as the rest.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Every field macro takes the same <code>name</code>, <code>label</code>, <code>hint</code>,
+        <code>error</code> and <code>id</code>, and <code>error</code> replaces the hint rather
+        than stacking on it while marking the control <code>aria-invalid</code>. These two are no
+        different; what is worth knowing is what each one does <em>about</em> its mechanism.
+      </p>
+      <p>
+        <code>range_field</code> writes the filled part of the track for the first paint. Basecoat
+        paints it from a custom property and only updates it from JavaScript on drag, so without
+        that the bar sits at upstream's default and disagrees with the number beside it.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>range_field(name, label, value, min, max, step, output)</h3>      </div>
+    </header>      <section>    <div data-showcase="range_field"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="range_field"></pre>
+  <footer data-showcase-caption="range_field"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>input_group_field(name, label, start, end)</h3>      </div>
+    </header>      <section>    <div data-showcase="input_group_field"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="input_group_field"></pre>
+  <footer data-showcase-caption="input_group_field"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="icons">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">icon(): any Lucide name, inlined</h2><p class="text-muted-foreground text-sm">1,767 names, no sprite sheet, no icon font, no request.</p>      </div>
@@ -312,10 +640,10 @@ fjkit
 <hr class="border-border">
 
 <div id="cheatsheet">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Every macro in ui/, by file</h2><p class="text-muted-foreground text-sm">Seven files. If it isn't here, it's a parameter you haven't found yet.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Every macro in ui/, by file</h2><p class="text-muted-foreground text-sm">Twelve files. If it isn't here, it's a parameter you haven't found yet.</p>      </div>
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>packages/fjkit/src/fjkit/templates/ui/</h3>      </div>
@@ -356,8 +684,8 @@ fjkit
   </div>
 
 <div id="toaster" class="toaster" data-align="end"></div>
-  <script defer src="assets/data.js"></script>
-  <script defer src="assets/common.js"></script>
-  <script defer src="assets/components.js"></script>
+  <script defer src="assets/data.js?v=0.1.0.dev0"></script>
+  <script defer src="assets/common.js?v=0.1.0.dev0"></script>
+  <script defer src="assets/components.js?v=0.1.0.dev0"></script>
 </body>
 </html>

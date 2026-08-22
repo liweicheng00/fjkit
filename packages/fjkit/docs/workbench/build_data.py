@@ -178,8 +178,12 @@ tables = {
     ),
 }
 
-FORM = '{% from "ui/form.html" import form, field_row, text_field, select_field %}'
+FORM = (
+    '{% from "ui/form.html" import form, field_row, text_field, select_field,'
+    ' textarea_field, checkbox_field, switch_field, radio_group, fieldset %}'
+)
 PRIORITIES = '[("low", "Low"), ("normal", "Normal"), ("high", "High")]'
+OWNERS = '[("ana", "Ana"), ("kai", "Kai"), ("unassigned", "Unassigned")]'
 forms = {
     "board": render(
         f'{FORM}{BUTTON}{{% call form(action="/tasks", target="#board", reset_on_success=true) %}}'
@@ -196,6 +200,43 @@ forms = {
         f'error="Give the task a title.") }}}}'
         f'{{{{ text_field("owner", label="Owner", value="ana", hint="Leave blank for unassigned.") }}}}'
         f"{{% endcall %}}{{% endcall %}}"
+    ),
+    #: The three controls a create form runs out of `text_field` for. Stacked
+    #: rather than in a `field_row`, because a textarea and a checkbox want
+    #: different widths and a grid would give them the same one.
+    "long": render(
+        f'{FORM}{LAYOUT}{BUTTON}{{% call form(card=true) %}}{{% call stack(4) %}}'
+        f'{{{{ textarea_field("notes", label="Notes", placeholder="What changed, and why?", '
+        f'hint="Grows with what you type — no rows to guess at.") }}}}'
+        f'{{{{ checkbox_field("blocked", label="Blocked on something else", '
+        f'hint="Shows a marker on the board.") }}}}'
+        f'{{% call row(justify="end") %}}'
+        f'{{{{ button("Save", variant="primary", type="submit") }}}}'
+        f"{{% endcall %}}{{% endcall %}}{{% endcall %}}"
+    ),
+    #: Radios and a select over the same `options` list, side by side. The point
+    #: of the pair is that swapping one for the other is a one-word edit.
+    "choice": render(
+        f'{FORM}{LAYOUT}{{% call form(card=true) %}}{{% call field_row("two") %}}'
+        f'{{{{ radio_group("priority", label="Priority", options={PRIORITIES}, '
+        f'selected="normal", hint="Three options — show them all.") }}}}'
+        f'{{{{ select_field("owner", label="Owner", options={OWNERS}, selected="ana", '
+        f'hint="Twelve of them — collapse the list.") }}}}'
+        f"{{% endcall %}}{{% endcall %}}"
+    ),
+    #: A settings panel: switches grouped by subject, each group a real
+    #: <fieldset> so the legend belongs to the controls under it.
+    "settings": render(
+        f'{FORM}{LAYOUT}{{% call form(card=true) %}}{{% call stack(6) %}}'
+        f'{{% call fieldset("Notifications", hint="Applies to this board only.") %}}'
+        f'{{{{ switch_field("email", label="Email me when a task moves", checked=true) }}}}'
+        f'{{{{ switch_field("digest", label="Weekly digest", '
+        f'hint="Monday morning, one message.") }}}}'
+        f"{{% endcall %}}"
+        f'{{% call fieldset("Danger zone") %}}'
+        f'{{{{ switch_field("archive", label="Archive done tasks nightly", '
+        f'error="Pick a retention window first.") }}}}'
+        f"{{% endcall %}}{{% endcall %}}{{% endcall %}}"
     ),
 }
 
@@ -275,6 +316,140 @@ live = {
     "spinner": render('{% from "ui/icon.html" import icon %}{{ icon("loader-circle", 14) }}'),
 }
 
+# ---------------------------------------------------------------- gallery
+# The macros with nothing to turn: one rendered example each, which is what
+# CHARTER §6 item 8 asks of every component. Rendered here rather than written
+# into components.js for the reason every other preview is — the page must not
+# be able to show markup the kit does not emit.
+FEEDBACK = '{% from "ui/feedback.html" import spinner, dialog, alert, skeleton %}'
+DISCLOSURE = '{% from "ui/disclosure.html" import collapsible, accordion, tooltip %}'
+OVERLAY = (
+    '{% from "ui/overlay.html" import popover, dropdown_menu, menu_item, menu_group,'
+    ' menu_separator, select_menu, combobox, drawer, drawer_trigger, command,'
+    ' command_group, command_item %}'
+)
+NAV = '{% from "ui/nav.html" import breadcrumb %}'
+AVATARS = '{% from "ui/data.html" import avatar, avatar_group %}'
+CONTENT = '{% from "ui/data.html" import code_block, item_list, item %}'
+TABS = '{% from "ui/tabs.html" import tabs, tab_panel %}'
+RANGE = '{% from "ui/form.html" import range_field, input_group_field %}'
+
+gallery = {
+    # -- the six that were owed a rendered example before this batch
+    "spinner": render(
+        f'{FEEDBACK}{LAYOUT}{{% call row(gap=4) %}}'
+        '{{ spinner(size="sm") }}{{ spinner() }}{{ spinner(size="lg", tone="primary") }}'
+        '{{ spinner(label="Saving") }}{% endcall %}'
+    ),
+    "dialog": render(
+        f'{FEEDBACK}{BUTTON}{{% set f %}}{{{{ button("Save", variant="primary") }}}}{{% endset %}}'
+        '{% call dialog("gallery-dialog", "Delete this task?", '
+        '"This cannot be undone.", footer=f) %}'
+        "<p>The task and its history go with it.</p>{% endcall %}"
+    ),
+    "tabs": render(
+        f'{TABS}{{% call tabs([{{"id": "g-a", "label": "Overview"}}, '
+        '{"id": "g-b", "label": "Activity"}], label="Task") %}'
+        '{% call tab_panel("g-a") %}<p>What the task is.</p>{% endcall %}'
+        '{% call tab_panel("g-b") %}<p>What has happened to it.</p>{% endcall %}'
+        "{% endcall %}"
+    ),
+    "code_block": render(
+        f'{CONTENT}{{{{ code_block("{{{{ button(\'Add\', variant=\'primary\') }}}}", label="Jinja") }}}}'
+    ),
+    "item_list": render(
+        f"{CONTENT}{{% call item_list() %}}"
+        '{% call item("Closed vocabulary") %}Every class an app may write.{% endcall %}'
+        '{% call item("Prebuilt CSS") %}Compiled when fjkit is released.{% endcall %}'
+        "{% endcall %}"
+    ),
+    # -- the batch that closes the Basecoat gap
+    "alert": render(
+        f'{FEEDBACK}{LAYOUT}{{% call stack(3) %}}'
+        '{{ alert("Account updated", "Your changes are live.", variant="success") }}'
+        '{{ alert("Payment failed", "Check the card and try again.", variant="destructive") }}'
+        "{% endcall %}"
+    ),
+    "skeleton": render(
+        f'{FEEDBACK}{LAYOUT}{{% call row(gap=4) %}}'
+        '{{ skeleton(shape="avatar") }}'
+        '{% call stack(2) %}{{ skeleton(lines=3) }}{% endcall %}'
+        "{% endcall %}"
+    ),
+    "breadcrumb": render(
+        f'{NAV}{{{{ breadcrumb([("Board", "#"), ("Tasks", "#"), ("Ship the vocabulary", none)]) }}}}'
+    ),
+    "avatar": render(
+        f'{AVATARS}{LAYOUT}{{% call row(gap=4) %}}'
+        '{{ avatar("Ana Ruiz", badge_tone="success") }}'
+        '{{ avatar("Kai Ito", size="lg") }}'
+        '{% call avatar_group(overflow=3) %}'
+        '{{ avatar("Ana Ruiz") }}{{ avatar("Kai Ito") }}{{ avatar("Noor Haddad") }}'
+        "{% endcall %}{% endcall %}"
+    ),
+    "range_field": render(f'{RANGE}{{{{ range_field("weight", "Weight", value=40, output=true) }}}}'),
+    "input_group_field": render(
+        f'{RANGE}{ICON_IMPORT}{{% set glyph %}}{{{{ icon("search", 16) }}}}{{% endset %}}'
+        '{{ input_group_field("q", "Search", placeholder="Type a name…", '
+        'start=glyph, end="12 results") }}'
+    ),
+    "collapsible": render(
+        f'{DISCLOSURE}{{% call accordion() %}}'
+        '{% call collapsible("Does it need Node?", open=true) %}'
+        "<p>No. The stylesheet is compiled when fjkit is released.</p>{% endcall %}"
+        '{% call collapsible("Can I edit a component?") %}'
+        "<p>Yes — <code>fjkit eject</code> copies it into your app.</p>{% endcall %}"
+        "{% endcall %}"
+    ),
+    "tooltip": render(
+        f'{DISCLOSURE}{BUTTON}{{% call tooltip("Saves without leaving the page") %}}'
+        '{{ button("Save", variant="outline") }}{% endcall %}'
+    ),
+    "popover": render(
+        f'{OVERLAY}{LAYOUT}{{% call popover("g-pop", "Dimensions") %}}'
+        "<header><h4>Dimensions</h4><p>Set the size of the layer.</p></header>{% endcall %}"
+    ),
+    "dropdown_menu": render(
+        f'{OVERLAY}{{% call dropdown_menu("g-menu", "Account") %}}'
+        '{% call menu_group("My account") %}'
+        '{{ menu_item("Profile", shortcut="⇧⌘P") }}'
+        '{{ menu_item("Billing", shortcut="⌘B") }}'
+        "{% endcall %}"
+        "{{ menu_separator() }}"
+        '{% call menu_group() %}'
+        '{{ menu_item("Wrap long lines", checked=true) }}'
+        '{{ menu_item("API", disabled=true) }}'
+        "{% endcall %}"
+        "{{ menu_separator() }}"
+        '{{ menu_item("Log out", variant="destructive") }}'
+        "{% endcall %}"
+    ),
+    "select_menu": render(
+        f'{OVERLAY}{{{{ select_menu("theme", [("light", "Light"), ("dark", "Dark"), '
+        '("system", "System")], selected="dark", label="Theme") }}'
+    ),
+    "combobox": render(
+        f'{OVERLAY}{{{{ combobox("framework", [("next", "Next.js"), ("astro", "Astro"), '
+        '("remix", "Remix")], placeholder="Select a framework", label="Framework") }}'
+    ),
+    "drawer": render(
+        f'{OVERLAY}{{{{ drawer_trigger("Open drawer", "g-drawer") }}}}'
+        '{% call drawer("g-drawer", "Move goal", "Set your daily target.") %}'
+        "<p>350 calories a day.</p>{% endcall %}"
+    ),
+    "command": render(
+        f'{OVERLAY}{{% call command("g-command") %}}'
+        '{% call command_group("Suggestions") %}'
+        '{{ command_item("Calendar", keywords="date event schedule", icon_name="circle-dot") }}'
+        '{{ command_item("Search tasks", keywords="find filter", icon_name="search", shortcut="⌘K") }}'
+        "{% endcall %}"
+        '{% call command_group("Settings") %}'
+        '{{ command_item("Profile", icon_name="pencil") }}'
+        '{{ command_item("Billing", disabled=true) }}'
+        "{% endcall %}{% endcall %}"
+    ),
+}
+
 # ---------------------------------------------------------------- vocabulary
 vocab = {
     "component_classes": sorted(component_classes()),
@@ -294,6 +469,7 @@ OUT.write_text(
             "tables": tables,
             "forms": forms,
             "live": live,
+            "gallery": gallery,
             "icons": ICONS,
             "vocab": vocab,
         },

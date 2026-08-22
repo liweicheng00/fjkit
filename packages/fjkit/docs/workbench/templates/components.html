@@ -9,6 +9,11 @@
   {"id": "layout",     "title": "Layout: stack, row, grid, split"},
   {"id": "structure",  "title": "page_header, section, divider"},
   {"id": "display",    "title": "empty_state, metric_group, lists"},
+  {"id": "feedback",   "title": "Feedback: alert, spinner, skeleton, dialog"},
+  {"id": "content",    "title": "Content: avatar, item_list, code_block, breadcrumb"},
+  {"id": "disclosure", "title": "Showing and hiding: tabs, collapsible, tooltip"},
+  {"id": "overlay",    "title": "Overlays: popover, menus, select, drawer, command"},
+  {"id": "fields",     "title": "The rest of the field set"},
   {"id": "icons",      "title": "icon(): any Lucide name, inlined"},
   {"id": "cheatsheet", "title": "Every macro in ui/, by file"},
 ] %}
@@ -149,8 +154,135 @@
   {% endcall %}
 
   {# ============================================================== 05 #}
-  {% set c05 %}1,767 names, no sprite sheet, no icon font, no request.{% endset %}
-  {% call lesson("icons", "05", "icon(): any Lucide name, inlined", c05) %}
+  {% set c05 %}Four ways of saying "wait", "done" and "that did not work".{% endset %}
+  {% call lesson("feedback", "05", "Feedback: alert, spinner, skeleton, dialog", c05) %}
+    {% call prose() %}
+      <p>
+        These four differ in <em>who is waiting and for what</em>, which is also how you pick one.
+        <code>alert</code> is a fact that stays on the page. <code>spinner</code> and
+        <code>skeleton</code> both mean "not yet", and the choice between them is whether you know
+        the shape of what is coming: a skeleton draws that shape, a spinner admits you cannot.
+        <code>dialog</code> interrupts.
+      </p>
+      <p>
+        Two of them make an accessibility decision for you.
+        <code>alert(variant="destructive")</code> takes <code>role="alert"</code>, which interrupts
+        a screen reader mid-sentence; every other variant is <code>role="status"</code>, which
+        waits for a pause. And a multi-line <code>skeleton</code> is one live region, not six —
+        six bars are one thing loading.
+      </p>
+    {% endcall %}
+
+    {{ showcase("alert", "alert(title, body, variant, icon_name) · block = actions") }}
+    {{ showcase("spinner", "spinner(size, tone, label, indicator)") }}
+    {{ showcase("skeleton", "skeleton(shape, width, lines)") }}
+    {{ showcase("dialog", "dialog(id, title, description, size, footer) · block") }}
+  {% endcall %}
+
+  {# ============================================================== 06 #}
+  {% set c06 %}The pieces that carry a person, a definition, a listing or a path.{% endset %}
+  {% call lesson("content", "06", "Content: avatar, item_list, code_block, breadcrumb", c06) %}
+    {% call prose() %}
+      <p>
+        <code>avatar</code> is the one to read the signature of. The name is both the
+        <code>alt</code> text and the fallback initials, so the two cannot disagree, and the
+        initials leave the accessibility tree the moment an image carries the name — otherwise the
+        same person is announced twice, once properly and once as two stray letters.
+      </p>
+      <p>
+        <code>breadcrumb</code> takes <code>(label, href)</code> pairs where a null href
+        <em>is</em> the current page. That is deliberate: the usual way this component goes wrong
+        is a trail whose last entry links to the page you are already on, and the shape of the
+        argument makes that unspellable.
+      </p>
+    {% endcall %}
+
+    {{ showcase("avatar", "avatar(name, src, size, badge_tone) · avatar_group(overflow)") }}
+    {{ showcase("item_list", "item_list() / item(term, clamp) · blocks") }}
+    {{ showcase("code_block", "code_block(source, label, wrap)") }}
+    {{ showcase("breadcrumb", "breadcrumb(trail, separator) · none = current page") }}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set c07 %}Three disclosures, and not one line of fjkit JavaScript between them.{% endset %}
+  {% call lesson("disclosure", "07", "Showing and hiding: tabs, collapsible, tooltip", c07) %}
+    {% call prose() %}
+      <p>
+        <code>collapsible</code> is a native <code>&lt;details&gt;</code>: the open state, the
+        keyboard operation and the disclosure role all come from the element, and Basecoat animates
+        it with CSS. <code>tooltip</code> is drawn entirely from a <code>data-tooltip</code>
+        attribute — no second element exists. <code>tabs</code> is Basecoat's, and the shell
+        already loads it.
+      </p>
+      <p>
+        The tooltip's mechanism has one consequence worth stating plainly: CSS
+        <code>content()</code> is never in the accessibility tree. A tooltip is a <em>hint</em>,
+        never the only label a control has. Give the control an <code>aria_label</code> when the
+        tooltip is the only text on it.
+      </p>
+    {% endcall %}
+
+    {{ showcase("tabs", "tabs(items, label) / tab_panel(id) · blocks") }}
+    {{ showcase("collapsible", "accordion(multiple) / collapsible(summary, open) · blocks") }}
+    {{ showcase("tooltip", "tooltip(text, side, align) · block = the trigger") }}
+  {% endcall %}
+
+  {# ============================================================== 08 #}
+  {% set c08 %}One id in, four out — and a mismatch fails without a word.{% endset %}
+  {% call lesson("overlay", "08", "Overlays: popover, menus, select, drawer, command", c08) %}
+    {% call prose() %}
+      <p>
+        Everything in <code>ui/overlay.html</code> is driven by Basecoat's own JavaScript, which
+        the shell already loads and which re-scans on <code>htmx:afterSwap</code> — so an overlay
+        that arrives in a swap works with nothing extra.
+      </p>
+      <p>
+        What they share is <strong>id wiring</strong>. A trigger and its panel find each other
+        through four related ids, and getting one wrong fails silently: the panel opens but is
+        never announced, or never opens at all. Every macro here takes one <code>id</code> and
+        derives the rest. That is the whole reason they are macros rather than markup to copy.
+      </p>
+      <p>
+        <code>select_menu</code> and <code>combobox</code> put their value in a hidden input,
+        pre-filled — upstream ships <code>value=""</code> and writes it from JS, which loses the
+        selection on any round trip that re-renders the fragment. Prefer
+        <code>select_field</code> to either: a native <code>&lt;select&gt;</code> is correct for
+        free and costs one element instead of thirty.
+      </p>
+    {% endcall %}
+
+    {{ showcase("popover", "popover(id, label, side, align, width) · block") }}
+    {{ showcase("dropdown_menu", "dropdown_menu(id, label) · menu_item / menu_group / menu_separator") }}
+    {{ showcase("select_menu", "select_menu(name, options, selected)") }}
+    {{ showcase("combobox", "combobox(name, options, selected, empty)") }}
+    {{ showcase("drawer", "drawer(id, title, side) · drawer_trigger(label, target)") }}
+    {{ showcase("command", "command(id, dialog) · command_group / command_item") }}
+  {% endcall %}
+
+  {# ============================================================== 09 #}
+  {% set c09 %}Two more fields, on the same five-parameter shape as the rest.{% endset %}
+  {% call lesson("fields", "09", "The rest of the field set", c09) %}
+    {% call prose() %}
+      <p>
+        Every field macro takes the same <code>name</code>, <code>label</code>, <code>hint</code>,
+        <code>error</code> and <code>id</code>, and <code>error</code> replaces the hint rather
+        than stacking on it while marking the control <code>aria-invalid</code>. These two are no
+        different; what is worth knowing is what each one does <em>about</em> its mechanism.
+      </p>
+      <p>
+        <code>range_field</code> writes the filled part of the track for the first paint. Basecoat
+        paints it from a custom property and only updates it from JavaScript on drag, so without
+        that the bar sits at upstream's default and disagrees with the number beside it.
+      </p>
+    {% endcall %}
+
+    {{ showcase("range_field", "range_field(name, label, value, min, max, step, output)") }}
+    {{ showcase("input_group_field", "input_group_field(name, label, start, end)") }}
+  {% endcall %}
+
+  {# ============================================================== 10 #}
+  {% set c10 %}1,767 names, no sprite sheet, no icon font, no request.{% endset %}
+  {% call lesson("icons", "10", "icon(): any Lucide name, inlined", c10) %}
     {% call prose() %}
       <p>
         <code>icon("plus")</code> inlines the Lucide path as an <code>&lt;svg&gt;</code>. It
@@ -178,9 +310,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 06 #}
-  {% set c06 %}Seven files. If it isn't here, it's a parameter you haven't found yet.{% endset %}
-  {% call lesson("cheatsheet", "06", "Every macro in ui/, by file", c06) %}
+  {# ============================================================== 11 #}
+  {% set c11 %}Twelve files. If it isn't here, it's a parameter you haven't found yet.{% endset %}
+  {% call lesson("cheatsheet", "11", "Every macro in ui/, by file", c11) %}
     {% call card("packages/fjkit/src/fjkit/templates/ui/", padded=false) %}
       {{ code_block("", id="cheatsheet-code") }}
     {% endcall %}

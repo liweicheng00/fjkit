@@ -15,6 +15,7 @@
   {"id": "rules",    "title": "Order, collisions, and limits"},
   {"id": "auth",     "title": "The auth plugin"},
   {"id": "write",    "title": "The flash plugin"},
+  {"id": "apidocs",  "title": "The API console"},
 ] %}
 
 {% block content %}
@@ -124,6 +125,13 @@ mount_fjkit(app, config)", label="app/main.py") }}
         And <code>provides=</code> is required rather than inferred. Without it, two plugins quietly
         fighting over <code>user</code> is discoverable only by rendering a page and noticing. With
         it, the clash is a startup error naming both.
+      </p>
+      <p>
+        <code>add_template_dir()</code> is how a plugin that ships UI ships it — section 07 is the
+        worked example. One thing goes with it: the Tailwind build scans an explicit list of
+        directories in <code>fjkit.css</code>, so a plugin inside the kit adds its template
+        directory to that list. Miss it and nothing fails — the templates render, every utility
+        class in them is absent from the stylesheet, and the page just looks broken.
       </p>
     {% endcall %}
   {% endcall %}
@@ -311,6 +319,93 @@ def _read(self, request: Request) -> dict[str, object]:
       ("name", "a str attribute — required, and the only one"),
       ("mount / extend", "implement either, both, or neither; missing ones are simply not called"),
       ("no base class", "Plugin is a Protocol, so a plugin never imports fjkit to be one"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set t07 %}Sign in on the page, and every call below goes out as you.{% endset %}
+  {% call lesson("apidocs", "07", "The API console", t07, tag="fjkit.apidocs") %}
+    {% call prose() %}
+      <p>
+        Swagger UI's <em>Authorize</em> dialog can only express what an OpenAPI document can
+        describe: an API key, an HTTP scheme, an OAuth2 flow. An app whose sessions are section 05's
+        — a signed <code>HttpOnly</code> cookie over a server-side token — is none of those. And its
+        <em>Try it out</em> could not send one anyway: it runs <code>fetch()</code> in the browser,
+        and that cookie is precisely the one JavaScript may not read.
+      </p>
+      <p>
+        So both halves move to the server. Signing in is a Python object your app supplies, which
+        for a <code>fjkit.auth</code> app is the same <code>TokenSource</code> your login page
+        already calls. Sending a request is an in-process replay through your own app, carrying the
+        caller's own cookie through the whole middleware stack — so token refresh, revocation and
+        the Origin check are the ones you already wrote, not a second implementation living in a
+        docs page.
+      </p>
+    {% endcall %}
+
+    {{ code("docs = ApiDocsPlugin(title=\"Board API\", home_url=\"/\")
+
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        That is the whole of the wiring. No route to write, no template to render, no static file to
+        serve: the plugin brings its own router, its own templates, and finds the
+        <code>AuthPlugin</code> in the same <code>plugins</code> tuple to wire the sign-in panel to.
+        Pass <code>flow=</code> instead when the app authenticates some other way, and
+        <code>FastAPI(docs_url=None, redoc_url=None)</code> when you want only this one.
+      </p>
+    {% endcall %}
+
+    {% call stage("The half Swagger cannot do", "Both read the same /openapi.json. They differ after that.") %}
+      {% call table([{"label": "Question"}, {"label": "Swagger UI"}, {"label": "fjkit.apidocs"}]) %}
+        <tr>
+          {{ cell("Signing in", tone="strong") }}
+          {{ cell("the four schemes the document can describe") }}
+          {{ cell("your app's own code — a Python object") }}
+        </tr>
+        <tr>
+          {{ cell("Where the call runs", tone="strong") }}
+          {{ cell("in the browser, as fetch()") }}
+          {{ cell("in the app, as an ASGI replay") }}
+        </tr>
+        <tr>
+          {{ cell("What it carries", tone="strong") }}
+          {{ cell("what JavaScript can reach") }}
+          {{ cell("your session cookie, HttpOnly and all") }}
+        </tr>
+        <tr>
+          {{ cell("Gating the page", tone="strong") }}
+          {{ cell(badge("not its job", variant="outline")) }}
+          {{ cell("dependencies=[Depends(auth.required)]") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {{ defs("What each argument decides", [
+      ("url=\"/api-docs\"", "where the page lives. Not /docs: FastAPI has claimed that before a plugin mounts, the first route registered wins, and a docs page that silently never renders is worse than a different URL — so the plugin warns at startup if the path is taken"),
+      ("flow=", "how someone signs in from the page. Defaults to the AuthPlugin sharing the config, and to a panel that only says \"anonymous\" when there is none"),
+      ("dependencies=", "put on every route the plugin adds — this is how the page is gated. Empty is right for a public API and wrong for an internal service"),
+      ("try_it=False", "renders the reference and drops the console, for an environment where replaying a request server-side is not acceptable"),
+      ("home_url=", "a way back out, in the sidebar's footer. The operation list has taken the sidebar, so without it the page is a room with no door"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        It is also the kit's worked example of section 03's <code>add_template_dir()</code>. The
+        console's templates live beside its code, in <code>fjkit/apidocs/templates/apidocs/</code>,
+        and <code>extend()</code> hands that directory to the loader. The inner <code>apidocs/</code>
+        is what keeps the names <code>apidocs/page.html</code> — which is what lets your app replace
+        any one of them by writing <code>templates/apidocs/&lt;name&gt;.html</code> of its own, since
+        the app's directory is searched first.
+      </p>
+    {% endcall %}
+
+    {{ defs("Worth knowing before you reach for it", [
+      ("its routes are out of your document", "include_in_schema=False, for the same reason FastAPI keeps /docs out of it: these are a way of reading the API, not part of it"),
+      ("a call is capped", "64 KB of body and 30 seconds, both arguments. The console is a reading tool, not a load generator"),
+      ("form bodies become fields", "an Annotated[str, Form()] route gets one input per field rather than a text box, because that is the shape a fjkit app posts most often. A JSON body stays an editable example"),
+      ("nothing on the page can read the credential", "signing in is a form your app defines, not a box to paste a token into — which is the same property that makes the cookie worth having"),
     ]) }}
   {% endcall %}
 

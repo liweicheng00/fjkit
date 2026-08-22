@@ -79,6 +79,27 @@ ALLOWED_LOST_HREFS = {"/static/dist/app.css"}
 #: a swap starts landing in the wrong place. So the shell's sidebar — which is
 #: on every full page now — is written out here per probe rather than waved
 #: through by a rule, which keeps every new id a line someone had to add.
+#: Every board response renders the same partial, so all eight board probes
+#: carry the same set. Named once rather than pasted eight times — it is one
+#: deliberate change, not eight.
+#:
+#: `hx-disabled-elt` is the addition (2026-08-22). Every mutating control on the
+#: board — the create form, Advance, Delete — now disables itself for the length
+#: of its own request, so a double click cannot advance a task twice or post two
+#: tasks. It is an *added* attribute: no target, no URL and no method moved, and
+#: `hx_targets`/`hx_urls` are still compared against the untouched baseline,
+#: which is what keeps this from being a licence to change the wiring.
+BOARD_HX_ATTRS = [
+    "hx-confirm",
+    "hx-delete",
+    "hx-disabled-elt",
+    "hx-get",
+    "hx-on::after-request",
+    "hx-post",
+    "hx-swap",
+    "hx-target",
+]
+
 ALLOWED_CONTRACT_DRIFT = {
     "GET /": {
         "hx_attrs": [],
@@ -87,8 +108,16 @@ ALLOWED_CONTRACT_DRIFT = {
         "ids": ["sidebar", "toaster"],
     },
     "GET /tasks": {
+        "hx_attrs": BOARD_HX_ATTRS,
         "ids": ["board", "f-owner", "f-priority", "f-title", "sidebar", "toaster"],
     },
+    "GET /tasks/board": {"hx_attrs": BOARD_HX_ATTRS},
+    "GET /tasks/board?status=todo": {"hx_attrs": BOARD_HX_ATTRS},
+    "GET /tasks/board?status=done": {"hx_attrs": BOARD_HX_ATTRS},
+    "GET /tasks/board?owner=kai": {"hx_attrs": BOARD_HX_ATTRS},
+    "POST /tasks": {"hx_attrs": BOARD_HX_ATTRS},
+    "POST /tasks/5/advance": {"hx_attrs": BOARD_HX_ATTRS},
+    "DELETE /tasks/1": {"hx_attrs": BOARD_HX_ATTRS},
     "GET /tasks/report?rows=5": {
         "ids": ["sidebar", "toaster"],
     },

@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import os
+
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, Templates, mount_fjkit, render
+from fjkit.config import STATIC_DIR
+from fjkit.templating import build_environment
 from jinja2 import DictLoader
 
 
@@ -50,3 +54,54 @@ def test_render_works_without_running_lifespan():
 
     assert response.status_code == 200
     assert "pong" in response.text
+
+
+def test_a_rebuilt_asset_gets_a_new_url_so_a_browser_cannot_keep_the_old_one():
+    """`StaticFiles` sends `ETag` and `Last-Modified` but no `Cache-Control`, so
+    a browser may cache a stylesheet it was never told the lifetime of.
+
+    The failure that produces is the worst kind there is: the page renders, the
+    markup is current, and the rules for half of it are missing — so a layout
+    silently degrades and nothing anywhere says why. `fjkit_static` stamps every
+    URL with the file's mtime, which moves when `fjkit build-css` rewrites it
+    and when a wheel is upgraded, and does not move otherwise.
+    """
+    static = build_environment(FjkitConfig(auto_reload=True)).globals["fjkit_static"]
+    asset = "dist/fjkit-vega.css"
+
+    before = static(asset)
+    assert before.startswith("/_fjkit/dist/fjkit-vega.css?v=")
+
+    path = STATIC_DIR / asset
+    was = path.stat().st_mtime
+    try:
+        os.utime(path, (was + 60, was + 60))
+        assert static(asset) != before
+    finally:
+        os.utime(path, (was, was))
+
+    # And it is stable while nothing changes — a stamp that moved every render
+    # would defeat caching entirely rather than fixing it.
+    assert static(asset) == before
+
+
+def test_the_stamp_is_read_once_when_the_app_is_not_reloading():
+    """A `stat` per asset per render is the price of catching a rebuild, and in
+    production there is no rebuild to catch."""
+    static = build_environment(FjkitConfig(auto_reload=False)).globals["fjkit_static"]
+    asset = "dist/fjkit-vega.css"
+
+    before = static(asset)
+    path = STATIC_DIR / asset
+    was = path.stat().st_mtime
+    try:
+        os.utime(path, (was + 60, was + 60))
+        assert static(asset) == before  # remembered, not re-stat'd
+    finally:
+        os.utime(path, (was, was))
+
+
+def test_an_asset_that_is_not_there_still_renders_a_url():
+    """A missing file must 404 visibly, not raise inside a template render."""
+    static = build_environment(FjkitConfig()).globals["fjkit_static"]
+    assert static("dist/nope.css").startswith("/_fjkit/dist/nope.css?v=")

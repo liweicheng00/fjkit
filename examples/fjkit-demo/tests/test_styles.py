@@ -33,7 +33,10 @@ def test_the_pack_the_server_chose_is_the_one_preselected(client):
     reporting a style the page is not wearing."""
     html = client.get("/").text
     picked = re.search(r'<option value="([^"]*)" selected>', PICKER.search(html).group(1)).group(1)
-    assert f'href="{STYLE_SHEETS[picked]}"' in html
+    # The shell's link carries `?v=<mtime>` (see `fjkit_static`), so the pack is
+    # matched on the path. The picker's own map has no stamp — those URLs are
+    # built by this app, not by the kit.
+    assert f'href="{STYLE_SHEETS[picked]}?v=' in html
 
 
 @pytest.mark.parametrize("pack", list(STYLE_SHEETS), ids=list(STYLE_SHEETS))
@@ -50,7 +53,7 @@ def test_the_kit_stylesheet_is_the_first_link_on_the_page(client):
     A page that grows a stylesheet of its own *above* the kit's would send the
     swap to that one instead, and nothing would look wrong until you switched."""
     first = re.search(r'<link rel="stylesheet" href="([^"]*)"', client.get("/").text).group(1)
-    assert first in STYLE_SHEETS.values()
+    assert first.split("?")[0] in STYLE_SHEETS.values()
 
 
 @pytest.mark.parametrize("path", ["/tasks/board", "/jobs"])

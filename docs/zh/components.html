@@ -11,20 +11,20 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css">
-  <link rel="stylesheet" href="../assets/brand.css">
-  <script defer src="../assets/vendor/htmx/htmx.min.js"></script>
-  <script defer src="../assets/vendor/basecoat/js/all.min.js"></script>
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1787416553">
+  <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
+  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1786876367"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1786876367"></script>
   <meta name="description" content="每一個 fjkit macro 都有實際渲染的預覽、產生它的那行 Jinja，以及吐出來的 HTML——全部由 kit 自己渲染，所以這裡的簽名不可能跟套件對不上。">
   <meta property="og:title" content="fjkit 元件">
   <meta property="og:description" content="每一個 fjkit macro 都有實際渲染的預覽、產生它的那行 Jinja，以及吐出來的 HTML——全部由 kit 自己渲染，所以這裡的簽名不可能跟套件對不上。">
   <meta property="og:type" content="article">
-  <script src="../assets/mock-server.js"></script>
+  <script src="../assets/mock-server.js?v=0.1.0.dev0"></script>
 </head>
 <body class="min-h-full antialiased">
   <aside class="sidebar" id="sidebar" data-side="left"
          aria-hidden="false">
-    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png" width="28" height="28" alt="">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png?v=1787150370" width="28" height="28" alt="">
 fjkit
   </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
     <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
@@ -58,6 +58,26 @@ fjkit
   </li>
         <li>
     <a href="components.html#display">      <span>empty_state、metric_group、清單</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#feedback">      <span>回饋：alert、spinner、skeleton、dialog</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#content">      <span>內容：avatar、item_list、code_block、breadcrumb</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#disclosure">      <span>顯示與收合：tabs、collapsible、tooltip</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#overlay">      <span>浮層：popover、選單、select、drawer、command</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#fields">      <span>剩下的兩個欄位</span>
     </a>
   </li>
         <li>
@@ -275,8 +295,303 @@ fjkit
 </section></div></div>
 <hr class="border-border">
 
-<div id="icons">
+<div id="feedback">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">回饋：alert、spinner、skeleton、dialog</h2><p class="text-muted-foreground text-sm">四種說「等一下」「好了」和「這件事沒成功」的方式。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        這四個的差別在<em>誰在等、等什麼</em>，挑哪一個也是照這條分。<code>alert</code> 是一件留在頁面上的事實。
+        <code>spinner</code> 和 <code>skeleton</code> 都表示「還沒好」，選哪一個取決於你知不知道等一下會出現什麼形狀：
+        skeleton 把那個形狀畫出來，spinner 承認你畫不出來。<code>dialog</code> 則是打斷。
+      </p>
+      <p>
+        其中兩個替你做了無障礙的決定。<code>alert(variant="destructive")</code> 會拿到
+        <code>role="alert"</code>，那會打斷螢幕閱讀器正在唸的句子；其餘每個 variant 都是
+        <code>role="status"</code>，會等到一個停頓。而多行的 <code>skeleton</code> 是<strong>一個</strong>
+        即時區域而不是六個——六根長條是一件事在載入，不是六件。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>alert(title, body, variant, icon_name) · 區塊 = 動作</h3>      </div>
+    </header>      <section>    <div data-showcase="alert"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="alert"></pre>
+  <footer data-showcase-caption="alert"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>spinner(size, tone, label, indicator)</h3>      </div>
+    </header>      <section>    <div data-showcase="spinner"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="spinner"></pre>
+  <footer data-showcase-caption="spinner"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>skeleton(shape, width, lines)</h3>      </div>
+    </header>      <section>    <div data-showcase="skeleton"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="skeleton"></pre>
+  <footer data-showcase-caption="skeleton"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>dialog(id, title, description, size, footer) · 區塊</h3>      </div>
+    </header>      <section>    <div data-showcase="dialog"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="dialog"></pre>
+  <footer data-showcase-caption="dialog"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="content">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">內容：avatar、item_list、code_block、breadcrumb</h2><p class="text-muted-foreground text-sm">承載一個人、一則定義、一段程式或一條路徑的那幾個。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>avatar</code> 是值得先讀簽名的那一個。名字同時是 <code>alt</code> 文字和退回時的縮寫，
+        所以兩者不可能互相矛盾；而且一旦有圖片承載了名字，縮寫就會退出無障礙樹——否則同一個人會被唸兩次，
+        一次是正常的，一次是兩個沒頭沒尾的字母。
+      </p>
+      <p>
+        <code>breadcrumb</code> 收的是 <code>(label, href)</code> 成對的清單，其中 href 為 none 的那一項
+        <em>就是</em>當前頁。這是刻意的：這個元件最常見的做錯方式，就是麵包屑最後一項連到你已經在看的這一頁——
+        而參數的形狀讓那件事根本寫不出來。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>avatar(name, src, size, badge_tone) · avatar_group(overflow)</h3>      </div>
+    </header>      <section>    <div data-showcase="avatar"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="avatar"></pre>
+  <footer data-showcase-caption="avatar"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>item_list() / item(term, clamp) · 區塊</h3>      </div>
+    </header>      <section>    <div data-showcase="item_list"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="item_list"></pre>
+  <footer data-showcase-caption="item_list"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>code_block(source, label, wrap)</h3>      </div>
+    </header>      <section>    <div data-showcase="code_block"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="code_block"></pre>
+  <footer data-showcase-caption="code_block"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>breadcrumb(trail, separator) · none = 當前頁</h3>      </div>
+    </header>      <section>    <div data-showcase="breadcrumb"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="breadcrumb"></pre>
+  <footer data-showcase-caption="breadcrumb"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="disclosure">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">顯示與收合：tabs、collapsible、tooltip</h2><p class="text-muted-foreground text-sm">三個收合元件，中間沒有一行 fjkit 自己的 JavaScript。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>collapsible</code> 是原生的 <code>&lt;details&gt;</code>：開合狀態、鍵盤操作、disclosure 角色
+        全部來自那個元素，Basecoat 用 CSS 替它加動畫。<code>tooltip</code> 完全畫自一個
+        <code>data-tooltip</code> 屬性——根本不存在第二個元素。<code>tabs</code> 是 Basecoat 的，外殼已經載好了。
+      </p>
+      <p>
+        tooltip 的機制有一個後果要講白：CSS <code>content()</code> 從來不會進無障礙樹。
+        tooltip 是<em>提示</em>，永遠不能是一個控制項唯一的標籤。當 tooltip 是那個控制項身上唯一的文字時，
+        請另外給它 <code>aria_label</code>。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>tabs(items, label) / tab_panel(id) · 區塊</h3>      </div>
+    </header>      <section>    <div data-showcase="tabs"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tabs"></pre>
+  <footer data-showcase-caption="tabs"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>accordion(multiple) / collapsible(summary, open) · 區塊</h3>      </div>
+    </header>      <section>    <div data-showcase="collapsible"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="collapsible"></pre>
+  <footer data-showcase-caption="collapsible"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>tooltip(text, side, align) · 區塊 = 觸發元素</h3>      </div>
+    </header>      <section>    <div data-showcase="tooltip"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tooltip"></pre>
+  <footer data-showcase-caption="tooltip"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="overlay">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">浮層：popover、選單、select、drawer、command</h2><p class="text-muted-foreground text-sm">一個 id 進去，四個出來——而且對不上時不會出聲。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>ui/overlay.html</code> 裡的每一個都由 Basecoat 自己的 JavaScript 驅動，外殼已經載了它，
+        而且它會在 <code>htmx:afterSwap</code> 時重新掃描——所以由 swap 送進來的浮層不需要任何額外處理就能用。
+      </p>
+      <p>
+        它們共同的東西是 <strong>id 接線</strong>。一個觸發元素和它的面板靠四個相關的 id 互相找到對方，
+        錯一個就靜靜地失敗：面板打得開但永遠不會被唸出來，或者根本打不開。這裡每個 macro 都只收一個
+        <code>id</code> 再自己推導其餘的。這就是它們是 macro 而不是一段可以複製的標記的全部理由。
+      </p>
+      <p>
+        <code>select_menu</code> 和 <code>combobox</code> 把值放在一個<strong>預先填好</strong>的隱藏欄位裡——
+        上游出貨的是 <code>value=""</code> 再用 JS 寫進去，那會讓任何重繪這個片段的來回弄丟已經選好的值。
+        這兩個都不如 <code>select_field</code>：原生的 <code>&lt;select&gt;</code> 一開始就是正確的，
+        而且只花一個元素而不是三十個。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>popover(id, label, side, align, width) · 區塊</h3>      </div>
+    </header>      <section>    <div data-showcase="popover"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="popover"></pre>
+  <footer data-showcase-caption="popover"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>dropdown_menu(id, label) · menu_item / menu_group / menu_separator</h3>      </div>
+    </header>      <section>    <div data-showcase="dropdown_menu"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="dropdown_menu"></pre>
+  <footer data-showcase-caption="dropdown_menu"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>select_menu(name, options, selected)</h3>      </div>
+    </header>      <section>    <div data-showcase="select_menu"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="select_menu"></pre>
+  <footer data-showcase-caption="select_menu"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>combobox(name, options, selected, empty)</h3>      </div>
+    </header>      <section>    <div data-showcase="combobox"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="combobox"></pre>
+  <footer data-showcase-caption="combobox"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>drawer(id, title, side) · drawer_trigger(label, target)</h3>      </div>
+    </header>      <section>    <div data-showcase="drawer"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="drawer"></pre>
+  <footer data-showcase-caption="drawer"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>command(id, dialog) · command_group / command_item</h3>      </div>
+    </header>      <section>    <div data-showcase="command"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="command"></pre>
+  <footer data-showcase-caption="command"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="fields">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">剩下的兩個欄位</h2><p class="text-muted-foreground text-sm">再兩個欄位，形狀跟其他欄位一模一樣。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        每一支欄位 macro 都收同樣的 <code>name</code>、<code>label</code>、<code>hint</code>、
+        <code>error</code>、<code>id</code>，而且 <code>error</code> 是<strong>取代</strong> hint 而不是疊在它上面，
+        同時把控制項標成 <code>aria-invalid</code>。這兩個也一樣；值得知道的是它們各自針對自己的機制做了什麼。
+      </p>
+      <p>
+        <code>range_field</code> 會替第一次繪製寫好軌道已填滿的那一段。Basecoat 是從一個自訂屬性去畫它，
+        而且只在拖曳時才用 JavaScript 更新——沒有這一步，長條會停在上游的預設值，跟旁邊那個數字對不上。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>range_field(name, label, value, min, max, step, output)</h3>      </div>
+    </header>      <section>    <div data-showcase="range_field"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="range_field"></pre>
+  <footer data-showcase-caption="range_field"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>input_group_field(name, label, start, end)</h3>      </div>
+    </header>      <section>    <div data-showcase="input_group_field"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="input_group_field"></pre>
+  <footer data-showcase-caption="input_group_field"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="icons">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">icon()：任何 Lucide 名字，直接內嵌</h2><p class="text-muted-foreground text-sm">1,767 個名字，沒有 sprite sheet，沒有 icon font，一個請求都不用發。</p>      </div>
@@ -310,10 +625,10 @@ fjkit
 <hr class="border-border">
 
 <div id="cheatsheet">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">ui/ 裡的每個 macro，按檔案列</h2><p class="text-muted-foreground text-sm">七個檔案。如果這裡沒有，那就是你還沒找到的某個參數。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">ui/ 裡的每個 macro，按檔案列</h2><p class="text-muted-foreground text-sm">十二個檔案。如果這裡沒有，那就是你還沒找到的某個參數。</p>      </div>
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>packages/fjkit/src/fjkit/templates/ui/</h3>      </div>
@@ -354,8 +669,8 @@ fjkit
   </div>
 
 <div id="toaster" class="toaster" data-align="end"></div>
-  <script defer src="../assets/data.js"></script>
-  <script defer src="../assets/common.js"></script>
-  <script defer src="../assets/components.js"></script>
+  <script defer src="../assets/data.js?v=0.1.0.dev0"></script>
+  <script defer src="../assets/common.js?v=0.1.0.dev0"></script>
+  <script defer src="../assets/components.js?v=0.1.0.dev0"></script>
 </body>
 </html>

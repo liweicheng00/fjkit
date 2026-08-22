@@ -1,6 +1,81 @@
 /* ------------------------------------------------------------ 02 · macros */
 const ICON_CHOICES = Object.keys(DATA.icons);
 
+/* The form picker's five states. Kept out of the entry itself because each one
+   carries a Jinja snippet, and five of those inline turn one macro's definition
+   into half the file. */
+const FORM_STATE = {
+  "htmx form": "board",
+  "with an error": "error",
+  "textarea + checkbox": "long",
+  "radios vs select": "choice",
+  "switches in a fieldset": "settings",
+};
+
+const FORM_JINJA = {
+  "htmx form": `{% from "ui/form.html" import form, field_row, text_field, select_field %}
+
+{% call form(action=url_for(request, "tasks_create"),
+             target="#board", reset_on_success=true) %}
+  {% call field_row("wide-then-actions") %}
+    {{ text_field("title", label="New task", required=true) }}
+    {{ select_field("priority", label="Priority", options=priority_options) }}
+    {{ text_field("owner", label="Owner", placeholder="unassigned") }}
+    {{ button("Add", variant="primary", type="submit", icon_name="plus") }}
+  {% endcall %}
+{% endcall %}`,
+
+  "with an error": `{{ text_field("title", label="Title", required=true,
+             error="Give the task a title.") }}`,
+
+  "textarea + checkbox": `{% from "ui/form.html" import form, textarea_field, checkbox_field %}
+{% from "ui/layout.html" import stack, row %}
+
+{% call form(action=url_for(request, "tasks_update", task_id=task.id)) %}
+  {% call stack(4) %}
+    {{ textarea_field("notes", label="Notes",
+                      hint="Grows with what you type — no rows to guess at.") }}
+    {{ checkbox_field("blocked", label="Blocked on something else",
+                      checked=task.blocked) }}
+    {% call row(justify="end") %}
+      {{ button("Save", variant="primary", type="submit") }}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}`,
+
+  "radios vs select": `{% from "ui/form.html" import radio_group, select_field %}
+
+{# One options shape for both, so this is a one-word edit either way.
+   Radios show every choice and cost a line each: they win up to about
+   five and lose after that. #}
+{{ radio_group("priority", label="Priority", options=priority_options,
+               selected=task.priority) }}
+
+{{ select_field("owner", label="Owner", options=owner_options,
+                selected=task.owner) }}`,
+
+  "switches in a fieldset": `{% from "ui/form.html" import form, fieldset, switch_field %}
+{% from "ui/layout.html" import stack %}
+
+{% call form(action=url_for(request, "settings_save")) %}
+  {% call stack(6) %}
+    {% call fieldset("Notifications", hint="Applies to this board only.") %}
+      {{ switch_field("email", label="Email me when a task moves",
+                      checked=prefs.email) }}
+      {{ switch_field("digest", label="Weekly digest",
+                      hint="Monday morning, one message.") }}
+    {% endcall %}
+
+    {% call fieldset("Danger zone") %}
+      {# error= replaces the hint rather than stacking on it, and marks the
+         control aria-invalid. Same three parameters on every field. #}
+      {{ switch_field("archive", label="Archive done tasks nightly",
+                      error=errors.archive) }}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}`,
+};
+
 const MACROS = {
   button: {
     label: "button",
@@ -122,24 +197,11 @@ const MACROS = {
   form: {
     label: "form",
     controls: [
-      { key: "state", type: "select", label: "state", options: ["htmx form", "with an error"], value: "htmx form" },
+      { key: "state", type: "select", label: "state", options: ["htmx form", "with an error", "textarea + checkbox", "radios vs select", "switches in a fieldset"], value: "htmx form" },
     ],
-    render: (p) => (p.state === "htmx form" ? DATA.forms.board : DATA.forms.error),
-    jinja: (p) => (p.state === "htmx form"
-      ? `{% from "ui/form.html" import form, field_row, text_field, select_field %}
-
-{% call form(action=url_for(request, "tasks_create"),
-             target="#board", reset_on_success=true) %}
-  {% call field_row("wide-then-actions") %}
-    {{ text_field("title", label="New task", required=true) }}
-    {{ select_field("priority", label="Priority", options=priority_options) }}
-    {{ text_field("owner", label="Owner", placeholder="unassigned") }}
-    {{ button("Add", variant="primary", type="submit", icon_name="plus") }}
-  {% endcall %}
-{% endcall %}`
-      : `{{ text_field("title", label="Title", required=true,
-             error="Give the task a title.") }}`),
-    caption: "target= is what makes it an htmx form; drop it and the same macro emits an ordinary POST that works without JavaScript. Every field already takes error= — wiring it to Pydantic is 0.3.",
+    render: (p) => DATA.forms[FORM_STATE[p.state]],
+    jinja: (p) => FORM_JINJA[p.state],
+    caption: "target= is what makes it an htmx form; drop it and the same macro emits an ordinary POST that works without JavaScript. Every field takes the same label/hint/error trio, an error replaces the hint rather than stacking on it, and wiring error= to Pydantic is 0.3.",
   },
 };
 
@@ -404,21 +466,65 @@ data.html     badge(label, variant)
               metric_group(items, cols=3)   progress(value, label)
               empty_state(title, description, icon_name)
               bullet_list(tone) / list_item()         ·  blocks
+              item_list() / item(term, clamp)         ·  blocks
+              avatar(name, src, size, initials, badge_tone, badge_icon)
+              avatar_group(overflow, label)           ·  block
+              code_block(source, label, wrap=false)
               link(label, href)   kbd(keys)
 
 form.html     form(action, method="post", target, swap="outerHTML",
                    reset_on_success=false, card=true) ·  block
               field_row(template="two", gap=3)        ·  block
+              fieldset(legend, hint)                  ·  block
               text_field(name, label, value, placeholder, type,
                          required, hint, error, id)
-              select_field(name, label, options, selected, blank,
-                           hint, error, id)
+              textarea_field(name, label, value, rows, …)
+              select_field(name, label, options, selected, blank, …)
+              checkbox_field(name, label, checked, value, …)
+              switch_field(name, label, checked, value, …)
+              radio_group(name, label, options, selected, …)
+              range_field(name, label, value, min, max, step, output)
+              input_group_field(name, label, start, end, …)
+                                    every field: name, label, hint, error, id
+
+feedback.html spinner(size, tone, label, indicator=false)
+              alert(title, body, variant, icon_name)   ·  block = actions
+              skeleton(shape, width, lines)           ·  shape text|heading
+                                                         |control|avatar|block
+              dialog(id, title, description, size, footer) ·  block
+              toaster(position)   toast(title, description, category)
+
+disclosure    collapsible(summary, open=false, icon_name)  ·  block
+   .html      accordion(multiple=false, label)        ·  block
+              tooltip(text, side, align)              ·  block = trigger
+
+overlay.html  popover(id, label, variant, side, align, width)  ·  block
+              dropdown_menu(id, label, side, align, width)     ·  block
+              menu_item(label, shortcut, variant, disabled,
+                        checked, radio, href)
+              menu_group(heading)  ·  block      menu_separator()
+              select_menu(name, options, selected, placeholder, width)
+              combobox(name, options, selected, placeholder, empty)
+              drawer(id, title, description, side, footer)     ·  block
+              drawer_trigger(label, target, variant, size)
+              command(id, placeholder, empty, dialog=false)    ·  block
+              command_group(heading)  ·  block
+              command_item(label, keywords, icon_name, shortcut)
 
 table.html    table(columns, rows, empty_title, empty_description)
               cell(value, tone, numeric, align)   row_actions()
 
+tabs.html     tabs(items, label, variant, orientation)  ·  block
+              tab_panel(id)                             ·  block
+
+sidebar.html  sidebar(request, label)   sidebar_group(label)   ·  blocks
+              sidebar_link(request, label, route, icon_name)
+              sidebar_submenu(label, icon_name)         ·  block
+              sidebar_trigger()
+
 nav.html      brand(label, href, icon_name)
               nav_links(request, links)   theme_toggle()
+              breadcrumb(trail, separator)  ·  href=none is the current page
 
 icon.html     icon(name, size=16)                     ·  1,767 Lucide names
 
@@ -538,6 +644,222 @@ const SHOWCASE = {
 <p>Read {{ link("the 20k-row report", "#") }},
    or press {{ kbd("⌘K") }} to search.</p>`,
     caption: "The two that live inside a sentence. link carries the underline and focus ring the token layer defines; kbd renders the key cap.",
+  },
+
+  /* --- the gallery: one rendered example per macro that has nothing to turn.
+   * `html` reads DATA.gallery, so these previews are what fjkit emitted at
+   * build time — the page cannot show markup the kit does not produce. */
+
+  spinner: {
+    html: () => DATA.gallery.spinner,
+    jinja: `{% from "ui/feedback.html" import spinner %}
+
+{{ spinner(size="sm") }}
+{{ spinner(size="lg", tone="primary") }}
+{{ spinner(label="Saving") }}          {# label = a live region #}
+{{ spinner(indicator=true) }}          {# hidden until htmx fires #}`,
+    caption: "indicator=true adds htmx-indicator, so the spinner is invisible until a request is in flight. label makes it a live region; leave it off when text beside it already says what is loading.",
+  },
+
+  dialog: {
+    html: () => DATA.gallery.dialog,
+    jinja: `{% from "ui/feedback.html" import dialog %}
+
+{% set confirm %}{{ button("Delete", variant="destructive") }}{% endset %}
+{% call dialog("delete-7", "Delete this task?",
+               "This cannot be undone.", footer=confirm) %}
+  <p>The task and its history go with it.</p>
+{% endcall %}
+
+{{ button("Delete", popovertarget="delete-7") }}   {# the opener #}`,
+    caption: "The Popover API, not showModal(): no JavaScript, Esc and click-outside for free. Open it from any button with popovertarget — a plain HTML attribute, so no macro of its own. Use drawer when it must be modal.",
+  },
+
+  tabs: {
+    html: () => DATA.gallery.tabs,
+    jinja: `{% from "ui/tabs.html" import tabs, tab_panel %}
+
+{% call tabs([{"id": "overview", "label": "Overview"},
+              {"id": "activity", "label": "Activity"}], label="Task") %}
+  {% call tab_panel("overview") %}…{% endcall %}
+  {% call tab_panel("activity") %}…{% endcall %}
+{% endcall %}`,
+    caption: "Basecoat owns which tab is selected, the roving tabindex and the arrow keys. The ids tie a tab to its panel — pass them once, in the list.",
+  },
+
+  code_block: {
+    html: () => DATA.gallery.code_block,
+    jinja: `{% from "ui/data.html" import code_block %}
+
+{{ code_block(source, label="Jinja") }}
+{{ code_block(source, wrap=true) }}   {# wrap instead of scroll #}`,
+    caption: "tabindex=\"0\" so a keyboard can scroll it, and a visible focus ring because that is the other half of the same requirement. Escaping is Jinja's — pass a string, never Markup.",
+  },
+
+  item_list: {
+    html: () => DATA.gallery.item_list,
+    jinja: `{% from "ui/data.html" import item_list, item %}
+
+{% call item_list() %}
+  {% call item("Closed vocabulary") %}Every class an app may write.{% endcall %}
+  {% call item("Prebuilt CSS") %}Compiled when fjkit is released.{% endcall %}
+{% endcall %}`,
+    caption: "A definition list in a card. clamp=false lets a description run past two lines — Basecoat clamps by default, which is right for a feed and wrong for a reference.",
+  },
+
+  alert: {
+    html: () => DATA.gallery.alert,
+    jinja: `{% from "ui/feedback.html" import alert %}
+
+{{ alert("Account updated", "Your changes are live.", variant="success") }}
+
+{% call alert("Dark mode is available") %}   {# block = the actions slot #}
+  {{ button("Enable", size="xs") }}
+{% endcall %}`,
+    caption: "The variant picks the icon, so an alert cannot say \"destructive\" and show a tick. destructive also takes role=\"alert\", which interrupts a screen reader; every other variant is role=\"status\", which waits for a pause.",
+  },
+
+  skeleton: {
+    html: () => DATA.gallery.skeleton,
+    jinja: `{% from "ui/feedback.html" import skeleton %}
+
+{{ skeleton(shape="avatar") }}
+{{ skeleton(lines=3) }}                    {# last line is short #}
+{{ skeleton(shape="heading", width="half") }}`,
+    caption: "Upstream sizes this with utilities at the call site; here shape and width are closed lookups, because an app template may not write h-4 w-[150px]. One role=\"status\" wraps the group — six bars are one thing loading, not six.",
+  },
+
+  breadcrumb: {
+    html: () => DATA.gallery.breadcrumb,
+    jinja: `{% from "ui/nav.html" import breadcrumb %}
+
+{{ breadcrumb([("Board", "/"),
+               ("Tasks", "/tasks"),
+               ("Ship the vocabulary", none)]) }}`,
+    caption: "A pair whose href is none is the current page: it renders as a span with aria-current, not a link. That is the shape of the argument, so a trail cannot be built with the current page linked to itself.",
+  },
+
+  avatar: {
+    html: () => DATA.gallery.avatar,
+    jinja: `{% from "ui/data.html" import avatar, avatar_group %}
+
+{{ avatar("Ana Ruiz", badge_tone="success") }}
+{{ avatar("Kai Ito", src=user.photo, size="lg") }}
+
+{% call avatar_group(overflow=3) %}
+  {{ avatar("Ana Ruiz") }}{{ avatar("Kai Ito") }}
+{% endcall %}`,
+    caption: "The name is the alt text and the fallback initials, so the two cannot disagree — and the initials leave the accessibility tree once an image carries the name. The badge names a role, never a hue.",
+  },
+
+  range_field: {
+    html: () => DATA.gallery.range_field,
+    jinja: `{% from "ui/form.html" import range_field %}
+
+{{ range_field("weight", "Weight", value=40, output=true) }}
+{{ range_field("volume", min=0, max=11, step=1) }}`,
+    caption: "A native input, so keyboard and screen-reader behaviour arrive free. The filled part of the track is set here for first paint — Basecoat only updates it from JS on drag, so without it the bar disagrees with the number beside it.",
+  },
+
+  input_group_field: {
+    html: () => DATA.gallery.input_group_field,
+    jinja: `{% from "ui/form.html" import input_group_field %}
+
+{% set glyph %}{{ icon("search", 16) }}{% endset %}
+{{ input_group_field("q", "Search", start=glyph, end="12 results") }}`,
+    caption: "start and end are rendered slots rather than a caller block, because both are optional and a block cannot say \"nothing here\" — an empty addon still takes its padding.",
+  },
+
+  collapsible: {
+    html: () => DATA.gallery.collapsible,
+    jinja: `{% from "ui/disclosure.html" import accordion, collapsible %}
+
+{% call accordion() %}                    {# multiple=true: no JS at all #}
+  {% call collapsible("Does it need Node?", open=true) %}
+    <p>No.</p>
+  {% endcall %}
+  {% call collapsible("Can I edit a component?") %}…{% endcall %}
+{% endcall %}`,
+    caption: "A native <details>: open state, keyboard operation and the disclosure role all come from the element. accordion adds the class Basecoat watches to close the siblings; multiple withholds it, so allowing several open panels ships no JS rather than JS asked to do nothing.",
+  },
+
+  tooltip: {
+    html: () => DATA.gallery.tooltip,
+    jinja: `{% from "ui/disclosure.html" import tooltip %}
+
+{% call tooltip("Saves without leaving the page", side="top") %}
+  {{ button("Save", variant="outline") }}
+{% endcall %}`,
+    caption: "Drawn from a data-tooltip attribute and CSS content() — no second element, no JavaScript. That also means the text is not in the accessibility tree: a tooltip is a hint, never the only label a control has.",
+  },
+
+  popover: {
+    html: () => DATA.gallery.popover,
+    jinja: `{% from "ui/overlay.html" import popover %}
+
+{% call popover("dimensions", "Dimensions", side="bottom", width="lg") %}
+  <header><h4>Dimensions</h4></header>
+  {# any content — a form, a summary, a preview #}
+{% endcall %}`,
+    caption: "One id in, three out: trigger, panel and the aria-controls between them. A mismatch there fails silently — the panel opens and is never announced — which is the whole reason this is a macro.",
+  },
+
+  dropdown_menu: {
+    html: () => DATA.gallery.dropdown_menu,
+    jinja: `{% from "ui/overlay.html" import dropdown_menu, menu_item,
+                                menu_group, menu_separator %}
+
+{% call dropdown_menu("account", "Account") %}
+  {% call menu_group("My account") %}
+    {{ menu_item("Profile", shortcut="⇧⌘P") }}
+  {% endcall %}
+  {{ menu_separator() }}
+  {{ menu_item("Wrap long lines", checked=true) }}
+  {{ menu_item("Log out", variant="destructive") }}
+{% endcall %}`,
+    caption: "menu_item switches role with the state it reports: menuitemcheckbox when checked is given, menuitemradio for radio. A menu is not a select — it runs commands and leaves nothing in a form submission.",
+  },
+
+  select_menu: {
+    html: () => DATA.gallery.select_menu,
+    jinja: `{% from "ui/overlay.html" import select_menu %}
+
+{{ select_menu("theme", [("light", "Light"), ("dark", "Dark")],
+               selected="dark", label="Theme") }}`,
+    caption: "Prefer select_field. A native <select> is correct for free and costs one element; this is thirty and needs JS. Reach for it when a row needs markup an <option> cannot hold. The value travels in a hidden input, pre-filled so an untouched form still posts.",
+  },
+
+  combobox: {
+    html: () => DATA.gallery.combobox,
+    jinja: `{% from "ui/overlay.html" import combobox %}
+
+{{ combobox("framework", options, placeholder="Select a framework") }}`,
+    caption: "Filtering is client-side, over the options rendered here. For server-side search this is the wrong component — use a text_field with hx_get and swap the listbox from the response.",
+  },
+
+  drawer: {
+    html: () => DATA.gallery.drawer,
+    jinja: `{% from "ui/overlay.html" import drawer, drawer_trigger %}
+
+{{ drawer_trigger("Open drawer", "goal") }}
+
+{% call drawer("goal", "Move goal", "Set your daily target.",
+               side="bottom") %}
+  …
+{% endcall %}`,
+    caption: "A native <dialog> opened with showModal(), which is where the top layer, the backdrop, the focus trap and Esc come from. dialog is the non-modal one; mixing both open-state mechanisms in one macro would be a worse component than two clear ones.",
+  },
+
+  command: {
+    html: () => DATA.gallery.command,
+    jinja: `{% from "ui/overlay.html" import command, command_group, command_item %}
+
+{% call command("palette", dialog=true) %}
+  {% call command_group("Suggestions") %}
+    {{ command_item("Calendar", keywords="date event schedule") }}
+  {% endcall %}
+{% endcall %}`,
+    caption: "keywords extend the filter beyond what is on screen — the difference between a palette that finds things and one that confirms what you already typed. It binds no keystroke: which key, on which pages, and whether it beats the browser's own is the application's call.",
   },
 };
 

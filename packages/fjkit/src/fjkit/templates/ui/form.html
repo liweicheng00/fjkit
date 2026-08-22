@@ -1,10 +1,15 @@
 {#
   Form controls.
 
-  0.1 ships the two fields the demo needs plus the wrappers. The full set
-  (checkbox, radio group, switch, textarea, fieldset) is 0.2; Pydantic error
-  round-tripping is 0.3. Every field below already accepts an `error`
-  parameter so that landing does not change any signature.
+  Every field takes the same four presentation parameters — `label`, `hint`,
+  `error`, `id` — and wires them together the same way: the control gets an id,
+  the label points at it, and `hint`/`error` render into one `<p>` the control
+  names in `aria-describedby`. An `error` replaces the hint rather than stacking
+  on it, because two messages under one control is two things to read and only
+  one of them matters.
+
+  Pydantic error round-tripping is 0.3. Nothing here changes when it lands:
+  filling `error=` from a `ValidationError` is the whole of the integration.
 #}
 {% from "ui/attrs.html" import attrs %}
 
@@ -15,13 +20,25 @@
         {% call field_row("1fr auto") %}…{% endcall %}
       {% endcall %}
 
-  `target`/`swap` emit hx-target/hx-swap. A form with a target is an htmx form;
-  one without is an ordinary POST. Same macro either way — that symmetry is
-  what makes progressive enhancement cheap.
+  `target` is what decides which kind of form this is, and it decides the whole
+  of it:
+
+      form(action=…, target="#board")  ->  hx-post + hx-target + hx-swap
+      form(action=…)                   ->  action= + method=
+
+  A form with a target is an htmx form; one without is an ordinary POST that
+  needs no JavaScript. Same macro and the same fields either way — that
+  symmetry is what makes progressive enhancement cheap. `hx-post` without a
+  target would swap the reply into the form itself, which is never what a
+  caller who omitted `target` meant.
 #}
 {% macro form(action=none, method="post", target=none, swap="outerHTML", reset_on_success=false, card=true) -%}
   <form class="{{ "card" if card else "" }}"
-    {%- if action %} {{ "hx-post" if method == "post" else "hx-get" }}="{{ action }}"{% endif %}
+    {%- if action %}
+      {%- if target %} {{ "hx-post" if method == "post" else "hx-get" }}="{{ action }}"
+      {%- else %} action="{{ action }}" method="{{ method }}"
+      {%- endif %}
+    {%- endif %}
     {%- if target %} hx-target="{{ target }}" hx-swap="{{ swap }}"{% endif %}
     {%- if reset_on_success %} hx-on::after-request="this.reset()"{% endif %}
     {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
@@ -61,11 +78,7 @@
            {%- if error %} aria-invalid="true"{% endif %}
            {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
            {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
-    {% if error %}
-      <p class="text-destructive text-xs" id="{{ field_id }}-hint">{{ error }}</p>
-    {% elif hint %}
-      <p class="text-muted-foreground text-xs" id="{{ field_id }}-hint">{{ hint }}</p>
-    {% endif %}
+    {{ _message(field_id, hint, error) }}
   </div>
 {%- endmacro %}
 
@@ -92,10 +105,223 @@
         <option value="{{ value }}"{% if value == selected %} selected{% endif %}>{{ text }}</option>
       {% endfor %}
     </select>
-    {% if error %}
-      <p class="text-destructive text-xs" id="{{ field_id }}-hint">{{ error }}</p>
-    {% elif hint %}
-      <p class="text-muted-foreground text-xs" id="{{ field_id }}-hint">{{ hint }}</p>
+    {{ _message(field_id, hint, error) }}
+  </div>
+{%- endmacro %}
+
+{#
+  _message(field_id, hint, error) — the single <p> under a control.
+
+  One paragraph, never two: an error replaces the hint. Every field points
+  `aria-describedby` at this id, which is why the id is derived from the
+  control's rather than passed in — a caller cannot get the two out of step.
+#}
+{% macro _message(field_id, hint=none, error=none) -%}
+  {%- if error %}<p class="text-destructive text-xs" id="{{ field_id }}-hint">{{ error }}</p>
+  {%- elif hint %}<p class="text-muted-foreground text-xs" id="{{ field_id }}-hint">{{ hint }}</p>
+  {%- endif -%}
+{%- endmacro %}
+
+{#
+  textarea_field(name, label, …) — multi-line text.
+
+  No `rows` by default: the stylesheet sets `field-sizing-content` with a
+  minimum height, so the control grows with what is typed. Pass `rows` only to
+  fix a height against that.
+#}
+{% macro textarea_field(name, label=none, value="", placeholder="", rows=none, required=false, hint=none, error=none, id=none) -%}
+  {%- set field_id = id or ("f-" ~ name) -%}
+  <div class="field">
+    {% if label %}<label class="label" for="{{ field_id }}">{{ label }}</label>{% endif %}
+    <textarea class="textarea" id="{{ field_id }}" name="{{ name }}" placeholder="{{ placeholder }}"
+              {%- if rows %} rows="{{ rows }}"{% endif %}
+              {%- if required %} required{% endif %}
+              {%- if error %} aria-invalid="true"{% endif %}
+              {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
+              {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ value }}</textarea>
+    {{ _message(field_id, hint, error) }}
+  </div>
+{%- endmacro %}
+
+{#
+  checkbox_field(name, label, checked) — one box, label to its right.
+
+      {{ checkbox_field("notify", label="Email me when it moves",
+                        hint="Only for tasks you own.") }}
+
+  An unchecked box sends nothing at all. A route that needs to tell "off" from
+  "absent" — a PATCH of a partial form — pairs this with a hidden field; a
+  plain create route reads the absence as false and is done.
+#}
+{% macro checkbox_field(name, label=none, checked=false, value="on", hint=none, error=none, id=none) -%}
+  {%- set field_id = id or ("f-" ~ name) -%}
+  <div class="field" data-orientation="horizontal">
+    <input class="input" type="checkbox" id="{{ field_id }}" name="{{ name }}" value="{{ value }}"
+           {%- if checked %} checked{% endif %}
+           {%- if error %} aria-invalid="true"{% endif %}
+           {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
+           {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    <section>
+      {% if label %}<label class="label" for="{{ field_id }}">{{ label }}</label>{% endif %}
+      {{ _message(field_id, hint, error) }}
+    </section>
+  </div>
+{%- endmacro %}
+
+{#
+  switch_field(name, label, checked) — the same checkbox, read as a setting.
+
+  Same element and same wire format as `checkbox_field`: `role="switch"` is
+  what the stylesheet and the screen reader both key off, so a route cannot
+  tell the two apart and does not need to. Label first, control at the far
+  right — a switch reads as a state you are flipping, not a box you are
+  ticking, and settings rows line their controls up on one edge.
+#}
+{% macro switch_field(name, label=none, checked=false, value="on", hint=none, error=none, id=none) -%}
+  {%- set field_id = id or ("f-" ~ name) -%}
+  <div class="field" data-orientation="horizontal">
+    <section>
+      {% if label %}<label class="label" for="{{ field_id }}">{{ label }}</label>{% endif %}
+      {{ _message(field_id, hint, error) }}
+    </section>
+    <input class="input" type="checkbox" role="switch" id="{{ field_id }}" name="{{ name }}" value="{{ value }}"
+           {%- if checked %} checked{% endif %}
+           {%- if error %} aria-invalid="true"{% endif %}
+           {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
+           {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+  </div>
+{%- endmacro %}
+
+{#
+  radio_group(name, label, options, selected)
+
+  `options` is the same list of (value, label) pairs `select_field` takes, so
+  swapping one for the other is a one-word edit. Which to reach for is a
+  question about the options, not about taste: a radio group shows them all at
+  once and costs a line each, so it wins up to about five and loses after that.
+
+  A real <fieldset>/<legend>, not a div with a label: that is what makes the
+  group announce itself as one control with N choices instead of N unrelated
+  boxes, and arrow-key navigation between them comes from the browser.
+#}
+{% macro radio_group(name, label=none, options=(), selected=none, hint=none, error=none, id=none) -%}
+  {%- set field_id = id or ("f-" ~ name) -%}
+  <fieldset class="fieldset">
+    {% if label %}<legend data-variant="label">{{ label }}</legend>{% endif %}
+    <div role="radiogroup" data-slot="radio-group"
+         {%- if error %} aria-invalid="true"{% endif %}
+         {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
+         {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+      {% for option_value, text in options %}
+        {%- set option_id = field_id ~ "-" ~ loop.index0 %}
+        <div class="field" data-orientation="horizontal">
+          <input class="input" type="radio" id="{{ option_id }}" name="{{ name }}" value="{{ option_value }}"
+                 {%- if option_value == selected %} checked{% endif %}>
+          <label class="label" for="{{ option_id }}">{{ text }}</label>
+        </div>
+      {% endfor %}
+    </div>
+    {{ _message(field_id, hint, error) }}
+  </fieldset>
+{%- endmacro %}
+
+{#
+  fieldset(legend, hint) — a named group of fields inside one form.
+
+      {% call fieldset("Notifications", hint="Applies to this board only.") %}
+        {{ switch_field("email", label="Email") }}
+        {{ switch_field("digest", label="Weekly digest") }}
+      {% endcall %}
+
+  Use it when a form has more than one subject. One fieldset wrapping the whole
+  form says nothing the <form> did not already say.
+
+  The legend is sized as a heading (`data-variant="legend"`), one step up from
+  the field labels under it. `radio_group` writes its own legend at
+  `data-variant="label"` instead, because there the legend *is* the field's
+  label and has to look like every other one on the form.
+#}
+{% macro fieldset(legend=none, hint=none) -%}
+  <fieldset class="fieldset"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {% if legend %}<legend data-variant="legend">{{ legend }}</legend>{% endif %}
+    {% if hint %}<p class="text-muted-foreground text-xs">{{ hint }}</p>{% endif %}
+    {{ caller() }}
+  </fieldset>
+{%- endmacro %}
+
+{#
+  range_field(name, label, …) — a native <input type="range">.
+
+  Native, for the reason `select_field` is native: keyboard, screen reader and
+  touch behaviour arrive correct and free, where a scripted slider has to
+  re-implement all three and usually re-implements two.
+
+  Basecoat paints the filled part of the track from a `--slider-value`
+  custom property and updates it from its own JS as the thumb moves. The
+  starting value has to be set here, or the fill is stuck at upstream's 20%
+  default until the first drag — a bar that disagrees with the number beside
+  it on first paint.
+
+  `output` is a live region showing the current value. Off by default: a
+  slider that is already labelled "Volume 40%" by its own text does not need
+  it, and a second announcement on every keypress is noise.
+#}
+{% macro range_field(name, label=none, value=50, min=0, max=100, step=1, hint=none, error=none, id=none, output=false) -%}
+  {%- set field_id = id or ("f-" ~ name) -%}
+  {%- set span = (max - min) or 1 -%}
+  {%- set filled = (((value - min) / span) * 100) | round(2) -%}
+  <div class="field">
+    {% if label %}
+      <label class="label" for="{{ field_id }}">
+        {{ label }}
+        {%- if output %}<output for="{{ field_id }}" class="text-muted-foreground tabular-nums">{{ value }}</output>{% endif %}
+      </label>
     {% endif %}
+    <input class="input" type="range" id="{{ field_id }}" name="{{ name }}"
+           value="{{ value }}" min="{{ min }}" max="{{ max }}" step="{{ step }}"
+           style="--slider-value: {{ filled }}%"
+           {%- if error %} aria-invalid="true"{% endif %}
+           {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
+           {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {{ _message(field_id, hint, error) }}
+  </div>
+{%- endmacro %}
+
+{#
+  input_group_field(name, label, start, end, …) — an input with addons.
+
+  `start` and `end` are rendered markup, the same way `card` takes `actions`:
+
+      {% set count %}<span>{{ n }} results</span>{% endset %}
+      {{ input_group_field("q", "Search", end=count) }}
+
+  Slots rather than a caller block, because both are optional and a caller
+  cannot say "nothing here" — `{% call %}` would render an empty addon, and an
+  empty addon still takes its padding.
+
+  Basecoat strips the border from the inner control and paints it on the group
+  instead, so the input is `class="input"`-free on purpose: giving it one
+  draws a second box inside the first.
+#}
+{% macro input_group_field(name, label=none, value="", placeholder="", type="text", start=none, end=none, required=false, hint=none, error=none, id=none) -%}
+  {%- set field_id = id or ("f-" ~ name) -%}
+  <div class="field">
+    {% if label %}<label class="label" for="{{ field_id }}">{{ label }}</label>{% endif %}
+    <div class="input-group">
+      <input type="{{ type }}" id="{{ field_id }}" name="{{ name }}"
+             value="{{ value }}" placeholder="{{ placeholder }}"
+             {%- if required %} required{% endif %}
+             {%- if error %} aria-invalid="true"{% endif %}
+             {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
+             {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+      {#
+        `data-align` decides the order, not the source order — the CSS sets
+        `order-first` / `order-last` — so the input can stay first in the
+        markup where it belongs for the label association to read naturally.
+      #}
+      {%- if start %}<span role="group" data-align="start">{{ start }}</span>{% endif %}
+      {%- if end %}<span role="group" data-align="end">{{ end }}</span>{% endif %}
+    </div>
+    {{ _message(field_id, hint, error) }}
   </div>
 {%- endmacro %}

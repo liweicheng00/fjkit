@@ -20,6 +20,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from fjkit.cli.ejected import stale_ejects
 from fjkit.cli.vocabulary import component_classes, emitted_classes
 
 #: Tailwind palette hues used as a colour utility: bg-blue-600, text-red-500 …
@@ -123,11 +124,21 @@ def main(template_dir: Path) -> int:
         return 2
 
     violations = check_templates(template_dir)
+    stale = stale_ejects(template_dir)
+
     if violations:
         print(f"{len(violations)} violation(s) in {template_dir}:\n")
         print("\n".join(v.render(template_dir) for v in violations))
-        return 1
+    else:
+        count = len(list(template_dir.rglob("*.html")))
+        print(f"{count} template(s) clean — every class is part of the fjkit vocabulary")
 
-    count = len(list(template_dir.rglob("*.html")))
-    print(f"{count} template(s) clean — every class is part of the fjkit vocabulary")
-    return 0
+    # Printed either way, and never changes the exit code. Ejecting is a
+    # supported escape hatch: a copy that has diverged is the feature working,
+    # not a fault. Failing a build on it would push people back to editing the
+    # kit in place, which is the thing eject exists to avoid.
+    if stale:
+        print(f"\nnote: {len(stale)} ejected component(s) behind the kit:\n")
+        print("\n".join(e.render(template_dir) for e in stale))
+
+    return 1 if violations else 0

@@ -1,0 +1,377 @@
+{#
+  The components that float above the page.
+
+  All four here are driven by Basecoat's own JavaScript, which is already
+  vendored and mounted — it scans for `.popover`, `.dropdown-menu`, `.select`
+  and `.combobox` on load and again on `htmx:afterSwap`, so a swapped-in
+  overlay works with nothing extra. No macro below registers a handler.
+
+  What they have in common is *id wiring*: a trigger and its panel find each
+  other through four related ids, and getting one wrong fails silently — the
+  panel opens but is never announced, or never opens at all. Every macro here
+  takes one `id` and derives the rest, which is the whole reason they are
+  macros and not snippets to copy.
+
+  `drawer` is the exception: it is a native `<dialog>` and needs no JS from
+  Basecoat, only `showModal()`.
+#}
+{% from "ui/attrs.html" import attrs %}
+{% from "ui/icon.html" import icon %}
+
+{#
+  Panel widths. A popover has to be told how wide to be — its content is out
+  of flow, so it has no column to fill — and upstream does that with a utility
+  at the call site. Closed lookup instead, for the usual two reasons: an app
+  template may not write `w-72` (A2), and an interpolated width would be
+  absent from the stylesheet while still rendering.
+#}
+{% set _PANEL_WIDTHS = {
+  "auto": "",
+  "sm": "w-40",
+  "default": "w-56",
+  "lg": "w-72",
+  "xl": "w-96",
+} %}
+
+{#
+  popover(id, label, …) — a panel of arbitrary content, anchored to a button.
+
+  Content arrives through `{% call %}`; the trigger is a `button` macro's worth
+  of parameters rather than a second slot, because a popover whose trigger is
+  not a button is nearly always a `dropdown_menu` or a `tooltip` instead.
+
+  `aria-expanded` starts false and Basecoat's JS flips it. `aria-hidden` on the
+  panel does the same. Both are stated here rather than left off: the first
+  paint is the state before any JS has run, and a trigger with no
+  `aria-expanded` is announced as a plain button.
+#}
+{% macro popover(id, label, variant="outline", size="", side="bottom", align="center", width="lg", icon_name=none) -%}
+  <div id="{{ id }}" class="popover"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    <button type="button" id="{{ id }}-trigger" class="btn"
+            data-variant="{{ variant }}"{% if size %} data-size="{{ size }}"{% endif %}
+            aria-expanded="false" aria-controls="{{ id }}-popover">
+      {%- if icon_name %}{{ icon(icon_name, 16) }}{% endif %}
+      {{- label -}}
+    </button>
+    <div id="{{ id }}-popover" data-popover aria-hidden="true"
+         data-side="{{ side }}" data-align="{{ align }}"
+         {%- set panel_width = _PANEL_WIDTHS.get(width, "w-72") %}
+         {%- if panel_width %} class="{{ panel_width }}"{% endif %}>
+      {{- caller() -}}
+    </div>
+  </div>
+{%- endmacro %}
+
+{#
+  dropdown_menu(id, label, …) — a menu of commands.
+
+  The panel holds a `role="menu"` labelled by the trigger, and the items are
+  `menu_item` / `menu_group` / `menu_separator` below. Four ids have to line
+  up for that: trigger, popover, menu, and the group headings. All derived.
+
+  A menu is not a `<select>`. If the items set a value rather than run a
+  command, `select_menu` or `select_field` is the component — this one leaves
+  nothing behind in a form submission.
+#}
+{% macro dropdown_menu(id, label, variant="outline", size="", side="bottom", align="start", width="default", icon_name=none) -%}
+  <div id="{{ id }}" class="dropdown-menu"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    <button type="button" id="{{ id }}-trigger" class="btn"
+            data-variant="{{ variant }}"{% if size %} data-size="{{ size }}"{% endif %}
+            aria-haspopup="menu" aria-controls="{{ id }}-menu" aria-expanded="false">
+      {%- if icon_name %}{{ icon(icon_name, 16) }}{% endif %}
+      {{- label -}}
+    </button>
+    <div id="{{ id }}-popover" data-popover aria-hidden="true"
+         data-side="{{ side }}" data-align="{{ align }}"
+         {%- set panel_width = _PANEL_WIDTHS.get(width, "w-56") %}
+         {%- if panel_width %} class="{{ panel_width }}"{% endif %}>
+      <div role="menu" id="{{ id }}-menu" aria-labelledby="{{ id }}-trigger">
+        {{- caller() -}}
+      </div>
+    </div>
+  </div>
+{%- endmacro %}
+
+{#
+  menu_item(label, …) — one row of a dropdown menu.
+
+  `checked` switches the role from `menuitem` to `menuitemcheckbox`, because
+  an item that reports a checked state under the plain role is a contradiction
+  a screen reader has no way to resolve. `radio=true` makes it
+  `menuitemradio` — same rule, one choice out of several.
+
+  `shortcut` renders a `<kbd>` inside the item. It is decoration: printing
+  "⌘S" does not bind ⌘S. Bind it yourself, or leave it out.
+#}
+{% macro menu_item(label, shortcut=none, variant="", disabled=false, checked=none, radio=false, href=none) -%}
+  {%- set role = "menuitemradio" if radio else ("menuitemcheckbox" if checked is not none else "menuitem") -%}
+  <{{ "a" if href else "div" }} role="{{ role }}"
+    {%- if href %} href="{{ href }}"{% endif %}
+    {%- if variant %} data-variant="{{ variant }}"{% endif %}
+    {%- if disabled %} aria-disabled="true"{% endif %}
+    {%- if checked is not none %} aria-checked="{{ "true" if checked else "false" }}"{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if shortcut %}<span>{{ label }}</span><kbd>{{ shortcut }}</kbd>{% else %}{{ label }}{% endif -%}
+  </{{ "a" if href else "div" }}>
+{%- endmacro %}
+
+{#
+  menu_group(heading) — a labelled run of items.
+
+  The heading is a `role="heading"` referenced by the group's
+  `aria-labelledby`, so it is announced as the group's name rather than read
+  as a menu item nobody can activate.
+#}
+{% macro menu_group(heading=none, id=none) -%}
+  {%- set heading_id = id or ("h-" ~ (heading | replace(" ", "-") | lower) if heading else none) -%}
+  <div role="group"{% if heading %} aria-labelledby="{{ heading_id }}"{% endif %}>
+    {%- if heading %}<div role="heading" id="{{ heading_id }}">{{ heading }}</div>{% endif %}
+    {{- caller() -}}
+  </div>
+{%- endmacro %}
+
+{% macro menu_separator() -%}
+  <hr role="separator">
+{%- endmacro %}
+
+{#
+  select_menu(name, options, …) — the scripted listbox.
+
+  Prefer `select_field`. A native `<select>` is keyboard- and screen-reader-
+  correct for free and costs one element; this one is ~30 and depends on JS
+  being present. Reach for it only when the rows need markup a native option
+  cannot hold — an icon, two lines, a swatch.
+
+  The value reaches the server through the hidden input, which carries `name`;
+  the visible trigger is a button and submits nothing. That is why `name` is
+  the first parameter and the button has none: a form that posts the button
+  posts nothing at all.
+#}
+{% macro select_menu(name, options=(), selected=none, id=none, placeholder="Select…", width="lg", label=none) -%}
+  {%- set field_id = id or ("s-" ~ name) -%}
+  {#
+    `| list` then index, not `| first`: `first` on an empty sequence is an
+    Undefined that raises the moment it is tested, and StrictUndefined is
+    the point of the config — nothing selected is the ordinary case here.
+  #}
+  {%- set matches = options | selectattr("0", "equalto", selected) | list -%}
+  {%- set chosen = matches[0] if matches else none -%}
+  <div id="{{ field_id }}" class="select" data-placeholder="{{ placeholder }}"
+       {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    <button type="button" id="{{ field_id }}-trigger"
+            {%- set trigger_width = _PANEL_WIDTHS.get(width, "w-72") %}
+            {%- if trigger_width %} class="{{ trigger_width }}"{% endif %}
+            aria-haspopup="listbox" aria-expanded="false" aria-controls="{{ field_id }}-listbox"
+            {%- if label %} aria-label="{{ label }}"{% endif %}>
+      <span class="truncate">{{ chosen[1] if chosen else placeholder }}</span>
+      {{ icon("chevron-down", 16, "text-muted-foreground shrink-0 opacity-50") }}
+    </button>
+    <div id="{{ field_id }}-popover" data-popover aria-hidden="true">
+      <div role="listbox" id="{{ field_id }}-listbox" aria-orientation="vertical"
+           aria-labelledby="{{ field_id }}-trigger">
+        {%- for value, option_label in options %}
+          <div role="option" data-value="{{ value }}"
+               {%- if value == selected %} aria-selected="true"{% endif %}>{{ option_label }}</div>
+        {%- endfor %}
+      </div>
+    </div>
+    {#
+      Pre-filled rather than empty: upstream's example ships `value=""` and
+      lets its JS write the value on first interaction, so a form submitted
+      without touching the select posts nothing — and the round trip that
+      re-renders this partial would lose the selection it was given.
+    #}
+    <input type="hidden" name="{{ name }}" value="{{ selected if selected is not none else "" }}">
+  </div>
+{%- endmacro %}
+
+{#
+  combobox(name, options, …) — a select you can type into.
+
+  Same contract as `select_menu` — hidden input carries the value — with a
+  text input in place of the button. `empty` is the message the listbox shows
+  when the filter matches nothing; it lives in a `data-empty` attribute
+  because Basecoat's JS renders it, and a blank one leaves a filtered-to-
+  nothing list looking broken.
+
+  Filtering is client-side over the options rendered here. Server-side search
+  is a different component: an `input` with `hx-get` and a listbox swapped by
+  the response.
+#}
+{% macro combobox(name, options=(), selected=none, id=none, placeholder="Select…", empty="No results found.", label=none) -%}
+  {%- set field_id = id or ("c-" ~ name) -%}
+  {#
+    `| list` then index, not `| first`: `first` on an empty sequence is an
+    Undefined that raises the moment it is tested, and StrictUndefined is
+    the point of the config — nothing selected is the ordinary case here.
+  #}
+  {%- set matches = options | selectattr("0", "equalto", selected) | list -%}
+  {%- set chosen = matches[0] if matches else none -%}
+  <div id="{{ field_id }}" class="combobox"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    <input type="text" role="combobox" placeholder="{{ placeholder }}"
+           value="{{ chosen[1] if chosen else "" }}"
+           {#
+             Off, all three: a combobox filters a list the page already holds,
+             so the browser's own history dropdown would cover the listbox with
+             a competing set of suggestions.
+           #}
+           autocomplete="off" autocorrect="off" spellcheck="false"
+           aria-autocomplete="list" aria-expanded="false" aria-controls="{{ field_id }}-listbox"
+           {%- if label %} aria-label="{{ label }}"{% endif %}>
+    {{ icon("chevron-down", 16, "combobox-trigger-icon") }}
+    <div id="{{ field_id }}-popover" data-popover aria-hidden="true">
+      <div role="listbox" id="{{ field_id }}-listbox" aria-orientation="vertical" data-empty="{{ empty }}">
+        {%- for value, option_label in options %}
+          <div role="option" data-value="{{ value }}"
+               {%- if value == selected %} aria-selected="true"{% endif %}>{{ option_label }}</div>
+        {%- endfor %}
+      </div>
+    </div>
+    <input type="hidden" name="{{ name }}" value="{{ selected if selected is not none else "" }}">
+  </div>
+{%- endmacro %}
+
+{#
+  drawer(id, …) — a panel that slides in from an edge.
+
+  A native `<dialog>` opened with `showModal()`, not a popover: a drawer is
+  modal, and `showModal()` is what gives it the top layer, the backdrop, the
+  focus trap and Esc-to-close without a line of script. `dialog` in this kit
+  is the non-modal one, which is why the two do not share a macro.
+
+  Opening one needs `showModal()`, so the trigger carries the only inline
+  handler in the kit besides the theme toggle. `drawer_trigger` writes it.
+#}
+{% macro drawer(id, title=none, description=none, side="bottom", footer=none, dismissible=true) -%}
+  <dialog id="{{ id }}" class="drawer" data-side="{{ side }}"
+    {%- if title %} aria-labelledby="{{ id }}-title"{% endif %}
+    {%- if description %} aria-describedby="{{ id }}-description"{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {#
+      Basecoat styles `.drawer > article`, so the wrapper is load-bearing the
+      same way the dialog's inner div is: the <dialog> itself is the backdrop
+      owner and the positioning context, the <article> is the panel that
+      slides.
+    #}
+    <article>
+      {%- if title or description %}
+      <header>
+        {% if title %}<h2 id="{{ id }}-title">{{ title }}</h2>{% endif %}
+        {% if description %}<p id="{{ id }}-description">{{ description }}</p>{% endif %}
+      </header>
+      {%- endif %}
+      <section>{{ caller() }}</section>
+      {%- if footer or dismissible %}
+      <footer>
+        {%- if footer %}{{ footer }}{% endif %}
+        {%- if dismissible %}
+          {#
+            `closest('dialog').close()` rather than the id: the button is
+            inside the dialog it closes, so the relationship is structural and
+            cannot be broken by a rename.
+          #}
+          <button type="button" class="btn" data-variant="outline"
+                  onclick="this.closest('dialog').close()">Close</button>
+        {%- endif %}
+      </footer>
+      {%- endif %}
+    </article>
+  </dialog>
+{%- endmacro %}
+
+{#
+  drawer_trigger(label, target) — the button that opens one.
+
+  Separate from `drawer` because the two live in different places on the page:
+  the drawer is usually at the end of the document, the button wherever it
+  belongs. Passing the id twice is the price of that, and it is why both
+  macros take it as their first positional argument.
+#}
+{% macro drawer_trigger(label, target, variant="outline", size="", icon_name=none) -%}
+  <button type="button" class="btn" data-variant="{{ variant }}"
+          {%- if size %} data-size="{{ size }}"{% endif %}
+          aria-haspopup="dialog" aria-controls="{{ target }}"
+          onclick="document.getElementById('{{ target }}').showModal()"
+          {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if icon_name %}{{ icon(icon_name, 16) }}{% endif %}
+    {{- label -}}
+  </button>
+{%- endmacro %}
+
+{#
+  command(id, …) — a filterable command list, and its ⌘K dialog form.
+
+  `dialog=true` swaps the root for a `<dialog class="command-dialog">`, which
+  is upstream's own variant rather than a second component. Everything else —
+  the header input, the `role="menu"`, the ids that tie them together — is
+  identical, which is the reason it is one macro with a flag and not two that
+  would drift.
+
+  Two things this does not do, both deliberate:
+
+  * It does not bind ⌘K. A keystroke is application policy — which key, on
+    which pages, and whether it beats the browser's own — and a UI kit that
+    quietly claims a global shortcut is a kit that fights the app. Open it
+    with `showModal()` from your own listener.
+  * It does not search the server. The filter is Basecoat's, over the items
+    rendered here. For server-side search, this is the wrong component: use an
+    `input` with `hx-get` and swap the listbox from the response.
+#}
+{% macro command(id, placeholder="Type a command or search…", empty="No results found.", label="Command menu", dialog=false, bordered=true) -%}
+  <{{ "dialog" if dialog else "div" }} id="{{ id }}"
+    class="{{ "command-dialog" if dialog else ("command border" if bordered else "command") }}"
+    aria-label="{{ label }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    <header>
+      {{ icon("search", 16) }}
+      {#
+        `aria-expanded="true"` is not a mistake: the list below is always
+        showing whenever this is on screen, so the combobox is permanently
+        expanded. It is the dialog that opens and closes, not the listbox.
+      #}
+      <input type="text" id="{{ id }}-input" placeholder="{{ placeholder }}"
+             autocomplete="off" autocorrect="off" spellcheck="false"
+             role="combobox" aria-autocomplete="list" aria-expanded="true"
+             aria-controls="{{ id }}-menu">
+    </header>
+    <div role="menu" id="{{ id }}-menu" aria-orientation="vertical" data-empty="{{ empty }}">
+      {{- caller() -}}
+    </div>
+  </{{ "dialog" if dialog else "div" }}>
+{%- endmacro %}
+
+{#
+  command_item(label, …) — one row of a command list.
+
+  `data-filter` is what Basecoat matches the typed text against, and it
+  defaults to the label. `keywords` extends that with words that are not on
+  screen — "date event schedule" for a Calendar row — which is the difference
+  between a palette that finds things and one that only confirms what you
+  already typed.
+#}
+{% macro command_item(label, keywords=none, icon_name=none, shortcut=none, disabled=false, filter=none, href=none) -%}
+  <{{ "a" if href else "div" }} role="menuitem"
+    data-filter="{{ filter if filter is not none else label }}"
+    {%- if keywords %} data-keywords="{{ keywords }}"{% endif %}
+    {%- if href %} href="{{ href }}"{% endif %}
+    {%- if disabled %} aria-disabled="true"{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if icon_name %}{{ icon(icon_name, 16) }}{% endif %}
+    <span>{{ label }}</span>
+    {%- if shortcut %}<kbd>{{ shortcut }}</kbd>{% endif -%}
+  </{{ "a" if href else "div" }}>
+{%- endmacro %}
+
+{#
+  command_group(heading) — a labelled run of command items.
+
+  A `<span role="heading">`, not the `<div>` `menu_group` uses: that is what
+  upstream's command markup does, and its CSS selects on it. Otherwise the
+  same shape.
+#}
+{% macro command_group(heading=none, id=none) -%}
+  {%- set heading_id = id or ("ch-" ~ (heading | replace(" ", "-") | lower) if heading else none) -%}
+  <div role="group"{% if heading %} aria-labelledby="{{ heading_id }}"{% endif %}>
+    {%- if heading %}<span role="heading" id="{{ heading_id }}">{{ heading }}</span>{% endif %}
+    {{- caller() -}}
+  </div>
+{%- endmacro %}

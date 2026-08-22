@@ -224,3 +224,66 @@
     {%- if actions %}<aside>{{ actions }}</aside>{% endif %}
   </{{ tag }}>
 {%- endmacro %}
+
+{#
+  avatar(name, src, size, badge_tone, badge_icon)
+
+  `name` is required and `src` is not, which is the right way round: the
+  initials are the fallback the image falls back *to*, and an avatar with no
+  name has nothing to show when the URL 404s. Basecoat stacks both and lets
+  the absolutely-positioned `<img>` cover the initials when it loads, so the
+  fallback costs nothing and needs no JavaScript.
+
+  `name` also becomes the `alt` text — one parameter, so the accessible name
+  and the visible initials cannot disagree.
+
+  The badge is a status dot. Upstream's example writes `bg-green-600` on it;
+  here the colour is a role (A3), because a dot that means "online" has to
+  survive a rebrand exactly like a badge that means "done".
+#}
+{% set _AVATAR_BADGE_TONES = {
+  "success": "bg-success",
+  "warning": "bg-warning",
+  "info": "bg-info",
+  "destructive": "bg-destructive",
+  "muted": "bg-muted-foreground",
+} %}
+
+{% macro avatar(name, src=none, size="", initials=none, badge_tone=none, badge_icon=none) -%}
+  {#
+    Two words at most: "Ada Lovelace" is AL, "Ada" is A, and a name with five
+    words is not five letters. The caller can override for the cases initials
+    do not survive — a handle, a non-Latin script.
+  #}
+  {%- set letters = initials if initials is not none else (name.split() | map("first") | join)[:2] | upper -%}
+  <span class="avatar"{% if size %} data-size="{{ size }}"{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if src %}<img src="{{ src }}" alt="{{ name }}">{% endif %}
+    {#
+      The initials carry the accessible name when there is no image, and are
+      hidden from the tree when there is — otherwise the avatar is announced
+      twice, once as the alt text and once as two stray letters.
+    #}
+    <span{% if src %} aria-hidden="true"{% endif %}>{{ letters }}</span>
+    {%- if badge_tone or badge_icon %}
+      <span class="avatar-badge {{ _AVATAR_BADGE_TONES.get(badge_tone, "bg-muted-foreground") }}">
+        {%- if badge_icon %}{{ icon(badge_icon, 12) }}{% endif -%}
+      </span>
+    {%- endif %}
+  </span>
+{%- endmacro %}
+
+{#
+  avatar_group(overflow)
+
+  Overlapping avatars, with an optional "+3" at the end. `overflow` is a
+  number rather than a rendered label so the macro can say "+" itself — a
+  caller passing "3 more" would break the ring geometry the CSS gives
+  `[data-count]`.
+#}
+{% macro avatar_group(overflow=none, label=none) -%}
+  <div class="avatar-group"{% if label %} role="group" aria-label="{{ label }}"{% endif %}
+       {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {{- caller() -}}
+    {%- if overflow %}<span data-count>+{{ overflow }}</span>{% endif -%}
+  </div>
+{%- endmacro %}

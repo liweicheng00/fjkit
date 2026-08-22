@@ -16,7 +16,10 @@ BUTTON = '{% from "ui/button.html" import button %}'
 DATA = '{% from "ui/data.html" import badge, card, stat, progress, empty_state, metric_group, link, kbd %}'
 LAYOUT = '{% from "ui/layout.html" import stack, row, grid, split, page_header, section, divider %}'
 TABLE = '{% from "ui/table.html" import table, cell, row_actions %}'
-FORM = '{% from "ui/form.html" import text_field, select_field, form, field_row %}'
+FORM = (
+    '{% from "ui/form.html" import text_field, select_field, form, field_row,'
+    ' textarea_field, checkbox_field, switch_field, radio_group, fieldset %}'
+)
 FEEDBACK = '{% from "ui/feedback.html" import spinner %}'
 FEEDBACK_DIALOG = '{% from "ui/feedback.html" import dialog %}'
 SIDEBAR = (
@@ -157,8 +160,113 @@ class TestForm:
         assert 'hx-target="#board"' in html
 
     def test_form_without_a_target_is_a_plain_form(self, render):
-        html = render(f"{FORM}{{% call form() %}}f{{% endcall %}}")
-        assert "hx-target" not in html
+        """No target, no htmx: `action`/`method` and nothing else. An `hx-post`
+        here would swap the reply into the form itself, which is never what a
+        caller who omitted `target` meant."""
+        html = render(f'{FORM}{{% call form(action="/x") %}}f{{% endcall %}}')
+        assert 'action="/x"' in html
+        assert 'method="post"' in html
+        assert "hx-" not in html
+
+    def test_form_method_reaches_both_kinds(self, render):
+        plain = render(f'{FORM}{{% call form(action="/x", method="get") %}}f{{% endcall %}}')
+        assert 'method="get"' in plain
+        swapped = render(f'{FORM}{{% call form(action="/x", method="get", target="#t") %}}f{{% endcall %}}')
+        assert 'hx-get="/x"' in swapped
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            'textarea_field("t", label="L", error="E")',
+            'checkbox_field("t", label="L", error="E")',
+            'switch_field("t", label="L", error="E")',
+            'radio_group("t", label="L", options=[("a", "A")], error="E")',
+        ],
+    )
+    def test_every_field_reports_an_error_the_same_way(self, render, call):
+        """One contract across the set: aria-invalid on the control, the message
+        in a <p> the control names. A caller that learns it once for `text_field`
+        knows it for all of them, which is what 0.3 will fill in mechanically."""
+        html = render(f"{FORM}{{{{ {call} }}}}")
+        assert 'aria-invalid="true"' in html
+        described = re.search(r'aria-describedby="([^"]+)"', html).group(1)
+        assert f'id="{described}"' in html
+        assert "E" in html
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            'textarea_field("t", label="L", hint="H", error="E")',
+            'checkbox_field("t", label="L", hint="H", error="E")',
+            'switch_field("t", label="L", hint="H", error="E")',
+            'radio_group("t", label="L", options=[("a", "A")], hint="H", error="E")',
+        ],
+    )
+    def test_every_field_replaces_the_hint_with_the_error(self, render, call):
+        html = render(f"{FORM}{{{{ {call} }}}}")
+        assert ">E<" in html
+        assert ">H<" not in html
+
+    def test_textarea_holds_its_value_as_content_not_an_attribute(self, render):
+        html = render(f'{FORM}{{{{ textarea_field("notes", value="two\nlines") }}}}')
+        assert ">two\nlines</textarea>" in html
+        assert "value=" not in html
+
+    def test_checkbox_and_switch_are_the_same_control_to_a_route(self, render):
+        """Only `role` separates them, so a handler reads one name either way and
+        swapping the presentation never touches the router."""
+        box = render(f'{FORM}{{{{ checkbox_field("done", checked=true) }}}}')
+        switch = render(f'{FORM}{{{{ switch_field("done", checked=true) }}}}')
+        for html in (box, switch):
+            assert 'type="checkbox"' in html
+            assert 'name="done"' in html
+            assert " checked" in html
+        assert 'role="switch"' in switch
+        assert 'role="switch"' not in box
+
+    def test_switch_puts_the_control_after_its_label(self, render):
+        """A settings row lines its switches up on one edge; a checkbox sits in
+        front of the words it qualifies. That is the whole visual difference."""
+        html = render(f'{FORM}{{{{ switch_field("d", label="Digest") }}}}')
+        assert html.index("Digest") < html.index("<input")
+        html = render(f'{FORM}{{{{ checkbox_field("d", label="Digest") }}}}')
+        assert html.index("<input") < html.index("Digest")
+
+    def test_radio_group_is_a_fieldset_with_one_name_and_distinct_ids(self, render):
+        html = render(
+            f'{FORM}{{{{ radio_group("p", label="Priority",'
+            ' options=[("low", "Low"), ("high", "High")], selected="high") }}'
+        )
+        assert "<fieldset" in html and "<legend" in html
+        assert 'role="radiogroup"' in html
+        assert html.count('name="p"') == 2
+        ids = re.findall(r'<input[^>]*id="([^"]+)"', html)
+        assert len(set(ids)) == 2
+        assert re.search(r'value="high"[^>]* checked', html)
+        assert not re.search(r'value="low"[^>]* checked', html)
+
+    def test_radio_group_takes_the_same_options_shape_as_select(self, render):
+        """One shape for both, so swapping a select for radios is a one-word edit."""
+        options = '[("a", "A"), ("b", "B")]'
+        selected = "b"
+        radios = render(f'{FORM}{{{{ radio_group("p", options={options}, selected="{selected}") }}}}')
+        select = render(f'{FORM}{{{{ select_field("p", options={options}, selected="{selected}") }}}}')
+        for html in (radios, select):
+            assert ">A<" in html and ">B<" in html
+
+    def test_fieldset_wraps_what_it_is_called_with(self, render):
+        html = render(f'{FORM}{{% call fieldset("Group", hint="Why") %}}INNER{{% endcall %}}')
+        assert "<fieldset" in html
+        assert ">Group</legend>" in html
+        assert html.index("Why") < html.index("INNER")
+
+    def test_a_group_legend_outranks_a_field_legend(self, render):
+        """`fieldset` names a section of the form; `radio_group`'s legend *is* a
+        field label and has to match the labels beside it."""
+        group = render(f'{FORM}{{% call fieldset("Group") %}}x{{% endcall %}}')
+        field = render(f'{FORM}{{{{ radio_group("p", label="P", options=[("a", "A")]) }}}}')
+        assert 'data-variant="legend"' in group
+        assert 'data-variant="label"' in field
 
 
 class TestData:
@@ -660,3 +768,418 @@ class TestButtonGroupOrientation:
                 f'{GROUP}{{% call button_group(orientation="{orientation}", id="filters") %}}x{{% endcall %}}'
             )
             assert 'id="filters"' in html
+
+
+ALERT = '{% from "ui/feedback.html" import alert %}'
+SKELETON = '{% from "ui/feedback.html" import skeleton %}'
+BREADCRUMB = '{% from "ui/nav.html" import breadcrumb %}'
+AVATAR = '{% from "ui/data.html" import avatar, avatar_group %}'
+RANGE = '{% from "ui/form.html" import range_field %}'
+DISCLOSURE = '{% from "ui/disclosure.html" import collapsible, accordion, tooltip %}'
+
+
+class TestAlert:
+    def test_renders_the_basecoat_structure(self, render):
+        html = render(f'{ALERT}{{{{ alert("Saved", "Your changes are live.") }}}}')
+        assert 'class="alert"' in html
+        assert "<h2>Saved</h2>" in html
+        assert "<section>Your changes are live.</section>" in html
+
+    @pytest.mark.parametrize("variant", ["destructive", "success", "warning", "info"])
+    def test_every_variant_renders(self, render, variant):
+        html = render(f'{ALERT}{{{{ alert("Note", variant="{variant}") }}}}')
+        assert f'data-variant="{variant}"' in html
+
+    def test_destructive_interrupts_and_the_rest_do_not(self, render):
+        """`alert` interrupts a screen reader, `status` waits for a pause. The
+        variant already draws that distinction, so the role follows it."""
+        assert 'role="alert"' in render(f'{ALERT}{{{{ alert("Failed", variant="destructive") }}}}')
+        assert 'role="status"' in render(f'{ALERT}{{{{ alert("Saved", variant="success") }}}}')
+
+    def test_the_variant_picks_an_icon_that_agrees_with_it(self, render):
+        assert "circle-check" not in render(f'{ALERT}{{{{ alert("Failed", variant="destructive") }}}}')
+        assert 'd="m9 12 2 2 4-4"' in render(f'{ALERT}{{{{ alert("Saved", variant="success") }}}}')
+
+    def test_no_variant_means_no_icon(self, render):
+        assert "<svg" not in render(f'{ALERT}{{{{ alert("Plain") }}}}')
+
+    def test_actions_arrive_through_a_caller_block(self, render):
+        html = render(f'{ALERT}{{% call alert("Update") %}}<button class="btn">Go</button>{{% endcall %}}')
+        assert "<footer><button" in html.replace("\n", "")
+
+    def test_passthrough_attributes_survive(self, render):
+        assert 'hx-get="/status"' in render(f'{ALERT}{{{{ alert("Note", hx_get="/status") }}}}')
+
+
+class TestSkeleton:
+    @pytest.mark.parametrize(
+        ("shape", "expected"),
+        [("text", "h-4"), ("heading", "h-6"), ("control", "h-9"), ("avatar", "size-10"), ("block", "aspect-video")],
+    )
+    def test_every_shape_renders(self, render, shape, expected):
+        assert expected in render(f'{SKELETON}{{{{ skeleton(shape="{shape}") }}}}')
+
+    @pytest.mark.parametrize(
+        ("width", "expected"),
+        [("full", "w-full"), ("three-quarters", "w-3/4"), ("half", "w-1/2"), ("third", "w-1/3"), ("quarter", "w-1/4")],
+    )
+    def test_every_width_renders(self, render, width, expected):
+        assert expected in render(f'{SKELETON}{{{{ skeleton(width="{width}") }}}}')
+
+    def test_an_unknown_shape_falls_back_rather_than_emitting_a_dead_class(self, render):
+        html = render(f'{SKELETON}{{{{ skeleton(shape="octagon") }}}}')
+        assert "octagon" not in html
+        assert "h-4" in html
+
+    def test_the_last_line_of_a_paragraph_is_short(self, render):
+        html = render(f'{SKELETON}{{{{ skeleton(lines=3) }}}}')
+        assert html.count("skeleton") == 3
+        assert html.count("w-3/4") == 1
+
+    def test_one_live_region_for_the_whole_group(self, render):
+        html = render(f'{SKELETON}{{{{ skeleton(lines=4) }}}}')
+        assert html.count('role="status"') == 1
+        assert html.count('aria-hidden="true"') == 4
+
+
+class TestBreadcrumb:
+    def test_the_last_crumb_is_not_a_link(self, render):
+        html = render(f'{BREADCRUMB}{{{{ breadcrumb([("Home", "/"), ("Tasks", none)]) }}}}')
+        assert '<a href="/">Home</a>' in html
+        assert '<span aria-current="page">Tasks</span>' in html
+        assert html.count("<a ") == 1
+
+    def test_exactly_one_current_page(self, render):
+        html = render(f'{BREADCRUMB}{{{{ breadcrumb([("A", "/a"), ("B", "/b"), ("C", none)]) }}}}')
+        assert html.count('aria-current="page"') == 1
+
+    def test_separators_are_hidden_and_sit_between_crumbs(self, render):
+        html = render(f'{BREADCRUMB}{{{{ breadcrumb([("A", "/a"), ("B", "/b"), ("C", none)]) }}}}')
+        assert html.count('<li aria-hidden="true">') == 2
+
+    @pytest.mark.parametrize("separator", ["chevron", "slash", "dot"])
+    def test_every_separator_renders(self, render, separator):
+        html = render(f'{BREADCRUMB}{{{{ breadcrumb([("A", "/a"), ("B", none)], separator="{separator}") }}}}')
+        assert "<svg" in html
+
+    def test_only_the_chevron_is_mirrored_for_rtl(self, render):
+        """A dot has no direction to flip."""
+        assert "rtl:rotate-180" in render(f'{BREADCRUMB}{{{{ breadcrumb([("A", "/a"), ("B", none)]) }}}}')
+        assert "rtl:rotate-180" not in render(
+            f'{BREADCRUMB}{{{{ breadcrumb([("A", "/a"), ("B", none)], separator="dot") }}}}'
+        )
+
+    def test_the_nav_is_labelled(self, render):
+        assert 'aria-label="Breadcrumb"' in render(f'{BREADCRUMB}{{{{ breadcrumb([("A", none)]) }}}}')
+
+
+class TestAvatar:
+    def test_initials_come_from_the_name(self, render):
+        assert ">AL<" in render(f'{AVATAR}{{{{ avatar("Ada Lovelace") }}}}')
+
+    def test_a_one_word_name_gives_one_letter(self, render):
+        assert ">A<" in render(f'{AVATAR}{{{{ avatar("Ada") }}}}')
+
+    def test_initials_stop_at_two_letters(self, render):
+        html = render(f'{AVATAR}{{{{ avatar("Ada King Noel Byron") }}}}')
+        assert ">AK<" in html
+
+    def test_the_name_is_also_the_alt_text(self, render):
+        """One parameter, so the accessible name and the initials cannot
+        disagree."""
+        assert 'alt="Ada Lovelace"' in render(f'{AVATAR}{{{{ avatar("Ada Lovelace", src="/a.png") }}}}')
+
+    def test_initials_leave_the_tree_when_an_image_carries_the_name(self, render):
+        html = render(f'{AVATAR}{{{{ avatar("Ada Lovelace", src="/a.png") }}}}')
+        assert 'aria-hidden="true">AL<' in html
+
+    def test_initials_stay_in_the_tree_when_there_is_no_image(self, render):
+        assert 'aria-hidden="true">AL<' not in render(f'{AVATAR}{{{{ avatar("Ada Lovelace") }}}}')
+
+    @pytest.mark.parametrize("size", ["sm", "lg"])
+    def test_every_size_renders(self, render, size):
+        assert f'data-size="{size}"' in render(f'{AVATAR}{{{{ avatar("Ada", size="{size}") }}}}')
+
+    @pytest.mark.parametrize(
+        ("tone", "expected"),
+        [
+            ("success", "bg-success"),
+            ("warning", "bg-warning"),
+            ("info", "bg-info"),
+            ("destructive", "bg-destructive"),
+            ("muted", "bg-muted-foreground"),
+        ],
+    )
+    def test_the_badge_names_a_role_not_a_hue(self, render, tone, expected):
+        html = render(f'{AVATAR}{{{{ avatar("Ada", badge_tone="{tone}") }}}}')
+        assert f'class="avatar-badge {expected}"' in html
+
+    def test_the_group_counts_its_overflow(self, render):
+        html = render(f'{AVATAR}{{% call avatar_group(overflow=3) %}}{{{{ avatar("Ada") }}}}{{% endcall %}}')
+        assert 'class="avatar-group"' in html
+        assert "<span data-count>+3</span>" in html
+
+
+class TestRangeField:
+    def test_renders_a_native_range_input(self, render):
+        html = render(f'{RANGE}{{{{ range_field("volume", "Volume") }}}}')
+        assert 'type="range"' in html and 'class="input"' in html
+
+    def test_the_fill_matches_the_value_on_first_paint(self, render):
+        """Basecoat paints the track from --slider-value and only updates it
+        from JS on drag; without this the bar starts at upstream's 20%."""
+        assert "--slider-value: 25.0%" in render(f'{RANGE}{{{{ range_field("v", value=25) }}}}')
+
+    def test_the_fill_accounts_for_a_non_zero_minimum(self, render):
+        assert "--slider-value: 50.0%" in render(f'{RANGE}{{{{ range_field("v", value=10, min=5, max=15) }}}}')
+
+    def test_a_zero_width_range_does_not_divide_by_zero(self, render):
+        render(f'{RANGE}{{{{ range_field("v", value=5, min=5, max=5) }}}}')
+
+    def test_the_output_is_off_by_default(self, render):
+        assert "<output" not in render(f'{RANGE}{{{{ range_field("v", "V") }}}}')
+        assert "<output" in render(f'{RANGE}{{{{ range_field("v", "V", output=true) }}}}')
+
+    def test_an_error_marks_the_control_invalid(self, render):
+        assert 'aria-invalid="true"' in render(f'{RANGE}{{{{ range_field("v", error="Too loud") }}}}')
+
+
+class TestDisclosure:
+    def test_collapsible_is_a_native_details(self, render):
+        html = render(f'{DISCLOSURE}{{% call collapsible("More") %}}body{{% endcall %}}')
+        assert "<summary" in html
+        assert re.search(r"<details[^>]*>", html) and not re.search(r"<details[^>]*\sopen[\s>]", html)
+
+    def test_open_starts_expanded(self, render):
+        html = render(f'{DISCLOSURE}{{% call collapsible("More", open=true) %}}body{{% endcall %}}')
+        assert re.search(r"<details[^>]*\sopen[\s>]", html)
+
+    def test_the_marker_is_hidden_from_the_tree(self, render):
+        """The summary already announces its own expanded state."""
+        html = render(f'{DISCLOSURE}{{% call collapsible("More") %}}body{{% endcall %}}')
+        assert 'aria-hidden="true"' in html
+
+    def test_an_accordion_carries_the_class_basecoat_initialises(self, render):
+        html = render(f'{DISCLOSURE}{{% call accordion() %}}x{{% endcall %}}')
+        assert 'class="accordion"' in html
+
+    def test_multiple_withholds_the_class_rather_than_adding_one(self, render):
+        """Allowing several open panels means shipping no JS behaviour, not
+        shipping JS that is asked to do nothing."""
+        html = render(f'{DISCLOSURE}{{% call accordion(multiple=true) %}}x{{% endcall %}}')
+        assert "accordion" not in html
+
+    @pytest.mark.parametrize("side", ["top", "bottom", "left", "right"])
+    def test_every_tooltip_side_renders(self, render, side):
+        html = render(f'{DISCLOSURE}{{% call tooltip("Hint", side="{side}") %}}x{{% endcall %}}')
+        assert f'data-side="{side}"' in html
+
+    @pytest.mark.parametrize("align", ["start", "center", "end"])
+    def test_every_tooltip_align_renders(self, render, align):
+        html = render(f'{DISCLOSURE}{{% call tooltip("Hint", align="{align}") %}}x{{% endcall %}}')
+        assert f'data-align="{align}"' in html
+
+    def test_the_tooltip_wraps_its_trigger(self, render):
+        html = render(f'{DISCLOSURE}{{% call tooltip("Save") %}}<button>S</button>{{% endcall %}}')
+        assert 'data-tooltip="Save"' in html and "<button>S</button>" in html
+
+
+OVERLAY = (
+    '{% from "ui/overlay.html" import popover, dropdown_menu, menu_item, menu_group,'
+    ' menu_separator, select_menu, combobox, drawer, drawer_trigger, command,'
+    ' command_group, command_item %}'
+)
+INPUT_GROUP = '{% from "ui/form.html" import input_group_field %}'
+
+
+class TestOverlayIdWiring:
+    """One id in, four out. A mismatch here fails silently — the panel opens
+    but is never announced, or never opens at all."""
+
+    def test_popover_wires_trigger_to_panel(self, render):
+        html = render(f'{OVERLAY}{{% call popover("p1", "Open") %}}body{{% endcall %}}')
+        assert 'id="p1-trigger"' in html
+        assert 'aria-controls="p1-popover"' in html
+        assert 'id="p1-popover"' in html
+
+    def test_dropdown_wires_trigger_to_menu_and_back(self, render):
+        html = render(f'{OVERLAY}{{% call dropdown_menu("m1", "Open") %}}x{{% endcall %}}')
+        assert 'aria-controls="m1-menu"' in html
+        assert 'id="m1-menu"' in html
+        assert 'aria-labelledby="m1-trigger"' in html
+
+    def test_select_menu_wires_listbox(self, render):
+        html = render(f'{OVERLAY}{{{{ select_menu("t", [("a", "A")]) }}}}')
+        assert 'aria-controls="s-t-listbox"' in html and 'id="s-t-listbox"' in html
+
+    def test_combobox_wires_listbox(self, render):
+        html = render(f'{OVERLAY}{{{{ combobox("f", [("a", "A")]) }}}}')
+        assert 'aria-controls="c-f-listbox"' in html and 'id="c-f-listbox"' in html
+
+    def test_command_wires_input_to_menu(self, render):
+        html = render(f'{OVERLAY}{{% call command("k") %}}x{{% endcall %}}')
+        assert 'aria-controls="k-menu"' in html and 'id="k-menu"' in html
+
+
+class TestOverlayStartingState:
+    """First paint is the state before Basecoat's JS has run. A trigger with
+    no aria-expanded is announced as a plain button."""
+
+    def test_a_closed_popover_says_so_on_both_ends(self, render):
+        html = render(f'{OVERLAY}{{% call popover("p", "Open") %}}b{{% endcall %}}')
+        assert 'aria-expanded="false"' in html and 'aria-hidden="true"' in html
+
+    def test_the_dropdown_trigger_declares_it_owns_a_menu(self, render):
+        html = render(f'{OVERLAY}{{% call dropdown_menu("m", "Open") %}}x{{% endcall %}}')
+        assert 'aria-haspopup="menu"' in html
+
+    def test_the_select_trigger_declares_it_owns_a_listbox(self, render):
+        assert 'aria-haspopup="listbox"' in render(f'{OVERLAY}{{{{ select_menu("t", [("a", "A")]) }}}}')
+
+
+class TestMenuItem:
+    def test_a_plain_item_is_a_menuitem(self, render):
+        assert 'role="menuitem"' in render(f'{OVERLAY}{{{{ menu_item("Profile") }}}}')
+
+    def test_a_checked_item_changes_role(self, render):
+        """Reporting a checked state under role=menuitem is a contradiction a
+        screen reader cannot resolve."""
+        html = render(f'{OVERLAY}{{{{ menu_item("Wrap", checked=true) }}}}')
+        assert 'role="menuitemcheckbox"' in html and 'aria-checked="true"' in html
+
+    def test_unchecked_still_reports_the_state(self, render):
+        html = render(f'{OVERLAY}{{{{ menu_item("Wrap", checked=false) }}}}')
+        assert 'role="menuitemcheckbox"' in html and 'aria-checked="false"' in html
+
+    def test_a_radio_item_changes_role(self, render):
+        html = render(f'{OVERLAY}{{{{ menu_item("Ascending", radio=true, checked=true) }}}}')
+        assert 'role="menuitemradio"' in html
+
+    def test_href_switches_the_element_to_an_anchor(self, render):
+        html = render(f'{OVERLAY}{{{{ menu_item("Docs", href="/docs") }}}}')
+        assert "<a " in html and 'href="/docs"' in html
+
+    def test_a_shortcut_renders_a_kbd(self, render):
+        assert "<kbd>⌘S</kbd>" in render(f'{OVERLAY}{{{{ menu_item("Save", shortcut="⌘S") }}}}')
+
+    def test_disabled_is_announced_not_removed(self, render):
+        assert 'aria-disabled="true"' in render(f'{OVERLAY}{{{{ menu_item("API", disabled=true) }}}}')
+
+    def test_a_group_heading_labels_the_group(self, render):
+        html = render(f'{OVERLAY}{{% call menu_group("My Account") %}}x{{% endcall %}}')
+        assert 'aria-labelledby="h-my-account"' in html
+        assert 'role="heading" id="h-my-account"' in html
+
+    def test_a_separator_is_announced_as_one(self, render):
+        assert '<hr role="separator">' in render(f'{OVERLAY}{{{{ menu_separator() }}}}')
+
+
+class TestSelectMenuAndCombobox:
+    def test_the_value_travels_in_a_hidden_input(self, render):
+        """The visible trigger is a button and submits nothing."""
+        html = render(f'{OVERLAY}{{{{ select_menu("theme", [("d", "Dark")], selected="d") }}}}')
+        assert '<input type="hidden" name="theme" value="d">' in html
+
+    def test_the_hidden_input_is_prefilled_so_a_round_trip_keeps_the_choice(self, render):
+        html = render(f'{OVERLAY}{{{{ combobox("fw", [("next", "Next.js")], selected="next") }}}}')
+        assert 'name="fw" value="next"' in html
+
+    def test_nothing_selected_is_not_an_error(self, render):
+        html = render(f'{OVERLAY}{{{{ select_menu("t", [("a", "A")]) }}}}')
+        assert 'value=""' in html
+        assert "Select…" in html
+
+    def test_the_trigger_shows_the_selected_label(self, render):
+        html = render(f'{OVERLAY}{{{{ select_menu("t", [("a", "Apple"), ("b", "Pear")], selected="b") }}}}')
+        assert ">Pear<" in html
+
+    def test_the_selected_option_is_marked(self, render):
+        html = render(f'{OVERLAY}{{{{ select_menu("t", [("a", "A"), ("b", "B")], selected="b") }}}}')
+        assert html.count('aria-selected="true"') == 1
+
+    def test_the_combobox_turns_off_browser_autofill(self, render):
+        """The browser's own suggestions would cover the listbox."""
+        html = render(f'{OVERLAY}{{{{ combobox("f", [("a", "A")]) }}}}')
+        assert 'autocomplete="off"' in html and 'spellcheck="false"' in html
+
+    def test_the_empty_message_is_never_blank(self, render):
+        html = render(f'{OVERLAY}{{{{ combobox("f", [("a", "A")]) }}}}')
+        assert 'data-empty="No results found."' in html
+
+
+class TestDrawer:
+    def test_a_drawer_is_a_native_dialog(self, render):
+        html = render(f'{OVERLAY}{{% call drawer("d", "Goal") %}}b{{% endcall %}}')
+        assert "<dialog" in html and 'class="drawer"' in html
+        assert "<article>" in html
+
+    @pytest.mark.parametrize("side", ["top", "right", "bottom", "left"])
+    def test_every_side_renders(self, render, side):
+        html = render(f'{OVERLAY}{{% call drawer("d", side="{side}") %}}b{{% endcall %}}')
+        assert f'data-side="{side}"' in html
+
+    def test_the_title_labels_the_dialog(self, render):
+        html = render(f'{OVERLAY}{{% call drawer("d", "Move Goal") %}}b{{% endcall %}}')
+        assert 'aria-labelledby="d-title"' in html and 'id="d-title"' in html
+
+    def test_the_trigger_opens_it_modally(self, render):
+        html = render(f'{OVERLAY}{{{{ drawer_trigger("Open", "d") }}}}')
+        assert "showModal()" in html
+        assert 'aria-haspopup="dialog"' in html and 'aria-controls="d"' in html
+
+    def test_the_close_button_finds_its_dialog_structurally(self, render):
+        """closest('dialog'), not the id — a rename cannot break it."""
+        html = render(f'{OVERLAY}{{% call drawer("d") %}}b{{% endcall %}}')
+        assert "this.closest('dialog').close()" in html
+
+
+class TestCommand:
+    def test_the_dialog_flag_swaps_the_root_not_the_contents(self, render):
+        standalone = render(f'{OVERLAY}{{% call command("k") %}}x{{% endcall %}}')
+        modal = render(f'{OVERLAY}{{% call command("k", dialog=true) %}}x{{% endcall %}}')
+        assert 'class="command border"' in standalone and "<dialog" not in standalone
+        assert 'class="command-dialog"' in modal and "<dialog" in modal
+        for html in (standalone, modal):
+            assert 'id="k-input"' in html and 'id="k-menu"' in html
+
+    def test_the_filter_defaults_to_the_label(self, render):
+        assert 'data-filter="Calendar"' in render(f'{OVERLAY}{{{{ command_item("Calendar") }}}}')
+
+    def test_keywords_extend_the_filter_beyond_what_is_on_screen(self, render):
+        html = render(f'{OVERLAY}{{{{ command_item("Calendar", keywords="date event") }}}}')
+        assert 'data-keywords="date event"' in html
+
+    def test_the_listbox_is_permanently_expanded(self, render):
+        """It is the dialog that opens and closes, not the listbox."""
+        assert 'aria-expanded="true"' in render(f'{OVERLAY}{{% call command("k") %}}x{{% endcall %}}')
+
+    def test_a_command_group_heading_is_a_span(self, render):
+        """Upstream's command markup uses a span and its CSS selects on it."""
+        html = render(f'{OVERLAY}{{% call command_group("Suggestions") %}}x{{% endcall %}}')
+        assert '<span role="heading"' in html
+
+
+class TestInputGroup:
+    def test_addons_are_optional_and_leave_nothing_behind(self, render):
+        """An empty addon still takes its padding, which is why these are
+        slots rather than a caller block."""
+        html = render(f'{INPUT_GROUP}{{{{ input_group_field("q") }}}}')
+        assert "data-align" not in html
+
+    def test_both_ends_render_when_given(self, render):
+        html = render(f'{INPUT_GROUP}{{{{ input_group_field("q", start="$", end="USD") }}}}')
+        assert 'data-align="start"' in html and 'data-align="end"' in html
+
+    def test_the_inner_input_has_no_input_class(self, render):
+        """Basecoat paints the border on the group; a second one draws a box
+        inside the box."""
+        html = render(f'{INPUT_GROUP}{{{{ input_group_field("q") }}}}')
+        assert 'class="input-group"' in html
+        assert 'class="input"' not in html
+
+    def test_the_input_stays_first_so_the_label_reads_naturally(self, render):
+        html = render(f'{INPUT_GROUP}{{{{ input_group_field("q", "Search", start="@") }}}}')
+        assert html.index("<input") < html.index("data-align")
+
+    def test_an_error_marks_the_control_invalid(self, render):
+        assert 'aria-invalid="true"' in render(f'{INPUT_GROUP}{{{{ input_group_field("q", error="Required") }}}}')

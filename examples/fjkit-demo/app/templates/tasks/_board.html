@@ -21,7 +21,8 @@
   {% if slot == "main" %}
 
     {% call stack(4) %}
-      {% call form(action=url_for(request, "tasks_create"), target="#board", reset_on_success=true) %}
+      {% call form(action=url_for(request, "tasks_create"), target="#board", reset_on_success=true,
+                   hx_disabled_elt="find button[type=submit]") %}
         {% call field_row("wide-then-actions") %}
           {{ text_field("title", label="New task", placeholder="What needs doing?", required=true) }}
           {{ select_field("priority", label="Priority", options=priority_options, selected="normal") }}

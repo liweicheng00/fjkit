@@ -1,0 +1,250 @@
+{#
+  One operation: what it is, a console that calls it, and what it answers with.
+
+  A partial, so the page embeds it and an htmx click swaps it. It carries the
+  target id itself and is swapped `outerHTML`, which is what lets the same file
+  be both the initial render and the replacement.
+#}
+{% from "apidocs/macros.html" import field, op_line, param_table, payload %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import badge, card, item, item_list, link %}
+{% from "ui/feedback.html" import spinner %}
+{#
+  `textarea_field` is the kit's own, as of 0.2. This template carried a local
+  copy while it was still a roadmap item; keeping one now would be a second
+  textarea with its own idea of `hint` and no `error` — and `error` is the seam
+  0.3 fills in, which the console wants as much as any form does.
+
+  The three attributes below ride through `**attrs`. They are not decoration:
+  a JSON body under a spell-checker is a wall of red squiggles, and mobile
+  autocapitalisation turns `{"title"` into `{"Title"`, which is a payload that
+  fails validation for a reason nothing on screen explains.
+#}
+{% from "ui/form.html" import form, textarea_field %}
+{% from "ui/icon.html" import icon %}
+{% from "ui/layout.html" import divider, grid, section, stack %}
+
+<div id="{{ ids.detail }}">
+  {% call stack(gap=5) %}
+
+    {% call stack(gap=2) %}
+      {{ op_line(operation) }}
+      {% if operation.summary %}<h2 class="text-xl font-semibold tracking-tight">{{ operation.summary }}</h2>{% endif %}
+      {% if operation.description %}
+        <p class="text-muted-foreground text-sm">{{ operation.description }}</p>
+      {% endif %}
+      {% if operation.deprecated %}
+        <p class="text-warning text-sm" role="note">
+          Deprecated. It still answers, but it is on its way out — check the changelog before building on it.
+        </p>
+      {% endif %}
+      {#
+        The document's own two pointers outwards: the name every generated
+        client will give this call, and the link its author wrote to the real
+        explanation. Both are in the schema and neither usually survives being
+        rendered — which leaves a reference that is less informative than the
+        file it came from.
+      #}
+      <div class="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
+        {% if operation.operation_id %}
+          <span>operationId <code class="kbd">{{ operation.operation_id }}</code></span>
+        {% endif %}
+        {% if operation.external_url %}
+          <span>{{ link(operation.external_label, operation.external_url) }}</span>
+        {% endif %}
+      </div>
+    {% endcall %}
+
+    {% if try_it %}
+      {#
+        The console. Everything in it is a form field with a name the server
+        parses (`p.<in>.<name>`), because the request is composed server-side —
+        there is no JavaScript here assembling a URL, and nothing on this page
+        ever holds the credential the call travels with.
+      #}
+      {%- set legend %}{{ badge(operation.method, "outline") }}{% endset %}
+      {% call card("Try it", "Sent through this app as you, with your live session.", actions=legend) %}
+        {#
+          A multipart body needs the form to say so twice: `enctype` for a
+          plain submit and `hx-encoding` for the htmx one, because htmx builds
+          its own request and reads its own attribute. With neither, the file
+          the reader picked is posted as its filename and the endpoint receives
+          a string where it declared an upload.
+        #}
+        {% call form(action=url_for(request, routes.run, operation_id=operation.id),
+                     target="#" ~ ids.result, card=false,
+                     enctype="multipart/form-data" if operation.multipart else none,
+                     hx_encoding="multipart/form-data" if operation.multipart else none) %}
+          <div class="flex flex-col gap-4">
+            {#
+              Parameters and form-body fields in one run of inputs. They are
+              different things to the document and the same thing to the person
+              filling them in, and `_compose` puts each back where its
+              `location` says it belongs.
+
+              Two columns, not a stack. A `limit` box or a `status` select
+              stretched across a full-width card is a text field the size of a
+              paragraph for a value that is four characters long — it reads as
+              though something long is expected. `grid` collapses to one column
+              on a narrow screen, so this is a wide-screen affordance rather
+              than a layout the small one has to live with.
+            #}
+            {% if operation.params or operation.body_fields %}
+              {% call grid(cols=2, gap=3) %}
+                {% for param in operation.params %}{{ field(param) }}{% endfor %}
+                {% for param in operation.body_fields %}{{ field(param) }}{% endfor %}
+              {% endcall %}
+            {% endif %}
+
+            {% if operation.has_raw_body %}
+              {%- set body_hint = operation.body_media ~ (" · required" if operation.body_required else " · optional") -%}
+              {% if operation.body_example or operation.body_shape %}
+                {#
+                  The box you type in, and what the document says about it,
+                  side by side.
+
+                  They start identical — the textarea is prefilled with the very
+                  example beside it — and stop being identical the moment you
+                  paste your own payload in. That is the moment the reference is
+                  worth a column: a body built from `$ref`s and nested models is
+                  not something anyone reconstructs from memory, and the
+                  alternative is retyping it wrong or reloading the page to get
+                  it back. The Schema tab behind it is the other half of the
+                  same question — what is *allowed*, which is what you need the
+                  second the example stops working. Responses below do the same
+                  thing for the other direction.
+                #}
+                {% call grid(cols=2, gap=3) %}
+                  {{ textarea_field(body_field, label="Request body", value=operation.body_example,
+                                    hint=body_hint, spellcheck="false",
+                                    autocapitalize="off", autocorrect="off") }}
+                  {{ payload(request, routes, docs, "body", operation.body_example,
+                             operation.body_shape, "Example body", operation.body_examples) }}
+                {% endcall %}
+              {% else %}
+                {{ textarea_field(body_field, label="Request body", hint=body_hint,
+                                  spellcheck="false", autocapitalize="off", autocorrect="off") }}
+              {% endif %}
+              {% if operation.media_types | length > 1 %}
+                <p class="text-muted-foreground text-xs">
+                  The document also accepts {{ operation.media_types | reject("equalto", operation.body_media) | join(", ") }}.
+                  The console sends {{ operation.body_media }}; use the curl snippet for the others.
+                </p>
+              {% endif %}
+            {% endif %}
+
+            {#
+              Extra headers, folded away.
+
+              Everything above is a control the document asked for; this is the
+              escape hatch for the one it did not — a feature flag, an
+              `If-None-Match`, a hand-typed `Accept` you are deliberately
+              testing. It belongs on the page and it does not belong in the
+              reading order: left open it is a two-line textarea sitting
+              between the parameters and the Send button, and it is empty on
+              almost every call anybody makes.
+
+              `<details>` rather than a scripted panel — the browser owns the
+              open state, the keyboard handling and the expanded announcement,
+              and there is nothing left for JavaScript to add.
+            #}
+            <details class="text-sm">
+              {#
+                The chevron is the whole affordance. Basecoat's base layer
+                removes the native marker, and a bare line of muted text does
+                not read as something you can open — which is a different
+                failure from being too loud, and just as bad.
+              #}
+              <summary class="text-muted-foreground flex cursor-pointer items-center gap-1 text-xs">
+                {{ icon("chevron-right", 12) }}<span>Extra headers</span>
+              </summary>
+              <div class="pt-3">
+                {{ textarea_field(headers_field, label=none, rows=2,
+                                  placeholder="X-Debug: 1",
+                                  hint="One per line, `Name: value`. The session cookie is attached for you.",
+                                  spellcheck="false", autocapitalize="off", autocorrect="off") }}
+              </div>
+            </details>
+
+            <div class="flex items-center gap-3">
+              {{ button("Send", type="submit", icon_name="send") }}
+              {#
+                A native reset, which puts every field back to the default the
+                document declared rather than emptying it — that is what makes
+                it useful after an experiment, and it is one attribute against
+                a route that would have to re-render the form.
+              #}
+              {{ button("Reset", type="reset", variant="ghost", size="sm") }}
+              {{ spinner(size="sm", indicator=true, label="Calling") }}
+            </div>
+          </div>
+        {% endcall %}
+      {% endcall %}
+
+      {% include "apidocs/_result.html" %}
+    {% endif %}
+
+    {#
+      The parameters as a table, always — not only when the console is off.
+
+      The form fields carry the same facts and carry them one field at a time,
+      which is the right shape for filling something in and the wrong one for
+      reading what an endpoint takes. A client author copying this endpoint into
+      their own code wants the whole list at once, and Swagger gives them one.
+    #}
+    {% if operation.params or operation.body_fields %}
+      {% call section("Parameters") %}
+        {{ param_table(operation.params + operation.body_fields) }}
+      {% endcall %}
+    {% endif %}
+
+    {% if operation.responses %}
+      {% call section("Responses", "What the document promises. What it actually returned is above.") %}
+        {% call stack(gap=4) %}
+          {#
+            One block per documented status, not one example for the whole
+            endpoint. The 200 shape is what most readers are here for, but the
+            422 envelope and the 404 body are what they come back for — and a
+            page that documents four statuses and shows one example leaves the
+            other three as a shape you find out about from a failing call.
+          #}
+          {% for entry in operation.responses %}
+            {% call stack(gap=2) %}
+              <div class="flex flex-wrap items-center gap-2">
+                {{ badge(entry.status, entry.tone) }}
+                {% if entry.description %}<span class="text-sm">{{ entry.description }}</span>{% endif %}
+                {% if entry.media_type %}<code class="kbd">{{ entry.media_type }}</code>{% endif %}
+              </div>
+
+              {% if entry.headers %}
+                {#
+                  A `Location`, a `Retry-After`, a rate-limit budget: the
+                  document is usually the only place these are written down,
+                  and a client that has to follow one cannot guess it.
+                #}
+                {% call item_list() %}
+                  {% for name, description in entry.headers %}
+                    {{ item(name, description or none, icon_name="tag", clamp=false) }}
+                  {% endfor %}
+                {% endcall %}
+              {% endif %}
+
+              {{ payload(request, routes, docs, "resp-" ~ entry.status, entry.example, entry.shape,
+                         "Example " ~ entry.status ~ " response", entry.examples) }}
+            {% endcall %}
+            {% if not loop.last %}{{ divider() }}{% endif %}
+          {% endfor %}
+        {% endcall %}
+      {% endcall %}
+    {% endif %}
+
+  {% endcall %}
+</div>
+
+{#
+  The sidebar, out of band, so its highlight follows the click that got here.
+  Only on a swap — `oob_nav` is false when this partial is embedded in the
+  page, where the sidebar renders itself and a second copy would be a duplicate
+  id in the document.
+#}
+{% if oob_nav %}{% include "apidocs/_nav.html" %}{% endif %}

@@ -11,20 +11,20 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css">
-  <link rel="stylesheet" href="assets/brand.css">
-  <script defer src="assets/vendor/htmx/htmx.min.js"></script>
-  <script defer src="assets/vendor/basecoat/js/all.min.js"></script>
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1787416553">
+  <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
+  <script defer src="assets/vendor/htmx/htmx.min.js?v=1786876367"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1786876367"></script>
   <meta name="description" content="Build a FastAPI interface without a front-end toolchain: how the kit is wired, what htmx actually sends, a brand knob that repaints the page, and the vocabulary checker.">
   <meta property="og:title" content="Learn fjkit">
   <meta property="og:description" content="Build a FastAPI interface without a front-end toolchain: how the kit is wired, what htmx actually sends, a brand knob that repaints the page, and the vocabulary checker.">
   <meta property="og:type" content="article">
-  <script src="assets/mock-server.js"></script>
+  <script src="assets/mock-server.js?v=0.1.0.dev0"></script>
 </head>
 <body class="min-h-full antialiased">
   <aside class="sidebar" id="sidebar" data-side="left"
          aria-hidden="false">
-    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png" width="28" height="28" alt="">
+    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png?v=1787150370" width="28" height="28" alt="">
 fjkit
   </a></header>      <section><div role="group" aria-label="Documentation"><h3>Documentation</h3>    <ul>        <li>
     <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>Introduction</span>
@@ -62,6 +62,14 @@ fjkit
   </li>
         <li>
     <a href="learn.html#partials">      <span>Partials: one file, page and swap</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#oob">      <span>One reply, many regions: hx-swap-oob</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#pending">      <span>While the request is in flight</span>
     </a>
   </li>
         <li>
@@ -109,7 +117,7 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Build the interface where you build the routes</h1>
-<p class="text-muted-foreground text-sm">    Nine lessons: how a fjkit app is wired, what htmx actually sends, how a rebrand works, and the
+<p class="text-muted-foreground text-sm">    Eleven lessons: how a fjkit app is wired, what htmx actually sends, how a rebrand works, and the
     command that fails a build. Every demo below is live.
 </p>    </div>
   </div>
@@ -388,14 +396,181 @@ fjkit
       <h4>HX-Request</h4><p>the header that tells a route it is answering a swap</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>HX-Trigger</h4><p>response header that fires a client event — how a toast gets raised (fjkit 0.6)</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>HX-Redirect</h4><p>full-page redirect from inside a swap response</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>hx-swap-oob</h4><p>update a second element — a counter, a badge — from the same response</p>    </section>  </div></div></div>
+      <h4>hx-swap-oob</h4><p>one response, several regions — the next lesson</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="oob">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">One reply, many regions: hx-swap-oob</h2><p class="text-muted-foreground text-sm"><code>hx-target</code> names one element. When one answer has to move five, the other four carry their own address.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Every swap so far has had one target, and that is enough while the things that change sit
+        under one element. The board is a single <code>&lt;div id="board"&gt;</code>: every control on
+        it points there, and every response is the whole board.
+      </p>
+      <p>
+        A search result is not one thing. One query moves a row of counters above the table, the table
+        itself, a progress card and a facet list in the aside, and a detail panel below it — five
+        fragments in three places, and the only element that contains all five is
+        <code>&lt;body&gt;</code>. Swapping the body is a page reload with extra steps.
+      </p>
+      <p>
+        So the reply carries the other four <strong>out of band</strong> — outside the one channel
+        <code>hx-target</code> describes. Each of them says where it belongs by carrying the id it is
+        going to.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What comes back from one keystroke</h3><p>GET /search?q=cache, answered by one handler and one response model.</p>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="The response body">&lt;div id=&#34;search-matches&#34;&gt;…&lt;/div&gt;                     ← no marker: this is what hx-target gets
+&lt;div id=&#34;search-stats&#34;    hx-swap-oob=&#34;true&#34;&gt;…&lt;/div&gt;   ← flies to the counters
+&lt;div id=&#34;search-progress&#34; hx-swap-oob=&#34;true&#34;&gt;…&lt;/div&gt;   ← flies to the aside
+&lt;div id=&#34;search-facets&#34;   hx-swap-oob=&#34;true&#34;&gt;…&lt;/div&gt;   ← flies to the aside
+&lt;div id=&#34;search-detail&#34;   hx-swap-oob=&#34;true&#34;&gt;…&lt;/div&gt;   ← flies below the table</pre>
+
+</div>
+  </div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What htmx does, in order</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>1 — lift</h4><p>every <strong>top-level</strong> element carrying <code>hx-swap-oob</code> is lifted out of the response</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>2 — place</h4><p>each one is matched to the element on the page with the same <code>id</code> and replaces it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>3 — then the target</h4><p>whatever is <em>left</em> is swapped into <code>hx-target</code> as usual</p>    </section>  </div></div></div>
+  </div>
+
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Four things to know</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>the value</h4><p><code>true</code> replaces the matching element; <code>innerHTML</code>, <code>beforeend</code> and the rest of the swap vocabulary all work here too</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>it fails in silence</h4><p>an id that matches nothing is <strong>dropped without a word</strong> — no error, no console entry, and that region simply keeps the previous query's numbers</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>top level only</h4><p>an out-of-band fragment nested inside a wrapper is not one — which is why the reply template is a flat list of includes</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>not the target</h4><p>never mark the fragment that <code>hx-target</code> names: it would be lifted out too, and the target would be swapped with nothing</p>    </section>  </div></div></div>
+  </div>
+</div>
+<div class="flex flex-col gap-3">      <p>
+        On the fjkit side there is no new machinery. The page and the reply
+<code>{% include %}</code> the same five partials and differ in one
+        variable: the page renders them cold, the reply renders them addressed. Each partial defaults
+        the flag itself, so it still renders standalone.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>One set of partials, two ways of rendering them</h3>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="Jinja">{# _results.html — what an htmx request gets #}
+{% include &#34;search/_matches.html&#34; %}
+{% with oob = true %}
+  {% include &#34;search/_stats.html&#34; %}
+  {% include &#34;search/_progress.html&#34; %}
+  {% include &#34;search/_facets.html&#34; %}
+  {% include &#34;search/_detail.html&#34; %}
+{% endwith %}
+
+{# _stats.html — and every other region, at the top #}
+{% set oob = oob | default(false) %}
+&lt;div id=&#34;search-stats&#34;{% if oob %} hx-swap-oob=&#34;true&#34;{% endif %}&gt;
+  …
+&lt;/div&gt;</pre>
+
+</div>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        The payoff is that <em>where</em> a fragment lives is decided by the page, once. Move the facet
+        card from the aside into the main column and the router, the response model and the swap are
+        all unchanged. The working files are
+        <code>examples/fjkit-demo/app/templates/search/</code> in the repository.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="pending">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">While the request is in flight</h2><p class="text-muted-foreground text-sm">A swap is a round trip, and nothing stops a second click during it. Two attributes cover the whole of the wait.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        htmx adds the class <code>htmx-request</code> to an element for the length of a request and
+        removes it afterwards. Without <code>hx-indicator</code> that element is the one that fired the
+        request; with it, it is whatever the selector names. Then this stylesheet — htmx's own, injected
+        at startup — does the rest:
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The rules htmx injects</h3><p>Two selectors, comma separated.</p>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="CSS">.htmx-indicator { opacity: 0; visibility: hidden }
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator { opacity: 1; visibility: visible; transition: opacity 200ms ease-in }</pre>
+
+</div>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        The first selector covers an indicator <em>inside</em> the marked element — a spinner in the
+        button that was clicked. The second covers an indicator that <em>is</em> the marked element,
+        which is the shape fjkit uses: <code>spinner(indicator=true)</code> adds
+        <code>htmx-indicator</code> and nothing else, so a loading state costs no CSS and no JavaScript
+        of yours, and no round trip to reveal it.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Both attributes, on one form</h3><p>examples/fjkit-demo/app/templates/jobs/page.html</p>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="Jinja">{% call form(action=url_for(request, &#34;jobs_start&#34;), target=&#34;#job-list&#34;,
+             hx_indicator=&#34;#job-busy&#34;,
+             hx_disabled_elt=&#34;find button[type=submit]&#34;) %}
+  {% call field_row(&#34;field-and-button&#34;) %}
+    {{ select_field(&#34;kind&#34;, label=&#34;Background job&#34;, options=kind_options) }}
+    {% call row(gap=2) %}
+      {{ button(&#34;Start&#34;, variant=&#34;primary&#34;, type=&#34;submit&#34;, icon_name=&#34;play&#34;) }}
+      {{ spinner(indicator=true, id=&#34;job-busy&#34;, label=&#34;Starting the job&#34;) }}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}</pre>
+
+</div>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        <code>hx-disabled-elt</code> is the same machinery aimed at a different problem. It sets
+        <code>disabled</code> on whatever the selector names for the length of the request and clears it
+        after, which is the whole of what stops a double click from advancing a task twice or posting
+        two of the same form. The selector takes <code>this</code>, a
+        <code>find …</code>/<code>closest …</code> relative form, or an ordinary CSS selector.
+      </p>
+</div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>How they behave</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>counted</h4><p>both are <strong>counted, not toggled</strong> — htmx keeps a request count per element, so an early reply cannot re-enable a control another request is still using</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>no layout shift</h4><p>the indicator is hidden with <code>visibility</code> and <code>opacity</code>, never <code>display</code> — it holds its space, so nothing on the page jumps when it appears</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>inherited</h4><p>both are inherited: put <code>hx-indicator</code> on a container and everything inside it shares one spinner. <code>this</code> and <code>inherit</code> are valid values</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>it tells you</h4><p>a selector that matches nothing <strong>does</strong> warn here — <code>The selector "…" returned no matches!</code> — unlike an out-of-band id, which fails silently</p>    </section>  </div></div></div>
+  </div>
+
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Traps worth knowing</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>not inside the target</h4><p>keep the indicator <strong>outside</strong> the target: an element inside what is being replaced is torn out mid-request, and its id with it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the free version</h4><p>with no <code>hx-indicator</code> at all the class lands on the trigger itself, so <code>.htmx-request</code> styling on a button is the cheapest loading state there is</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>it remembers</h4><p>htmx marks what it disabled with <code>data-disabled-by-htmx</code>, so a control that was already disabled stays disabled afterwards</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a fast request</h4><p>expect some indicators to barely flash. That is the request being fast, not the indicator being broken — the jobs page does its work <em>after</em> the response, which is why the card polls</p>    </section>  </div></div></div>
   </div>
 </div>
 </section></div></div>
 <hr class="border-border">
 
 <div id="json">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">No HX-Request: the same route answers JSON</h2><p class="text-muted-foreground text-sm">A handler returns a model, not markup. One question decides what goes on the wire: does this caller have markup waiting?</p>      </div>
@@ -558,7 +733,7 @@ vary: HX-Request
 <hr class="border-border">
 
 <div id="patterns">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Nine htmx patterns, and their handlers</h2><p class="text-muted-foreground text-sm">Screens differ; the shapes do not. Each one is a trigger, a target and a partial.</p>      </div>
@@ -618,7 +793,7 @@ vary: HX-Request
 <hr class="border-border">
 
 <div id="knob">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
 <span class="badge" data-variant="secondary">theming</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Rebranding: brand and status tokens</h2><p class="text-muted-foreground text-sm">Rebranding is a CSS variable. "Green means done" is not on the dial.</p>      </div>
@@ -694,7 +869,7 @@ vary: HX-Request
 <hr class="border-border">
 
 <div id="gate">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">fjkit check: the closed vocabulary</h2><p class="text-muted-foreground text-sm">A convention nobody can violate by accident is worth more than one written down.</p>      </div>
@@ -759,8 +934,8 @@ vary: HX-Request
   </div>
 
 <div id="toaster" class="toaster" data-align="end"></div>
-  <script defer src="assets/data.js"></script>
-  <script defer src="assets/common.js"></script>
-  <script defer src="assets/learn.js"></script>
+  <script defer src="assets/data.js?v=0.1.0.dev0"></script>
+  <script defer src="assets/common.js?v=0.1.0.dev0"></script>
+  <script defer src="assets/learn.js?v=0.1.0.dev0"></script>
 </body>
 </html>

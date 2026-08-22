@@ -2,7 +2,7 @@
 
 進度追蹤。階段二會轉成 GitHub Issues。
 
-**目前範圍：0.1 骨架**
+**目前範圍：0.1 骨架 → 0.2 表單基礎（已完成，見文末）**
 
 ---
 
@@ -84,6 +84,11 @@
 | 2026-08-18 | `ui/feedback.html` 的 `dialog` + jobs 詳情面板 | 230,838 (225.4 KB) | 23,988 gzip | **+218 raw / +54 gzip**，23.4 / 28 KB。只有兩條 `sm:max-w-*` 與一條 `overflow-y-auto`——`.dialog` 的樣式本來就在 basecoat 裡，正好是第 7 節「棘輪已經扣完」那個推論的驗證 |
 | 2026-08-18 | `ui/sidebar.html` + demo 改用側欄外殼 | 231,586 (226.2 KB) | 24,090 gzip | **+748 raw / +102 gzip**，23.5 / 28 KB。全部是 `--sidebar-*` 那 16 條 token；`.sidebar` 的樣式本來就在 basecoat 裡，模板沒帶進任何新 utility |
 | 2026-08-19 | 刪掉 `templates/ui/basecoat/` 的 9 個上游 Jinja macro | 233,863 (228.4 KB) | 24,410 gzip | **−186 raw / −39 gzip**，23.8 / 28 KB。同一份原始碼帶著那些檔案編是 234,049 / 24,449——它們沒被任何地方 import，卻落在 `@source "../../templates"` 的掃描範圍內，替永遠不會渲染的標記留了 utility。同列的絕對值比上一列高，是因為 tabs 元件那批工作沒進表 |
+| 2026-08-21 | 0.2 表單基礎：`textarea_field`／`checkbox_field`／`switch_field`／`radio_group`／`fieldset` | 234,335 (228.8 KB) | 24,487 gzip | **+472 raw / +77 gzip**，23.9 / 28 KB。五支欄位的樣式本來就在 basecoat 的 `checkbox`／`radio`／`switch`／`textarea`／`field` 裡，模板只是開始寫出對應的標記；增量全在 `data-orientation` 那幾條 `:has()` 與 `[role=radiogroup]` 的 grid 上 |
+| 2026-08-22 | `fjkit.apidocs` API 主控台（模板隨外掛放在 `apidocs/templates/`，`fjkit.css` 因此多一條 `@source`） | 234,817 (229.3 KB) | 24,622 gzip | **+482 raw / +135 gzip**，24.0 / 28 KB。全部是主控台模板自己帶進來的 utility——側欄那欄固定寬的 `w-18`、登入列的 `sm:w-64`、facts 的 `items-baseline`／`gap-x-5`；`.card`／`.badge`／`.field` 的樣式本來就在 basecoat 裡 |
+| 2026-08-23 | `fjkit eject` 的版本戳 + `fjkit check` 的過時回報（`cli/ejected.py`） | 234,817 (229.3 KB) | 24,622 gzip | **±0**，24.0 / 28 KB。純 Python，沒有模板變動 |
+| 2026-08-23 | 補齊 Basecoat 缺口第一批：`alert`／`skeleton`／`breadcrumb`／`avatar`／`avatar_group`／`range_field`／`collapsible`／`accordion`／`tooltip` | 236,697 (231.1 KB) | 24,980 gzip | **+1,880 raw / +358 gzip**，24.4 / 28 KB。九個元件的樣式 basecoat 全都早就出貨了；增量是模板自己帶進來的 utility——`skeleton` 那五個 `w-*` 分數與 `aspect-video`／`size-10`、`collapsible` 的 `group-open:rotate-180`、`avatar` 的 `bg-success`／`bg-warning`／`bg-info` |
+| 2026-08-23 | 補齊第二批（overlay 層）：`popover`／`dropdown_menu`／`menu_item`／`menu_group`／`menu_separator`／`select_menu`／`combobox`／`drawer`／`drawer_trigger`／`command`／`command_group`／`command_item`／`input_group_field` | 236,601 (231.1 KB) | 25,006 gzip | **−96 raw / +26 gzip**，24.4 / 28 KB。十三個 macro 只花 26 bytes：`.popover`／`.dropdown-menu`／`.select`／`.combobox`／`.command`／`.drawer`／`.input-group` 的樣式全在 basecoat 裡，模板只帶進 `_PANEL_WIDTHS` 那五個 `w-*` 與 `truncate`。raw 下降是因為這批取代了幾個一次性 utility |
 
 ### 載入指示提前（2026-08-17，使用者指定）
 
@@ -839,3 +844,362 @@ htmx 的示範仍然用絕對路徑 `/demo/board`，這在 Pages 上沒問題：
 `copy-en.js`／`copy-zh.js` 之類的表再由腳本取用。`data.json` 裡渲染好的預覽（"Add task"、
 板子上的那幾列）同理，那要 `build_data.py` 也跑兩次。兩件都是機械性的工，但都會動到
 現在共用的那一份檔案，所以另外一筆做。
+
+---
+
+## 0.2 表單基礎（2026-08-21）
+
+路線圖 0.2 補完。`ui/form.html` 從兩支欄位變成七支：
+
+- [x] `textarea_field` — 不預設 `rows`，靠 basecoat 的 `field-sizing-content` 自己長高
+- [x] `checkbox_field` — 框在前、字在後，`.field[data-orientation="horizontal"]`
+- [x] `switch_field` — 同一個 `<input type="checkbox">`，只多一個 `role="switch"`。
+      對路由來說兩者無法分辨，所以換外觀不會動到 handler
+- [x] `radio_group` — 真的 `<fieldset>`／`<legend>`，不是 div 配 label。吃的
+      `options` 跟 `select_field` 同一個形狀，所以兩者互換是改一個字
+- [x] `fieldset` — 一張表單裡不只一個主題時才用
+
+一條貫穿的契約：七支欄位都吃 `label`／`hint`／`error`／`id`，都只發**一個** `<p>`，
+`error` 取代 `hint` 而不疊加，控制項用 `aria-describedby` 指到它。`_message()` 是
+那個 `<p>` 的唯一定義，原有的 `text_field`／`select_field` 也改成呼叫它。0.3 落地時
+要做的就只是把 `ValidationError` 填進 `error=`。
+
+### 順手修掉的一個真 bug：`form()` 沒有 `target` 時仍然發 `hx-post`
+
+macro 自己的註解寫著「a form with a target is an htmx form; one without is an
+ordinary POST」，但程式碼只要有 `action` 就發 `hx-post`，從來不發 `action=`／
+`method=`。沒有 target 的 `hx-post` 會把回應塞進表單自己（htmx 的預設 target 就是
+觸發元素），沒有人會是這個意思。
+
+沒被發現是因為 **demo 裡每一張表單都有 target**——三張都是 htmx swap，所以那半條
+路從來沒被走過。這次補的 `/tasks/{id}/edit` 就是走它的那一頁：同一個 macro、同一批
+欄位，不帶 `target`，關掉 JavaScript 照樣能用。
+
+### demo 端
+
+新的 `/tasks/{id}/edit` 頁（`tasks/edit.html`，`test_edit.py` 8 條）。它是這五支欄位的
+驗收場，也是 demo 第一張非 htmx 的表單：POST 完 303 導回板子，重新整理不會重送。
+`Task` 多了 `notes`／`blocked`／`watching` 三個欄位，寫入走 `TaskUpdate` 這個封閉清單，
+所以 `status`／`id`／`created_at` 是**結構上**改不到，而不是靠表單剛好沒送。
+
+板子每一列多一支鉛筆，是 `<a>` 不是 swap——所以 `test_parity.py` 的 `hx_attrs`／
+`ids` 那幾欄一個字都沒動。
+
+### 文件站
+
+Components 頁的 form 選單從兩個狀態變五個：htmx 表單、錯誤、textarea + checkbox、
+radios vs select、fieldset 裡的 switch。每一個的 Jinja 片段跟預覽都是同一份
+`build_data.py` 產的，所以頁面教不出 kit 沒有的簽名。
+
+---
+
+## `fjkit.apidocs` — 取代 Swagger UI 的 API 主控台（2026-08-21）
+
+**痛點很具體：Swagger UI 的 Authorize 對話框只能表達 OpenAPI 文件說得出來的東西**——
+apiKey、http scheme、oauth2、openIdConnect，就這四種。`fjkit.auth` 發出去的憑證是一個
+簽章過的 HttpOnly cookie，四種都不是；而且就算文件寫得出來，Swagger 的 Try it out 是在
+瀏覽器裡跑 `fetch()`，那個 cookie 本來就不給 JavaScript 讀——那是 `AuthPlugin` 的設計，
+不是缺陷。
+
+所以這一版的作法是把兩件事都搬到伺服器：
+
+| | Swagger UI | `fjkit.apidocs` |
+|---|---|---|
+| 登入 | 貼一個你從別處拿到的 token | `AuthFlow`，一個 Python 物件 |
+| 送出請求 | 瀏覽器 `fetch()` | 伺服器行程內重放，帶上呼叫者自己的 cookie |
+| token 換發／撤銷／CSRF | 頁面自己想辦法 | 請求走過的 middleware 就做完了 |
+
+`SessionFlow` 直接呼叫 `AuthPlugin.issue`，也就是跑 app 自己的 `TokenSource`；登入完瀏覽器
+握著的就是 app 平常那顆 cookie。之後每一次 Try it 都只是把那顆 cookie 轉發進去，因此
+token 到期換發、session 撤銷、Origin 檢查全都是 `AuthPlugin` 在做，這裡一行都沒重寫。
+沒有 `AuthPlugin` 的 app 用 `HeaderFlow`：token 存在這個外掛自己的簽章 HttpOnly cookie，
+scope 限在文件頁的路徑底下，頁面上顯示的是遮罩過的值。
+
+### 自動掛載
+
+`FjkitConfig(plugins=(auth, ApiDocsPlugin()))` 就是全部的接線——沒有路由要寫、沒有模板要
+指定、沒有 static 要掛。外掛在 `mount` 裡 `include_router()` 自己那四條路由，並且從
+`setup.config.plugins` 裡把 `AuthPlugin` 找出來自動包成 `SessionFlow`。這是 `AppSetup`
+這個接縫第一次被用來加路由（`AuthPlugin` 只用了 middleware 與 exception handler）。
+
+網址預設 `/api-docs`，不是 `/docs`：FastAPI 在 `FastAPI()` 建構時就把 `/docs` 佔掉了，
+Starlette 比對到第一條就停，所以掛在那裡會是一個永遠不會渲染的頁面。真的掛過去時
+`setup.warn()` 會在啟動時說出來，而不是留給人點半天。
+
+### 三件實作上非做不可的事
+
+1. **重放用 ASGI scope 直接呼叫 `request.app`**，不開 socket。行程內、走完整條
+   middleware stack，所以 `AuthPlugin` 的 session 載入與換發照跑。防遞迴用兩道：路徑前綴
+   拒絕，加上 scope 裡的深度旗標。
+2. **scope 裡的 header 名稱一律小寫。** ASGI 規定如此，而 Starlette 是照字面做的——它把你
+   *要問* 的名字轉小寫去跟 raw bytes 比。`Authorization` 大寫 A 會在線上、卻對
+   `request.headers["authorization"]` 隱形，而且沒有任何地方會報錯。（這條是寫測試才抓到的。）
+3. **`$ref` 旁邊的關鍵字要跟著走。** OpenAPI 3.1 允許 `{"$ref": ".../Priority", "default":
+   "normal"}`，FastAPI 對 `priority: Priority = Priority.NORMAL` 就是這樣寫。只解 ref、把
+   兄弟鍵丟掉，select 就會渲染成沒有選項被選中——症狀只有「主控台起手就差一步」。
+
+### 表單 body 拆成欄位，不是一個文字框
+
+fjkit 的 app 大半是 `Annotated[str, Form()]`——每一個 htmx 表單都往那裡送。文件裡它是
+`application/x-www-form-urlencoded`，schema 是一個有 `properties` 的物件，所以拆回欄位跟
+query parameter 走同一個 `Param`：enum 變 select、integer 變數字框、default 預填。JSON body
+才留文字框。`multipart` 明講不支援，因為文字框裝不下檔案。
+
+### 驗收
+
+`examples/fjkit-demo` 註冊了它，`app/` 底下沒有為它寫任何一行路由或模板。守著的兩件事：
+
+- `packages/fjkit/tests/test_apidocs.py` — 文件解析、掛載、重放、三種 flow，外加一條
+  「這幾個模板裡的每一個 class 都真的在建置出來的 stylesheet 裡」。模板跟著外掛的程式碼放在
+  `src/fjkit/apidocs/templates/apidocs/`，由 `extend` 掛上 loader；代價是 `fjkit.css` 必須多
+  一行 `@source` 指到那裡——少了它會渲染、會看起來壞掉、不會有任何訊息，所以那條測試連
+  `@source` 本身也一起釘住。
+- `examples/fjkit-demo/tests/test_api_console.py` — `/session/secret` 這條 `Depends` 保護的路由，
+  在 Swagger 上拿不到，在這裡登入之後回 200。那一條就是整個外掛的理由。
+
+### 補：主控台拿到的是 model，不是頁面（2026-08-21）
+
+第一版有一個看起來對、其實答非所問的行為：`/tasks` 是 page route
+（`@render("tasks/page.html", partial=…)`），所以 `render_mode="auto"` 下主控台按
+Send 會拿回一整份 HTML 文件。`serves_a_page` 是**路由形狀**的屬性，它存在的理由是保護
+冷啟動的 navigation——而行程內重放不是 navigation。
+
+修法是給 `@render` 補一個中間層：ASGI scope 的 `SCOPE_RENDER_MODE`。優先序變成
+**decorator 的 `mode=` → scope 問的 → app 預設**。
+
+刻意不是 header、不是 query parameter：只有已經在這個 process 裡的東西寫得進 scope，
+所以這是「app 問自己要哪一種表現形式」，不是「client 要求被特別對待」。用 header 就等於
+開一個開關，讓任何人把整個 app 的頁面變成 JSON。
+
+`mode="html"` 仍然贏。那是 app 作者明講「這條路由沒有資料形式」，主控台不是推翻它的地方。
+兩條測試守著：page route 從主控台回 model、同一條路由給瀏覽器仍然回整頁。
+
+### 補：Swagger UI 有的，這裡也要有（2026-08-21）
+
+第一版贏在 Swagger 做不到的那一半——登入是 app 自己的 Python 物件，請求帶著
+HttpOnly cookie 在行程內重放。但那只有在**另一半也齊全**時才是換掉 Swagger 的理由：
+一個在驗證上贏、在其他每一件事上輸的主控台不是替代品。所以這一輪把缺口補完。
+
+| Swagger UI 有 | 這一輪補上 |
+|---|---|
+| Schemas 區塊 | `components.schemas` 變成側欄的第二個分支＋`/api-docs/schema/{slug}` 詳細頁 |
+| Example Value / Schema 切換 | `payload()` macro，用 0.7 提前落地的 `ui/tabs.html` |
+| 每個狀態碼各自的範例 | 每一條 response 一個區塊，不再只印 200 那一個 |
+| 回應 header 文件 | `ResponseDoc.headers` |
+| 上鎖圖示 | `operation.security` 渲染在 `op_line` |
+| filter 搜尋框 | 伺服器端過濾＋`hx-get` 換掉清單（`/api-docs/nav?q=`） |
+| servers 下拉 | 只列出、不選：行程內重放的目標永遠是正在回答的這個 app |
+| 檔案上傳 | `multipart` 重新編碼後送進 app，curl 片段給 `-F` |
+| 多個具名範例 | `openapi_examples=` 的每一個都是一個 tab |
+| contact／license／terms／externalDocs／tag description | 首頁的 masthead 與 Groups 卡 |
+
+三件實作上值得記下來的：
+
+1. **OpenAPI 3.1 不寫 `format: binary` 了。** 3.0 是 `format: binary`，3.1 改成
+   `contentMediaType`，而 FastAPI 現在吐 3.1。只讀 `format` 的話每一個 `UploadFile`
+   都會渲染成文字框——送出去的是檔名字串，錯誤發生在 endpoint 裡面，離原因很遠。
+   兩種拼法都要認。
+2. **陣列參數是同一個名字重複，不是逗號字串。** `?tag=a&tag=b` 才是 FastAPI 解回
+   `list[str]` 的形狀。一個框裝 `a,b` 會原封不動送出去，endpoint 收到一個元素的 list。
+   所以 `Param.multi` 為真時，`_compose` 把一個欄位攤成好幾個值。
+3. **面板 swap 要把側欄一起帶回去。** 點一條 operation 只換 detail panel，側欄不會重畫，
+   所以 highlight 會停在三次點擊之前那一條——冷載入是對的、之後整個 session 都是錯的。
+   `_nav.html` 在 swap 時掛 `hx-swap-oob`，並且把 `?q=` 帶在連結上，過濾狀態才不會被
+   點擊清掉。
+
+Jinja 上踩到的兩件事：這個 Environment 沒開 `do` extension（所以累積清單要用
+`namespace` 重新指派），也沒有 list comprehension。兩處都寫了註解，因為下一個人
+會再寫一次。
+
+**「Extra headers 不要那麼顯眼」**：它從一個永遠展開的兩行 textarea 變成一個
+`<details>`。上面每一個控制項都是文件要求的，這一個是文件沒要求的逃生口——它該在
+頁面上，但不該在閱讀動線上。summary 補了一個 chevron，因為 Basecoat 的 base layer
+把原生 marker 拿掉了，一行純文字看不出來可以打開；那是另一種壞法，不比太吵好。
+
+---
+
+## demo 的 Search 頁 — 一次請求換掉五塊，其中一塊自己再 swap（2026-08-22，使用者指定）
+
+**demo 到這一輪為止只示範得出「一個 target」。** 板子上每一顆按鈕都指著 `#board`，
+`_board.html` 是一張把所有會變的東西都包進去的 partial。那是對的，因為板子本來就是
+一個東西。
+
+搜尋結果不是。一次查詢要動的是：頂端一排計數、中間那張表、表格下面的明細面板、
+右側的進度卡、右側的 facet 清單——五塊分散在三個地方，唯一同時包住它們的元素叫
+`<body>`。換掉 body 就是重新整理，只是多繞了一圈。
+
+所以回應把另外四塊當作 **out-of-band** 送回去：htmx 先把回應裡每一個帶
+`hx-swap-oob` 的頂層元素抽出來、依 id 各自換掉，剩下的才進 `hx-target`。一趟來回，
+五塊更新。
+
+### 兩個模板，同一批 partial
+
+`page.html` 與 `_results.html` include 的是同樣五支 partial，差別只有一個變數：
+
+```jinja
+{% with oob = true %}{% include "search/_stats.html" %}{% endwith %}
+```
+
+每支 partial 開頭寫 `{% set oob = oob | default(false) %}`，所以它照樣單獨渲染得出來
+（`strict_undefined` 是開的，少了這一行 include 進頁面就爆）。**「這塊放在哪裡」由
+頁面決定一次，「這是哪一塊」由回應決定**——把 facet 卡從側欄搬到主欄，router、
+response model、swap 三者一個字都不用改。
+
+`_matches.html` 是唯一不掛 `hx-swap-oob` 的一支，因為它就是 `hx-target`。掛上去會是
+一個 bug：htmx 把所有 oob 元素抽走之後，剩給 target 的是空字串。
+
+### 巢狀：回應送回來的那批列，自己會再發一次 swap
+
+每一列的最後一格是一顆 chevron，`hx-get` 指著 `/search/task/{id}`，
+`hx-target` 指著 `#search-detail`——而 `#search-detail` 是**同一個回應**用 oob 送回去的
+第五塊。**沒有任何一行程式碼去註冊它們**：htmx 對自己換進 DOM 的節點一律做 process，
+in-band 跟 out-of-band 都算，所以一個 keystroke 前才渲染出來的列，落地那一刻就是活的。
+
+一個刻意的決定：**每次查詢都把明細面板清空**。上一次打開的那筆可能根本不在新的結果
+裡，一張描述已經不在畫面上的列的卡片，比空面板更糟；要保留選取就得讓搜尋路由知道
+「現在開著哪一筆」，那是把兩件事綁在一起。所以 `_detail.html` 的 `selected` 在搜尋
+回應裡永遠是 `None`，`test_a_new_query_empties_the_panel` 守著這一條。
+
+觸發器是一顆真的 `button`，不是掛 `hx-get` 的 `<tr>`。掛在 `<tr>` 上 htmx 照樣會動，
+但那一列鍵盤到不了、螢幕閱讀器也叫不出名字——它會動，不代表它可用。
+
+`task_row` 為此多了一個 `actions` 參數（吃已渲染的 markup，跟 `card(actions=…)` 同一個
+形狀）。**搜尋頁因此不需要自己的列**：它交出一顆按鈕，拿回板子那四格原封不動的 cell，
+所以 status badge 在兩頁上的顏色與欄位順序不可能漂移。
+
+`Task` 多一個 `created_label` computed field。模板不格式化 datetime——那是模板在決定
+一個日期是什麼意思，而且 JSON 客戶端得再決定一次。
+
+### 這種 swap 錯了不會叫
+
+oob 是**依 id 定址**的。id 對不上時 htmx 直接把那塊丟掉——不報錯、不進 console，
+那一區就停在上一次查詢的數字上。所以 `test_search.py` 從兩邊釘死：頁面上每個 id
+只准出現一次，回應裡每一個 oob id 都必須在頁面上找得到。
+
+### 沒有 JavaScript 也走得完
+
+輸入框帶 htmx 屬性，外面那張 `form()` 帶的是普通的 `action` + `method="get"`。打字是
+四塊 swap，按 Enter 或關掉 JavaScript 就是 `GET /search?q=…` 整頁渲染，兩條路同一個
+route（`partial=`）。`hx-push-url` 讓兩者是同一個網址，結果可以貼給別人。
+
+### 服務層
+
+`TaskService` 多了 `search`／`count`／`owner_facets`／`priority_facets`，`stats()` 多吃一個
+可選的 `tasks`——搜尋頁要的是同樣四個數字、算在自己的那批 match 上。第二個計數器
+遲早會跟第一個不同步，那是「Done」在兩頁上意思不一樣的開始。
+
+facet 的 badge variant 來自 `PRIORITY_VARIANT`，跟 task row 讀的是同一張表，所以
+「High」在 facet 裡跟在列上不可能是兩個顏色。
+
+`test_search.py` 17 條。`test_parity.py` 沒有動：新路由不在 probe 清單裡，側欄多一個
+連結只多一個 href，而 href 只檢查「有沒有少」。
+
+---
+
+## `dist/` 曾經落後 apidocs 兩天（2026-08-22）
+
+`test_every_class_in_the_console_s_templates_exists_in_the_stylesheet` 是紅的，
+點名八個 class：`cursor-pointer`、`pt-3`、`w-full`、`gap-x-5`、`gap-y-1`、
+`min-w-0`、`shrink-0`、`w-18`。它們都在 API 主控台那一輪（`45ca443`、8/21）加的模板裡，
+而本機 `packages/fjkit/src/fjkit/static/dist/` 是 8/19 建的——主控台那幾處的樣式
+在本機是掉的。
+
+**不是版控問題。** `dist/` 在 `.gitignore` 裡，`fjkit.css` 的 `@source` 也一直
+正確指著 `../../apidocs/templates`（同一支測試的第一段就在守這件事），
+`docs/assets/dist/fjkit-vega.css`（有進版控的那份）也早就含這八個 class。
+純粹是本機沒重跑 `fjkit build-css`。重建後 620 條全綠。
+
+### 重建後的體積（八個包）
+
+| 包 | raw | gzip |
+|---|---|---|
+| vega（預設） | 234,817 | 24,622（24.0 KB）|
+| nova | 239,443 | 24,716（24.1 KB）|
+| maia | 233,912 | 24,656（24.1 KB）|
+| lyra | 235,027 | 24,319（23.7 KB）|
+| mira | 235,548 | 24,638（24.1 KB）|
+| luma | 237,538 | 24,882（24.3 KB）|
+| sera | 220,998 | 24,218（23.7 KB）|
+| rhea | 237,818 | 24,887（24.3 KB）|
+
+最大 **24.3 KB gzip**（上限 28），比 8/19 那次量的 24.1 KB 多 0.2 KB——主控台整批
+模板的 utility 就值這麼多，跟上面「棘輪已經扣完」的推論一致。
+
+### 順手發現：`?v=` 用的是 mtime，所以 `docs/` 永遠會被判定為 stale
+
+跑 `docs/workbench/build.py` 之後八頁 HTML 全部有 diff，但**內容一個字都沒變**，
+變的只有 cache-busting 的 `?v=`：
+
+```
+-<script defer src="assets/vendor/htmx/htmx.min.js?v=1787294618">
++<script defer src="assets/vendor/htmx/htmx.min.js?v=1786876367">
+```
+
+數字是本機檔案的 mtime。mtime 不進 git，clone 出來就是 checkout 的時間，所以
+**任何兩台機器建出來的 `docs/` 都不會一樣**——`.githooks/pre-push` 會在每一台新機器上
+擋一次，然後被 commit 一批純噪音的 diff，下一台再擋一次。
+
+這次沒有 commit 那批 diff（我沒有動到文件站的來源）。真正的修法是把 `?v=` 改成
+內容雜湊或版本號，但那是文件站建置的一筆改動，不是這次的範圍——記在這裡。
+
+---
+
+## 雙擊防護，以及文件站補上兩課（2026-08-22，使用者指定）
+
+### `hx-disabled-elt`：demo 每一個會改資料的控制項
+
+一次 swap 是一趟來回，而這中間**沒有任何東西擋得住第二次點擊**。板子上的 Advance 連點兩下就推進兩次，
+新增表單連按兩下就送兩筆。修法是一個屬性：
+
+```jinja
+{{ button("Advance", hx_post=…, hx_target="#board", hx_disabled_elt="this") }}
+{% call form(action=…, target="#board", hx_disabled_elt="find button[type=submit]") %}
+```
+
+補上的地方：板子的新增表單／Advance／Delete、jobs 的 Start 與 Clear finished、session 的登入與登出。
+GET（篩選、搜尋）刻意不加——它們沒有副作用，擋住只會讓頁面變鈍。
+
+**沒有動 `form()` 的簽名。** `attrs()` 那條 kwargs 透傳的路本來就是為了這件事存在的
+（`ui/attrs.html` 的註解寫著「adding a new one never requires touching fjkit」），而把
+「送出時自動 disable」變成 `form()` 的預設行為會是改一個已發佈 macro 的行為，那要先問。
+
+選擇器寫 `find button[type=submit]` 而不是 `[type='submit']`：CSS 屬性選擇器的值可以是識別字，
+不加引號就不會在 HTML attribute 裡變成 `&#39;`。
+
+實測（瀏覽器裡量的，不是照文件抄的）：
+
+```
+before: disabled=false marker=false
+beforeSend: disabled=true  marker=true      ← data-disabled-by-htmx
+afterRequest: disabled=false marker=false
+```
+
+`test_htmx.py` 多兩條：板子上每一個帶 `hx-post`／`hx-delete` 的控制項都必須有 `hx-disabled-elt`；
+每一張用 `find button[type=submit]` 的表單裡都真的要有一顆 submit。第二條是因為選擇器沒中時
+htmx 只會在 console 警告，表單照樣連點得下去。
+
+**`test_parity.py` 擋了一次，這是它該做的事。** `hx_attrs` 是 EXACT 欄位，八個板子相關的 probe
+全部紅了。處理方式照第 0 節那條規則：寫進 `ALLOWED_CONTRACT_DRIFT`，並且說明理由。八個共用一個
+具名常數 `BOARD_HX_ATTRS`——它們渲染的是同一支 partial，這是一筆刻意的改動，不是八筆。
+`hx_targets`／`hx_urls` 仍然對著原始 baseline 比，所以這條例外不會變成「可以隨便改接線」的許可。
+
+### 文件站：Learn 從九課變十一課
+
+前面兩輪做完 oob 跟 indicator，但站上一個字都沒有——`hx-swap-oob` 只在第 05 課的
+「Server-side helpers」清單裡有一行。補上兩課（英文與中文各一份，共用同一支 `learn.js`）：
+
+| 課 | 標題 | 內容 |
+|---|---|---|
+| 06 | 一次回應，換掉好幾塊：hx-swap-oob | 主通道 vs 頻外、htmx 的三步驟處理順序、回應長什麼樣、page 與 `_results` 差一個變數、四個陷阱 |
+| 07 | 請求進行中的那段時間 | htmx 注入的那段 CSS（逐字）、兩個選擇器各管什麼、`hx-disabled-elt`、計數而非開關、不要放在 target 裡面 |
+
+06～09 因此往後推成 08～11，`sections` 清單、鋼印編號、`t0x` 變數名與導言的「九課」一起改。
+
+兩件寫的時候才發現的事：
+
+1. **`code_block()` 的 source 要傳普通字串，不能傳 `{% set %}…{% endset %}`。** 後者產出的是
+   Markup，`<div>` 會被當成真的標記渲染出去。Jinja 的字串字面值可以跨行、裡面放 `{%` 也沒事，
+   所以直接寫多行字串就對了。
+2. **`fjkit check` 抓到了寫在註解裡的反例。** `search/_detail.html` 有一段註解引用了
+   `<p class="text-muted-foreground text-sm">` 當作「不要這樣寫」的示範，檢查器照樣判違規——
+   它讀的是 attribute，不管在不在註解裡。那是檢查器在正常運作，註解改寫了。

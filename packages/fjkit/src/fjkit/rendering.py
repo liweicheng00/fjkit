@@ -34,9 +34,19 @@ from fastapi import Request, Response
 
 from fjkit.config import RenderMode
 
-__all__ = ["render"]
+__all__ = ["SCOPE_RENDER_MODE", "render"]
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+#: ASGI scope key: the representation an in-process caller wants back, as one of
+#: `RenderMode`. Read by `_mode`, between the decorator's own argument and the
+#: app-wide default.
+#:
+#: A scope key rather than a header, because the difference is who can set it. A
+#: header travels from outside and would let any client turn every page in the
+#: app into JSON; a scope key can only be written by code already running in
+#: this process, which is the guarantee that makes this safe to honour.
+SCOPE_RENDER_MODE = "fjkit_render_mode"
 
 #: Names for the parameters `@render` appends to a handler that did not ask for
 #: them. Deliberately unusable as ordinary argument names: they arrive in the
@@ -260,11 +270,21 @@ def _finish(result: Any, request: Request, response: Response | None, plan: _Pla
 
 
 def _mode(request: Request, override: RenderMode | None) -> RenderMode:
-    """Decorator argument first, then the app-wide default. Two levels only.
+    """Decorator argument, then what the caller asked for, then the app default.
 
-    Two levels of *configuration*, that is. `"auto"` then resolves against the
-    request, but it is still one of those two levels choosing it — the request
-    never overrides a route that said `"html"` or `"json"`.
+    All three are *configuration*, which is the property that matters. `"auto"`
+    resolves against the request afterwards, but a request still never overrides
+    a route that said `"html"` or `"json"` — the decorator is checked first and
+    wins outright.
+
+    The middle level is `SCOPE_RENDER_MODE`, and it is deliberately not a header
+    or a query parameter. Only something already inside this process can put a
+    key in an ASGI scope, so this is the app asking itself for a representation,
+    not a client asking to be treated differently. `fjkit.apidocs.console` is
+    the caller: an API console is exactly the "everybody else" that `"auto"`
+    promises the model to, and without this it would be handed a page instead —
+    because `serves_a_page` is a property of the route's shape, decided to
+    protect a cold navigation, and an in-process replay is not one.
 
     Resolved per request rather than at import time, because the decorator runs
     while the router module is being imported — which is before the app has a
@@ -272,6 +292,9 @@ def _mode(request: Request, override: RenderMode | None) -> RenderMode:
     """
     if override is not None:
         return override
+    asked = request.scope.get(SCOPE_RENDER_MODE)
+    if asked is not None:
+        return asked
     return _templates(request).config.render_mode
 
 

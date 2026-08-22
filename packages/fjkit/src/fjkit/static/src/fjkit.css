@@ -22,6 +22,11 @@
  * `fjkit check` is what enforces that. */
 @import "tailwindcss" source(none);
 @source "../../templates";
+/* A plugin that ships templates keeps them beside its own code, so each one
+ * adds a line here. Missing it is not a build error: the templates render and
+ * every utility class in them is absent from the stylesheet, which looks like a
+ * broken page and says nothing. `tests/test_apidocs.py` holds this one. */
+@source "../../apidocs/templates";
 @source "../vendor/basecoat/js";
 
 /* Basecoat ships Tailwind *source* CSS: @apply rules plus the shadcn token

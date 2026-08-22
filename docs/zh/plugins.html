@@ -11,20 +11,20 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css">
-  <link rel="stylesheet" href="../assets/brand.css">
-  <script defer src="../assets/vendor/htmx/htmx.min.js"></script>
-  <script defer src="../assets/vendor/basecoat/js/all.min.js"></script>
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1787416553">
+  <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
+  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1786876367"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1786876367"></script>
   <meta name="description" content="用一個物件、一個註冊點，加上 middleware、exception handler，或每個模板都拿得到的值——以及第一個需要它的 session 外掛。">
   <meta property="og:title" content="fjkit 外掛">
   <meta property="og:description" content="用一個物件、一個註冊點，加上 middleware、exception handler，或每個模板都拿得到的值——以及第一個需要它的 session 外掛。">
   <meta property="og:type" content="article">
-  <script src="../assets/mock-server.js"></script>
+  <script src="../assets/mock-server.js?v=0.1.0.dev0"></script>
 </head>
 <body class="min-h-full antialiased">
   <aside class="sidebar" id="sidebar" data-side="left"
          aria-hidden="false">
-    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png" width="28" height="28" alt="">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png?v=1787150370" width="28" height="28" alt="">
 fjkit
   </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
     <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
@@ -66,6 +66,10 @@ fjkit
   </li>
         <li>
     <a href="plugins.html#write">      <span>flash plugin</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#apidocs">      <span>API 主控台</span>
     </a>
   </li>
 </ul>
@@ -205,6 +209,12 @@ mount_fjkit(app, config)</pre>
         <code>provides=</code> 是強制宣告而不是自動推得。沒有它，兩個 plugin 默默搶同一個
         <code>user</code>，只能靠渲染一頁然後剛好注意到才會發現；有了它，衝突是一個點名雙方的啟動
         期錯誤。
+      </p>
+      <p>
+        <code>add_template_dir()</code> 是「一個帶 UI 的 plugin 怎麼把 UI 帶進來」的答案，第 07 節
+        就是那個範例。它有一個附帶條件：Tailwind 的掃描範圍是 <code>fjkit.css</code> 裡一份明列的
+        目錄清單，所以 kit 內建的 plugin 要把自己的模板目錄加進那份清單。漏掉不會有任何失敗——模板
+        照樣渲染，裡面每一個 utility class 都不在樣式表裡，頁面就只是看起來壞掉。
       </p>
 </div>
 </section></div></div>
@@ -429,6 +439,106 @@ def _read(self, request: Request) -&gt; dict[str, object]:
 </section></div></div>
 <hr class="border-border">
 
+<div id="apidocs">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<span class="badge" data-variant="secondary">fjkit.apidocs</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">API 主控台</h2><p class="text-muted-foreground text-sm">在這一頁登入，底下每一次呼叫就都是以你的身分送出去的。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Swagger UI 的 <em>Authorize</em> 只能表達 OpenAPI 文件說得出來的東西：API key、HTTP scheme、
+        OAuth2 flow。而第 05 節那種 session——簽章過的 <code>HttpOnly</code> cookie，token 留在伺服器
+        ——四種都不是。它的 <em>Try it out</em> 本來也送不出去：那是在瀏覽器裡跑 <code>fetch()</code>，
+        而那顆 cookie 正好就是不給 JavaScript 讀的那一顆。
+      </p>
+      <p>
+        所以兩件事都搬到伺服器。登入是一個由你的 app 提供的 Python 物件，對 <code>fjkit.auth</code>
+        的 app 來說就是登入頁本來就在呼叫的那個 <code>TokenSource</code>。送出請求是在你自己的 app
+        裡行程內重放，帶著呼叫者自己的 cookie 走完整條 middleware——所以 token 換發、撤銷、Origin
+        檢查用的都是你已經寫好的那一份，而不是一份住在文件頁裡的第二實作。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">docs = ApiDocsPlugin(title=&#34;Board API&#34;, home_url=&#34;/&#34;)
+
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        接線就這些。沒有路由要寫、沒有模板要渲染、沒有靜態檔要服務：plugin 自己帶路由、自己帶模板，
+        並從同一個 <code>plugins</code> tuple 裡找出 <code>AuthPlugin</code> 接上登入面板。app 用別的
+        方式認證時就傳 <code>flow=</code>；只想留這一頁的話，
+        <code>FastAPI(docs_url=None, redoc_url=None)</code>。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Swagger 做不到的那一半</h3><p>兩邊讀的是同一份 /openapi.json，差別從那之後才開始。</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">問題</th>
+              <th class=" ">Swagger UI</th>
+              <th class=" ">fjkit.apidocs</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">怎麼登入</td>
+          <td class="">文件描述得出來的那四種</td>
+          <td class="">你的 app 自己的程式——一個 Python 物件</td>
+        </tr>
+        <tr>
+          <td class="font-medium">請求在哪裡跑</td>
+          <td class="">在瀏覽器，用 fetch()</td>
+          <td class="">在 app 裡，用 ASGI 重放</td>
+        </tr>
+        <tr>
+          <td class="font-medium">帶了什麼出去</td>
+          <td class="">JavaScript 摸得到的東西</td>
+          <td class="">你的 session cookie，HttpOnly 也照帶</td>
+        </tr>
+        <tr>
+          <td class="font-medium">這一頁怎麼擋</td>
+          <td class=""><span class="badge" data-variant="outline">不歸它管</span></td>
+          <td class="">dependencies=[Depends(auth.required)]</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>每個參數決定什麼</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>url=&#34;/api-docs&#34;</h4><p>這一頁的位置。不是 /docs：plugin 掛載時 FastAPI 早就把它拿走了，先註冊的路由贏，而一頁默默永遠不會渲染的文件比換個網址更糟——所以路徑被佔用時，plugin 會在啟動時就警告</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>flow=</h4><p>怎麼從這一頁登入。預設是同一份 config 裡的 AuthPlugin；沒有的話，面板就只會說 anonymous</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>dependencies=</h4><p>加在 plugin 新增的每一條路由上——這就是擋這一頁的方式。留空對公開 API 是對的，對內部服務是錯的</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>try_it=False</h4><p>只渲染參考文件、拿掉主控台，給「在伺服器端重放請求不可接受」的環境用</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>home_url=</h4><p>側欄頁尾的那條出路。操作清單已經佔走側欄，沒有它這一頁就是一個沒有門的房間</p>    </section>  </div></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        它同時也是第 03 節 <code>add_template_dir()</code> 在 kit 裡的實例。主控台的模板跟它的程式碼
+        放在一起，在 <code>fjkit/apidocs/templates/apidocs/</code>，由 <code>extend()</code> 把那個
+        目錄交給 loader。裡面那層 <code>apidocs/</code> 是讓名字維持 <code>apidocs/page.html</code>
+        的原因——也就是你的 app 只要寫一份自己的 <code>templates/apidocs/&lt;名稱&gt;.html</code>
+        就能換掉其中任何一支，因為 app 的目錄排在最前面被搜。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>動手之前值得知道</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>它的路由不在你的文件裡</h4><p>include_in_schema=False，跟 FastAPI 把 /docs 排除在外是同一個理由：這些是讀 API 的方式，不是 API 的一部分</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>一次呼叫有上限</h4><p>body 64 KB、逾時 30 秒，兩個都是參數。主控台是讀 API 的工具，不是壓測工具</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>form body 會拆成欄位</h4><p>一條 Annotated[str, Form()] 的路由拿到的是一欄一個輸入框而不是一個文字框，因為那是 fjkit app 最常送的形狀。JSON body 則維持一份可編輯的範例</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>這一頁上沒有任何東西讀得到憑證</h4><p>登入是你的 app 定義的表單，不是一個貼 token 的框——這跟那顆 cookie 值得擁有的是同一個性質</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
 </div>    </main>
 
       <footer class="text-muted-foreground border-t py-5 text-xs">
@@ -441,7 +551,7 @@ def _read(self, request: Request) -&gt; dict[str, object]:
   </div>
 
 <div id="toaster" class="toaster" data-align="end"></div>
-  <script defer src="../assets/data.js"></script>
-  <script defer src="../assets/common.js"></script>
+  <script defer src="../assets/data.js?v=0.1.0.dev0"></script>
+  <script defer src="../assets/common.js?v=0.1.0.dev0"></script>
 </body>
 </html>

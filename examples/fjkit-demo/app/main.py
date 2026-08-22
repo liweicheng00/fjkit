@@ -15,16 +15,18 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fjkit import FjkitConfig, FlashPlugin, mount_fjkit
+from fjkit.apidocs import ApiDocsPlugin, FlowField, SessionFlow
 from fjkit.auth import AuthPlugin, CookieSpec, MemoryStore
 from fjkit.vendored import STYLE_PACKS
 
 from app.features.auth.router import protected as auth_protected_router
 from app.features.auth.router import router as auth_router
-from app.features.auth.service import DemoSource
+from app.features.auth.service import DEMO_PASSWORD, DEMO_USERNAME, DemoSource
 from app.features.charts.router import router as charts_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.jobs.router import router as jobs_router
 from app.features.jobs.service import JobService
+from app.features.search.router import router as search_router
 from app.features.tasks.router import router as tasks_router
 from app.features.tasks.service import TaskService
 
@@ -79,7 +81,7 @@ config = FjkitConfig(
 )
 
 
-def build_plugins() -> tuple[FlashPlugin, AuthPlugin]:
+def build_plugins() -> tuple[FlashPlugin, AuthPlugin, ApiDocsPlugin]:
     """One set per app, for the same reason the services are.
 
     The session store is in-memory, so two apps sharing one would share their
@@ -106,7 +108,38 @@ def build_plugins() -> tuple[FlashPlugin, AuthPlugin]:
         # protected in transit at all.
         cookie=CookieSpec(secure=False),
     )
-    return flash, auth
+
+    # The API console — this demo's replacement for FastAPI's `/docs`.
+    #
+    # Registering it is the whole of the wiring: it brings its own router, its
+    # own templates, and the sign-in panel below. It would have found `auth` in
+    # `FjkitConfig.plugins` on its own; the flow is named here only to prefill
+    # the demo credentials and to describe the session in this app's terms.
+    #
+    # What it does that Swagger UI cannot: signing in there runs `DemoSource`
+    # — the app's own `TokenSource` — and leaves the browser holding the same
+    # HttpOnly cookie the session page sets. Every call from the console then
+    # travels through this app's middleware as that session, which is why
+    # `/session/secret` answers there and 401s in Swagger.
+    docs = ApiDocsPlugin(
+        title="Board API",
+        home_url="/",
+        flow=SessionFlow(
+            auth,
+            fields=(
+                FlowField("username", "Username", placeholder=DEMO_USERNAME, hint="the demo account"),
+                FlowField("password", "Password", type="password", placeholder=DEMO_PASSWORD),
+            ),
+            describe=lambda session: (
+                ("username", session.claims.get("username", "—")),
+                ("source", "DemoSource"),
+                # `None` here is a whole configuration rather than a missing
+                # half — see `app/features/auth/service.py`.
+                ("token expiry", "never (this source issues none)"),
+            ),
+        ),
+    )
+    return flash, auth, docs
 
 
 @asynccontextmanager
@@ -126,13 +159,13 @@ def create_app() -> FastAPI:
     # its own middleware, its own 401 behaviour and the `session` every template
     # gets. `app.state.auth` is here because two routes call `issue`/`revoke`
     # and want the same instance the middleware is using.
-    flash, auth = build_plugins()
+    flash, auth, docs = build_plugins()
     app.state.auth = auth
     app.state.flash = flash
 
     # Serves fjkit's stylesheet and the vendored htmx/Basecoat JS straight out
     # of the installed package, and builds the Jinja Environment once.
-    mount_fjkit(app, replace(config, plugins=(flash, auth)))
+    mount_fjkit(app, replace(config, plugins=(flash, auth, docs)))
 
     # Mounted after the kit, under a separate prefix, so the two static trees
     # never shadow each other: `/static/...` is this app's, `/_fjkit/...` is the
@@ -142,6 +175,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(charts_router)
     app.include_router(tasks_router)
+    app.include_router(search_router)
     app.include_router(jobs_router)
     app.include_router(auth_router)
     app.include_router(auth_protected_router)

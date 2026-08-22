@@ -23,10 +23,6 @@ explain why it bounced you, but so can a route that just finished something:
 
 from __future__ import annotations
 
-import base64
-import binascii
-import hashlib
-import hmac
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -37,6 +33,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from fjkit.plugins import AppSetup, EnvSetup
+from fjkit.signing import sign, unsign
 
 __all__ = ["FlashMessage", "FlashPlugin"]
 
@@ -153,26 +150,10 @@ class FlashPlugin:
             return ()
 
     def _sign(self, payload: bytes) -> str:
-        return self._sign_body(base64.urlsafe_b64encode(payload).decode("ascii").rstrip("="))
-
-    def _sign_body(self, body: str) -> str:
-        """`<body>.<mac>`, both base64url without padding.
-
-        One function for signing and for verifying, so the two can never drift
-        into computing the signature differently — which is the shape of bug
-        that makes every cookie look valid.
-        """
-        mac = hmac.new(self.secret, body.encode("ascii"), hashlib.sha256).digest()
-        return f"{body}.{base64.urlsafe_b64encode(mac).decode('ascii').rstrip('=')}"
+        return sign(self.secret, payload)
 
     def _unsign(self, raw: str) -> bytes | None:
-        body, _, signature = raw.partition(".")
-        if not signature or not hmac.compare_digest(raw, self._sign_body(body)):
-            return None
-        try:
-            return base64.urlsafe_b64decode(body + "=" * (-len(body) % 4))
-        except (binascii.Error, ValueError):
-            return None
+        return unsign(self.secret, raw)
 
 
 class _Queue:

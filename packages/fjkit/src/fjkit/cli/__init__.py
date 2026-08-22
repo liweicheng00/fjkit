@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
 
@@ -66,7 +65,12 @@ def _eject(name: str, into: Path) -> int:
     takes effect with no import changes at any call site. The trade is that the
     copy stops receiving upstream fixes — which is why this is an escape hatch
     and not the recommended path.
+
+    The copy is stamped with where it came from, so `fjkit check` can say later
+    that the kit's version has moved on. See `fjkit.cli.ejected`.
     """
+    from fjkit.cli.ejected import stamp_line
+
     source = TEMPLATE_DIR / "ui" / f"{name}.html"
     if not source.exists():
         available = sorted(p.stem for p in (TEMPLATE_DIR / "ui").glob("*.html"))
@@ -78,11 +82,33 @@ def _eject(name: str, into: Path) -> int:
         print(f"fjkit eject: {target} already exists — remove it first to re-eject", file=sys.stderr)
         return 1
 
+    # Read and write rather than copyfile: the stamp has to go in front of the
+    # source, and a copy-then-prepend would leave an unstamped file behind if
+    # the second write failed.
+    text = source.read_text(encoding="utf-8")
     target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(source, target)
+    target.write_text(stamp_line(name, _version(), text) + text, encoding="utf-8")
     print(
         f"copied to {target}\n"
         f"It now shadows fjkit's version — no import changes needed.\n"
-        f"Note: this copy no longer receives upstream fixes."
+        f"Note: this copy no longer receives upstream fixes. It is stamped with the\n"
+        f"version it came from, and `fjkit check` will say so when the kit's changes."
     )
     return 0
+
+
+def _version() -> str:
+    """The installed fjkit version, for the eject stamp.
+
+    Read from the installed distribution rather than a `__version__` constant,
+    which is the single source hatchling already builds the wheel from. Running
+    from a source tree with nothing installed is not an error worth failing an
+    eject over — the digest is what detects staleness, the version is a
+    human-readable note beside it.
+    """
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("fjkit")
+    except PackageNotFoundError:  # pragma: no cover - only outside an install
+        return "unknown"

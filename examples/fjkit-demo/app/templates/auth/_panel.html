@@ -34,11 +34,13 @@
         {% endcall %}
         {{ button("Sign out", variant="outline", icon_name="log-out",
                   hx_delete=url_for(request, "session_logout"),
+                  hx_disabled_elt="this",
                   hx_target="#session-panel", hx_swap="outerHTML") }}
       {% endcall %}
     {% endcall %}
   {% else %}
-    {% call form(action=url_for(request, "session_login"), target="#session-panel") %}
+    {% call form(action=url_for(request, "session_login"), target="#session-panel",
+                 hx_disabled_elt="find button[type=submit]") %}
       {% call stack(3) %}
         {% call field_row("two") %}
           {{ text_field("username", label="Username", value=demo_username, required=true) }}
