@@ -63,6 +63,19 @@ class Task(BaseModel):
     def priority_variant(self) -> str:
         return PRIORITY_VARIANT[self.priority]
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def created_label(self) -> str:
+        """The date as the page prints it. Here rather than in Jinja for the
+        same reason the variants are: a template that formats a datetime is a
+        template deciding what a date means, and the JSON client would have to
+        decide it a second time.
+
+        Date only. The panel sets it beside two other values in a
+        `metric_group`, which is sized for one short line, and a time nobody
+        reads is not worth the second line it wraps onto."""
+        return self.created_at.strftime("%Y-%m-%d")
+
 
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=120)
@@ -183,3 +196,16 @@ class SearchResponse(BaseModel):
     stats: BoardStats
     owners: list[Facet]
     priorities: list[Facet]
+    #: Always `None` from this route, and that is the point: a new query resets
+    #: the detail panel out-of-band, because whatever was open may not be in
+    #: the new result set. `_detail.html` reads this field either way, so one
+    #: template serves both the empty panel and the chosen task.
+    selected: Task | None = None
+
+
+class SearchDetailResponse(BaseModel):
+    """One match, opened. The field is named `selected` rather than `task` so
+    that `_detail.html` — which the search reply also renders, with nothing
+    selected — reads exactly one name."""
+
+    selected: Task

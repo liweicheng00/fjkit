@@ -4,24 +4,31 @@
   be a bug — htmx lifts every out-of-band element out of the response before
   swapping the remainder, and the remainder would be nothing.
 
-  The rows are `tasks/macros.html`'s, with `show_actions=false`. A search result
-  is a place to find a task, not a place to advance or delete one; the board
-  owns the mutations, and this page linking to the same row macro is what keeps
-  a status badge one colour across both.
+  The rows are `tasks/macros.html`'s, with this page's own action in the
+  trailing cell instead of the board's. A search result is a place to find a
+  task, not a place to advance or delete one — but it is a place to open one,
+  and that chevron is the second swap: it arrives inside this fragment and
+  targets `#search-detail`, which arrived out-of-band in the same reply.
+
+  Nothing registers it. htmx processes every node it swaps in, so a row
+  rendered a keystroke ago is live the moment it lands.
 #}
 {% from "ui/data.html" import card %}
 {% from "ui/table.html" import table %}
 {% from "tasks/macros.html" import task_row, TASK_COLUMNS %}
+{% from "search/macros.html" import detail_action %}
 
 <div id="search-matches">
   {% call card(matches | length ~ (" match" if matches | length == 1 else " matches"),
                "“" ~ query ~ "”" if query else "everything on the board",
                padded=false) %}
-    {% call table(TASK_COLUMNS[:-1], rows=matches,
+    {% call table(TASK_COLUMNS, rows=matches,
                   empty_title="No match",
                   empty_description="Nothing on the board mentions “" ~ query ~ "”.",
                   empty_icon="search") %}
-      {% for task in matches %}{{ task_row(request, task, show_actions=false) }}{% endfor %}
+      {% for task in matches %}
+        {{ task_row(request, task, actions=detail_action(request, task)) }}
+      {% endfor %}
     {% endcall %}
   {% endcall %}
 </div>

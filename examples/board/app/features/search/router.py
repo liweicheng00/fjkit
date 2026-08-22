@@ -26,10 +26,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fjkit import render
 
-from app.features.tasks.schemas import SearchResponse
+from app.features.tasks.schemas import SearchDetailResponse, SearchResponse
 from app.features.tasks.service import TaskService
 
 router = APIRouter(tags=["search"])
@@ -62,3 +62,25 @@ def search_page(service: ServiceDep, q: str = "") -> SearchResponse:
         owners=service.owner_facets(matches),
         priorities=service.priority_facets(matches),
     )
+
+
+@router.get("/search/task/{task_id}", name="search_detail")
+@render("search/_detail.html")
+def search_detail(service: ServiceDep, task_id: int) -> SearchDetailResponse:
+    """One match, opened — the second level of the swap.
+
+    The rows that trigger this arrive in the search reply, and the panel it
+    fills arrives in the same reply out-of-band. Neither is wired up by hand:
+    htmx processes whatever it swaps in, in-band and out-of-band alike, so a
+    row rendered a keystroke ago is live the moment it lands. That is the
+    property this page exists to show — the fragments compose, and nesting one
+    swap inside another costs no JavaScript and no registration step.
+
+    A new query resets this panel rather than trying to keep it: the task that
+    was open may not be in the next result set, and a detail card describing a
+    row that is no longer on screen is worse than an empty one.
+    """
+    task = service.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    return SearchDetailResponse(selected=task)

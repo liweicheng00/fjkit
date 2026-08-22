@@ -13,13 +13,22 @@
 {% from "ui/data.html" import badge %}
 {% from "ui/table.html" import cell, row_actions %}
 
-{% macro task_row(request, task, filter_query="", show_actions=true) -%}
+{#
+  `actions` is pre-rendered markup for the trailing cell, the same shape
+  `card(actions=…)` takes. It exists so that a page which needs its own row
+  action does not need its own row: the search page hands in one button and
+  gets the board's four cells unchanged, which is what keeps a status badge the
+  same colour and the same column on both pages.
+#}
+{% macro task_row(request, task, filter_query="", show_actions=true, actions=none) -%}
   <tr>
     {{ cell(task.title, tone="strong") }}
     {{ cell(badge(task.status.value | capitalize, variant=task.status_variant)) }}
     {{ cell(badge(task.priority.value | capitalize, variant=task.priority_variant)) }}
     {{ cell(task.owner, tone="muted") }}
-    {% if show_actions %}
+    {% if actions %}
+      {% call row_actions() %}{{ actions }}{% endcall %}
+    {% elif show_actions %}
       {% call row_actions() %}
         {{ button("Advance", variant="ghost", size="xs", icon_name="arrow-right", icon_end=true,
                   hx_post=url_for(request, "tasks_advance", task_id=task.id) ~ filter_query,

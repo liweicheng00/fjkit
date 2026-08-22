@@ -1015,23 +1015,23 @@ Jinja 上踩到的兩件事：這個 Environment 沒開 `do` extension（所以�
 
 ---
 
-## demo 的 Search 頁 — 一次請求換掉四塊（2026-08-22，使用者指定）
+## demo 的 Search 頁 — 一次請求換掉五塊，其中一塊自己再 swap（2026-08-22，使用者指定）
 
 **demo 到這一輪為止只示範得出「一個 target」。** 板子上每一顆按鈕都指著 `#board`，
 `_board.html` 是一張把所有會變的東西都包進去的 partial。那是對的，因為板子本來就是
 一個東西。
 
-搜尋結果不是。一次查詢要動的是：頂端一排計數、中間那張表、右側的進度卡、右側的
-facet 清單——四塊分散在三個地方，唯一同時包住它們的元素叫 `<body>`。換掉 body 就是
-重新整理，只是多繞了一圈。
+搜尋結果不是。一次查詢要動的是：頂端一排計數、中間那張表、表格下面的明細面板、
+右側的進度卡、右側的 facet 清單——五塊分散在三個地方，唯一同時包住它們的元素叫
+`<body>`。換掉 body 就是重新整理，只是多繞了一圈。
 
-所以回應把另外三塊當作 **out-of-band** 送回去：htmx 先把回應裡每一個帶
+所以回應把另外四塊當作 **out-of-band** 送回去：htmx 先把回應裡每一個帶
 `hx-swap-oob` 的頂層元素抽出來、依 id 各自換掉，剩下的才進 `hx-target`。一趟來回，
-四塊更新。
+五塊更新。
 
 ### 兩個模板，同一批 partial
 
-`page.html` 與 `_results.html` include 的是同樣四支 partial，差別只有一個變數：
+`page.html` 與 `_results.html` include 的是同樣五支 partial，差別只有一個變數：
 
 ```jinja
 {% with oob = true %}{% include "search/_stats.html" %}{% endwith %}
@@ -1044,6 +1044,28 @@ response model、swap 三者一個字都不用改。
 
 `_matches.html` 是唯一不掛 `hx-swap-oob` 的一支，因為它就是 `hx-target`。掛上去會是
 一個 bug：htmx 把所有 oob 元素抽走之後，剩給 target 的是空字串。
+
+### 巢狀：回應送回來的那批列，自己會再發一次 swap
+
+每一列的最後一格是一顆 chevron，`hx-get` 指著 `/search/task/{id}`，
+`hx-target` 指著 `#search-detail`——而 `#search-detail` 是**同一個回應**用 oob 送回去的
+第五塊。**沒有任何一行程式碼去註冊它們**：htmx 對自己換進 DOM 的節點一律做 process，
+in-band 跟 out-of-band 都算，所以一個 keystroke 前才渲染出來的列，落地那一刻就是活的。
+
+一個刻意的決定：**每次查詢都把明細面板清空**。上一次打開的那筆可能根本不在新的結果
+裡，一張描述已經不在畫面上的列的卡片，比空面板更糟；要保留選取就得讓搜尋路由知道
+「現在開著哪一筆」，那是把兩件事綁在一起。所以 `_detail.html` 的 `selected` 在搜尋
+回應裡永遠是 `None`，`test_a_new_query_empties_the_panel` 守著這一條。
+
+觸發器是一顆真的 `button`，不是掛 `hx-get` 的 `<tr>`。掛在 `<tr>` 上 htmx 照樣會動，
+但那一列鍵盤到不了、螢幕閱讀器也叫不出名字——它會動，不代表它可用。
+
+`task_row` 為此多了一個 `actions` 參數（吃已渲染的 markup，跟 `card(actions=…)` 同一個
+形狀）。**搜尋頁因此不需要自己的列**：它交出一顆按鈕，拿回板子那四格原封不動的 cell，
+所以 status badge 在兩頁上的顏色與欄位順序不可能漂移。
+
+`Task` 多一個 `created_label` computed field。模板不格式化 datetime——那是模板在決定
+一個日期是什麼意思，而且 JSON 客戶端得再決定一次。
 
 ### 這種 swap 錯了不會叫
 
@@ -1066,7 +1088,7 @@ route（`partial=`）。`hx-push-url` 讓兩者是同一個網址，結果可以
 facet 的 badge variant 來自 `PRIORITY_VARIANT`，跟 task row 讀的是同一張表，所以
 「High」在 facet 裡跟在列上不可能是兩個顏色。
 
-`test_search.py` 10 條。`test_parity.py` 沒有動：新路由不在 probe 清單裡，側欄多一個
+`test_search.py` 17 條。`test_parity.py` 沒有動：新路由不在 probe 清單裡，側欄多一個
 連結只多一個 href，而 href 只檢查「有沒有少」。
 
 ---

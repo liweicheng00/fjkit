@@ -19,7 +19,9 @@
 
 {% block content %}
   {% set note %}
-    One request updates four regions — three of them arrive as {{ kbd("hx-swap-oob") }}.
+    Matches the title, the owner and the notes. One request updates five
+    regions — four of them arrive as {{ kbd("hx-swap-oob") }} — and each row
+    opens a sixth swap of its own.
   {% endset %}
 
   {{ page_header("Search", note) }}
@@ -36,9 +38,15 @@
     #}
     {% call form(action=url_for(request, "search_page"), method="get") %}
       {% call field_row("field-and-button") %}
+        {#
+          No `hint` on this field, and the sentence it carried is in the page
+          description instead. `field_row` bottom-aligns its columns, so a hint
+          under the input would push the field's bottom edge a line lower than
+          the button's and the two would stop sitting on the same baseline —
+          the board's create row has no hints for the same reason.
+        #}
         {{ text_field("q", label="Search tasks", value=query, type="search",
                       placeholder="Try “cache”, “kai” or “stream”",
-                      hint="Matches the title, the owner and the notes.",
                       hx_get=url_for(request, "search_page"),
                       hx_trigger="input changed delay:250ms, search",
                       hx_target="#search-matches", hx_swap="outerHTML",
@@ -54,13 +62,25 @@
       `oob` is false for every fragment here: this is the first paint, nothing
       is being swapped into anything, and a page that shipped `hx-swap-oob` in
       its own markup would be describing a swap that never happened.
+
+      `selected` is unset too, so the detail panel opens empty — the same
+      branch a fresh query puts it back into.
     #}
     {% with oob = false %}
       {% include "search/_stats.html" %}
 
       {% call(slot) split(gap=4) %}
         {% if slot == "main" %}
-          {% include "search/_matches.html" %}
+          {#
+            The table and the panel its rows fill, in that order and in the
+            same column. The panel is a region of the search reply like any
+            other; what makes it the nested one is that its `hx-target` is
+            named by markup the search reply itself delivered.
+          #}
+          {% call stack(4) %}
+            {% include "search/_matches.html" %}
+            {% include "search/_detail.html" %}
+          {% endcall %}
         {% else %}
           {% call stack(4) %}
             {% include "search/_progress.html" %}

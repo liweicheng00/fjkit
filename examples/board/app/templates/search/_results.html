@@ -1,18 +1,24 @@
 {#
-  What one keystroke gets back: four fragments in one response.
+  What one keystroke gets back: five fragments in one response.
 
-  The first is the `hx-target`. The other three are flagged out-of-band, so
+  The first is the `hx-target`. The other four are flagged out-of-band, so
   htmx removes them from the response and swaps each into the element already
-  carrying its id — the counters at the top of the page, the progress card and
-  the facet list in the aside, none of which is anywhere near the table.
+  carrying its id — the counters above the table, the progress card and the
+  facet list in the aside, the detail panel below it. None of them is anywhere
+  near the others.
 
   Out-of-band elements have to be top level in the response, which is why this
-  file is four includes and no wrapper. The page nests the same four inside its
+  file is five includes and no wrapper. The page nests the same five inside its
   layout; there they are ordinary divs, because nothing is being swapped yet.
+
+  `_detail.html` is in the group with `selected` unset, so every query resets
+  the panel — and the rows in `_matches.html` above it are what fills it again,
+  one swap nested inside the reply of another.
 #}
 {% include "search/_matches.html" %}
 {% with oob = true %}
   {% include "search/_stats.html" %}
   {% include "search/_progress.html" %}
   {% include "search/_facets.html" %}
+  {% include "search/_detail.html" %}
 {% endwith %}

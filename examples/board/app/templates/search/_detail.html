@@ -1,0 +1,55 @@
+{#
+  The nested swap's target, and the fifth region of the search reply.
+
+  Two callers, one template:
+
+  * `GET /search/task/{id}` renders it as the `hx-target` of a row button —
+    `oob` is false, so it arrives in band.
+  * every search renders it out-of-band with `selected` unset, which resets the
+    panel. A card describing a task that just dropped out of the results is
+    worse than an empty panel, and keeping the selection would mean the search
+    route had to know what was open.
+#}
+{% set oob = oob | default(false) %}
+{% set selected = selected | default(none) %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import badge, card, empty_state, metric_group %}
+{% from "ui/layout.html" import row, stack %}
+
+<div id="search-detail"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% if selected %}
+    {% set open_board %}
+      {{ button("Edit", variant="outline", size="xs", icon_name="pencil",
+                href=url_for(request, "tasks_edit", task_id=selected.id)) }}
+    {% endset %}
+    {#
+      The notes are the card's description when there are any, rather than a
+      paragraph this template styles itself. `fjkit check` catches that either
+      way — it reads the attribute, and it read it out of the comment that used
+      to be here, which is the check working exactly as intended.
+    #}
+    {% call card(selected.title, selected.notes or "opened from the results above",
+                 actions=open_board) %}
+      {% call stack(4) %}
+        {% call row(gap=2) %}
+          {{ badge(selected.status.value | capitalize, variant=selected.status_variant) }}
+          {{ badge(selected.priority.value | capitalize, variant=selected.priority_variant) }}
+          {% if selected.blocked %}{{ badge("Blocked", variant="destructive") }}{% endif %}
+          {% if selected.watching %}{{ badge("Watching", variant="info") }}{% endif %}
+        {% endcall %}
+
+        {{ metric_group([
+          ("Owner", selected.owner),
+          ("Created", selected.created_label),
+          ("Task", "#" ~ selected.id),
+        ]) }}
+      {% endcall %}
+    {% endcall %}
+  {% else %}
+    {% call card(none, none, padded=false) %}
+      {{ empty_state("Nothing open",
+                     "Pick a row above — the chevron swaps this panel on its own.",
+                     icon_name="chevron-right") }}
+    {% endcall %}
+  {% endif %}
+</div>
