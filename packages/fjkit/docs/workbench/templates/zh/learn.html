@@ -16,6 +16,8 @@
   {"id": "targets",  "title": "hx-target 與 hx-swap"},
   {"id": "triggers", "title": "hx-trigger：打字、捲動、輪詢"},
   {"id": "partials", "title": "partial：一份檔案，整頁與局部共用"},
+  {"id": "oob",      "title": "一次回應，換掉好幾塊：hx-swap-oob"},
+  {"id": "pending",  "title": "請求進行中的那段時間"},
   {"id": "json",     "title": "沒有 HX-Request：同一條路由回 JSON"},
   {"id": "patterns", "title": "九種 htmx 模式，以及對應的 handler"},
   {"id": "knob",     "title": "換品牌：品牌 token 與狀態 token"},
@@ -26,7 +28,7 @@
 {% call stack(8) %}
 
   {% set intro %}
-    九課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 掛掉的指令。
+    十一課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 掛掉的指令。
     底下每個示範都是活的。
   {% endset %}
   {{ page_header("在寫路由的地方，把介面一起寫完", intro) }}
@@ -231,14 +233,177 @@
         ("HX-Request", "讓路由知道自己正在回應一個局部更新的那個標頭"),
         ("HX-Trigger", "回應標頭，會在前端觸發一個事件——toast 就是這樣被叫起來的（fjkit 0.6）"),
         ("HX-Redirect", "從局部更新的回應裡做整頁轉址"),
-        ("hx-swap-oob", "用同一個回應更新第二個元素——一個計數、一個標籤"),
+        ("hx-swap-oob", "一次回應，換掉好幾塊——下一課"),
       ]) }}
     {% endcall %}
   {% endcall %}
 
   {# ============================================================== 06 #}
-  {% set t06 %}handler 回傳的是 model，不是標記。要送出什麼，只取決於一個問題：這個呼叫端有沒有在等標記？{% endset %}
-  {% call lesson("json", "06", "沒有 HX-Request：同一條路由回 JSON", t06, tag="htmx") %}
+  {% set t06 %}<code>hx-target</code> 只指得到一個元素。當一個答案要動五塊時，另外四塊自己帶著地址。{% endset %}
+  {% call lesson("oob", "06", "一次回應，換掉好幾塊：hx-swap-oob", t06, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        到這裡為止每一次 swap 都只有一個 target。會變的東西都包在同一個元素底下時，那樣就夠了——
+        板子就是一個 <code>&lt;div id="board"&gt;</code>，上面每一顆按鈕都指著它，每一次回應都是整塊板子。
+      </p>
+      <p>
+        搜尋結果不是一個東西。一次查詢要動的是：表格上方那排計數、表格自己、側欄的進度卡與 facet 清單、
+        表格下面的明細面板——五塊分散在三個地方，唯一同時包住它們的元素叫 <code>&lt;body&gt;</code>。
+        換掉 body 就是重新整理，只是多繞了一圈。
+      </p>
+      <p>
+        所以回應把另外四塊<strong>走頻外（out of band）</strong>送回去——不走
+        <code>hx-target</code> 描述的那條唯一通道。每一塊靠自己身上的 id 說出它要去哪裡。
+      </p>
+    {% endcall %}
+
+    {% set oob_reply = "<div id=\"search-matches\">…</div>                     ← 沒有標記：這塊進 hx-target
+<div id=\"search-stats\"    hx-swap-oob=\"true\">…</div>   ← 自己飛去頂端的計數列
+<div id=\"search-progress\" hx-swap-oob=\"true\">…</div>   ← 自己飛去側欄
+<div id=\"search-facets\"   hx-swap-oob=\"true\">…</div>   ← 自己飛去側欄
+<div id=\"search-detail\"   hx-swap-oob=\"true\">…</div>   ← 自己飛去表格下方" %}
+    {% call stage("一個按鍵拿回來的東西",
+                  "GET /search?q=cache，由一個 handler 與一個 response model 回答。", padded=false) %}
+      {{ code_block(oob_reply, label="回應主體") }}
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set step_lift %}把回應裡每一個帶 <code>hx-swap-oob</code> 的<strong>頂層</strong>元素抽出來{% endset %}
+      {% set step_place %}依 <code>id</code> 找到頁面上同名的元素，各自換掉{% endset %}
+      {% set step_rest %}<em>剩下的</em>才照常進 <code>hx-target</code>{% endset %}
+      {{ defs("htmx 的處理順序", [
+        ("1 — 抽出", step_lift),
+        ("2 — 就位", step_place),
+        ("3 — 最後才是 target", step_rest),
+      ]) }}
+
+      {% set oob_values %}<code>true</code> 是換掉同 id 的元素；<code>innerHTML</code>、<code>beforeend</code> 這些 swap 詞彙在這裡一樣能用{% endset %}
+      {% set oob_silent %}id 對不上會被<strong>靜靜丟掉</strong>——不報錯、console 也沒有半個字，那一區就停在上一次查詢的數字上{% endset %}
+      {% set oob_toplevel %}包在 wrapper 裡的 oob 元素不算 oob——這就是回應那支模板是一排平行 include、沒有外框的原因{% endset %}
+      {% set oob_target %}絕對不要標記 <code>hx-target</code> 指的那一塊：它會一起被抽走，target 換到的是空字串{% endset %}
+      {{ defs("四件要知道的事", [
+        ("值可以怎麼寫", oob_values),
+        ("它是靜靜失敗的", oob_silent),
+        ("只認頂層", oob_toplevel),
+        ("不要標記 target", oob_target),
+      ]) }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        fjkit 這一側沒有新機制。頁面與回應 {% raw %}<code>{% include %}</code>{% endraw %} 的是同樣五支
+        partial，差別只有一個變數：頁面冷冷地渲染它們，回應則讓它們帶上地址。每支 partial 自己給那個
+        旗標一個預設值，所以它照樣單獨渲染得出來。
+      </p>
+    {% endcall %}
+
+    {% set oob_tmpl = "{# _results.html —— 一次 htmx 請求拿回去的東西 #}
+{% include \"search/_matches.html\" %}
+{% with oob = true %}
+  {% include \"search/_stats.html\" %}
+  {% include \"search/_progress.html\" %}
+  {% include \"search/_facets.html\" %}
+  {% include \"search/_detail.html\" %}
+{% endwith %}
+
+{# _stats.html —— 其餘每一塊的開頭都一樣 #}
+{% set oob = oob | default(false) %}
+<div id=\"search-stats\"{% if oob %} hx-swap-oob=\"true\"{% endif %}>
+  …
+</div>" %}
+    {% call stage("同一批 partial，兩種渲染方式", none, padded=false) %}
+      {{ code_block(oob_tmpl, label="Jinja") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        換來的好處是：<em>哪一塊放在哪裡</em>由頁面決定，而且只決定一次。把 facet 卡從側欄搬到主欄，
+        router、response model、swap 三者一個字都不用改。實際的檔案是 repo 裡的
+        <code>examples/board/app/templates/search/</code>。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set t07 %}一次 swap 是一趟來回，而這中間沒有任何東西擋得住第二次點擊。兩個屬性就涵蓋了整段等待。{% endset %}
+  {% call lesson("pending", "07", "請求進行中的那段時間", t07, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        htmx 在請求期間會把 <code>htmx-request</code> 這個 class 掛到某個元素上，結束就拿掉。沒有寫
+        <code>hx-indicator</code> 時，那個元素就是觸發請求的元素本身；寫了，就是選擇器指到的那個。
+        剩下的交給這段樣式——htmx 自己的，開機時注入：
+      </p>
+    {% endcall %}
+
+    {% set ind_css = ".htmx-indicator { opacity: 0; visibility: hidden }
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator { opacity: 1; visibility: visible; transition: opacity 200ms ease-in }" %}
+    {% call stage("htmx 注入的規則", "兩個選擇器，逗號分開。", padded=false) %}
+      {{ code_block(ind_css, label="CSS") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        第一個選擇器管的是「indicator 在被標記的元素<em>裡面</em>」——例如被點的那顆按鈕裡的 spinner。
+        第二個管的是「indicator <em>就是</em>被標記的那個元素」，也就是 fjkit 用的形狀：
+        <code>spinner(indicator=true)</code> 只做一件事——加上 <code>htmx-indicator</code>，
+        所以一個 loading 狀態不需要你寫 CSS、不需要你寫 JavaScript，也不需要一次來回去問伺服器忙不忙。
+      </p>
+    {% endcall %}
+
+    {% set ind_src = "{% call form(action=url_for(request, \"jobs_start\"), target=\"#job-list\",
+             hx_indicator=\"#job-busy\",
+             hx_disabled_elt=\"find button[type=submit]\") %}
+  {% call field_row(\"field-and-button\") %}
+    {{ select_field(\"kind\", label=\"Background job\", options=kind_options) }}
+    {% call row(gap=2) %}
+      {{ button(\"Start\", variant=\"primary\", type=\"submit\", icon_name=\"play\") }}
+      {{ spinner(indicator=true, id=\"job-busy\", label=\"Starting the job\") }}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}" %}
+    {% call stage("兩個屬性，掛在同一張表單上", "examples/board/app/templates/jobs/page.html", padded=false) %}
+      {{ code_block(ind_src, label="Jinja") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        <code>hx-disabled-elt</code> 是同一套機制對付另一個問題。它在請求期間把選擇器指到的元素設成
+        <code>disabled</code>，結束再清掉——擋住雙擊把一筆任務推進兩次、或者送出兩份一樣的表單，就只需要
+        這一個屬性。選擇器吃 <code>this</code>、<code>find …</code>／<code>closest …</code> 這種相對寫法，
+        或者一般的 CSS 選擇器。
+      </p>
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set p_count %}兩者都是<strong>計數，不是開關</strong>——htmx 對每個元素記一個請求計數，所以先回來的那一個不會把另一個請求還在用的控制項提早解鎖{% endset %}
+      {% set p_space %}indicator 是用 <code>visibility</code> 與 <code>opacity</code> 隱藏的，不是 <code>display</code>——它一直佔著位置，所以出現時畫面不會跳{% endset %}
+      {% set p_inherit %}兩者都會繼承：<code>hx-indicator</code> 寫在容器上，裡面所有觸發器共用同一個 spinner。<code>this</code> 與 <code>inherit</code> 都是合法的值{% endset %}
+      {% set p_warn %}選擇器沒中，這裡<strong>會</strong>警告你——<code>The selector "…" returned no matches!</code>——跟對不上的 oob id 不一樣，那個是靜靜失敗{% endset %}
+      {{ defs("它們的行為", [
+        ("計數的", p_count),
+        ("不會讓畫面跳動", p_space),
+        ("會繼承", p_inherit),
+        ("它會出聲", p_warn),
+      ]) }}
+
+      {% set p_inside %}把 indicator 放在 target <strong>外面</strong>：放在會被換掉的區塊裡，它會在請求進行中被整個扯走，連 id 一起{% endset %}
+      {% set p_default %}完全不寫 <code>hx-indicator</code> 時，class 會直接掛在觸發元素上，所以對按鈕寫 <code>.htmx-request</code> 的樣式是最省事的 loading 狀態{% endset %}
+      {% set p_marker %}htmx 會用 <code>data-disabled-by-htmx</code> 標記自己 disable 掉的東西，所以本來就是 disabled 的控制項，結束後仍然是 disabled{% endset %}
+      {% set p_flash %}有些 indicator 只會閃一下。那是請求快，不是 indicator 壞了——jobs 頁的工作是在回應<em>之後</em>才跑的，所以那張卡片才需要輪詢{% endset %}
+      {{ defs("值得先知道的陷阱", [
+        ("不要放在 target 裡面", p_inside),
+        ("免費的那個版本", p_default),
+        ("它記得", p_marker),
+        ("請求太快", p_flash),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 08 #}
+  {% set t08 %}handler 回傳的是 model，不是標記。要送出什麼，只取決於一個問題：這個呼叫端有沒有在等標記？{% endset %}
+  {% call lesson("json", "08", "沒有 HX-Request：同一條路由回 JSON", t08, tag="htmx") %}
     {% call prose() %}
       <p>
         第 02 課說這段交換裡沒有 JSON，就 swap 本身而言是對的。
@@ -323,9 +488,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 07 #}
-  {% set t07 %}畫面各有不同；形狀沒有。每一種都是一個 trigger、一個 target 與一份 partial。{% endset %}
-  {% call lesson("patterns", "07", "九種 htmx 模式，以及對應的 handler", t07, tag="htmx") %}
+  {# ============================================================== 09 #}
+  {% set t09 %}畫面各有不同；形狀沒有。每一種都是一個 trigger、一個 target 與一份 partial。{% endset %}
+  {% call lesson("patterns", "09", "九種 htmx 模式，以及對應的 handler", t09, tag="htmx") %}
     {% call prose() %}
       <p>
         整套屬性詞彙一個螢幕就放得下，
@@ -379,9 +544,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 08 #}
-  {% set t08 %}換品牌是一個 CSS 變數。「綠色代表完成」不在那個轉盤上。{% endset %}
-  {% call lesson("knob", "08", "換品牌：品牌 token 與狀態 token", t08, tag="theming") %}
+  {# ============================================================== 10 #}
+  {% set t10 %}換品牌是一個 CSS 變數。「綠色代表完成」不在那個轉盤上。{% endset %}
+  {% call lesson("knob", "10", "換品牌：品牌 token 與狀態 token", t10, tag="theming") %}
     {% call prose() %}
       <p>
         拉拉看色相。你正在編輯 <code>:root</code> 上的 <code>--primary</code>，
@@ -455,9 +620,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 09 #}
-  {% set t09 %}一條沒有人能不小心違反的慣例，比一條寫下來的慣例值錢。{% endset %}
-  {% call lesson("gate", "09", "fjkit check：封閉詞彙表", t09) %}
+  {# ============================================================== 11 #}
+  {% set t11 %}一條沒有人能不小心違反的慣例，比一條寫下來的慣例值錢。{% endset %}
+  {% call lesson("gate", "11", "fjkit check：封閉詞彙表", t11) %}
     {% call prose() %}
       <p>
         <code>fjkit check</code> 讀你的模板，然後拒絕兩種東西：顏色字面值，以及元件詞彙表以外的任何 class。

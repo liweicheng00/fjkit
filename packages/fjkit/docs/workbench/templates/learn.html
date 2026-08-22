@@ -16,6 +16,8 @@
   {"id": "targets",  "title": "hx-target and hx-swap"},
   {"id": "triggers", "title": "hx-trigger: typing, scrolling, polling"},
   {"id": "partials", "title": "Partials: one file, page and swap"},
+  {"id": "oob",      "title": "One reply, many regions: hx-swap-oob"},
+  {"id": "pending",  "title": "While the request is in flight"},
   {"id": "json",     "title": "No HX-Request: the same route answers JSON"},
   {"id": "patterns", "title": "Nine htmx patterns, and their handlers"},
   {"id": "knob",     "title": "Rebranding: brand and status tokens"},
@@ -26,7 +28,7 @@
 {% call stack(8) %}
 
   {% set intro %}
-    Nine lessons: how a fjkit app is wired, what htmx actually sends, how a rebrand works, and the
+    Eleven lessons: how a fjkit app is wired, what htmx actually sends, how a rebrand works, and the
     command that fails a build. Every demo below is live.
   {% endset %}
   {{ page_header("Build the interface where you build the routes", intro) }}
@@ -238,14 +240,185 @@
         ("HX-Request", "the header that tells a route it is answering a swap"),
         ("HX-Trigger", "response header that fires a client event — how a toast gets raised (fjkit 0.6)"),
         ("HX-Redirect", "full-page redirect from inside a swap response"),
-        ("hx-swap-oob", "update a second element — a counter, a badge — from the same response"),
+        ("hx-swap-oob", "one response, several regions — the next lesson"),
       ]) }}
     {% endcall %}
   {% endcall %}
 
   {# ============================================================== 06 #}
-  {% set t06 %}A handler returns a model, not markup. One question decides what goes on the wire: does this caller have markup waiting?{% endset %}
-  {% call lesson("json", "06", "No HX-Request: the same route answers JSON", t06, tag="htmx") %}
+  {% set t06 %}<code>hx-target</code> names one element. When one answer has to move five, the other four carry their own address.{% endset %}
+  {% call lesson("oob", "06", "One reply, many regions: hx-swap-oob", t06, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        Every swap so far has had one target, and that is enough while the things that change sit
+        under one element. The board is a single <code>&lt;div id="board"&gt;</code>: every control on
+        it points there, and every response is the whole board.
+      </p>
+      <p>
+        A search result is not one thing. One query moves a row of counters above the table, the table
+        itself, a progress card and a facet list in the aside, and a detail panel below it — five
+        fragments in three places, and the only element that contains all five is
+        <code>&lt;body&gt;</code>. Swapping the body is a page reload with extra steps.
+      </p>
+      <p>
+        So the reply carries the other four <strong>out of band</strong> — outside the one channel
+        <code>hx-target</code> describes. Each of them says where it belongs by carrying the id it is
+        going to.
+      </p>
+    {% endcall %}
+
+    {% set oob_reply = "<div id=\"search-matches\">…</div>                     ← no marker: this is what hx-target gets
+<div id=\"search-stats\"    hx-swap-oob=\"true\">…</div>   ← flies to the counters
+<div id=\"search-progress\" hx-swap-oob=\"true\">…</div>   ← flies to the aside
+<div id=\"search-facets\"   hx-swap-oob=\"true\">…</div>   ← flies to the aside
+<div id=\"search-detail\"   hx-swap-oob=\"true\">…</div>   ← flies below the table" %}
+    {% call stage("What comes back from one keystroke",
+                  "GET /search?q=cache, answered by one handler and one response model.", padded=false) %}
+      {{ code_block(oob_reply, label="The response body") }}
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set step_lift %}every <strong>top-level</strong> element carrying <code>hx-swap-oob</code> is lifted out of the response{% endset %}
+      {% set step_place %}each one is matched to the element on the page with the same <code>id</code> and replaces it{% endset %}
+      {% set step_rest %}whatever is <em>left</em> is swapped into <code>hx-target</code> as usual{% endset %}
+      {{ defs("What htmx does, in order", [
+        ("1 — lift", step_lift),
+        ("2 — place", step_place),
+        ("3 — then the target", step_rest),
+      ]) }}
+
+      {% set oob_values %}<code>true</code> replaces the matching element; <code>innerHTML</code>, <code>beforeend</code> and the rest of the swap vocabulary all work here too{% endset %}
+      {% set oob_silent %}an id that matches nothing is <strong>dropped without a word</strong> — no error, no console entry, and that region simply keeps the previous query's numbers{% endset %}
+      {% set oob_toplevel %}an out-of-band fragment nested inside a wrapper is not one — which is why the reply template is a flat list of includes{% endset %}
+      {% set oob_target %}never mark the fragment that <code>hx-target</code> names: it would be lifted out too, and the target would be swapped with nothing{% endset %}
+      {{ defs("Four things to know", [
+        ("the value", oob_values),
+        ("it fails in silence", oob_silent),
+        ("top level only", oob_toplevel),
+        ("not the target", oob_target),
+      ]) }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        On the fjkit side there is no new machinery. The page and the reply
+        {% raw %}<code>{% include %}</code>{% endraw %} the same five partials and differ in one
+        variable: the page renders them cold, the reply renders them addressed. Each partial defaults
+        the flag itself, so it still renders standalone.
+      </p>
+    {% endcall %}
+
+    {% set oob_tmpl = "{# _results.html — what an htmx request gets #}
+{% include \"search/_matches.html\" %}
+{% with oob = true %}
+  {% include \"search/_stats.html\" %}
+  {% include \"search/_progress.html\" %}
+  {% include \"search/_facets.html\" %}
+  {% include \"search/_detail.html\" %}
+{% endwith %}
+
+{# _stats.html — and every other region, at the top #}
+{% set oob = oob | default(false) %}
+<div id=\"search-stats\"{% if oob %} hx-swap-oob=\"true\"{% endif %}>
+  …
+</div>" %}
+    {% call stage("One set of partials, two ways of rendering them", none, padded=false) %}
+      {{ code_block(oob_tmpl, label="Jinja") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        The payoff is that <em>where</em> a fragment lives is decided by the page, once. Move the facet
+        card from the aside into the main column and the router, the response model and the swap are
+        all unchanged. The working files are
+        <code>examples/board/app/templates/search/</code> in the repository.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set t07 %}A swap is a round trip, and nothing stops a second click during it. Two attributes cover the whole of the wait.{% endset %}
+  {% call lesson("pending", "07", "While the request is in flight", t07, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        htmx adds the class <code>htmx-request</code> to an element for the length of a request and
+        removes it afterwards. Without <code>hx-indicator</code> that element is the one that fired the
+        request; with it, it is whatever the selector names. Then this stylesheet — htmx's own, injected
+        at startup — does the rest:
+      </p>
+    {% endcall %}
+
+    {% set ind_css = ".htmx-indicator { opacity: 0; visibility: hidden }
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator { opacity: 1; visibility: visible; transition: opacity 200ms ease-in }" %}
+    {% call stage("The rules htmx injects", "Two selectors, comma separated.", padded=false) %}
+      {{ code_block(ind_css, label="CSS") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        The first selector covers an indicator <em>inside</em> the marked element — a spinner in the
+        button that was clicked. The second covers an indicator that <em>is</em> the marked element,
+        which is the shape fjkit uses: <code>spinner(indicator=true)</code> adds
+        <code>htmx-indicator</code> and nothing else, so a loading state costs no CSS and no JavaScript
+        of yours, and no round trip to reveal it.
+      </p>
+    {% endcall %}
+
+    {% set ind_src = "{% call form(action=url_for(request, \"jobs_start\"), target=\"#job-list\",
+             hx_indicator=\"#job-busy\",
+             hx_disabled_elt=\"find button[type=submit]\") %}
+  {% call field_row(\"field-and-button\") %}
+    {{ select_field(\"kind\", label=\"Background job\", options=kind_options) }}
+    {% call row(gap=2) %}
+      {{ button(\"Start\", variant=\"primary\", type=\"submit\", icon_name=\"play\") }}
+      {{ spinner(indicator=true, id=\"job-busy\", label=\"Starting the job\") }}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}" %}
+    {% call stage("Both attributes, on one form", "examples/board/app/templates/jobs/page.html", padded=false) %}
+      {{ code_block(ind_src, label="Jinja") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        <code>hx-disabled-elt</code> is the same machinery aimed at a different problem. It sets
+        <code>disabled</code> on whatever the selector names for the length of the request and clears it
+        after, which is the whole of what stops a double click from advancing a task twice or posting
+        two of the same form. The selector takes <code>this</code>, a
+        <code>find …</code>/<code>closest …</code> relative form, or an ordinary CSS selector.
+      </p>
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set p_count %}both are <strong>counted, not toggled</strong> — htmx keeps a request count per element, so an early reply cannot re-enable a control another request is still using{% endset %}
+      {% set p_space %}the indicator is hidden with <code>visibility</code> and <code>opacity</code>, never <code>display</code> — it holds its space, so nothing on the page jumps when it appears{% endset %}
+      {% set p_inherit %}both are inherited: put <code>hx-indicator</code> on a container and everything inside it shares one spinner. <code>this</code> and <code>inherit</code> are valid values{% endset %}
+      {% set p_warn %}a selector that matches nothing <strong>does</strong> warn here — <code>The selector "…" returned no matches!</code> — unlike an out-of-band id, which fails silently{% endset %}
+      {{ defs("How they behave", [
+        ("counted", p_count),
+        ("no layout shift", p_space),
+        ("inherited", p_inherit),
+        ("it tells you", p_warn),
+      ]) }}
+
+      {% set p_inside %}keep the indicator <strong>outside</strong> the target: an element inside what is being replaced is torn out mid-request, and its id with it{% endset %}
+      {% set p_default %}with no <code>hx-indicator</code> at all the class lands on the trigger itself, so <code>.htmx-request</code> styling on a button is the cheapest loading state there is{% endset %}
+      {% set p_marker %}htmx marks what it disabled with <code>data-disabled-by-htmx</code>, so a control that was already disabled stays disabled afterwards{% endset %}
+      {% set p_flash %}expect some indicators to barely flash. That is the request being fast, not the indicator being broken — the jobs page does its work <em>after</em> the response, which is why the card polls{% endset %}
+      {{ defs("Traps worth knowing", [
+        ("not inside the target", p_inside),
+        ("the free version", p_default),
+        ("it remembers", p_marker),
+        ("a fast request", p_flash),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 08 #}
+  {% set t08 %}A handler returns a model, not markup. One question decides what goes on the wire: does this caller have markup waiting?{% endset %}
+  {% call lesson("json", "08", "No HX-Request: the same route answers JSON", t08, tag="htmx") %}
     {% call prose() %}
       <p>
         Lesson 02 said the exchange carries no JSON, and of the swap itself that is true. But look
@@ -332,9 +505,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 07 #}
-  {% set t07 %}Screens differ; the shapes do not. Each one is a trigger, a target and a partial.{% endset %}
-  {% call lesson("patterns", "07", "Nine htmx patterns, and their handlers", t07, tag="htmx") %}
+  {# ============================================================== 09 #}
+  {% set t09 %}Screens differ; the shapes do not. Each one is a trigger, a target and a partial.{% endset %}
+  {% call lesson("patterns", "09", "Nine htmx patterns, and their handlers", t09, tag="htmx") %}
     {% call prose() %}
       <p>
         The whole attribute vocabulary fits on one screen, and
@@ -389,9 +562,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 08 #}
-  {% set t08 %}Rebranding is a CSS variable. "Green means done" is not on the dial.{% endset %}
-  {% call lesson("knob", "08", "Rebranding: brand and status tokens", t08, tag="theming") %}
+  {# ============================================================== 10 #}
+  {% set t10 %}Rebranding is a CSS variable. "Green means done" is not on the dial.{% endset %}
+  {% call lesson("knob", "10", "Rebranding: brand and status tokens", t10, tag="theming") %}
     {% call prose() %}
       <p>
         Drag the hue. You are editing <code>--primary</code> on <code>:root</code>, which is the
@@ -466,9 +639,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 09 #}
-  {% set t09 %}A convention nobody can violate by accident is worth more than one written down.{% endset %}
-  {% call lesson("gate", "09", "fjkit check: the closed vocabulary", t09) %}
+  {# ============================================================== 11 #}
+  {% set t11 %}A convention nobody can violate by accident is worth more than one written down.{% endset %}
+  {% call lesson("gate", "11", "fjkit check: the closed vocabulary", t11) %}
     {% call prose() %}
       <p>
         <code>fjkit check</code> reads your templates and rejects two things: colour literals, and
