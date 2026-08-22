@@ -1,0 +1,18 @@
+{#
+  What one keystroke gets back: four fragments in one response.
+
+  The first is the `hx-target`. The other three are flagged out-of-band, so
+  htmx removes them from the response and swaps each into the element already
+  carrying its id — the counters at the top of the page, the progress card and
+  the facet list in the aside, none of which is anywhere near the table.
+
+  Out-of-band elements have to be top level in the response, which is why this
+  file is four includes and no wrapper. The page nests the same four inside its
+  layout; there they are ordinary divs, because nothing is being swapped yet.
+#}
+{% include "search/_matches.html" %}
+{% with oob = true %}
+  {% include "search/_stats.html" %}
+  {% include "search/_progress.html" %}
+  {% include "search/_facets.html" %}
+{% endwith %}

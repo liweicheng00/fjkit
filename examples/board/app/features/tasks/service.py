@@ -7,11 +7,21 @@ it for SQLModel means changing this file and nothing above it.
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import UTC, datetime, timedelta
 from itertools import count
 from threading import Lock
 
-from app.features.tasks.schemas import BoardStats, Priority, Status, Task, TaskCreate, TaskUpdate
+from app.features.tasks.schemas import (
+    PRIORITY_VARIANT,
+    BoardStats,
+    Facet,
+    Priority,
+    Status,
+    Task,
+    TaskCreate,
+    TaskUpdate,
+)
 
 #: title, status, priority, owner, notes, blocked
 _SEED = [
@@ -119,8 +129,49 @@ class TaskService:
         with self._lock:
             return self._tasks.pop(task_id, None) is not None
 
-    def stats(self) -> BoardStats:
-        tasks = list(self._tasks.values())
+    def count(self) -> int:
+        """How many tasks exist at all. The search page shows "N of M"."""
+        return len(self._tasks)
+
+    def search(self, query: str) -> list[Task]:
+        """Substring match over the three fields a person actually types into a
+        search box. Case-insensitive, no ranking, no index — this is a demo
+        board of eight rows, and a scoring function here would be a claim about
+        relevance that the data cannot support.
+
+        An empty query matches everything rather than nothing, so the page has
+        something to show before anyone types.
+        """
+        needle = query.strip().casefold()
+        tasks = self.list()
+        if not needle:
+            return tasks
+        return [t for t in tasks if needle in f"{t.title} {t.owner} {t.notes}".casefold()]
+
+    def owner_facets(self, tasks: list[Task]) -> list[Facet]:
+        """Who the matches belong to. Alphabetical, because owners have no
+        order of their own and a count-descending list would reshuffle itself
+        on every keystroke."""
+        counts = Counter(t.owner for t in tasks)
+        return [Facet(label=owner, count=n) for owner, n in sorted(counts.items())]
+
+    def priority_facets(self, tasks: list[Task]) -> list[Facet]:
+        """How urgent the matches are, highest first, and only the levels that
+        actually appear — a facet reading "High 0" is a filter that leads
+        nowhere."""
+        counts = Counter(t.priority for t in tasks)
+        return [
+            Facet(label=p.value.capitalize(), count=counts[p], variant=PRIORITY_VARIANT[p])
+            for p in reversed(list(Priority))
+            if counts[p]
+        ]
+
+    def stats(self, tasks: list[Task] | None = None) -> BoardStats:
+        """Counts over the whole board, or over a subset that was already
+        selected — the search page wants the same four numbers about its
+        matches, and a second counter that had to stay in step with this one is
+        how "Done" ends up meaning two different things on two pages."""
+        tasks = list(self._tasks.values()) if tasks is None else tasks
         return BoardStats(
             total=len(tasks),
             todo=sum(t.status is Status.TODO for t in tasks),

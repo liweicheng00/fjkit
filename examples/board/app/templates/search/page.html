@@ -1,0 +1,74 @@
+{#
+  Full page. It composes the same four partials `_results.html` does, in the
+  places they belong — counters across the top, the table in the main column,
+  progress and facets in the aside.
+
+  That is the whole trick of an out-of-band swap: the page decides *where* each
+  fragment lives, once, and the reply only has to say *which* fragment it is.
+  Move the facet card into the main column and nothing in the router, the
+  response model or the swap changes.
+#}
+{% extends "base.html" %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import kbd %}
+{% from "ui/feedback.html" import spinner %}
+{% from "ui/form.html" import field_row, form, text_field %}
+{% from "ui/layout.html" import page_header, row, split, stack %}
+
+{% block title %}Search{% endblock %}
+
+{% block content %}
+  {% set note %}
+    One request updates four regions — three of them arrive as {{ kbd("hx-swap-oob") }}.
+  {% endset %}
+
+  {{ page_header("Search", note) }}
+
+  {% call stack(4) %}
+
+    {#
+      The input carries the htmx attributes; the form around it carries a plain
+      `action` and `method="get"`. Both paths lead to the same route: typing
+      swaps four fragments, and pressing Enter — or arriving with JavaScript
+      off — loads `/search?q=…` as a page. `hx-push-url` is what keeps those
+      two the same URL, so a result stays bookmarkable and the back button
+      works.
+    #}
+    {% call form(action=url_for(request, "search_page"), method="get") %}
+      {% call field_row("field-and-button") %}
+        {{ text_field("q", label="Search tasks", value=query, type="search",
+                      placeholder="Try “cache”, “kai” or “stream”",
+                      hint="Matches the title, the owner and the notes.",
+                      hx_get=url_for(request, "search_page"),
+                      hx_trigger="input changed delay:250ms, search",
+                      hx_target="#search-matches", hx_swap="outerHTML",
+                      hx_push_url="true", hx_indicator="#search-busy") }}
+        {% call row(gap=2) %}
+          {{ spinner(indicator=true, id="search-busy", label="Searching") }}
+          {{ button("Search", variant="primary", type="submit", icon_name="search") }}
+        {% endcall %}
+      {% endcall %}
+    {% endcall %}
+
+    {#
+      `oob` is false for every fragment here: this is the first paint, nothing
+      is being swapped into anything, and a page that shipped `hx-swap-oob` in
+      its own markup would be describing a swap that never happened.
+    #}
+    {% with oob = false %}
+      {% include "search/_stats.html" %}
+
+      {% call(slot) split(gap=4) %}
+        {% if slot == "main" %}
+          {% include "search/_matches.html" %}
+        {% else %}
+          {% call stack(4) %}
+            {% include "search/_progress.html" %}
+            {% include "search/_facets.html" %}
+          {% endcall %}
+        {% endif %}
+      {% endcall %}
+    {% endwith %}
+
+  {% endcall %}
+{% endblock %}

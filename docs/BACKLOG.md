@@ -1012,3 +1012,59 @@ Jinja 上踩到的兩件事：這個 Environment 沒開 `do` extension（所以�
 `<details>`。上面每一個控制項都是文件要求的，這一個是文件沒要求的逃生口——它該在
 頁面上，但不該在閱讀動線上。summary 補了一個 chevron，因為 Basecoat 的 base layer
 把原生 marker 拿掉了，一行純文字看不出來可以打開；那是另一種壞法，不比太吵好。
+
+---
+
+## demo 的 Search 頁 — 一次請求換掉四塊（2026-08-22，使用者指定）
+
+**demo 到這一輪為止只示範得出「一個 target」。** 板子上每一顆按鈕都指著 `#board`，
+`_board.html` 是一張把所有會變的東西都包進去的 partial。那是對的，因為板子本來就是
+一個東西。
+
+搜尋結果不是。一次查詢要動的是：頂端一排計數、中間那張表、右側的進度卡、右側的
+facet 清單——四塊分散在三個地方，唯一同時包住它們的元素叫 `<body>`。換掉 body 就是
+重新整理，只是多繞了一圈。
+
+所以回應把另外三塊當作 **out-of-band** 送回去：htmx 先把回應裡每一個帶
+`hx-swap-oob` 的頂層元素抽出來、依 id 各自換掉，剩下的才進 `hx-target`。一趟來回，
+四塊更新。
+
+### 兩個模板，同一批 partial
+
+`page.html` 與 `_results.html` include 的是同樣四支 partial，差別只有一個變數：
+
+```jinja
+{% with oob = true %}{% include "search/_stats.html" %}{% endwith %}
+```
+
+每支 partial 開頭寫 `{% set oob = oob | default(false) %}`，所以它照樣單獨渲染得出來
+（`strict_undefined` 是開的，少了這一行 include 進頁面就爆）。**「這塊放在哪裡」由
+頁面決定一次，「這是哪一塊」由回應決定**——把 facet 卡從側欄搬到主欄，router、
+response model、swap 三者一個字都不用改。
+
+`_matches.html` 是唯一不掛 `hx-swap-oob` 的一支，因為它就是 `hx-target`。掛上去會是
+一個 bug：htmx 把所有 oob 元素抽走之後，剩給 target 的是空字串。
+
+### 這種 swap 錯了不會叫
+
+oob 是**依 id 定址**的。id 對不上時 htmx 直接把那塊丟掉——不報錯、不進 console，
+那一區就停在上一次查詢的數字上。所以 `test_search.py` 從兩邊釘死：頁面上每個 id
+只准出現一次，回應裡每一個 oob id 都必須在頁面上找得到。
+
+### 沒有 JavaScript 也走得完
+
+輸入框帶 htmx 屬性，外面那張 `form()` 帶的是普通的 `action` + `method="get"`。打字是
+四塊 swap，按 Enter 或關掉 JavaScript 就是 `GET /search?q=…` 整頁渲染，兩條路同一個
+route（`partial=`）。`hx-push-url` 讓兩者是同一個網址，結果可以貼給別人。
+
+### 服務層
+
+`TaskService` 多了 `search`／`count`／`owner_facets`／`priority_facets`，`stats()` 多吃一個
+可選的 `tasks`——搜尋頁要的是同樣四個數字、算在自己的那批 match 上。第二個計數器
+遲早會跟第一個不同步，那是「Done」在兩頁上意思不一樣的開始。
+
+facet 的 badge variant 來自 `PRIORITY_VARIANT`，跟 task row 讀的是同一張表，所以
+「High」在 facet 裡跟在列上不可能是兩個顏色。
+
+`test_search.py` 10 條。`test_parity.py` 沒有動：新路由不在 probe 清單裡，側欄多一個
+連結只多一個 href，而 href 只檢查「有沒有少」。

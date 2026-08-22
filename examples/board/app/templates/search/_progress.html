@@ -1,0 +1,13 @@
+{#
+  How far along the matches are. The same `BoardStats` the counters read, asked
+  a different question — which is the point the page is making: four fragments,
+  one answer, no second query.
+#}
+{% set oob = oob | default(false) %}
+{% from "ui/data.html" import card, progress %}
+
+<div id="search-progress"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% call card("Progress", stats.done ~ " of " ~ stats.total ~ " done", size="sm") %}
+    {{ progress(stats.done_pct, label="Done") }}
+  {% endcall %}
+</div>

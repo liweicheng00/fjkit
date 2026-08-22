@@ -26,6 +26,7 @@ from app.features.charts.router import router as charts_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.jobs.router import router as jobs_router
 from app.features.jobs.service import JobService
+from app.features.search.router import router as search_router
 from app.features.tasks.router import router as tasks_router
 from app.features.tasks.service import TaskService
 
@@ -174,6 +175,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(charts_router)
     app.include_router(tasks_router)
+    app.include_router(search_router)
     app.include_router(jobs_router)
     app.include_router(auth_router)
     app.include_router(auth_protected_router)

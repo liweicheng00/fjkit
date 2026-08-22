@@ -99,6 +99,23 @@ class BoardStats(BaseModel):
         return round(self.done / self.total * 100) if self.total else 0
 
 
+class Facet(BaseModel):
+    """One bucket of a result set: a value, how many rows carry it, and the
+    badge variant that value already wears everywhere else in the app.
+
+    The variant comes from the same `PRIORITY_VARIANT` map a task row reads, so
+    a high-priority facet and a high-priority row cannot end up different
+    colours. `label` is already the display string because the counting and the
+    labelling are one operation — splitting them would leave the template
+    deciding how to spell a domain value, which is exactly what the maps above
+    exist to prevent.
+    """
+
+    label: str
+    count: int
+    variant: str = "outline"
+
+
 # --------------------------------------------------------------------------- #
 # Response models
 #
@@ -147,3 +164,22 @@ class DashboardResponse(BaseModel):
 
 class ReportResponse(BaseModel):
     tasks: list[Task]
+
+
+class SearchResponse(BaseModel):
+    """One query, four views of its answer.
+
+    Every field here is derived from the same match list, and the page renders
+    each of them in a region of its own. That is what makes the out-of-band
+    reply honest rather than clever: the four fragments are not four requests
+    stitched together, they are one answer shown four ways.
+    """
+
+    query: str
+    matches: list[Task]
+    #: The size of the whole board, so the page can say "N of M" without a
+    #: second call. Not `len(matches)` — the template can count that itself.
+    total: int
+    stats: BoardStats
+    owners: list[Facet]
+    priorities: list[Facet]
