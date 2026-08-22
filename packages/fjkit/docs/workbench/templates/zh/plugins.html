@@ -15,6 +15,7 @@
   {"id": "rules",    "title": "順序、碰撞與界線"},
   {"id": "auth",     "title": "auth plugin"},
   {"id": "write",    "title": "flash plugin"},
+  {"id": "apidocs",  "title": "API 主控台"},
 ] %}
 
 {% block content %}
@@ -122,6 +123,12 @@ mount_fjkit(app, config)", label="app/main.py") }}
         <code>provides=</code> 是強制宣告而不是自動推得。沒有它，兩個 plugin 默默搶同一個
         <code>user</code>，只能靠渲染一頁然後剛好注意到才會發現；有了它，衝突是一個點名雙方的啟動
         期錯誤。
+      </p>
+      <p>
+        <code>add_template_dir()</code> 是「一個帶 UI 的 plugin 怎麼把 UI 帶進來」的答案，第 07 節
+        就是那個範例。它有一個附帶條件：Tailwind 的掃描範圍是 <code>fjkit.css</code> 裡一份明列的
+        目錄清單，所以 kit 內建的 plugin 要把自己的模板目錄加進那份清單。漏掉不會有任何失敗——模板
+        照樣渲染，裡面每一個 utility class 都不在樣式表裡，頁面就只是看起來壞掉。
       </p>
     {% endcall %}
   {% endcall %}
@@ -300,6 +307,88 @@ def _read(self, request: Request) -> dict[str, object]:
       ("name", "一個 str 屬性——必要，而且只有這一個"),
       ("mount / extend", "要寫哪個都行，兩個都不寫也行；沒有的那個就不會被呼叫"),
       ("沒有基底類別", "Plugin 是 Protocol，所以一個 plugin 不需要 import fjkit 才能成為 plugin"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set t07 %}在這一頁登入，底下每一次呼叫就都是以你的身分送出去的。{% endset %}
+  {% call lesson("apidocs", "07", "API 主控台", t07, tag="fjkit.apidocs") %}
+    {% call prose() %}
+      <p>
+        Swagger UI 的 <em>Authorize</em> 只能表達 OpenAPI 文件說得出來的東西：API key、HTTP scheme、
+        OAuth2 flow。而第 05 節那種 session——簽章過的 <code>HttpOnly</code> cookie，token 留在伺服器
+        ——四種都不是。它的 <em>Try it out</em> 本來也送不出去：那是在瀏覽器裡跑 <code>fetch()</code>，
+        而那顆 cookie 正好就是不給 JavaScript 讀的那一顆。
+      </p>
+      <p>
+        所以兩件事都搬到伺服器。登入是一個由你的 app 提供的 Python 物件，對 <code>fjkit.auth</code>
+        的 app 來說就是登入頁本來就在呼叫的那個 <code>TokenSource</code>。送出請求是在你自己的 app
+        裡行程內重放，帶著呼叫者自己的 cookie 走完整條 middleware——所以 token 換發、撤銷、Origin
+        檢查用的都是你已經寫好的那一份，而不是一份住在文件頁裡的第二實作。
+      </p>
+    {% endcall %}
+
+    {{ code("docs = ApiDocsPlugin(title=\"Board API\", home_url=\"/\")
+
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        接線就這些。沒有路由要寫、沒有模板要渲染、沒有靜態檔要服務：plugin 自己帶路由、自己帶模板，
+        並從同一個 <code>plugins</code> tuple 裡找出 <code>AuthPlugin</code> 接上登入面板。app 用別的
+        方式認證時就傳 <code>flow=</code>；只想留這一頁的話，
+        <code>FastAPI(docs_url=None, redoc_url=None)</code>。
+      </p>
+    {% endcall %}
+
+    {% call stage("Swagger 做不到的那一半", "兩邊讀的是同一份 /openapi.json，差別從那之後才開始。") %}
+      {% call table([{"label": "問題"}, {"label": "Swagger UI"}, {"label": "fjkit.apidocs"}]) %}
+        <tr>
+          {{ cell("怎麼登入", tone="strong") }}
+          {{ cell("文件描述得出來的那四種") }}
+          {{ cell("你的 app 自己的程式——一個 Python 物件") }}
+        </tr>
+        <tr>
+          {{ cell("請求在哪裡跑", tone="strong") }}
+          {{ cell("在瀏覽器，用 fetch()") }}
+          {{ cell("在 app 裡，用 ASGI 重放") }}
+        </tr>
+        <tr>
+          {{ cell("帶了什麼出去", tone="strong") }}
+          {{ cell("JavaScript 摸得到的東西") }}
+          {{ cell("你的 session cookie，HttpOnly 也照帶") }}
+        </tr>
+        <tr>
+          {{ cell("這一頁怎麼擋", tone="strong") }}
+          {{ cell(badge("不歸它管", variant="outline")) }}
+          {{ cell("dependencies=[Depends(auth.required)]") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {{ defs("每個參數決定什麼", [
+      ("url=\"/api-docs\"", "這一頁的位置。不是 /docs：plugin 掛載時 FastAPI 早就把它拿走了，先註冊的路由贏，而一頁默默永遠不會渲染的文件比換個網址更糟——所以路徑被佔用時，plugin 會在啟動時就警告"),
+      ("flow=", "怎麼從這一頁登入。預設是同一份 config 裡的 AuthPlugin；沒有的話，面板就只會說 anonymous"),
+      ("dependencies=", "加在 plugin 新增的每一條路由上——這就是擋這一頁的方式。留空對公開 API 是對的，對內部服務是錯的"),
+      ("try_it=False", "只渲染參考文件、拿掉主控台，給「在伺服器端重放請求不可接受」的環境用"),
+      ("home_url=", "側欄頁尾的那條出路。操作清單已經佔走側欄，沒有它這一頁就是一個沒有門的房間"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        它同時也是第 03 節 <code>add_template_dir()</code> 在 kit 裡的實例。主控台的模板跟它的程式碼
+        放在一起，在 <code>fjkit/apidocs/templates/apidocs/</code>，由 <code>extend()</code> 把那個
+        目錄交給 loader。裡面那層 <code>apidocs/</code> 是讓名字維持 <code>apidocs/page.html</code>
+        的原因——也就是你的 app 只要寫一份自己的 <code>templates/apidocs/&lt;名稱&gt;.html</code>
+        就能換掉其中任何一支，因為 app 的目錄排在最前面被搜。
+      </p>
+    {% endcall %}
+
+    {{ defs("動手之前值得知道", [
+      ("它的路由不在你的文件裡", "include_in_schema=False，跟 FastAPI 把 /docs 排除在外是同一個理由：這些是讀 API 的方式，不是 API 的一部分"),
+      ("一次呼叫有上限", "body 64 KB、逾時 30 秒，兩個都是參數。主控台是讀 API 的工具，不是壓測工具"),
+      ("form body 會拆成欄位", "一條 Annotated[str, Form()] 的路由拿到的是一欄一個輸入框而不是一個文字框，因為那是 fjkit app 最常送的形狀。JSON body 則維持一份可編輯的範例"),
+      ("這一頁上沒有任何東西讀得到憑證", "登入是你的 app 定義的表單，不是一個貼 token 的框——這跟那顆 cookie 值得擁有的是同一個性質"),
     ]) }}
   {% endcall %}
 

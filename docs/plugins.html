@@ -68,6 +68,10 @@ fjkit
     <a href="plugins.html#write">      <span>The flash plugin</span>
     </a>
   </li>
+        <li>
+    <a href="plugins.html#apidocs">      <span>The API console</span>
+    </a>
+  </li>
 </ul>
   </div>
 <div role="group" aria-label="Language"><h3>Language</h3>    <ul>      <li>
@@ -207,6 +211,13 @@ mount_fjkit(app, config)</pre>
         And <code>provides=</code> is required rather than inferred. Without it, two plugins quietly
         fighting over <code>user</code> is discoverable only by rendering a page and noticing. With
         it, the clash is a startup error naming both.
+      </p>
+      <p>
+        <code>add_template_dir()</code> is how a plugin that ships UI ships it — section 07 is the
+        worked example. One thing goes with it: the Tailwind build scans an explicit list of
+        directories in <code>fjkit.css</code>, so a plugin inside the kit adds its template
+        directory to that list. Miss it and nothing fails — the templates render, every utility
+        class in them is absent from the stylesheet, and the page just looks broken.
       </p>
 </div>
 </section></div></div>
@@ -435,6 +446,111 @@ def _read(self, request: Request) -&gt; dict[str, object]:
       <h4>name</h4><p>a str attribute — required, and the only one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>mount / extend</h4><p>implement either, both, or neither; missing ones are simply not called</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>no base class</h4><p>Plugin is a Protocol, so a plugin never imports fjkit to be one</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="apidocs">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<span class="badge" data-variant="secondary">fjkit.apidocs</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">The API console</h2><p class="text-muted-foreground text-sm">Sign in on the page, and every call below goes out as you.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Swagger UI's <em>Authorize</em> dialog can only express what an OpenAPI document can
+        describe: an API key, an HTTP scheme, an OAuth2 flow. An app whose sessions are section 05's
+        — a signed <code>HttpOnly</code> cookie over a server-side token — is none of those. And its
+        <em>Try it out</em> could not send one anyway: it runs <code>fetch()</code> in the browser,
+        and that cookie is precisely the one JavaScript may not read.
+      </p>
+      <p>
+        So both halves move to the server. Signing in is a Python object your app supplies, which
+        for a <code>fjkit.auth</code> app is the same <code>TokenSource</code> your login page
+        already calls. Sending a request is an in-process replay through your own app, carrying the
+        caller's own cookie through the whole middleware stack — so token refresh, revocation and
+        the Origin check are the ones you already wrote, not a second implementation living in a
+        docs page.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">docs = ApiDocsPlugin(title=&#34;Board API&#34;, home_url=&#34;/&#34;)
+
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        That is the whole of the wiring. No route to write, no template to render, no static file to
+        serve: the plugin brings its own router, its own templates, and finds the
+        <code>AuthPlugin</code> in the same <code>plugins</code> tuple to wire the sign-in panel to.
+        Pass <code>flow=</code> instead when the app authenticates some other way, and
+        <code>FastAPI(docs_url=None, redoc_url=None)</code> when you want only this one.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The half Swagger cannot do</h3><p>Both read the same /openapi.json. They differ after that.</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">Question</th>
+              <th class=" ">Swagger UI</th>
+              <th class=" ">fjkit.apidocs</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">Signing in</td>
+          <td class="">the four schemes the document can describe</td>
+          <td class="">your app&#39;s own code — a Python object</td>
+        </tr>
+        <tr>
+          <td class="font-medium">Where the call runs</td>
+          <td class="">in the browser, as fetch()</td>
+          <td class="">in the app, as an ASGI replay</td>
+        </tr>
+        <tr>
+          <td class="font-medium">What it carries</td>
+          <td class="">what JavaScript can reach</td>
+          <td class="">your session cookie, HttpOnly and all</td>
+        </tr>
+        <tr>
+          <td class="font-medium">Gating the page</td>
+          <td class=""><span class="badge" data-variant="outline">not its job</span></td>
+          <td class="">dependencies=[Depends(auth.required)]</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What each argument decides</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>url=&#34;/api-docs&#34;</h4><p>where the page lives. Not /docs: FastAPI has claimed that before a plugin mounts, the first route registered wins, and a docs page that silently never renders is worse than a different URL — so the plugin warns at startup if the path is taken</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>flow=</h4><p>how someone signs in from the page. Defaults to the AuthPlugin sharing the config, and to a panel that only says &#34;anonymous&#34; when there is none</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>dependencies=</h4><p>put on every route the plugin adds — this is how the page is gated. Empty is right for a public API and wrong for an internal service</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>try_it=False</h4><p>renders the reference and drops the console, for an environment where replaying a request server-side is not acceptable</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>home_url=</h4><p>a way back out, in the sidebar&#39;s footer. The operation list has taken the sidebar, so without it the page is a room with no door</p>    </section>  </div></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        It is also the kit's worked example of section 03's <code>add_template_dir()</code>. The
+        console's templates live beside its code, in <code>fjkit/apidocs/templates/apidocs/</code>,
+        and <code>extend()</code> hands that directory to the loader. The inner <code>apidocs/</code>
+        is what keeps the names <code>apidocs/page.html</code> — which is what lets your app replace
+        any one of them by writing <code>templates/apidocs/&lt;name&gt;.html</code> of its own, since
+        the app's directory is searched first.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Worth knowing before you reach for it</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>its routes are out of your document</h4><p>include_in_schema=False, for the same reason FastAPI keeps /docs out of it: these are a way of reading the API, not part of it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a call is capped</h4><p>64 KB of body and 30 seconds, both arguments. The console is a reading tool, not a load generator</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>form bodies become fields</h4><p>an Annotated[str, Form()] route gets one input per field rather than a text box, because that is the shape a fjkit app posts most often. A JSON body stays an editable example</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>nothing on the page can read the credential</h4><p>signing in is a form your app defines, not a box to paste a token into — which is the same property that makes the cookie worth having</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>
