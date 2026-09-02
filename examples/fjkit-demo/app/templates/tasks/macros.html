@@ -1,28 +1,26 @@
 {#
-  Feature-local macros: markup that only the task board uses.
-
-  A repeated row is a macro, never `{% include %}` inside a loop. Include is a
-  template lookup plus a fresh context object per iteration; a macro is a
-  function call on an already-compiled module. Same output, and the gap widens
-  linearly with row count.
-
-  `request` is a parameter rather than something inherited from the caller's
-  context, so this file can be imported the cheap way (without context).
+  Feature-local macros for the task board. `request` is a parameter, so this file
+  imports without context.
 #}
 {% from "ui/button.html" import button %}
 {% from "ui/data.html" import badge %}
+{% from "ui/layout.html" import row %}
 {% from "ui/table.html" import cell, row_actions %}
 
-{#
-  `actions` is pre-rendered markup for the trailing cell, the same shape
-  `card(actions=…)` takes. It exists so that a page which needs its own row
-  action does not need its own row: the search page hands in one button and
-  gets the board's four cells unchanged, which is what keeps a status badge the
-  same colour and the same column on both pages.
-#}
+{# `actions` is pre-rendered markup for the trailing cell. #}
 {% macro task_row(request, task, filter_query="", show_actions=true, actions=none) -%}
   <tr>
     {{ cell(task.title, tone="strong") }}
+    {# The labels column: one secondary badge per label, or a muted em dash. #}
+    {% if task.labels %}
+      {% call cell() %}
+        {% call row(gap=2) %}
+          {% for label in task.labels %}{{ badge(label.value, variant="secondary") }}{% endfor %}
+        {% endcall %}
+      {% endcall %}
+    {% else %}
+      {{ cell("—", tone="muted") }}
+    {% endif %}
     {{ cell(badge(task.status.value | capitalize, variant=task.status_variant)) }}
     {{ cell(badge(task.priority.value | capitalize, variant=task.priority_variant)) }}
     {{ cell(task.owner, tone="muted") }}
@@ -34,12 +32,7 @@
                   hx_post=url_for(request, "tasks_advance", task_id=task.id) ~ filter_query,
                   hx_target="#board", hx_swap="outerHTML",
                   hx_disabled_elt="this") }}
-        {#
-          A link, not a swap: the edit form is a page of its own, so this is an
-          <a> and the browser navigates. `button(href=…)` is the same macro
-          either way — it just stops emitting a `type` and starts emitting an
-          `href`.
-        #}
+        {# A link to the edit page. #}
         {{ button("", variant="ghost", size="icon-xs", icon_name="pencil",
                   aria_label="Edit " ~ task.title,
                   href=url_for(request, "tasks_edit", task_id=task.id)) }}
@@ -54,12 +47,10 @@
   </tr>
 {%- endmacro %}
 
-{#
-  The board's column spec, defined once because three templates render the same
-  table shape. The trailing column is the actions cell: no label, minimum width.
-#}
+{# The board's column spec; the trailing column is the actions cell. #}
 {% set TASK_COLUMNS = [
   {"label": "Task"},
+  {"label": "Labels"},
   {"label": "Status"},
   {"label": "Priority"},
   {"label": "Owner"},

@@ -1,17 +1,6 @@
 {#
-  The list. Returned bare by POST /jobs and DELETE /jobs/finished, and included
-  by jobs/page.html for the first paint.
-
-  The POST replaces this whole container rather than prepending one card,
-  because the container also owns the "nothing here yet" case — an `afterbegin`
-  swap would push the first job in above an empty state that is still claiming
-  there are none. Re-rendering wholesale is the same answer the task board
-  gives, and for the same reason: there is then no client-side state to keep
-  in agreement with the server.
-
-  Each card still carries its own polling, so replacing the list does not
-  restart or duplicate anything — a card that was mid-poll is simply gone, and
-  htmx drops a request whose target no longer exists.
+  The job list. Returned by POST /jobs and DELETE /jobs/finished, and embedded by
+  jobs/page.html.
 #}
 {% from "ui/data.html" import empty_state %}
 {% from "ui/layout.html" import stack %}
@@ -27,14 +16,8 @@
   {% endif %}
 
   {#
-    The dialogs, in a second pass rather than inside `job_card`, because a card
-    swaps itself out every second and would take an open one with it. Here they
-    are replaced only when the whole list is — starting a job, or clearing the
-    finished ones — which is rare enough to be an acceptable moment to lose an
-    open panel, and honest: the list it belonged to is gone.
-
-    They sit inside the `stack` and add nothing to the layout: a closed popover
-    is `display: none`, so it is not a flex item and occupies no gap.
+    The dialogs, rendered as siblings of the cards so a poll does not replace an
+    open one.
   #}
   {% for job in jobs %}{{ job_detail_dialog(request, job) }}{% endfor %}
 {% endcall %}

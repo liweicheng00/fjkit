@@ -1,24 +1,129 @@
 {#
-  Feature-local markup: the one thing a search row does that a board row does
-  not.
-
-  A macro rather than a `{% set %}` block inside the loop — `{% set %}` builds
-  a fresh Markup buffer per iteration, a macro is a call on an already-compiled
-  module. Same reason `task_row` is a macro at all.
-
-  `request` is a parameter rather than inherited context, so this file can be
-  imported the cheap way.
+  Feature-local macros for the search page. `request` is a parameter, so this
+  file imports without context.
 #}
 {% from "ui/button.html" import button %}
+{% from "ui/data.html" import badge %}
+{% from "ui/layout.html" import row %}
+{% from "ui/table.html" import cell %}
 
 {#
-  The trigger for the second swap. A real focusable button, not a clickable
-  `<tr>`: a row with an `hx-get` on it is unreachable by keyboard and unnamed
-  to a screen reader, and htmx will happily fire it anyway.
+  subscribe(request, endpoint, events, with_id, with_query) — the attributes that
+  make one fragment, and only that fragment, refetch itself when something
+  happens.
+
+      <div id="search-detail" {{ subscribe(request, "search_detail", ["task-selected"]) }}>
+
+  Why each of them:
+
+  - `hx-trigger="<event> from:body"` — the server fires the event through
+    `HX-Trigger`, and htmx raises it on the element that made the request. The
+    panels are nowhere near that element, so they listen where it bubbles to.
+    Each event needs its own `from:body`; a bare second name would be read as an
+    event on this element.
+  - `hx-vals="js:…"` — the id rides in `event.detail`, and this is the single
+    place it turns back into a query parameter. Doing it here, rather than
+    remembering the selection on the server, is what keeps the endpoints
+    stateless and two open tabs independent.
+  - `hx-include` — the region also depends on the search box, and that value is
+    on the page rather than in the event. A selector, so no fragment has to be
+    handed the query it is already displayed next to.
+  - `hx-target="this"` with `hx-swap="outerHTML"` — every subscriber replaces
+    itself, so the reply is one region and the sender never has to know how many
+    regions exist.
+
+  `events` is the list this fragment has a reason to hear. The facets hear
+  nothing at all: advancing a task changes neither an owner nor a priority.
+
+  `hx-vals`, `hx-target` and `hx-swap` are inherited — `hx-trigger` is not — so
+  an htmx element *inside* a subscriber has to refuse them. See the Open button
+  below.
 #}
-{% macro detail_action(request, task) -%}
-  {{ button("", variant="ghost", size="icon-xs", icon_name="chevron-right",
-            aria_label="Open " ~ task.title,
-            hx_get=url_for(request, "search_detail", task_id=task.id),
-            hx_target="#search-detail", hx_swap="outerHTML") }}
+{% macro subscribe(request, endpoint, events, with_id=true, with_query=false) -%}
+hx-get="{{ url_for(request, endpoint) }}"
+     hx-trigger="{% for name in events %}{{ name }} from:body{{ ", " if not loop.last }}{% endfor %}"
+     {% if with_id %}hx-vals="js:{task_id: event.detail.task_id}"
+     {% endif %}{% if with_query %}hx-include="[name='q']"
+     {% endif %}hx-target="this" hx-swap="outerHTML"
+{%- endmacro %}
+
+{#
+  stamp(rendered_label) — the moment the router built this fragment.
+
+  It is the page's evidence. Two mechanisms move regions here, and without a
+  timestamp per region there is no reading which regions a given click reached.
+#}
+{% macro stamp(rendered_label) -%}
+  {{ badge("rendered " ~ rendered_label, variant="outline") }}
+{%- endmacro %}
+
+{#
+  match_row(request, task, selected_id) — one result row.
+
+  There is no Open button. The **title** is the button: a `link` variant, so it
+  reads as the name of the row rather than as a control parked beside it, and a
+  real `<button>`, so Tab reaches it and Enter and Space fire a click on it.
+
+  `hx-trigger="click from:closest tr"` then listens on the row rather than on the
+  title, which makes the whole row a hit target while the keyboard path stays on
+  a focusable element. Putting `hx-get` on the `<tr>` instead would give the same
+  mouse behaviour and no keyboard path at all — a `<tr>` takes no focus and
+  announces nothing.
+
+  Basecoat already styles `.table tr:hover`, so the row reads as interactive
+  without this template naming a colour or a cursor.
+
+  Two refusals, because the row sits inside a subscriber and htmx attributes are
+  inherited. `hx-target` — otherwise `this` resolves to the title. `hx-vals="unset"`
+  — otherwise it merges the table's `js:` expression, evaluated against a click
+  event whose `detail` is `0`, and every pick goes out as `?task_id=undefined`.
+  `unset` is the only value that stops it: htmx walks up the tree for `hx-vals`
+  *merging* what it finds, on a path that does not consult `hx-disinherit`.
+#}
+{% macro match_row(request, task, selected_id=none) -%}
+  <tr>
+    {% call cell() %}
+      {# `wrap=false` so the badge stays on the title's line and rows keep one height. #}
+      {% call row(gap=2, wrap=false) %}
+        {{ button(task.title, variant="link", size="xs",
+                  hx_get=url_for(request, "search_select", task_id=task.id),
+                  hx_trigger="click from:closest tr",
+                  hx_include="[name='q']",
+                  hx_target="#search-matches", hx_swap="outerHTML", hx_vals="unset") }}
+        {% if task.id == selected_id %}{{ badge("open", variant="info") }}{% endif %}
+      {% endcall %}
+    {% endcall %}
+    {% if task.labels %}
+      {% call cell() %}
+        {% call row(gap=2) %}
+          {% for label in task.labels %}{{ badge(label.value, variant="secondary") }}{% endfor %}
+        {% endcall %}
+      {% endcall %}
+    {% else %}
+      {{ cell("—", tone="muted") }}
+    {% endif %}
+    {{ cell(badge(task.status.value | capitalize, variant=task.status_variant)) }}
+    {{ cell(badge(task.priority.value | capitalize, variant=task.priority_variant)) }}
+    {{ cell(task.owner, tone="muted") }}
+  </tr>
+{%- endmacro %}
+
+{# This table has no actions column: the title is the only control on a row. #}
+{% set MATCH_COLUMNS = [
+  {"label": "Task"},
+  {"label": "Labels"},
+  {"label": "Status"},
+  {"label": "Priority"},
+  {"label": "Owner"},
+] %}
+
+{#
+  The button that advances the open task. Same two refusals, and its target is
+  the panel it lives in — which is why that panel must not hear `task-changed`.
+#}
+{% macro advance_action(request, task) -%}
+  {{ button("Advance", variant="outline", size="xs",
+            icon_name="chevron-right", icon_end=true,
+            hx_post=url_for(request, "search_advance", task_id=task.id),
+            hx_target="#search-detail", hx_swap="outerHTML", hx_vals="unset") }}
 {%- endmacro %}

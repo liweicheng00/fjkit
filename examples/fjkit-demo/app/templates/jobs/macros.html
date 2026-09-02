@@ -1,13 +1,6 @@
 {#
-  Feature-local macros for the jobs page.
-
-  `job_card` is a macro rather than a partial included in a loop for the usual
-  reason — include costs a template lookup and a fresh context per iteration —
-  but here it buys something else too: the list and the poll response are
-  literally the same function call, so a card cannot look one way on first
-  paint and another way after the first swap.
-
-  `request` is a parameter, so this file imports without context.
+  Feature-local macros for the jobs page. `request` is a parameter, so this file
+  imports without context.
 #}
 {% from "ui/button.html" import button %}
 {% from "ui/data.html" import badge, card, progress %}
@@ -17,31 +10,10 @@
 {% macro job_card(request, job) -%}
   {% set status %}
     {% call row(gap=2) %}
-      {#
-        Decorative on purpose: the badge beside it already says "Running", and
-        a spinner with its own label would announce the same fact twice.
-      #}
+      {# Decorative: the badge beside it already says "Running". #}
       {% if job.running %}{{ spinner(size="sm", tone="info") }}{% endif %}
       {{ badge(job.state.value | capitalize, variant=job.state_variant) }}
-      {#
-        One click does two things, and neither of them is ours: the browser
-        opens the popover named by `popovertarget`, and htmx fetches the body
-        into the id that dialog published. htmx does not cancel a plain
-        button's default action, so the two do not fight.
-
-        The `id` is what keeps focus alive. This button sits inside a card that
-        replaces itself every second, and htmx restores focus after a swap only
-        to an element it can find again by id — without one, tabbing to
-        "Details" on a running job would lose focus on the next poll.
-
-        `hx-swap` is spelled out because htmx **inherits** it from ancestors,
-        and this button's ancestor is a card carrying `hx-swap="outerHTML"` for
-        its own poll. Inherited, it would replace the dialog's body element
-        instead of its contents — taking the id with it, so the first open of a
-        running job's dialog would quietly break every open after it. The
-        default is innerHTML; on a trigger nested inside another htmx element,
-        the default is whatever that element said.
-      #}
+      {# Opens the popover and fetches its body. The `id` keeps focus across polls. #}
       {{ button("Details", variant="ghost", size="xs", icon_name="info",
                 id="job-" ~ job.id ~ "-details",
                 popovertarget="job-detail-" ~ job.id,
@@ -52,14 +24,8 @@
   {% endset %}
 
   {#
-    The card *is* the swap target: it carries the id the poll replaces, and the
-    request that replaces it. All three hx-* attributes are conditional on the
-    same flag, so the last render — the finished one — emits none of them and
-    the polling ends by itself. Nothing cancels anything; the final response
-    simply stops asking for another.
-
-    `attrs()` drops a keyword whose value is none, which is what lets that read
-    as three ordinary expressions rather than an if/else around the markup.
+    The card is the poll's target; the hx-* attributes are emitted only while the
+    job runs.
   #}
   {% call card(job.label,
                job.error or (job.processed ~ " of " ~ job.total ~ " steps"),
@@ -74,21 +40,8 @@
 {%- endmacro %}
 
 {#
-  The dialog that "Details" opens — deliberately *not* part of `job_card`.
-
-  A card replaces itself every second while its job runs. A dialog rendered
-  inside it would be torn out of the DOM on the next poll and would close in
-  the user's face about a second after they opened it; rendered as a sibling of
-  the card, it survives every poll, because a poll only ever swaps `#job-{id}`.
-
-  One shell per job rather than one shared dialog re-targeted at each card: the
-  shells cost a few hundred bytes each and nothing at all until they are
-  opened, and in exchange an open panel can never be showing another job's data
-  while the request for this one is still in flight.
-
-  Title and description come from the list render, so they are the parts that
-  never change. Everything that moves is inside the body, which the server
-  fills on open.
+  The dialog "Details" opens, rendered as a sibling of the card. Title and description
+  are fixed; the body is fetched on open.
 #}
 {% macro job_detail_dialog(request, job) -%}
   {% set footer %}
@@ -98,11 +51,7 @@
 
   {% call dialog("job-detail-" ~ job.id, title=job.label,
                  description="Background job #" ~ job.id, footer=footer) %}
-    {#
-      What is in the shell is what the panel shows for the moment between
-      opening and the response landing. A spinner is the honest answer, and
-      after the first open it is never seen again.
-    #}
+    {# A spinner, shown until the body arrives. #}
     {{ spinner(label="Loading the job detail") }}
   {% endcall %}
 {%- endmacro %}

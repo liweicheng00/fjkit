@@ -17,6 +17,7 @@
   {"id": "triggers", "title": "hx-trigger: typing, scrolling, polling"},
   {"id": "partials", "title": "Partials: one file, page and swap"},
   {"id": "oob",      "title": "One reply, many regions: hx-swap-oob"},
+  {"id": "broadcast","title": "One id, many fragments: HX-Trigger"},
   {"id": "pending",  "title": "While the request is in flight"},
   {"id": "json",     "title": "No HX-Request: the same route answers JSON"},
   {"id": "patterns", "title": "Nine htmx patterns, and their handlers"},
@@ -28,7 +29,7 @@
 {% call stack(8) %}
 
   {% set intro %}
-    Eleven lessons: how a fjkit app is wired, what htmx actually sends, how a rebrand works, and the
+    Twelve lessons: how a fjkit app is wired, what htmx actually sends, how a rebrand works, and the
     command that fails a build. Every demo below is live.
   {% endset %}
   {{ page_header("Build the interface where you build the routes", intro) }}
@@ -84,7 +85,7 @@
       </p>
       <p>
         Nothing is serialised for the swap. Nothing is re-rendered on the client. No state lives in two
-        places. The same route will happily answer a script in JSON — that is <a href="#json">lesson 06</a>
+        places. The same route will happily answer a script in JSON — that is <a href="#json">lesson 09</a>
         — but that is a second door, not a step in this exchange. Press the button:
         <strong>the request below is real</strong>. htmx is loaded on this page, and a mock server in the
         browser plays the FastAPI side.
@@ -230,15 +231,17 @@
     {% call grid(cols=2, gap=4) %}
       {% set trap_page %}returning <code>page.html</code> from an htmx route nests a whole document inside your div — return the partial{% endset %}
       {% set trap_wrapper %}<code>outerHTML</code> needs the wrapper in the response, or the target disappears{% endset %}
+      {% set trap_inherit %}<code>hx-target</code> and <code>hx-swap</code> are inherited from ancestors. A button inside a card that polls itself with <code>outerHTML</code> inherits that swap, and replaces the element it meant to fill — spell both out on any trigger nested inside another htmx element{% endset %}
       {{ defs("Traps worth knowing", [
         ("full page back", trap_page),
-        ("4xx does not swap", "htmx ignores error responses by default; for form errors, answer 200 with the re-rendered form"),
+        ("4xx does not swap", "htmx ignores error responses by default. The shell adds 422, and only 422, which is what lets a rejected form come back as the form itself"),
         ("lost wrapper", trap_wrapper),
         ("stale filter", "a row action must carry the active filter, or the swap silently resets the view"),
+        ("inherited swap", trap_inherit),
       ]) }}
       {{ defs("Server-side helpers", [
         ("HX-Request", "the header that tells a route it is answering a swap"),
-        ("HX-Trigger", "response header that fires a client event — how a toast gets raised (fjkit 0.6)"),
+        ("HX-Trigger", "response header that fires a client event — how fjkit raises a toast from a swap, which has no toaster in it"),
         ("HX-Redirect", "full-page redirect from inside a swap response"),
         ("hx-swap-oob", "one response, several regions — the next lesson"),
       ]) }}
@@ -246,7 +249,7 @@
   {% endcall %}
 
   {# ============================================================== 06 #}
-  {% set t06 %}<code>hx-target</code> names one element. When one answer has to move five, the other four carry their own address.{% endset %}
+  {% set t06 %}<code>hx-target</code> names one element. When one answer has to move six, the other five carry their own address.{% endset %}
   {% call lesson("oob", "06", "One reply, many regions: hx-swap-oob", t06, tag="htmx") %}
     {% call prose() %}
       <p>
@@ -256,12 +259,12 @@
       </p>
       <p>
         A search result is not one thing. One query moves a row of counters above the table, the table
-        itself, a progress card and a facet list in the aside, and a detail panel below it — five
-        fragments in three places, and the only element that contains all five is
+        itself, a progress card, a facet list and a siblings panel in the aside, and a detail panel
+        below it — six fragments in three places, and the only element that contains all six is
         <code>&lt;body&gt;</code>. Swapping the body is a page reload with extra steps.
       </p>
       <p>
-        So the reply carries the other four <strong>out of band</strong> — outside the one channel
+        So the reply carries the other five <strong>out of band</strong> — outside the one channel
         <code>hx-target</code> describes. Each of them says where it belongs by carrying the id it is
         going to.
       </p>
@@ -271,6 +274,7 @@
 <div id=\"search-stats\"    hx-swap-oob=\"true\">…</div>   ← flies to the counters
 <div id=\"search-progress\" hx-swap-oob=\"true\">…</div>   ← flies to the aside
 <div id=\"search-facets\"   hx-swap-oob=\"true\">…</div>   ← flies to the aside
+<div id=\"search-related\"  hx-swap-oob=\"true\">…</div>   ← flies to the aside
 <div id=\"search-detail\"   hx-swap-oob=\"true\">…</div>   ← flies below the table" %}
     {% call stage("What comes back from one keystroke",
                   "GET /search?q=cache, answered by one handler and one response model.", padded=false) %}
@@ -302,7 +306,7 @@
     {% call prose() %}
       <p>
         On the fjkit side there is no new machinery. The page and the reply
-        {% raw %}<code>{% include %}</code>{% endraw %} the same five partials and differ in one
+        {% raw %}<code>{% include %}</code>{% endraw %} the same six partials and differ in one
         variable: the page renders them cold, the reply renders them addressed. Each partial defaults
         the flag itself, so it still renders standalone.
       </p>
@@ -315,6 +319,7 @@
   {% include \"search/_progress.html\" %}
   {% include \"search/_facets.html\" %}
   {% include \"search/_detail.html\" %}
+  {% include \"search/_related.html\" %}
 {% endwith %}
 
 {# _stats.html — and every other region, at the top #}
@@ -331,14 +336,225 @@
         The payoff is that <em>where</em> a fragment lives is decided by the page, once. Move the facet
         card from the aside into the main column and the router, the response model and the swap are
         all unchanged. The working files are
-        <code>examples/fjkit-demo/app/templates/search/</code> in the repository.
+        <code>examples/fjkit-demo/app/templates/search/</code> in the repository — and the next
+        lesson is the other half of that same page, because a real screen needs both.
       </p>
     {% endcall %}
   {% endcall %}
 
   {# ============================================================== 07 #}
-  {% set t07 %}A swap is a round trip, and nothing stops a second click during it. Two attributes cover the whole of the wait.{% endset %}
-  {% call lesson("pending", "07", "While the request is in flight", t07, tag="htmx") %}
+  {% set t07 %}The opposite problem to lesson 06: the trigger produces an <em>id</em>, and each region has a different question to ask with it.{% endset %}
+  {% call lesson("broadcast", "07", "One id, many fragments: HX-Trigger", t07, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        The last lesson worked because one handler could answer every region at once — one query, six
+        fragments, one response model holding all of them. Opening a row on that same page is not that
+        shape. What the click produces is an <code>id</code>, and the panels that care about it each
+        need a <em>different</em> query: the detail of that task, the other tasks its owner has. A
+        handler that answered all of them would have to import every service on the page, and adding a
+        third panel would mean editing it.
+      </p>
+      <p>
+        So the pick answers with <em>its own</em> region — the table, with the row now marked — and
+        sends the id out in <code>HX-Trigger</code>. htmx raises that header as a DOM event, and the
+        fragments that care listen for it and go and fetch their own data. The route does not know how
+        many of them there are, or that any of them exist. Adding a panel is one more subscriber and no
+        change to any route.
+      </p>
+    {% endcall %}
+
+    {% set bcast_route = "@router.get(\"/search/select/{task_id}\", name=\"search_select\")
+@render(\"search/_matches.html\",
+        hx_trigger=lambda task_id: {\"task-selected\": {\"task_id\": task_id}})
+def select_task(service: ServiceDep, task_id: int, q: str = \"\") -> MatchesResponse:
+    \"\"\"Mark the row, answer with the table, and tell the panels which id.\"\"\"
+    return _matches(service, q, _selected(service, task_id).id)" %}
+    {% call stage("The route that picks",
+                  "A GET, because picking changes nothing on the server. The table is the button's hx-target, so the reply swaps it in band.", padded=false) %}
+      {{ code(bcast_route, label="router.py") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        <code>hx_trigger</code> is where the event is declared, and it is a parameter of
+        <code>@render</code> rather than a header the handler writes, for one reason: then it works
+        the same on a route that <em>does</em> render. A callable is resolved per request out of the
+        handler's own parameters by name — <code>task_id</code> here — plus <code>result</code>, what
+        the handler returned. Returning <code>None</code> from it raises nothing, so a route can
+        broadcast only sometimes.
+      </p>
+      <p>
+        Nothing about that route is special otherwise. It is an ordinary partial route — one template,
+        one response model — with an event attached, which is what makes the pattern cheap: the swap
+        and the broadcast are one round trip, declared in one place.
+      </p>
+      <p>
+        A second action on the same page shows the other half of it. Advance changes a status, so it
+        raises a <em>different</em> event, and a different set of fragments cares.
+      </p>
+    {% endcall %}
+
+    {% set bcast_shared = "@router.post(\"/search/advance/{task_id}\", name=\"search_advance\")
+@render(\"search/_detail.html\",
+        hx_trigger=lambda task_id: {\"task-changed\": {\"task_id\": task_id}})
+def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
+    \"\"\"Advance the task, answer with the detail panel, and say what changed.\"\"\"
+    if service.advance(task_id) is None:
+        raise HTTPException(status_code=404, detail=\"task not found\")
+    return DetailResponse(selected=service.get(task_id))" %}
+    {% call stage("A second event, from a route that changes something",
+                  "The reply is the swap — the detail panel is this button's hx-target — and the header is what the other four hear.", padded=false) %}
+      {{ code(bcast_shared, label="router.py") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        Two events, and each fragment picks the ones it has a reason to hear. The counters listen for
+        <code>task-changed</code> and not <code>task-selected</code>, because picking a task changes no
+        count. The facets listen for neither, because advancing one changes no owner and no priority.
+        Which broadcasts a fragment hears is the fragment's own decision, and no route knows it
+        exists.
+      </p>
+    {% endcall %}
+
+    {% call stage("Who hears what", none, padded=false) %}
+      {% call table([{"label": "Fragment"}, {"label": "task-selected"}, {"label": "task-changed"}, {"label": "Why"}]) %}
+        <tr>
+          {{ cell("the results table", tone="strong") }}
+          {{ cell(badge("no", variant="outline")) }}
+          {{ cell(badge("yes", variant="success")) }}
+          {{ cell("it is the pick reply's own target; an advance changes what a row says") }}
+        </tr>
+        <tr>
+          {{ cell("the detail panel", tone="strong") }}
+          {{ cell(badge("yes", variant="success")) }}
+          {{ cell(badge("no", variant="outline")) }}
+          {{ cell("it is the advance reply's own target — hearing that event is the loop") }}
+        </tr>
+        <tr>
+          {{ cell("the siblings panel", tone="strong") }}
+          {{ cell(badge("yes", variant="success")) }}
+          {{ cell(badge("yes", variant="success")) }}
+          {{ cell("whose siblings these are, and what their status is") }}
+        </tr>
+        <tr>
+          {{ cell("the counters, the progress card", tone="strong") }}
+          {{ cell(badge("no", variant="outline")) }}
+          {{ cell(badge("yes", variant="success")) }}
+          {{ cell("a pick changes no count; an advance does") }}
+        </tr>
+        <tr>
+          {{ cell("the facets", tone="strong") }}
+          {{ cell(badge("no", variant="outline")) }}
+          {{ cell(badge("no", variant="outline")) }}
+          {{ cell("no facet on that card is about a status") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        One rule holds this together: <strong>the fragment a route answers with must not subscribe to
+        the event that route raises</strong>. It is already being replaced in band, so hearing the
+        event too fetches it a second time for the same click — and on a fragment that is its own
+        target, it never stops. htmx will not save you, because a subscriber asking for its own URL is
+        exactly what the attribute says to do. That is why the table hears only
+        <code>task-changed</code> and the detail panel only <code>task-selected</code>: each is a
+        route's target for one event and a subscriber for the other, never both for the same one.
+      </p>
+    {% endcall %}
+
+    {% set bcast_sub = "{# a panel that needs only the id #}
+<div id=\"search-detail\"
+     hx-get=\"/search/detail\"
+     hx-trigger=\"task-selected from:body\"
+     hx-vals=\"js:{task_id: event.detail.task_id}\"
+     hx-target=\"this\" hx-swap=\"outerHTML\">…</div>
+
+{# a region that also depends on the search box #}
+<div id=\"search-stats\"
+     hx-get=\"/search/stats\"
+     hx-trigger=\"task-changed from:body\"
+     hx-include=\"[name='q']\"
+     hx-target=\"this\" hx-swap=\"outerHTML\">…</div>" %}
+    {% call stage("The subscriber", "These attributes on every region that cares, and nothing on the ones that do not.", padded=false) %}
+      {{ code_block(bcast_sub, label="Jinja") }}
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set sub_trigger %}<code>from:body</code> — htmx raises the event on the element that made the request, and it bubbles. The panels are nowhere near that element, so they listen where it arrives{% endset %}
+      {% set sub_vals %}<code>hx-vals="js:…"</code> is the one place the id turns back into a query parameter. Reading it out of the event, rather than remembering the selection on the server, is what keeps the endpoints stateless and two open tabs independent{% endset %}
+      {% set sub_target %}<code>hx-target="this"</code> — every subscriber replaces itself, so a reply is always one region and the sender never has to know how many regions exist{% endset %}
+      {% set sub_include %}<code>hx-include</code> — for what the event does <em>not</em> carry. The counters are counts over the <em>matches</em>, so they need the search box as well as the id, and a selector fetches it off the page instead of every event having to carry it{% endset %}
+      {{ defs("The attributes that matter", [
+        ("who is listening", sub_trigger),
+        ("how the id arrives", sub_vals),
+        ("what else it needs", sub_include),
+        ("what gets replaced", sub_target),
+      ]) }}
+
+      {% set bc_object %}the trigger value must be a JSON <strong>object</strong>. htmx passes an object through as <code>event.detail</code> and wraps anything else — an array included — as <code>{value: …}</code>, so a listener reading <code>event.detail.task_id</code> finds nothing{% endset %}
+      {% set bc_order %}<code>HX-Trigger</code> fires <strong>before</strong> the swap. That is exactly why the id travels in the event: a hidden input holding the selection would still hold the old one when the subscribers read it. <code>HX-Trigger-After-Swap</code> is the header for the other order{% endset %}
+      {% set bc_inherit %}<code>hx-vals</code> is inherited, and htmx <strong>merges</strong> it up the tree on a path that does not consult <code>hx-disinherit</code>. An htmx element inside a subscriber — the row's own title, which is the button that opens it — has to say <code>hx-vals="unset"</code>, which is the only value that stops the walk{% endset %}
+      {% set bc_cost %}N subscribers is N requests. That is the trade: the page fans out instead of the handler fanning in, and <code>hx-sync</code> or a cache is where you pay it back if the queries are expensive{% endset %}
+      {{ defs("Four things to know", [
+        ("send an object", bc_object),
+        ("it fires before the swap", bc_order),
+        ("inheritance leaks in", bc_inherit),
+        ("N panels, N requests", bc_cost),
+      ]) }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        The two lessons are not competing, and the demo does not put them on separate pages. They
+        answer different questions, and <code>/search</code> asks both: a query is one question the
+        server can answer completely, and a pick is an id that three regions each have a different
+        question about.
+      </p>
+    {% endcall %}
+
+    {% call stage("Which one a page needs", none, padded=false) %}
+      {% call table([{"label": "Ask"}, {"label": "hx-swap-oob"}, {"label": "HX-Trigger"}]) %}
+        <tr>
+          {{ cell("what produces the change", tone="strong") }}
+          {{ cell("one query the server can answer for every region") }}
+          {{ cell("an id each region has a different question about") }}
+        </tr>
+        <tr>
+          {{ cell("who knows the regions", tone="strong") }}
+          {{ cell("the handler — it renders all of them") }}
+          {{ cell("nobody; each region declares itself") }}
+        </tr>
+        <tr>
+          {{ cell("requests per interaction", tone="strong") }}
+          {{ cell(badge("1", variant="success")) }}
+          {{ cell(badge("1 + one per subscriber", variant="outline")) }}
+        </tr>
+        <tr>
+          {{ cell("adding a region", tone="strong") }}
+          {{ cell("edit the handler, the model and the reply template") }}
+          {{ cell("one more subscriber; nothing else changes") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        The working files are <code>examples/fjkit-demo/app/features/search/</code> and
+        <code>app/templates/search/</code> — the same page as the last lesson. Every region there
+        carries a render stamp, so which ones each action reached is readable on the page itself,
+        without opening the network tab. A query is one request and six new stamps. A pick is three
+        requests and three stamps — the table, the detail panel, the siblings panel — while the
+        counters, the progress card and the facets sit still. An advance is five, and this time the
+        facets are the only card that does not move.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 08 #}
+  {% set t08 %}A swap is a round trip, and nothing stops a second click during it. Two attributes cover the whole of the wait.{% endset %}
+  {% call lesson("pending", "08", "While the request is in flight", t08, tag="htmx") %}
     {% call prose() %}
       <p>
         htmx adds the class <code>htmx-request</code> to an element for the length of a request and
@@ -416,9 +632,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 08 #}
-  {% set t08 %}A handler returns a model, not markup. One question decides what goes on the wire: does this caller have markup waiting?{% endset %}
-  {% call lesson("json", "08", "No HX-Request: the same route answers JSON", t08, tag="htmx") %}
+  {# ============================================================== 09 #}
+  {% set t09 %}A handler returns a model, not markup. One question decides what goes on the wire: does this caller have markup waiting?{% endset %}
+  {% call lesson("json", "09", "No HX-Request: the same route answers JSON", t09, tag="htmx") %}
     {% call prose() %}
       <p>
         Lesson 02 said the exchange carries no JSON, and of the swap itself that is true. But look
@@ -505,9 +721,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 09 #}
-  {% set t09 %}Screens differ; the shapes do not. Each one is a trigger, a target and a partial.{% endset %}
-  {% call lesson("patterns", "09", "Nine htmx patterns, and their handlers", t09, tag="htmx") %}
+  {# ============================================================== 10 #}
+  {% set t10 %}Screens differ; the shapes do not. Each one is a trigger, a target and a partial.{% endset %}
+  {% call lesson("patterns", "10", "Nine htmx patterns, and their handlers", t10, tag="htmx") %}
     {% call prose() %}
       <p>
         The whole attribute vocabulary fits on one screen, and
@@ -554,17 +770,15 @@
         ("degrades", "drop the hx-* keywords and the same macros emit a form and links that still work"),
       ]) }}
       {{ defs("Not yet, on purpose", [
-        ("field errors", "every field macro already takes error=; the Pydantic round trip is 0.3"),
-        ("toasts", "the HX-Trigger header is there today; the component is 0.6"),
         ("dialogs", "hx-confirm until then — it is the browser's own, and it works"),
         ("sorting", "a filter bar with different query params; the table macro learns it in 0.4"),
       ]) }}
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 10 #}
-  {% set t10 %}Rebranding is a CSS variable. "Green means done" is not on the dial.{% endset %}
-  {% call lesson("knob", "10", "Rebranding: brand and status tokens", t10, tag="theming") %}
+  {# ============================================================== 11 #}
+  {% set t11 %}Rebranding is a CSS variable. "Green means done" is not on the dial.{% endset %}
+  {% call lesson("knob", "11", "Rebranding: brand and status tokens", t11, tag="theming") %}
     {% call prose() %}
       <p>
         Drag the hue. You are editing <code>--primary</code> on <code>:root</code>, which is the
@@ -639,9 +853,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 11 #}
-  {% set t11 %}A convention nobody can violate by accident is worth more than one written down.{% endset %}
-  {% call lesson("gate", "11", "fjkit check: the closed vocabulary", t11) %}
+  {# ============================================================== 12 #}
+  {% set t12 %}A convention nobody can violate by accident is worth more than one written down.{% endset %}
+  {% call lesson("gate", "12", "fjkit check: the closed vocabulary", t12) %}
     {% call prose() %}
       <p>
         <code>fjkit check</code> reads your templates and rejects two things: colour literals, and
@@ -685,7 +899,7 @@
       {{ defs("Commands", [
         ("fastapi dev", "run the app — nothing to rebuild alongside it"),
         ("fjkit check", "every class is part of the vocabulary"),
-        ("fjkit eject", "copy a component in to edit it — and lose upstream fixes"),
+        ("fjkit eject", "the escape hatch: take one macro into your app; its file's other macros stay the kit's"),
         ("fjkit build-css", "fjkit's own release step, never yours"),
       ]) }}
       {% set d_components %}<a href="{{ url_for(request, "components") }}">every signature and enumeration, live</a>{% endset %}

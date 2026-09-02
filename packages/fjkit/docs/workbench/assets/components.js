@@ -1,4 +1,11 @@
-/* ------------------------------------------------------------ 02 · macros */
+/* The Components page, one section per file in `src/fjkit/templates/ui/`.
+ *
+ * `MACROS` is the knobs; `SHOWCASE` is the macros with nothing to turn;
+ * `SNIPPET` is the two files that render no preview at all. Each entry names
+ * the section that hosts it, and the sections are the directory listing — so
+ * "which section does this go in" is answered by the macro's own file. */
+
+/* ------------------------------------------------- the playground entries */
 const ICON_CHOICES = Object.keys(DATA.icons);
 
 /* The form picker's five states. Kept out of the entry itself because each one
@@ -103,6 +110,23 @@ const MACROS = {
     caption: "href= switches the element to an <a> and drops type. Any extra keyword — hx_post, aria_label, data_* — becomes an attribute.",
   },
 
+  button_group: {
+    label: "button_group",
+    controls: [
+      { key: "orientation", type: "select", label: "orientation", options: ["horizontal", "vertical"], value: "horizontal" },
+      { key: "gap", type: "select", label: "gap", options: [1, 2, 3, 4], value: 2 },
+    ],
+    render: (p) => DATA.groups[`${p.gap}|${p.orientation}`],
+    jinja: (p) => `{% from "ui/button.html" import button_group %}
+
+{% call button_group(${p.orientation === "vertical" ? 'orientation="vertical"' : `gap=${p.gap}`}) %}
+  {{ button("Save", variant="primary") }}
+  {{ button("Cancel", variant="outline") }}
+  {{ button("Delete", variant="destructive") }}
+{% endcall %}`,
+    caption: "Horizontal is a row, so gap is yours. Vertical is Basecoat's .button-group, which joins the buttons into one control and shares their borders — there is no gap to set, and setting one would be asking for a column of separate buttons instead.",
+  },
+
   badge: {
     label: "badge",
     controls: [
@@ -205,15 +229,27 @@ const MACROS = {
   },
 };
 
-(function macros() {
-  const picker = $("#macro-picker");
-  const tablist = picker.querySelector('[role="tablist"]');
-  const preview = $("#macro-preview");
-  const jinjaEl = $("#macro-jinja pre");
-  const htmlEl = $("#macro-html pre");
-  const caption = $("#macro-caption");
+/* One playground, instantiated once per file that has knobs to offer.
+ *
+ * `slug` names the section — `button`, `data`, `form`, `table` — and
+ * the template renders the same skeleton under it either way:
+ *
+ *     #<slug>-picker      the tab strip, when the file has more than one macro
+ *     #<slug>-controls    the knobs, when it has exactly one
+ *     #<slug>-preview     #<slug>-jinja pre   #<slug>-html pre   #<slug>-caption
+ *
+ * A one-macro file gets no tab strip, because a tablist with a single tab is a
+ * control that cannot be operated. */
+function playground(slug, keys) {
+  const picker = document.getElementById(`${slug}-picker`);
+  const tablist = picker?.querySelector('[role="tablist"]');
+  const preview = $(`#${slug}-preview`);
+  const jinjaEl = $(`#${slug}-jinja pre`);
+  const htmlEl = $(`#${slug}-html pre`);
+  const caption = $(`#${slug}-caption`);
+  if (!preview) return;
 
-  let current = "button";
+  let current = keys[0];
   const state = {};
 
   /* One tab and one panel per macro, which is the pattern the picker always
@@ -223,15 +259,21 @@ const MACROS = {
 
      Every panel is built once and kept, so switching costs nothing and a knob
      you set on `badge` is still set when you come back to it. */
-  Object.entries(MACROS).forEach(([key, macro]) => {
+  keys.forEach((key) => {
+    const macro = MACROS[key];
     state[key] = Object.fromEntries(macro.controls.map((c) => [c.key, c.value]));
 
+    if (!tablist) {
+      buildControls(key, document.getElementById(`${slug}-controls`));
+      return;
+    }
+
     const panel = document.createElement("div");
-    panel.id = `macro-panel-${key}`;
+    panel.id = `${slug}-panel-${key}`;
     panel.setAttribute("role", "tabpanel");
     /* Pre-hidden, unlike a server-rendered `tab_panel`: nothing here exists
        without JavaScript anyway, so there is no reader to keep it legible for —
-       only a stack of seven panels flashing before Basecoat's script runs. */
+       only a stack of panels flashing before Basecoat's script runs. */
     panel.hidden = key !== current;
     buildControls(key, panel);
     picker.appendChild(panel);
@@ -256,23 +298,25 @@ const MACROS = {
      one component's knobs and another's preview. `aria-selected` is the one
      place every path — pointer, keyboard, a script calling `picker.select()` —
      has to write, so it is the thing worth reading. */
-  const follow = () => {
-    const key = tablist.querySelector('[role="tab"][aria-selected="true"]')?.dataset.macro;
-    if (!key || key === current) return;
-    current = key;
-    update();
-  };
-  new MutationObserver(follow).observe(tablist, {
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["aria-selected"],
-  });
+  if (tablist) {
+    const follow = () => {
+      const key = tablist.querySelector('[role="tab"][aria-selected="true"]')?.dataset.macro;
+      if (!key || key === current) return;
+      current = key;
+      update();
+    };
+    new MutationObserver(follow).observe(tablist, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["aria-selected"],
+    });
 
-  /* Deferred scripts run in document order and Basecoat initialises on
-     DOMContentLoaded, so it sees the tabs above and needs no help. The call is
-     here for the day someone moves a <script> tag: `refresh` exists only once
-     Basecoat has already run, and it re-reads a tablist that changed since. */
-  picker.refresh?.();
+    /* Deferred scripts run in document order and Basecoat initialises on
+       DOMContentLoaded, so it sees the tabs above and needs no help. The call is
+       here for the day someone moves a <script> tag: `refresh` exists only once
+       Basecoat has already run, and it re-reads a tablist that changed since. */
+    picker.refresh?.();
+  }
 
   function buildControls(key, controlsEl) {
     MACROS[key].controls.forEach((control) => {
@@ -280,7 +324,7 @@ const MACROS = {
       wrap.className = "field";
       // Basecoat's own knob for a control that sits beside its label.
       if (control.type === "check") wrap.dataset.orientation = "horizontal";
-      const id = `mc-${key}-${control.key}`;
+      const id = `mc-${slug}-${key}-${control.key}`;
       const label = document.createElement("label");
       label.className = "label";
       label.htmlFor = id;
@@ -337,9 +381,16 @@ const MACROS = {
   }
 
   update();
-})();
+}
 
-/* ------------------------------------------------------------ 03 · layout */
+/* The sections that carry knobs, in the order the page lists them — which is
+   the order `ls src/fjkit/templates/ui/` prints. */
+playground("button", ["button", "button_group"]);
+playground("data", ["badge", "stat", "progress", "card"]);
+playground("form", ["form"]);
+playground("table", ["table"]);
+
+/* ------------------------------------------------------- layout.html */
 (function layout() {
   const controls = $("#layout-controls");
   const preview = $("#layout-preview");
@@ -447,119 +498,7 @@ const MACROS = {
 })();
 
 
-/* -------------------------------------------------------- 11 · cheatsheet */
-setCode($("#cheatsheet-code"), `layout.html   stack(gap=4, align)                     ·  block
-              row(gap=3, align="center", justify, wrap=true)
-              grid(cols=3, gap=4)                     ·  cols 2|3|4
-              split(aside="md", gap=6)                ·  two slots
-              page_header(title, description)         ·  block = actions
-              section(title, description, gap=4)
-              divider()
-
-button.html   button(label, variant, size, type="button", href,
-                     icon_name, icon_end=false, disabled=false, **attrs)
-              button_group(gap=2)                     ·  block
-
-data.html     badge(label, variant)
-              card(title, description, size, actions, padded=true)
-              stat(label, value, hint, icon_name, tone)
-              metric_group(items, cols=3)   progress(value, label)
-              empty_state(title, description, icon_name)
-              bullet_list(tone) / list_item()         ·  blocks
-              item_list() / item(term, clamp)         ·  blocks
-              avatar(name, src, size, initials, badge_tone, badge_icon)
-              avatar_group(overflow, label)           ·  block
-              code_block(source, label, wrap=false)
-              link(label, href)   kbd(keys)
-
-form.html     form(action, method="post", target, swap="outerHTML",
-                   reset_on_success=false, card=true) ·  block
-              field_row(template="two", gap=3)        ·  block
-              fieldset(legend, hint)                  ·  block
-              text_field(name, label, value, placeholder, type,
-                         required, hint, error, id)
-              textarea_field(name, label, value, rows, …)
-              select_field(name, label, options, selected, blank, …)
-              checkbox_field(name, label, checked, value, …)
-              switch_field(name, label, checked, value, …)
-              radio_group(name, label, options, selected, …)
-              range_field(name, label, value, min, max, step, output)
-              input_group_field(name, label, start, end, …)
-                                    every field: name, label, hint, error, id
-
-feedback.html spinner(size, tone, label, indicator=false)
-              alert(title, body, variant, icon_name)   ·  block = actions
-              skeleton(shape, width, lines)           ·  shape text|heading
-                                                         |control|avatar|block
-              dialog(id, title, description, size, footer) ·  block
-              toaster(position)   toast(title, description, category)
-
-disclosure    collapsible(summary, open=false, icon_name)  ·  block
-   .html      accordion(multiple=false, label)        ·  block
-              tooltip(text, side, align)              ·  block = trigger
-
-overlay.html  popover(id, label, variant, side, align, width)  ·  block
-              dropdown_menu(id, label, side, align, width)     ·  block
-              menu_item(label, shortcut, variant, disabled,
-                        checked, radio, href)
-              menu_group(heading)  ·  block      menu_separator()
-              select_menu(name, options, selected, placeholder, width)
-              combobox(name, options, selected, placeholder, empty)
-              drawer(id, title, description, side, footer)     ·  block
-              drawer_trigger(label, target, variant, size)
-              command(id, placeholder, empty, dialog=false)    ·  block
-              command_group(heading)  ·  block
-              command_item(label, keywords, icon_name, shortcut)
-
-table.html    table(columns, rows, empty_title, empty_description)
-              cell(value, tone, numeric, align)   row_actions()
-
-tabs.html     tabs(items, label, variant, orientation)  ·  block
-              tab_panel(id)                             ·  block
-
-sidebar.html  sidebar(request, label)   sidebar_group(label)   ·  blocks
-              sidebar_link(request, label, route, icon_name)
-              sidebar_submenu(label, icon_name)         ·  block
-              sidebar_trigger()
-
-nav.html      brand(label, href, icon_name)
-              nav_links(request, links)   theme_toggle()
-              breadcrumb(trail, separator)  ·  href=none is the current page
-
-icon.html     icon(name, size=16)                     ·  1,767 Lucide names
-
-globals       url_for(request, name, **params)   is_active(request, name)
-              fjkit_static(path)   fjkit_version   fjkit_icon_path(name)
-
-── htmx ─────────────────────────────────────────────────────────────────
-  Pass any of these to any macro as hx_* keywords: hx_post="/tasks"
-  Upstream: htmx.org/reference · htmx.org/examples · htmx.org/docs
-
-  request     hx-get  hx-post  hx-put  hx-patch  hx-delete
-  where       hx-target="#board" | "closest tr" | "this" | "next .row"
-  how         hx-swap="outerHTML | innerHTML | beforeend | afterbegin
-                       | beforebegin | afterend | delete | none"
-              …with modifiers: swap:200ms  settle:100ms  scroll:top
-  when        hx-trigger="click | submit | change            (defaults)
-                          keyup changed delay:400ms          search
-                          revealed                           lazy load
-                          load                               on insert
-                          every 2s                           polling
-                          click from:body                    elsewhere"
-  extras      hx-vals='{"id": 3}'      values sent with the request
-              hx-include="#filters"    other fields to send
-              hx-confirm="Sure?"       native confirm before firing
-              hx-indicator="#spinner"  gets the htmx-request class
-              hx-push-url="true"       put the URL in the address bar
-              hx-swap-oob="true"       in a RESPONSE: swap a second element
-
-  response    HX-Request: true         set on every htmx request
-   headers    HX-Trigger: {"toast": …} fire a client event
-              HX-Redirect / HX-Refresh full-page navigation
-              HX-Retarget               change the target from the server`, "text");
-
-
-/* --------------------------------------------------------- 03/04 · showcase
+/* ------------------------------------------------------------- showcases
  * The macros with nothing to configure. Same data.json as every other preview
  * on the site: the markup is what fjkit emitted at build time, and the `jinja`
  * string beside it is the call that produced it. Placeholders (__TITLE__ …)
@@ -580,6 +519,35 @@ const SHOWCASE = {
   {{ button("New task", variant="primary", size="sm") }}
 {% endcall %}`,
     caption: "Called without a block it is just the two lines of text. The block is the actions slot, so the buttons stay level with the title at every width.",
+  },
+
+  centered: {
+    html: () => fill(DATA.structure.centered, {
+      __XS__: '<div data-tile>xs — 20rem</div>',
+      __SM__: '<div data-tile>sm — 24rem</div>',
+      __MD__: '<div data-tile>md — 28rem</div>',
+      __LG__: '<div data-tile>lg — 32rem</div>',
+      __XL__: '<div data-tile>xl — 36rem</div>',
+      __PROSE__: '<div data-tile>prose — 65ch, a measure rather than a width</div>',
+    }),
+    jinja: `{% from "ui/layout.html" import centered %}
+
+{% call centered("sm") %}
+  {{ page_header("Sign in", "Use your work address.") }}
+  {% call card() %}…{% endcall %}
+{% endcall %}`,
+    caption: "The width cap the rest of ui/layout.html cannot express: stack centres without capping, grid divides a width it is given, and split's numbers belong to the aside. Without it the only ways to narrow a column were max-w-sm, which fjkit check rejects, and an inline style, which it cannot see. It centres horizontally only — a card in the middle of the viewport is the shell's job, and you get it by leaving the header and footer blocks empty.",
+  },
+
+  reveal: {
+    html: () => DATA.gallery.reveal,
+    jinja: `{% from "ui/form.html" import input_group_field, reveal_scripts %}
+
+{{ input_group_field("password", "Password", type="password",
+                     required=true, revealable=true) }}
+
+{% block scripts %}{{ reveal_scripts() }}{% endblock %}`,
+    caption: "Live on this page — click Show. The button is markup and the script is four lines, but the two things that make it correct are not obvious: the listener is delegated from document, because the form a password sits in is the one most likely to be swapped out by a 422 and a listener bound to the old button goes with it; and the input is found through aria-controls, so nothing hard-codes the id the macro chose. reveal_scripts() is per page, never in the shell.",
   },
 
   section: {
@@ -729,6 +697,36 @@ const SHOWCASE = {
     caption: "Upstream sizes this with utilities at the call site; here shape and width are closed lookups, because an app template may not write h-4 w-[150px]. One role=\"status\" wraps the group — six bars are one thing loading, not six.",
   },
 
+  brand: {
+    html: () => DATA.gallery.brand,
+    jinja: `{% from "ui/nav.html" import brand %}
+
+{{ brand("Acme", url_for(request, "home"), icon_name="gauge") }}
+{{ brand("Acme", url_for(request, "home"),
+         icon_src=url_for(request, "static", path="logo.svg")) }}`,
+    caption: "icon_name draws a Lucide glyph on a bg-primary tile, so the mark follows a rebrand; icon_src places real artwork and stops following it, which is the trade a brand asset always makes. The two are mutually exclusive.",
+  },
+
+  nav_links: {
+    html: () => DATA.gallery.nav_links,
+    jinja: `{% from "ui/nav.html" import nav_links %}
+
+{% block nav %}
+  {{ nav_links(request, [("tasks", "Tasks"),
+                         ("board", "Board"),
+                         ("settings", "Settings")]) }}
+{% endblock %}`,
+    caption: "Route names, not URLs: the active state compares routes rather than string-matching paths, so it stays right when a URL grows a query string. Past about six destinations this is the wrong component — fill the shell's sidebar block instead.",
+  },
+
+  theme_toggle: {
+    html: () => DATA.gallery.theme_toggle,
+    jinja: `{% from "ui/nav.html" import theme_toggle %}
+
+{% block header_actions %}{{ theme_toggle() }}{% endblock %}`,
+    caption: "The button above is live — it toggles this page. Two inline lines rather than a file, because it has to run before any bundle would have loaded; the shell's flash-guard reads the same localStorage key on the next paint. It is the shell's default header_actions, so an app that fills that block re-adds it.",
+  },
+
   breadcrumb: {
     html: () => DATA.gallery.breadcrumb,
     jinja: `{% from "ui/nav.html" import breadcrumb %}
@@ -837,6 +835,29 @@ const SHOWCASE = {
     caption: "Filtering is client-side, over the options rendered here. For server-side search this is the wrong component — use a text_field with hx_get and swap the listbox from the response.",
   },
 
+  /* The multiple= pair. Rendered as first paint, so the select preview shows
+     its selection and the combobox preview does not — which is the difference
+     worth seeing before choosing between them. */
+  select_menu_multiple: {
+    html: () => DATA.gallery.select_menu_multiple,
+    jinja: `{% from "ui/overlay.html" import select_menu, multiselect_scripts %}
+
+{{ select_menu("labels", label_options, selected=task.labels,
+               multiple=true, width="xl", label="Labels") }}
+
+{% block page_scripts %}{{ multiselect_scripts() }}{% endblock %}`,
+    caption: "selected takes a list once multiple is on, and the trigger joins the labels onto itself. The hidden input carries Basecoat's JSON array — multiselect_scripts() re-emits it on submit as labels=bug&labels=ui, so the route stays labels: list[str] = Form([]). Forget the script and the field posts one JSON-shaped string, which is a 422 on a page that looks correctly filled in.",
+  },
+
+  combobox_multiple: {
+    html: () => DATA.gallery.combobox_multiple,
+    jinja: `{% from "ui/overlay.html" import combobox, multiselect_scripts %}
+
+{{ combobox("labels", label_options, selected=task.labels,
+            multiple=true, placeholder="Add a label", label="Labels") }}`,
+    caption: "Same hidden input and the same script as select_menu; what differs is where the selection is shown — Basecoat draws it as chips from JS, so this preview starts empty while the select's does not. Both are worth their cost only past about a dozen options; below that a checkbox group in a fieldset posts the same thing and needs no script at all.",
+  },
+
   drawer: {
     html: () => DATA.gallery.drawer,
     jinja: `{% from "ui/overlay.html" import drawer, drawer_trigger %}
@@ -863,6 +884,84 @@ const SHOWCASE = {
   },
 };
 
+/* ------------------------------------------- shell.html and sidebar.html
+ * The two files with no preview to give, for opposite reasons. `shell.html`
+ * *is* the page you are reading — a copy inside a card would be a second
+ * document. `sidebar`'s panel is `position: fixed`, so a live one here would
+ * cover the page instead of sitting in it; the rail on the left is the running
+ * example, rendered by `base.html` from the call printed below.
+ *
+ * Same rule as everywhere else on this page: what is shown is a call, and the
+ * live instance is named rather than imitated. */
+const SNIPPET = {
+  shell: {
+    code: () => `{% extends "ui/shell.html" %}
+{% from "ui/nav.html" import brand, nav_links %}
+
+{% block site_title %}Acme{% endblock %}
+{% block brand %}{{ brand("Acme", url_for(request, "home"), icon_name="gauge") }}{% endblock %}
+{% block nav %}{{ nav_links(request, [("tasks", "Tasks")]) }}{% endblock %}
+
+{% block stylesheets %}
+  <link rel="stylesheet" href="{{ url_for(request, 'static', path='brand.css') }}">
+{% endblock %}`,
+    caption: "Your base.html, in full. The <head>, the theme flash-guard, the asset links, the toaster and the header/main/footer skeleton stay in the kit; this file is your identity and nothing structural. This site's own base.html is the same shape.",
+  },
+
+  shell_blocks: {
+    /* Read out of shell.html at build time, so this list cannot offer a block
+       the shell stopped having. */
+    code: () => DATA.shell.blocks.map((name) => `{% block ${name} %}`).join("\n"),
+    caption: "Read out of shell.html at build time, so this cannot list a block the shell stopped having. Fill sidebar and the skeleton becomes a side column plus a thin top bar — the shell tests the block for emptiness and grows a sidebar_trigger in the header on its own.",
+  },
+
+  sidebar: {
+    code: () => `{% from "ui/nav.html" import brand %}
+{% from "ui/sidebar.html" import sidebar, sidebar_group,
+                                 sidebar_link, sidebar_submenu %}
+
+{% block sidebar %}
+  {% set mark %}{{ brand("Acme", url_for(request, "home"), icon_name="gauge") }}{% endset %}
+  {% call sidebar(header=mark, label="Main") %}
+    {% call sidebar_group("Workspace") %}
+      {{ sidebar_link(request, "tasks", "Tasks", icon_name="list") }}
+      {{ sidebar_link(request, "board", "Board", icon_name="gauge") }}
+    {% endcall %}
+
+    {% call sidebar_group("Admin") %}
+      {% call sidebar_submenu("Reports", icon_name="chart-column") %}
+        {{ sidebar_link(request, "report_daily", "Daily") }}
+      {% endcall %}
+    {% endcall %}
+  {% endcall %}
+{% endblock %}`,
+    caption: "The rail on the left of this page is this call. Route names again, so the current page is decided by comparing routes; open=false is the desktop starting state only, because a narrow screen renders the panel as a full-screen overlay and a page that opens under its own navigation is a bug. sidebar_submenu is a <details>, so the open state and the keyboard are the browser's.",
+  },
+
+  toaster: {
+    code: () => `# the route — nothing in the template
+from fjkit import messages
+
+@router.post("/tasks", name="tasks_create")
+def create(request: Request, service: ServiceDep) -> BoardResponse:
+    messages.add(request, "Task added", "It is at the top of the board.",
+                 category="success")
+    return _board(service)`,
+    lang: "python",
+    caption: "The shell already renders toaster() and loops fjkit_messages() into toast(), so a route raises one and no template changes. Iterating is what marks a message delivered, which is how the flash cookie gets cleared. On a response that only swapped a fragment the toaster is not in the fragment — messages sends those as HX-Trigger and the shell's listener turns the event back into a toast.",
+  },
+};
+
+(function snippets() {
+  Object.entries(SNIPPET).forEach(([key, item]) => {
+    const code = document.querySelector(`[data-snippet-code="${key}"]`);
+    if (!code) return;
+    setCode(code, item.code(), item.lang ?? "jinja");
+    const caption = document.querySelector(`[data-snippet-caption="${key}"]`);
+    if (caption) caption.textContent = item.caption;
+  });
+})();
+
 (function showcases() {
   Object.entries(SHOWCASE).forEach(([key, item]) => {
     const host = document.querySelector(`[data-showcase="${key}"]`);
@@ -873,7 +972,7 @@ const SHOWCASE = {
   });
 })();
 
-/* ------------------------------------------------------------- 05 · icons */
+/* --------------------------------------------------------- icon.html */
 (function icons() {
   const grid = $("#icon-grid");
   if (!grid) return;

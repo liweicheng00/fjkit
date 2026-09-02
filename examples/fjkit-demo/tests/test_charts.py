@@ -1,10 +1,4 @@
-"""The charts page: the figures, the swap, and the rule the page exists to prove.
-
-That rule is the last test in this file. Everything a chart library normally
-tempts you into — a hex code in a template, a colour in the JSON, a second
-figure for dark mode — is a thing this app must not have, and none of them are
-caught by looking at the picture.
-"""
+"""Tests for the charts figures, routes and colour-free figure JSON."""
 
 from __future__ import annotations
 
@@ -34,9 +28,7 @@ def tasks() -> list[Task]:
     ]
 
 
-# --------------------------------------------------------------------------- #
-# The figures — plain functions over a list of tasks, so no HTTP is involved.
-# --------------------------------------------------------------------------- #
+# The figures
 
 
 def test_status_mix_counts_every_task_once(tasks):
@@ -48,7 +40,7 @@ def test_status_mix_counts_every_task_once(tasks):
 
 
 def test_a_status_nobody_is_in_gets_no_slice():
-    """An empty slice is a legend entry that means nothing, and a 0% label."""
+    """status_mix omits statuses with a zero count."""
     now = datetime.now(UTC)
     only_done = [Task(id=1, title="a", status=Status.DONE, owner="livy", created_at=now)]
     (trace,) = charts.status_mix(only_done).figure.data
@@ -59,13 +51,13 @@ def test_workload_stacks_one_trace_per_status(tasks):
     chart = charts.workload(tasks, Grouping.OWNER)
     assert chart.figure.layout.barmode == "stack"
     assert [t.name for t in chart.figure.data] == ["To do", "Doing", "Done"]
-    # Two owners, and every trace spans both so the segments line up.
+    # Every trace spans both owners.
     assert all(t.x == ["livy", "mei"] for t in chart.figure.data)
     assert sum(sum(t.y) for t in chart.figure.data) == len(tasks)
 
 
 def test_workload_switches_its_x_axis_without_changing_shape(tasks):
-    """What the control changes is the buckets, not the figure."""
+    """Grouping by priority keeps the chart id and trace names, changing only x."""
     by_owner = charts.workload(tasks, Grouping.OWNER)
     by_priority = charts.workload(tasks, Grouping.PRIORITY)
     assert by_priority.id == by_owner.id
@@ -82,14 +74,7 @@ def test_the_trend_window_is_pinned_by_its_caller(tasks):
 
 
 def test_every_summary_describes_the_data_it_was_built_from(tasks):
-    """The accessible name is the only thing a reader without JavaScript gets,
-    so it may not be prose someone typed next to the numbers.
-
-    "Contains a number" rather than "contains the task count": not every chart
-    is about every task — `oldest_open` counts what is still open — and an
-    invariant that only holds because today's charts happen to agree is not an
-    invariant.
-    """
+    """Every chart summary contains a digit and ends with a full stop."""
     for chart in charts.build(tasks, Grouping.OWNER):
         assert any(character.isdigit() for character in chart.summary), chart.id
         assert chart.summary.endswith("."), chart.id
@@ -114,18 +99,19 @@ def test_the_page_is_the_only_one_that_loads_plotly(client):
 
 
 def test_the_vendored_bundle_is_actually_served(client):
-    response = client.get("/static/vendor/plotly/plotly-basic.min.js")
+    """The kit's static mount serves plotly-basic.min.js as JavaScript."""
+    response = client.get("/_fjkit/vendor/plotly/plotly-basic.min.js")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith(("text/javascript", "application/javascript"))
 
 
 def test_an_htmx_swap_returns_the_cards_and_nothing_else(htmx):
-    """CHARTER A6: the partial the page embedded is the partial the swap gets."""
+    """An htmx GET of /charts returns only the chart cards."""
     response = htmx.get("/charts?group=priority")
     assert response.status_code == 200
     assert "<html" not in response.text
     assert response.text.count("data-chart") == len(charts.build([], Grouping.OWNER))
-    # The control is on the page, not in the swap — it keeps its own state.
+    # The grouping control is not part of the swap.
     assert 'name="group"' not in response.text
 
 
@@ -137,18 +123,7 @@ def test_the_grouping_control_drives_the_swap(client):
 
 
 def test_the_figure_is_typed_with_an_explicit_tail(client):
-    """CHARTER A9: the return annotation is the route's only contract.
-
-    The figure is a Plotly figure, so `dict[str, Any]` was the tempting field
-    type and it would have made this schema say nothing. Instead the fields
-    this app reads are typed and the rest arrives through `extra="allow"`,
-    which OpenAPI reports honestly as `additionalProperties: true`.
-
-    That tail is deliberate — it is what keeps the whole library reachable
-    without re-describing it — and it is also why the colour test below is a
-    requirement rather than a nicety: no schema can stop a hex code arriving
-    through it, because `#1F77B4` is a perfectly legal `str`.
-    """
+    """The OpenAPI schema types the trace fields and allows additional properties."""
     schemas = client.get("/openapi.json").json()["components"]["schemas"]
 
     assert set(schemas["PlotlyTrace"]["properties"]) >= {"type", "name", "x", "y", "labels", "values"}
@@ -163,33 +138,17 @@ def test_the_figure_is_typed_with_an_explicit_tail(client):
         "height",
         "figure",
     }
-    # `figure_json` is a plain property, not a `@computed_field`, so the same
-    # bytes are not described — or sent — twice.
     assert "figure_json" not in schemas["Chart"]["properties"]
 
 
-# --------------------------------------------------------------------------- #
-# The rule the page exists to prove
-# --------------------------------------------------------------------------- #
+# Colour literals
 
-#: Same families `fjkit check` rejects in markup. Applied here to the *rendered
-#: figure JSON*, which no template checker looks inside.
+#: Hex codes and colour function calls.
 HUES = re.compile(r"#(?:[0-9a-fA-F]{3,8})\b|\b(?:rgba?|hsla?|oklch|oklab)\(")
 
 
 def test_no_figure_on_the_page_contains_a_colour(client):
-    """The point of the whole feature, and the guard the type system cannot be.
-
-    A hex code in a template fails `fjkit check`. A hex code inside a
-    `data-figure` attribute is invisible to it — the checker reads class
-    attributes, not JSON. `PlotlyTrace` cannot catch it either: it allows extra
-    fields on purpose, and `marker={"color": "#1F77B4"}` satisfies every type
-    in this app.
-
-    So this is the only thing standing between the `extra="allow"` tail and a
-    chart that ignores the theme. It reads the *rendered* JSON, which is why it
-    does not care which field the bytes arrived in.
-    """
+    """No data-figure attribute on the page contains a colour literal."""
     page = client.get("/charts").text
     figures = re.findall(r'data-figure="([^"]*)"', page)
     assert len(figures) == len(charts.build([], Grouping.OWNER))
@@ -198,12 +157,7 @@ def test_no_figure_on_the_page_contains_a_colour(client):
 
 
 def test_no_trace_carries_a_colour_field(tasks):
-    """The structural half of the check above.
-
-    The regex catches a hue that got written down. This catches the field
-    existing at all — including a colour Plotly would accept by name (`"red"`),
-    which no hex/rgb pattern would ever match.
-    """
+    """No trace marker has a color or colors field."""
     from html import unescape
 
     for chart in charts.build(tasks, Grouping.OWNER):
@@ -215,22 +169,17 @@ def test_no_trace_carries_a_colour_field(tasks):
 
 
 def test_the_default_plotly_template_never_reaches_the_page(client):
-    """`plotly.py` writes a `template` into every figure, and the default one
-    is 7,621 bytes carrying 111 colour literals — colorscales for traces this
-    page does not draw. `figure_of()` drops it; this is what notices if that
-    ever stops happening, because the symptom is only a bigger page."""
+    """No figure layout carries a template key and every figure is under 2000 bytes."""
     from html import unescape
 
     for figure in re.findall(r'data-figure="([^"]*)"', client.get("/charts").text):
-        # Parsed, not grepped: `hovertemplate` is a legitimate key and one of
-        # the seeded task titles is "Audit templates for hard-coded hues".
+        # Checks the parsed layout keys, not the raw text.
         assert "template" not in json.loads(unescape(figure))["layout"]
         assert len(figure) < 2000, "a figure this size means the template came back"
 
 
 def test_the_charts_page_carries_a_text_alternative(client):
-    """Plotly's SVG is a thousand unlabelled paths. The figcaption is the
-    chart, as far as a screen reader or a reader without JS is concerned."""
+    """Every chart has a figcaption and an aria-hidden plot area."""
     page = client.get("/charts").text
     expected = len(charts.build([], Grouping.OWNER))
     assert page.count("<figcaption>") == expected
@@ -238,13 +187,10 @@ def test_the_charts_page_carries_a_text_alternative(client):
 
 
 def test_the_figure_attribute_is_valid_json(client):
-    """It is HTML-escaped into an attribute; a quoting slip would be silent
-    until the browser tried to parse it."""
+    """Every data-figure attribute unescapes to JSON with a data array."""
     from html import unescape
 
     page = client.get("/charts").text
     for figure in re.findall(r'data-figure="([^"]*)"', page):
         assert json.loads(unescape(figure))["data"]
-    # `data-roles` was how an earlier version carried semantic colour. It is
-    # gone, and this is what notices if it comes back by accident.
     assert "data-roles" not in page

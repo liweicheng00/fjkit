@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="zh-Hant" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fjkit 速查表 · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788337205">
+  <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
+  <script defer src="../assets/js/errors.js?v=1787594535"></script>
+  <meta name="description" content="每一支 fjkit macro，一個檔案一張表：完整簽名、要不要用區塊呼叫、區塊裡放什麼——外加外殼的 block、模板 global，以及 fjkit 頁面實際會用到的 htmx 屬性。">
+  <meta property="og:title" content="fjkit 速查表">
+  <meta property="og:description" content="每一支 fjkit macro，一個檔案一張表：完整簽名、要不要用區塊呼叫、區塊裡放什麼——外加外殼的 block、模板 global，以及 fjkit 頁面實際會用到的 htmx 屬性。">
+  <meta property="og:type" content="article">
+  <script src="../assets/mock-server.js?v=0.1.0.dev0"></script>
+</head>
+<body class="min-h-full antialiased">
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png?v=1787150370" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
+    <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>上手</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>外掛</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>元件</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>      <span>速查表</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
+    <a href="cheatsheet.html#reading">      <span>怎麼讀這張表</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#basics">      <span>按鈕與圖示</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#layout">      <span>版面與頁面結構</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#data">      <span>資料呈現</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#form">      <span>表單</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#nav">      <span>導覽</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#overlay">      <span>浮層與展開</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#feedback">      <span>回饋</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#shell">      <span>外殼</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#globals">      <span>Globals</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#htmx">      <span>htmx 屬性</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#missing">      <span>這裡找不到的時候</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="語言"><h3>語言</h3>    <ul>      <li>
+    <a href="../cheatsheet.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>English</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-screen flex-col px-5">
+      <header class="flex items-center gap-6 py-5">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>        <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit 的 GitHub 原始碼">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>        </div>
+      </header>
+
+    <main class="flex-1 pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">fjkit 速查表</h1>
+<p class="text-muted-foreground text-sm">    kit 出貨的每一支 macro，依用途分組，並且把索引最常被問到的那個問題直接標在該列上：這支
+    macro 要不要用區塊呼叫，區塊裡放什麼。<a href="components.html">元件</a>那一頁是看它們跑起來的地方；這一頁是查東西的地方。
+</p>    </div>
+  </div>
+
+<div id="reading">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">怎麼讀這張表</h2><p class="text-muted-foreground text-sm">一列上有什麼，以及兩條每一列都適用的規則。</p>      </div>
+    <div class="flex flex-col gap-3">      <p>
+        Jinja macro 有兩種呼叫方式，而且從名字看不出來是哪一種。裡面不放東西的 macro
+        直接印出來；會包住東西的 macro 用 <code>{% call %}</code>
+        呼叫，夾在它跟 <code>{% endcall %}</code> 之間的內容會交給 macro
+        去擺放——Jinja 把它叫做 <em>caller 區塊</em>，而底下每一支需要它的 macro
+        都會掛一個標籤說明。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="兩種形狀" data-lang="jinja">{% from &#34;ui/data.html&#34; import badge, card %}
+
+{# 直接印出——這支 macro 不吃區塊 #}
+{{ badge(&#34;Doing&#34;, variant=&#34;info&#34;) }}
+
+{# 區塊——card 會把它當成內容渲染 #}
+{% call card(&#34;Tasks&#34;, &#34;目前所有進行中的事項。&#34;) %}
+  &lt;p&gt;任何該放進卡片裡的東西。&lt;/p&gt;
+{% endcall %}</pre>
+
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>一列上有什麼</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>簽名</h4><p>那一行呼叫，含每個參數與它的預設值。每份清單上方的標題就是你要 <code>import</code> 的檔案</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>區塊標籤</h4><p>在一列的右邊，而且只出現在有區塊的那幾列：代表這支 macro 要用 <code>{% call %}</code> 呼叫，標籤上寫的是區塊裡放什麼。沒有標籤就直接用 <code>{{ }}</code> 印出來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>底下那一行說明</h4><p>簽名沒說的那件事。簽名已經說完的時候就不寫</p>    </section>  </div></div></div>
+  </div>
+
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>兩條通則</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>多出來的關鍵字</h4><p>簽名裡沒有的關鍵字都會變成屬性，底線換成連字號：<code>hx_post="/tasks"</code> 到了標記裡是 <code>hx-post="/tasks"</code>。每一支 macro 的每一個 <code>hx-*</code>、<code>aria-*</code>、<code>data-*</code> 都走這條路</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>用角色，不用顏色</h4><p><code>variant</code>、<code>tone</code>、<code>category</code> 指的是角色——<code>success</code>、<code>destructive</code>、<code>muted</code>——不是顏色。顏色歸 token 層，換品牌時只動一個地方</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div>
+<hr class="border-border">
+
+<div id="basics">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">按鈕與圖示</h2><p class="text-muted-foreground text-sm">最小的兩個元件，加上其他每一支 macro 都會轉手的那段管線。</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/button.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>button(label, variant=&#34;&#34;, size=&#34;&#34;, type=&#34;button&#34;, href=none,
+       icon_name=none, icon_end=false, disabled=false)</code></h4><p>傳了 href 就會渲染成 &lt;a&gt;，外觀與行為仍然是一顆按鈕。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>button_group(gap=2, orientation=&#34;horizontal&#34;)</code></h4><p>只負責間距。每顆按鈕保有自己的 variant。</p>    </section><aside><span class="badge" data-variant="outline">區塊：按鈕</span></aside>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/icon.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>icon(name, size=16, cls=&#34;&#34;)</code></h4><p>1,767 個 Lucide 名稱。名稱不存在時會在渲染階段丟例外，而不是畫出一片空白。</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/attrs.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>attrs(mapping)</code></h4><p>app 不會呼叫它。每一支 macro 都以 **kwargs 收尾並交給它處理，hx_post=&#34;/tasks&#34; 因此在標記裡變成 hx-post=&#34;/tasks&#34;。</p>    </section>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="layout">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">版面與頁面結構</h2><p class="text-muted-foreground text-sm">這一組全部吃區塊，因為版面 macro 的本質就是包裝。任何 utility class 之前先用它們——這正是封閉詞彙表存在的理由。</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/layout.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>stack(gap=4, align=none)</code></h4><p>垂直節奏。頁面各段落之間的預設間距。</p>    </section><aside><span class="badge" data-variant="outline">區塊：子元素</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>row(gap=3, align=&#34;center&#34;, justify=none, wrap=true)</code></h4><p>水平排列，預設會換行，窄螢幕不會被裁掉。</p>    </section><aside><span class="badge" data-variant="outline">區塊：子元素</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>grid(cols=3, gap=4)</code></h4><p>cols 只有 2、3、4。斷點屬於 macro；呼叫端自己挑斷點，就是版面詞彙表退回 utility class 的起點。</p>    </section><aside><span class="badge" data-variant="outline">區塊：子元素</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>split(aside=&#34;md&#34;, gap=6)</code></h4><p>用 {% call(slot) split() %} 呼叫，區塊會被渲染兩次——slot=&#34;main&#34; 一次，slot=&#34;aside&#34; 一次。</p>    </section><aside><span class="badge" data-variant="outline">區塊：兩個插槽——main 與 aside</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>centered(width=&#34;sm&#34;, gap=6)</code></h4><p>這個檔案其他 macro 給不了的寬度上限。width 只有 xs、sm、md、lg、xl、prose——登入卡片、設定表單、純文字頁面。只做水平置中。</p>    </section><aside><span class="badge" data-variant="outline">區塊：子元素</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>page_header(title, description=none)</code></h4><p>不給區塊時就只有標題與說明。區塊是動作插槽，所以按鈕在任何寬度下都與標題齊平。</p>    </section><aside><span class="badge" data-variant="outline">區塊：動作按鈕（可省略）</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>section(title=none, description=none, gap=4)</code></h4><p>比 page_header 低一階。頁面上不只一個主題時才需要它。</p>    </section><aside><span class="badge" data-variant="outline">區塊：子元素</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>divider()</code></h4><p>用 border token 畫的細線，明暗兩套配色都成立。如果這個分界有名字，用 section 標題更好。</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/sidebar.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar(id=&#34;sidebar&#34;, label=&#34;Main&#34;, side=&#34;left&#34;, open=true,
+        header=none, footer=none)</code></h4><p>外殼的 sidebar 區塊填它，或者 nav 區塊填 nav_links——兩者擇一。</p>    </section><aside><span class="badge" data-variant="outline">區塊：群組</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_group(title=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：sidebar_link() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_link(request, route, label, icon_name=none)</code></h4><p>route 是路由名稱，不是網址。作用中狀態由 is_active 決定，連結不可能跟所在頁面對不上。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_submenu(label, icon_name=none, open=false)</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：sidebar_link() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_trigger(target=&#34;sidebar&#34;, label=&#34;Toggle navigation&#34;)</code></h4><p>有 sidebar 時，外殼已經在標頭放了一顆。</p>    </section>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="data">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">資料呈現</h2><p class="text-muted-foreground text-sm">一列資料、一個數字、一份清單長什麼樣子。清單在 Python 裡組好——在模板裡 zip 兩個 list，是模板在做 router 的工作。</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/data.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>badge(label, variant=&#34;&#34;)</code></h4><p>variant 是角色：success、warning、destructive、info、secondary、outline。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>card(title=none, description=none, size=&#34;&#34;, actions=none, padded=true)</code></h4><p>padded=false 讓內容貼到卡片邊緣——表格或程式碼區塊需要的就是這個。</p>    </section><aside><span class="badge" data-variant="outline">區塊：內容</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>stat(label, value, hint=none, icon_name=none, tone=none)</code></h4><p>單一數字。要放好幾個就用 metric_group。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>metric_group(items, cols=3)</code></h4><p>items 是 (label, value) 的序對清單。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>progress(value, label=none)</code></h4><p>value 是 0–100。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>empty_state(title, description=none, icon_name=&#34;sparkle&#34;)</code></h4><p>rows 是空的時候 table 會替你渲染它——傳 empty_title 與 empty_description，不要自己寫那個分支。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>bullet_list(tone=&#34;muted&#34;)</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：list_item() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>list_item()</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：文字</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>item_list()</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：item() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>item(title, description=none, icon_name=none, actions=none,
+     href=none, clamp=true)</code></h4><p>clamp=false 讓說明超過兩行——定義列表需要，動態列表不需要。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>avatar(name, src=none, size=&#34;&#34;, initials=none, badge_tone=none,
+       badge_icon=none)</code></h4><p>沒有另外指定時，縮寫由 name 推導。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>avatar_group(overflow=none, label=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：avatar() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>code_block(source, label=none, wrap=false)</code></h4><p>它自己帶捲動區與可聚焦性，溢出的程式碼用鍵盤也到得了。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>caption(text=none)</code></h4><p>自己站著的一行淡色說明。card、section、page_header 都能畫說明文字，但那些都綁在標題底下。</p>    </section><aside><span class="badge" data-variant="outline">區塊：文字（可省略）</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>link(label, href)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>kbd(keys)</code></h4><p>一個按鍵，或一組組合鍵。</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/table.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>table(columns, rows=none, empty_title=&#34;Nothing here&#34;,
+      empty_description=none, empty_icon=&#34;list&#34;)</code></h4><p>columns 是 dict 的清單——label，可選 align 或 width。傳了 rows，空資料的情況就歸 macro 管；傳 rows=none 則永遠自己渲染 body。</p>    </section><aside><span class="badge" data-variant="outline">區塊：資料列</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>cell(value=none, tone=none, numeric=false, align=none)</code></h4><p>文字用 value，標記則省略 value 改用區塊。tone 是封閉查表，顏色傳不進來。</p>    </section><aside><span class="badge" data-variant="outline">區塊：儲存格內容（可省略）</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>row_actions()</code></h4><p>最後一格，靠右且緊湊。</p>    </section><aside><span class="badge" data-variant="outline">區塊：按鈕</span></aside>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="form">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">表單</h2><p class="text-muted-foreground text-sm">每個欄位都吃 name、label、hint、error、id。傳了 error，欄位會一次畫出訊息、紅框，以及 aria-describedby 的接線。</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/form.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>form(action=none, method=&#34;post&#34;, target=none, swap=&#34;outerHTML&#34;,
+     reset_on_success=false, card=true, encoding=&#34;urlencoded&#34;)</code></h4><p>target 與 swap 是 htmx 那一組。encoding=&#34;json&#34; 會送出 JSON，這時頁面需要 form_scripts()。</p>    </section><aside><span class="badge" data-variant="outline">區塊：欄位</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>form_scripts()</code></h4><p>放在頁面裡，不在外殼——encoding=&#34;json&#34; 需要的就是它。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>field_row(template=&#34;two&#34;, gap=3)</code></h4><p>一行放兩到三個欄位，窄螢幕收成一欄。</p>    </section><aside><span class="badge" data-variant="outline">區塊：欄位</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fieldset(legend=none, hint=none)</code></h4><p>表單裡一個具名的群組，附上該群組需要的 legend。</p>    </section><aside><span class="badge" data-variant="outline">區塊：欄位</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>text_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;, type=&#34;text&#34;,
+           required=false, hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>textarea_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;, rows=none,
+               required=false, hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>select_field(name, label=none, options=(), selected=none, id=none,
+             blank=none, hint=none, error=none)</code></h4><p>options 是 (value, label) 的序對清單。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>checkbox_field(name, label=none, checked=false, value=&#34;on&#34;,
+               hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>switch_field(name, label=none, checked=false, value=&#34;on&#34;,
+             hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>radio_group(name, label=none, options=(), selected=none,
+            hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>range_field(name, label=none, value=50, min=0, max=100, step=1,
+            hint=none, error=none, id=none, output=false)</code></h4><p>output=true 會在滑軌旁顯示即時數值，數值來自控制項本身，不是另一個來源。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>input_group_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;,
+                  type=&#34;text&#34;, start=none, end=none, required=false,
+                  hint=none, error=none, id=none, revealable=false,
+                  reveal_show=&#34;Show&#34;, reveal_hide=&#34;Hide&#34;)</code></h4><p>start 與 end 是前後綴——貨幣符號、單位，或一顆按鈕。revealable=true 會加上密碼欄位需要的顯示／隱藏切換，這時頁面需要 reveal_scripts()。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>reveal_scripts()</code></h4><p>放在頁面裡，不在外殼——revealable=true 需要的就是它。監聽器掛在 document 上，所以 422 換進來的面板裡那顆按鈕一樣能用。</p>    </section>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="nav">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">導覽</h2><p class="text-muted-foreground text-sm">這裡流通的是路由名稱。沒有一支吃網址，所以搬動路由不會留下死連結。</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/nav.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>brand(label, href=&#34;/&#34;, icon_name=none, icon_src=none)</code></h4><p>Lucide 圖示用 icon_name，自己的識別圖用 icon_src。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>nav_links(request, links)</code></h4><p>links 是 (route, label) 的序對清單。標頭版的 sidebar 替代方案。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>theme_toggle()</code></h4><p>外殼已經放了一顆；只有在你換掉 header_actions 時才需要自己呼叫。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>breadcrumb(trail, separator=&#34;chevron&#34;, label=&#34;Breadcrumb&#34;)</code></h4><p>trail 是 (label, href) 的序對清單，href=none 標示目前這一頁——也就是最後一項，它不是連結。</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/tabs.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>tabs(items, label=&#34;Tabs&#34;, selected=none, orientation=&#34;horizontal&#34;)</code></h4><p>items 是 {id, label} 的清單。selected 指名一開始就打開的分頁，由伺服器決定，而不是繪製後由腳本決定。</p>    </section><aside><span class="badge" data-variant="outline">區塊：tab_panel() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>tab_panel(id, lazy=none, on=none, include=none)</code></h4><p>id 必須跟分頁的一致。這組配對就是 Basecoat 鍵盤行為所讀的整份 aria 契約。</p>    </section><aside><span class="badge" data-variant="outline">區塊：內容</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>tab_panel(&#34;detail&#34;, lazy=url_for(request, &#34;detail&#34;),
+          on=[&#34;task-selected&#34;], include=&#34;[name=task_id]&#34;)</code></h4><p>lazy 是一個 URL：分頁被選到時，這個面板才去抓自己的內容，區塊裡放的是在那之前的暫代內容。on 列出它顯示中要跟著更新的廣播，include 是它要送出什麼的選擇器。不能用 revealed——被 display:none 藏起來的面板回報的是全為零的矩形，剛好通過 htmx 的可見性判斷，所以 revealed 會在頁面載入時就抓。</p>    </section><aside><span class="badge" data-variant="outline">區塊：the placeholder 呼叫</span></aside>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="overlay">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">浮層與展開</h2><p class="text-muted-foreground text-sm">會打開的東西都在這裡。開闔行為是 Basecoat 的，外殼已經載好，所以這些 macro 只負責帶那份 aria 契約。</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/overlay.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>popover(id, label, variant=&#34;outline&#34;, size=&#34;&#34;, side=&#34;bottom&#34;,
+        align=&#34;center&#34;, width=&#34;lg&#34;, icon_name=none)</code></h4><p>浮動面板裡放任意標記。若是一串選項，用 dropdown_menu。</p>    </section><aside><span class="badge" data-variant="outline">區塊：內容</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>dropdown_menu(id, label, variant=&#34;outline&#34;, size=&#34;&#34;, side=&#34;bottom&#34;,
+              align=&#34;start&#34;, width=&#34;default&#34;, icon_name=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：menu_item() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>menu_item(label, shortcut=none, variant=&#34;&#34;, disabled=false,
+          checked=none, radio=false, href=none)</code></h4><p>checked 與 radio 會給這一項對應的 aria 角色。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>menu_group(heading=none, id=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：menu_item() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>menu_separator()</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>select_menu(name, options=(), selected=none, id=none,
+            placeholder=&#34;Select…&#34;, width=&#34;lg&#34;, label=none,
+            multiple=false, close_on_select=false,
+            visible_label=none, hint=none, error=none)</code></h4><p>外觀受控、但仍然會送出欄位的 select。multiple=true 需要頁面上有 multiselect_scripts()。label 是 aria-label，畫不出東西；visible_label 會讓它變成一個 field，帶上其他欄位都有的外框、標籤與訊息行。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>combobox(name, options=(), selected=none, id=none,
+         placeholder=&#34;Select…&#34;, empty=&#34;No results found.&#34;,
+         label=none, multiple=false, close_on_select=false,
+         visible_label=none, hint=none, error=none)</code></h4><p>加了篩選框的 select_menu。multiple=true 的規則相同，visible_label 也相同。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>multiselect_scripts()</code></h4><p>放在頁面裡。少了它，multiple=true 會送出一個 JSON 字串，而不是重複的欄位。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>drawer(id, title=none, description=none, side=&#34;bottom&#34;,
+       footer=none, dismissible=true)</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：內容</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>drawer_trigger(label, target, variant=&#34;outline&#34;, size=&#34;&#34;, icon_name=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>command(id, placeholder=&#34;Type a command or search…&#34;,
+        empty=&#34;No results found.&#34;, label=&#34;Command menu&#34;,
+        dialog=false, bordered=true)</code></h4><p>dialog=true 讓它變成浮層命令列，而不是內嵌清單。</p>    </section><aside><span class="badge" data-variant="outline">區塊：command_group() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>command_group(heading=none, id=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：command_item() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>command_item(label, keywords=none, icon_name=none, shortcut=none,
+             disabled=false, filter=none, href=none)</code></h4><p>除了 label 之外，篩選框還會比對 keywords。</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/disclosure.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>collapsible(summary, open=false, icon_name=none)</code></h4><p>一個會展開的段落。底層是 &lt;details&gt;，關掉腳本也能用。</p>    </section><aside><span class="badge" data-variant="outline">區塊：展開後的內容</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>accordion(multiple=false, label=none)</code></h4><p>multiple=false 時，打開一個就會關掉其他的。</p>    </section><aside><span class="badge" data-variant="outline">區塊：collapsible() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>tooltip(text, side=&#34;top&#34;, align=&#34;center&#34;)</code></h4><p>用 CSS ::after 做的，沒有第二個元素、沒有腳本。文字不在無障礙樹裡——tooltip 是提示，不能當成唯一的標籤，而且裡面不能有標記。</p>    </section><aside><span class="badge" data-variant="outline">區塊：被它包住的元素</span></aside>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="feedback">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">回饋</h2><p class="text-muted-foreground text-sm">介面回話的方式。variant 決定顏色，對 alert 來說還決定螢幕閱讀器要不要打斷。</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/feedback.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>spinner(size=&#34;default&#34;, tone=&#34;muted&#34;, label=none, indicator=false)</code></h4><p>indicator=true 讓它成為 htmx 的 indicator：對應的請求在途中才會顯示。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>alert(title, body=none, variant=&#34;&#34;, icon_name=none)</code></h4><p>variant=&#34;destructive&#34; 會拿到 role=&#34;alert&#34;，會打斷螢幕閱讀器；其他都是 role=&#34;status&#34;，會等到一個停頓。</p>    </section><aside><span class="badge" data-variant="outline">區塊：動作按鈕（可省略）</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>skeleton(shape=&#34;text&#34;, width=&#34;full&#34;, lines=1, label=none)</code></h4><p>shape 有 text、heading、control、avatar、block。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>dialog(id, title=none, description=none, size=&#34;default&#34;,
+       footer=none, dismissible=true)</code></h4><p>原生 &lt;dialog&gt;。footer 是插槽而不是區塊，因為區塊已經給了內容。</p>    </section><aside><span class="badge" data-variant="outline">區塊：內容</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>toaster(align=&#34;end&#34;)</code></h4><p>每頁一個，放在外殼的 toasts 區塊。伺服器送出的 toast 走 HX-Trigger。</p>    </section><aside><span class="badge" data-variant="outline">區塊：toast() 呼叫（可省略）</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>toast(title, description=none, category=&#34;info&#34;, duration=none,
+      action_label=none, action_href=none)</code></h4>    </section>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+
+<div id="shell">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">外殼</h2><p class="text-muted-foreground text-sm">是 block，不是 macro——唯一一個你 extends 而不是 import 的檔案。</p>      </div>
+    <div class="flex flex-col gap-3">      <p>
+        <code>ui/shell.html</code> 帶著 <code>&lt;head&gt;</code>、主題閃爍防護、資源連結，以及
+        header／main／footer 的骨架。一支 app 在自己的 <code>base.html</code> 裡 extends
+        它一次，然後填自己需要的 block。<code>sidebar</code> 跟 <code>nav</code>
+        只填一個——外殼會依照哪一個被填而排出不同的標頭，兩個都填就會得到兩套導覽。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/base.html" data-lang="jinja">{% extends &#34;ui/shell.html&#34; %}
+
+{% block site_title %}Acme{% endblock %}
+{% block sidebar %}{# 你的側邊欄 #}{% endblock %}
+{% block content %}{# 頁面本體 #}{% endblock %}</pre>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/shell.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>site_title</code></h4><p>產品名稱，接在 &lt;title&gt; 裡的頁面標題之後。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>title</code></h4><p>這一頁的標題。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>lang</code></h4><p>&lt;html lang&gt; 的值。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>brand</code></h4><p>標頭上的識別。通常是一次 brand() 呼叫。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>nav</code></h4><p>標頭導覽。這個跟 sidebar 只能填一個。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar</code></h4><p>側邊欄。這個跟 nav 只能填一個。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>header</code></h4><p>整條標頭；上面那幾個插槽不夠用時才動它。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>header_actions</code></h4><p>標頭右端。預設是 theme_toggle()。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_trigger</code></h4><p>窄螢幕上打開側邊欄的按鈕。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>content</code></h4><p>頁面本體。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>footer</code></h4><p>頁尾文字。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>footer_wrapper</code></h4><p>包住頁尾的那個元素。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>stylesheets</code></h4><p>你自己的樣式表——token 覆寫與元素層級的排版。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>head</code></h4><p>&lt;head&gt; 裡的其他東西：meta、og:。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>toasts</code></h4><p>toaster() 的位置。外殼預設會渲染一個。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>scripts</code></h4><p>你的腳本，放在 &lt;body&gt; 結尾。要用 defer——htmx 與 Basecoat 也是 deferred，這裡放普通腳本會比它們先執行。</p>    </section>  </div>
+</div></div>
+  </div>
+
+</section></div>
+<hr class="border-border">
+
+<div id="globals">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Globals</h2><p class="text-muted-foreground text-sm">每個模板裡本來就有——不用 import，也不用從 context 傳。</p>      </div>
+        <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>build_environment()</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>url_for(request, name, **params)</code></h4><p>由路由名稱換到網址。用名稱不用路徑，搬動路由時每個連結都會跟著更新。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>is_active(request, name)</code></h4><p>這次請求指向該路由時為真。sidebar_link 用它標示作用中狀態。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fjkit_static(path)</code></h4><p>掛載後靜態目錄下的網址，帶上 ?v=&lt;mtime&gt;，瀏覽器就不會拿舊的樣式表去配新的標記。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fjkit_version</code></h4><p>頁尾那幾個版本號：fjkit、fastapi、jinja2、basecoat、htmx。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fjkit_icon_path(name)</code></h4><p>某個 Lucide 名稱的原始 SVG path 資料。模板要呼叫的是 icon()。</p>    </section>  </div>
+</div></div>
+  </div>
+
+</section></div>
+<hr class="border-border">
+
+<div id="htmx">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">htmx 屬性</h2><p class="text-muted-foreground text-sm">它們不屬於 fjkit，但是傳給 fjkit macro 的——所以該放在索引旁邊。</p>      </div>
+    <div class="flex flex-col gap-3">      <p>
+        這裡每一個都是以「多出來的關鍵字」的身分傳給 macro，再進到標記裡：<code>{{ button("Refresh", hx_get="/tasks/board", hx_target="#board") }}</code>。路上底線會變成連字號，整套整合就只有這件事——kit
+        裡沒有任何一支 macro 有 htmx 專屬參數，也不需要有。完整參考是
+        <a href="https://htmx.org/reference/">htmx.org/reference</a>；底下列的是 fjkit
+        頁面實際會用到的部分。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>送什麼請求</h3><p>動詞與網址。</p>      </div>
+    </header>      <div class="border-t"><div class="item-group">            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-get=&#34;/tasks&#34;      hx-post=&#34;/tasks&#34;
+hx-put=&#34;/tasks/5&#34;    hx-patch=&#34;/tasks/5&#34;
+hx-delete=&#34;/tasks/5&#34;</code></h4><p>送出請求。回應是 HTML 不是 JSON——這就是它跟 fetch() 的全部差別。</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>回應放到哪裡</h3><p>哪個元素被換掉，以及怎麼換。</p>      </div>
+    </header>      <div class="border-t"><div class="item-group">            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-target=&#34;#board&#34;        a CSS selector
+hx-target=&#34;closest tr&#34;    the nearest ancestor
+hx-target=&#34;this&#34;          the element itself
+hx-target=&#34;next .row&#34;     the one after it</code></h4><p>沒寫的話，預設就是觸發請求的那個元素。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-swap=&#34;outerHTML&#34;    replace the target
+hx-swap=&#34;innerHTML&#34;    replace what is inside it
+hx-swap=&#34;beforeend&#34;    append   (afterbegin prepends)
+hx-swap=&#34;afterend&#34;     insert after  (beforebegin: before)
+hx-swap=&#34;delete&#34;       remove it   (none: change nothing)</code></h4><p>修飾詞接在同一個字串上：swap:200ms、settle:100ms、scroll:top。</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>什麼時候觸發</h3><p>同一個屬性，每種寫法是一種不同的用途。</p>      </div>
+    </header>      <div class="border-t"><div class="item-group">            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;click&#34;    hx-trigger=&#34;submit&#34;
+hx-trigger=&#34;change&#34;</code></h4><p>預設值——按鈕是 click、表單是 submit、輸入欄位是 change。只有要加修飾詞時才需要寫出來。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;keyup changed delay:400ms&#34;</code></h4><p>邊打邊查。changed 讓值沒變時不送請求；delay 把連續按鍵防抖。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;revealed&#34;</code></h4><p>延遲載入：元素捲進畫面時才觸發。它是用 getBoundingClientRect 判斷的，所以放在 overflow 容器裡、或被 display:none 藏起來的元素都不適用——隱藏元素回報的是全為零的矩形，會被判定為可見。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;intersect once&#34;
+hx-trigger=&#34;intersect threshold:0.5&#34;</code></h4><p>改用 IntersectionObserver 做延遲載入，隱藏的元素會被正確判定為未交會。分頁面板或捲動容器裡要用這個。不加 once 的話，每次重新可見都會觸發；root: 與 threshold: 對應 observer 自己的選項。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;load&#34;</code></h4><p>元素一被插入就觸發一次。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;every 2s&#34;</code></h4><p>輪詢。回傳不帶這個屬性的標記就會停下來。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;click from:body&#34;</code></h4><p>監聽別的地方——鍵盤快捷鍵，或選單外的點擊。</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>還會一起送出的東西</h3><p>額外資料、確認、瀏覽紀錄。</p>      </div>
+    </header>      <div class="border-t"><div class="item-group">            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-vals=&#39;{&#34;id&#34;: 3}&#39;</code></h4><p>除了表單欄位以外，一起送出的值。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-include=&#34;#filters&#34;</code></h4><p>要一起送的其他欄位——例如放在表單外的篩選列。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-confirm=&#34;Delete this task?&#34;</code></h4><p>送出請求前先跳一個原生確認視窗。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-indicator=&#34;#spinner&#34;</code></h4><p>請求在途中時，那個元素會拿到 htmx-request class。spinner(indicator=true) 已經是為它準備好的形狀。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-push-url=&#34;true&#34;</code></h4><p>把網址推進網址列，上一頁才會正常運作。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-swap-oob=&#34;true&#34;</code></h4><p>寫在回應裡，不是寫在觸發端：依 id 把頁面上另一個元素也換掉。</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>路由讀寫的標頭</h3><p>htmx 的另外一半，住在 Python 裡而不是模板裡。</p>      </div>
+    </header>      <div class="border-t"><div class="item-group">            <div class="item" data-clamp="false">    <section>
+      <h4><code>HX-Request: true                 (request)</code></h4><p>每個 htmx 請求都會帶。同一個路由靠它決定：導覽回整頁，局部更新回 fragment。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>HX-Trigger: {&#34;toast&#34;: {…}}       (response)</code></h4><p>觸發一個前端事件。在路由裡發出的 toast 就是這樣送到外殼裡的 toaster。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>HX-Redirect: /tasks              (response)
+HX-Refresh: true                 (response)</code></h4><p>由 fragment 回應要求的整頁導覽。</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>HX-Retarget: #errors             (response)</code></h4><p>由伺服器改寫 target——錯誤訊息該去的地方，跟成功時不一樣。</p>    </section>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+
+<div id="missing">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">這裡找不到的時候</h2><p class="text-muted-foreground text-sm">答案是某個參數、某個關鍵字，或一張 issue——依這個順序找。</p>      </div>
+    <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>找不到想要的 macro 時</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>先看參數</h4><p>多數需求其實是一個已經存在的關鍵字——size、tone、padded、align</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>直接傳過去</h4><p>任何多的關鍵字都會變成屬性，這涵蓋了所有 hx-*、aria-* 與 data-*</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit eject badge</h4><p>把那一支 macro 拿進你的 app 改；同檔的其他 macro 由 kit 再匯出，照樣收上游的修正</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>開一張 issue</h4><p>被擋下來的 class 指名了那個還不存在的元件；那就是最好的回報內容</p>    </section>  </div></div></div>
+  </div>
+
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>接著讀</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>上手</h4><p><a href="learn.html">各個零件怎麼接，以及 htmx 送出什麼</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>元件</h4><p><a href="components.html">每一支 macro 跑起來的樣子，旋鈕可以轉</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>examples/fjkit-demo/</h4><p>同一批 macro 放在一支能跑的 app 裡，在 repo 中</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>src/fjkit/static/src/fjkit.css</h4><p>每個 variant 背後那張 token 表</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.1.0.dev0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">原始碼與 issues</a>.
+  這個站本身就是一支 fjkit app：它 extends <code class="kbd">ui/shell.html</code>，而且通過 <code class="kbd">fjkit check</code>——所以它不可能展示套件裡沒有的元件。
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script>
+    document.body.addEventListener("fjkit:toast", (event) => {
+      const toaster = document.getElementById("toaster");
+      if (!toaster || !toaster.toast) return;
+      for (const message of event.detail?.messages ?? []) toaster.toast(message);
+    });
+  </script>
+  <script defer src="../assets/data.js?v=0.1.0.dev0"></script>
+  <script defer src="../assets/common.js?v=0.1.0.dev0"></script>
+</body>
+</html>

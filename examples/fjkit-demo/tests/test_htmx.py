@@ -1,5 +1,4 @@
-"""The partial contract: a fragment must be a fragment, and the fragment the
-HTMX endpoints return must be the same one the full page embeds."""
+"""Tests for the board partial, its htmx endpoints and double-submit guards."""
 
 from __future__ import annotations
 
@@ -16,8 +15,6 @@ def test_board_partial_has_no_shell(htmx):
 def test_full_page_embeds_the_same_partial(client, htmx):
     page = client.get("/tasks").text
     partial = htmx.get("/tasks/board").text
-    # Not a substring check on the whole thing (the page adds indentation), but
-    # the distinctive markup of the partial has to be present exactly once.
     assert page.count('id="board"') == 1
     assert partial.count('id="board"') == 1
 
@@ -30,7 +27,7 @@ def test_filtering_narrows_the_board(htmx):
 
 
 def test_create_returns_the_updated_board(htmx):
-    response = htmx.post("/tasks", data={"title": "A brand new task", "priority": "high", "owner": "livy"})
+    response = htmx.post("/tasks", json={"title": "A brand new task", "priority": "high", "owner": "livy"})
     assert response.status_code == 200
     assert "A brand new task" in response.text
     assert response.text.lstrip().startswith('<div id="board"')
@@ -54,18 +51,13 @@ def test_empty_state_when_nothing_matches(htmx):
     assert "Nothing here" in htmx.get("/tasks/board").text
 
 
-# --------------------------------------------------------------------------- #
-# Double-submit: every mutating control disables itself for its own request.
-# --------------------------------------------------------------------------- #
+# Double-submit
 
 FORM = re.compile(r"<form\b[^>]*>.*?</form>", re.S)
 
 
 def test_every_mutating_control_disables_itself(htmx):
-    """A swap takes a round trip, and nothing stops a second click during it.
-    `hx-disabled-elt` is the whole fix — htmx sets `disabled` for the length of
-    the request and clears it after, counting overlapping requests so an early
-    reply cannot re-enable a control another request is still using."""
+    """Every hx-post or hx-delete control on the board carries hx-disabled-elt."""
     board = htmx.get("/tasks/board").text
     mutating = re.findall(r"<(?:form|button)\b[^>]*hx-(?:post|delete)=[^>]*>", board)
     assert mutating, "the board is where the mutations are"
@@ -74,9 +66,7 @@ def test_every_mutating_control_disables_itself(htmx):
 
 
 def test_a_form_s_disabled_selector_finds_something(client):
-    """`find button[type=submit]` resolving to nothing is not an error — htmx
-    logs a warning to a console nobody is reading and the form stays clickable.
-    So the selector is checked against the markup instead."""
+    """Every form with hx-disabled-elt uses find button[type=submit] and has such a button."""
     for page in ("/tasks", "/jobs", "/session"):
         for form in FORM.findall(client.get(page).text):
             if "hx-disabled-elt=" not in form:

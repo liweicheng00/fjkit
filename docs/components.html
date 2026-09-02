@@ -11,10 +11,12 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1787416553">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788337205">
   <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
-  <script defer src="assets/vendor/htmx/htmx.min.js?v=1786876367"></script>
-  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1786876367"></script>
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
+  <script defer src="assets/js/errors.js?v=1787594535"></script>
   <meta name="description" content="Every fjkit macro with a live preview, the Jinja call that produced it and the HTML it emits — rendered by the kit itself, so a signature here cannot drift from the package.">
   <meta property="og:title" content="fjkit components">
   <meta property="og:description" content="Every fjkit macro with a live preview, the Jinja call that produced it and the HTML it emits — rendered by the kit itself, so a signature here cannot drift from the package.">
@@ -42,50 +44,66 @@ fjkit
     <a href="components.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>Components</span>
     </a>
   </li>
+        <li>
+    <a href="cheatsheet.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>      <span>Cheatsheet</span>
+    </a>
+  </li>
 </ul>
   </div>
 <div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
-    <a href="components.html#macros">      <span>Every macro: the call and the HTML</span>
+    <a href="components.html#button">      <span>Button</span>
     </a>
   </li>
         <li>
-    <a href="components.html#layout">      <span>Layout: stack, row, grid, split</span>
+    <a href="components.html#data">      <span>Data</span>
     </a>
   </li>
         <li>
-    <a href="components.html#structure">      <span>page_header, section, divider</span>
+    <a href="components.html#disclosure">      <span>Disclosure</span>
     </a>
   </li>
         <li>
-    <a href="components.html#display">      <span>empty_state, metric_group, lists</span>
+    <a href="components.html#feedback">      <span>Feedback</span>
     </a>
   </li>
         <li>
-    <a href="components.html#feedback">      <span>Feedback: alert, spinner, skeleton, dialog</span>
+    <a href="components.html#form">      <span>Form</span>
     </a>
   </li>
         <li>
-    <a href="components.html#content">      <span>Content: avatar, item_list, code_block, breadcrumb</span>
+    <a href="components.html#icon">      <span>Icon</span>
     </a>
   </li>
         <li>
-    <a href="components.html#disclosure">      <span>Showing and hiding: tabs, collapsible, tooltip</span>
+    <a href="components.html#layout">      <span>Layout</span>
     </a>
   </li>
         <li>
-    <a href="components.html#overlay">      <span>Overlays: popover, menus, select, drawer, command</span>
+    <a href="components.html#nav">      <span>Nav</span>
     </a>
   </li>
         <li>
-    <a href="components.html#fields">      <span>The rest of the field set</span>
+    <a href="components.html#overlay">      <span>Overlay</span>
     </a>
   </li>
         <li>
-    <a href="components.html#icons">      <span>icon(): any Lucide name, inlined</span>
+    <a href="components.html#shell">      <span>Shell</span>
     </a>
   </li>
         <li>
-    <a href="components.html#cheatsheet">      <span>Every macro in ui/, by file</span>
+    <a href="components.html#sidebar">      <span>Sidebar</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#table">      <span>Table</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#tabs">      <span>Tabs</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#next">      <span>Read next</span>
     </a>
   </li>
 </ul>
@@ -117,142 +135,106 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Every macro, and the call that made it</h1>
-<p class="text-muted-foreground text-sm">    Every macro, with a live preview and the call that produced it. Turn the knobs and two things
+<p class="text-muted-foreground text-sm">    Every macro, with a live preview and the call that produced it, grouped by the file it lives in
+    and in the order <code>src/fjkit/templates/ui/</code> lists them. Turn the knobs and two things
     change together: the component, and the Jinja you would have typed to get it. Every preview was
     rendered by fjkit's own Environment at build time.
 </p>    </div>
   </div>
 
-<div id="macros">
+<div id="button">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Every macro: the call and the HTML</h2><p class="text-muted-foreground text-sm">No macro accepts a class string, so no call site can invent a colour.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Button</h2><p class="text-muted-foreground text-sm">One element, seven variants, seven sizes — and no class at the call site.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        Every parameter below is a <strong>closed enumeration</strong>. There is no
-        <code>class=</code> escape hatch and no hue to pass. You pick a variant, and the token layer
-        decides what that looks like. Anything extra you hand a macro becomes an HTML attribute:
-        <code>hx_post="/tasks"</code> renders as <code>hx-post="/tasks"</code>. That is how htmx
-        stays out of every macro definition.
+        Every parameter on this page is a <strong>closed enumeration</strong>. There is no
+        <code>class=</code> escape hatch and no hue to pass: you pick a variant, and the token layer
+        decides what that looks like. Anything <em>else</em> you hand a macro becomes an HTML
+        attribute — <code>hx_post="/tasks"</code> renders as <code>hx-post="/tasks"</code>. That
+        conversion is one file, <code>ui/attrs.html</code>, which every macro forwards its leftover
+        keywords to and no app ever calls. It is why htmx appears in no macro definition in the kit,
+        and why a keyword a macro has never heard of is an attribute rather than an error.
+      </p>
+      <p>
+        <code>button</code> is the macro every other file reaches for, and the one whose signature is
+        worth learning first: <code>variant</code> and <code>size</code> are closed lookups,
+        <code>href</code> switches the element to an <code>&lt;a&gt;</code> and drops
+        <code>type</code>, and <code>icon_name</code> takes any Lucide name so a caller never
+        imports <code>icon</code> to put a glyph on a button.
+      </p>
+      <p>
+        <code>button_group</code> is two components wearing one name, and the knob tells you which:
+        horizontal is a <code>row</code>, so the gap is yours; vertical is Basecoat's
+        <code>.button-group</code>, which joins the buttons into a single control with shared
+        borders and has no gap to give.
       </p>
 </div>
-<div class="card">            <div class="tabs" id="macro-picker">
-        <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
-      </div>
+    <div class="card">          <div class="tabs" id="button-picker" data-picker>
+      <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
+    </div>
 
-  </div>
-<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>Preview</h3>      </div>
-    </header>      <section>        <div id="macro-preview"></div>
+    </header>      <section>    <div id="button-preview"></div>
 
 </section>
-  </div>
-<div class="card">      <div class="tabs">
+  </div><div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="Representation"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="macro-jinja"
+        <button type="button" role="tab" aria-controls="button-jinja"
                 aria-selected="true">what you write</button>
-        <button type="button" role="tab" aria-controls="macro-html"
+        <button type="button" role="tab" aria-controls="button-html"
                 aria-selected="false">what it emits</button>
-    </nav><div id="macro-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the Jinja call"></pre></div><div id="macro-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="the HTML it emits"></pre></div></div>      <footer id="macro-caption"></footer>
+    </nav><div id="button-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the Jinja call"></pre></div><div id="button-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="the HTML it emits"></pre></div></div>  <footer id="button-caption"></footer>
 
   </div>
+
 </section></div></div>
 <hr class="border-border">
 
-<div id="layout">
+<div id="data">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Layout: stack, row, grid, split</h2><p class="text-muted-foreground text-sm">The moment you type <code>grid gap-4</code>, the no-build promise is over.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Data</h2><p class="text-muted-foreground text-sm">The file that displays a value — a count, a state, a person, a definition.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        Components alone do not get you to a closed vocabulary. The first time you need two cards
-        side by side you reach for a utility class, and the stylesheet fjkit shipped has no idea you
-        wanted it. So spacing and columns are macros too. Every value is a lookup whose entries
-        appear <em>verbatim</em> in the kit's source, where Tailwind can see them.
-      </p>
-      <p>
-        The dashed tiles are your content. Change the knobs and watch the source line change with them.
-      </p>
-</div>
-<div class="card">            <div id="layout-controls"></div>
-
-  </div>
-<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>Preview</h3>      </div>
-    </header>      <section>        <div id="layout-preview"></div>
-
-</section>
-  </div>
-<div class="card">            <pre class="code-block scrollbar" tabindex="0" id="layout-code"></pre>
-      <footer id="layout-caption"></footer>
-
-  </div>
-</section></div></div>
-<hr class="border-border">
-
-<div id="structure">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">page_header, section, divider</h2><p class="text-muted-foreground text-sm">A heading, a rule and a group are components too — or they are utility classes.</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        These three are what a page is made of before any of its data arrives.
-        <code>page_header</code> takes a block, and the block is its actions. A title, a description
-        and a row of buttons stay on one line at every width, with no caller measuring anything. The
-        header at the top of this page is the same macro, called plainly, with no actions to place.
-      </p>
-</div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>page_header(title, description) · block = actions</h3>      </div>
-    </header>      <section>    <div data-showcase="page_header"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="page_header"></pre>
-  <footer data-showcase-caption="page_header"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>section(title, description, gap=4) · block</h3>      </div>
-    </header>      <section>    <div data-showcase="section"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="section"></pre>
-  <footer data-showcase-caption="section"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>divider()</h3>      </div>
-    </header>      <section>    <div data-showcase="divider"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="divider"></pre>
-  <footer data-showcase-caption="divider"></footer>
-
-  </div>
-
-</section></div></div>
-<hr class="border-border">
-
-<div id="display">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">empty_state, metric_group, lists</h2><p class="text-muted-foreground text-sm">Everything else in <code>data.html</code> — the pieces that display a value.</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        A table full of rows is the easy case. These are the others: the count that has no rows
-        behind it yet, the row of numbers above a table, the sentence with a key combination in it.
+        The largest file in <code>ui/</code>, and the one an ordinary page spends most of its calls
+        on. The four with knobs are below; the rest follow, one rendered example each.
       </p>
       <p>
         <code>empty_state</code> is worth knowing before you need it. <code>table</code> renders it
         for you when <code>rows</code> is empty, so no caller writes the if-rows-else branch.
       </p>
+      <p>
+        <code>avatar</code> is the one to read the signature of. The name is both the
+        <code>alt</code> text and the fallback initials, so the two cannot disagree, and the
+        initials leave the accessibility tree the moment an image carries the name — otherwise the
+        same person is announced twice, once properly and once as two stray letters.
+      </p>
 </div>
+    <div class="card">          <div class="tabs" id="data-picker" data-picker>
+      <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
+    </div>
+
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Preview</h3>      </div>
+    </header>      <section>    <div id="data-preview"></div>
+
+</section>
+  </div><div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="Representation"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="data-jinja"
+                aria-selected="true">what you write</button>
+        <button type="button" role="tab" aria-controls="data-html"
+                aria-selected="false">what it emits</button>
+    </nav><div id="data-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the Jinja call"></pre></div><div id="data-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="the HTML it emits"></pre></div></div>  <footer id="data-caption"></footer>
+
+  </div>
+
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>empty_state(title, description, icon_name)</h3>      </div>
@@ -275,7 +257,7 @@ fjkit
   </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>bullet_list(tone) / list_item() · blocks</h3>      </div>
+<h3>bullet_list(tone) / list_item() — both take a block</h3>      </div>
     </header>      <section>    <div data-showcase="bullet_list"></div>
 
 </section>
@@ -285,7 +267,17 @@ fjkit
   </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>link(label, href) · kbd(keys)</h3>      </div>
+<h3>caption(text) — also takes a block, for a caption holding a link</h3>      </div>
+    </header>      <section>    <div data-showcase="caption"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="caption"></pre>
+  <footer data-showcase-caption="caption"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>link(label, href) and kbd(keys)</h3>      </div>
     </header>      <section>    <div data-showcase="inline"></div>
 
 </section>
@@ -293,21 +285,94 @@ fjkit
   <footer data-showcase-caption="inline"></footer>
 
   </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>item_list() takes a block of item(title, description, clamp) calls</h3>      </div>
+    </header>      <section>    <div data-showcase="item_list"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="item_list"></pre>
+  <footer data-showcase-caption="item_list"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>code_block(source, label, wrap)</h3>      </div>
+    </header>      <section>    <div data-showcase="code_block"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="code_block"></pre>
+  <footer data-showcase-caption="code_block"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>avatar(name, src, size, badge_tone) and avatar_group(overflow)</h3>      </div>
+    </header>      <section>    <div data-showcase="avatar"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="avatar"></pre>
+  <footer data-showcase-caption="avatar"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="disclosure">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Disclosure</h2><p class="text-muted-foreground text-sm">Two disclosures, and not one line of fjkit JavaScript between them.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>collapsible</code> is a native <code>&lt;details&gt;</code>: the open state, the
+        keyboard operation and the disclosure role all come from the element, and Basecoat animates
+        it with CSS. <code>tooltip</code> is drawn entirely from a <code>data-tooltip</code>
+        attribute — no second element exists.
+      </p>
+      <p>
+        The tooltip's mechanism has one consequence worth stating plainly: CSS
+        <code>content()</code> is never in the accessibility tree. A tooltip is a <em>hint</em>,
+        never the only label a control has. Give the control an <code>aria_label</code> when the
+        tooltip is the only text on it.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>accordion(multiple) / collapsible(summary, open) — both take a block</h3>      </div>
+    </header>      <section>    <div data-showcase="collapsible"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="collapsible"></pre>
+  <footer data-showcase-caption="collapsible"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>tooltip(text, side, align) — the block is the element it wraps</h3>      </div>
+    </header>      <section>    <div data-showcase="tooltip"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tooltip"></pre>
+  <footer data-showcase-caption="tooltip"></footer>
+
+  </div>
 
 </section></div></div>
 <hr class="border-border">
 
 <div id="feedback">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Feedback: alert, spinner, skeleton, dialog</h2><p class="text-muted-foreground text-sm">Four ways of saying "wait", "done" and "that did not work".</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Feedback</h2><p class="text-muted-foreground text-sm">Five ways of saying "wait", "done" and "that did not work".</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        These four differ in <em>who is waiting and for what</em>, which is also how you pick one.
+        These differ in <em>who is waiting and for what</em>, which is also how you pick one.
         <code>alert</code> is a fact that stays on the page. <code>spinner</code> and
         <code>skeleton</code> both mean "not yet", and the choice between them is whether you know
         the shape of what is coming: a skeleton draws that shape, a spinner admits you cannot.
-        <code>dialog</code> interrupts.
+        <code>dialog</code> interrupts. <code>toast</code> is the one that outlives the response
+        that raised it.
       </p>
       <p>
         Two of them make an accessibility decision for you.
@@ -319,7 +384,7 @@ fjkit
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>alert(title, body, variant, icon_name) · block = actions</h3>      </div>
+<h3>alert(title, body, variant, icon_name) — the block is the actions</h3>      </div>
     </header>      <section>    <div data-showcase="alert"></div>
 
 </section>
@@ -349,7 +414,7 @@ fjkit
   </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>dialog(id, title, description, size, footer) · block</h3>      </div>
+<h3>dialog(id, title, description, size, footer) — the block is the body</h3>      </div>
     </header>      <section>    <div data-showcase="dialog"></div>
 
 </section>
@@ -357,230 +422,59 @@ fjkit
   <footer data-showcase-caption="dialog"></footer>
 
   </div>
-
-</section></div></div>
-<hr class="border-border">
-
-<div id="content">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
-</div><section class="flex flex-col gap-6">
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Content: avatar, item_list, code_block, breadcrumb</h2><p class="text-muted-foreground text-sm">The pieces that carry a person, a definition, a listing or a path.</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        <code>avatar</code> is the one to read the signature of. The name is both the
-        <code>alt</code> text and the fallback initials, so the two cannot disagree, and the
-        initials leave the accessibility tree the moment an image carries the name — otherwise the
-        same person is announced twice, once properly and once as two stray letters.
-      </p>
-      <p>
-        <code>breadcrumb</code> takes <code>(label, href)</code> pairs where a null href
-        <em>is</em> the current page. That is deliberate: the usual way this component goes wrong
-        is a trail whose last entry links to the page you are already on, and the shape of the
-        argument makes that unspellable.
-      </p>
+<h3>toaster(align) with toast(title, description, category)</h3>      </div>
+    </header>      <div class="border-t">  <pre class="code-block scrollbar" tabindex="0" data-snippet-code="toaster"></pre>
+  <footer data-snippet-caption="toaster"></footer>
 </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>avatar(name, src, size, badge_tone) · avatar_group(overflow)</h3>      </div>
-    </header>      <section>    <div data-showcase="avatar"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="avatar"></pre>
-  <footer data-showcase-caption="avatar"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>item_list() / item(term, clamp) · blocks</h3>      </div>
-    </header>      <section>    <div data-showcase="item_list"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="item_list"></pre>
-  <footer data-showcase-caption="item_list"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>code_block(source, label, wrap)</h3>      </div>
-    </header>      <section>    <div data-showcase="code_block"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="code_block"></pre>
-  <footer data-showcase-caption="code_block"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>breadcrumb(trail, separator) · none = current page</h3>      </div>
-    </header>      <section>    <div data-showcase="breadcrumb"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="breadcrumb"></pre>
-  <footer data-showcase-caption="breadcrumb"></footer>
-
   </div>
 
 </section></div></div>
 <hr class="border-border">
 
-<div id="disclosure">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<div id="form">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Showing and hiding: tabs, collapsible, tooltip</h2><p class="text-muted-foreground text-sm">Three disclosures, and not one line of fjkit JavaScript between them.</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        <code>collapsible</code> is a native <code>&lt;details&gt;</code>: the open state, the
-        keyboard operation and the disclosure role all come from the element, and Basecoat animates
-        it with CSS. <code>tooltip</code> is drawn entirely from a <code>data-tooltip</code>
-        attribute — no second element exists. <code>tabs</code> is Basecoat's, and the shell
-        already loads it.
-      </p>
-      <p>
-        The tooltip's mechanism has one consequence worth stating plainly: CSS
-        <code>content()</code> is never in the accessibility tree. A tooltip is a <em>hint</em>,
-        never the only label a control has. Give the control an <code>aria_label</code> when the
-        tooltip is the only text on it.
-      </p>
-</div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>tabs(items, label) / tab_panel(id) · blocks</h3>      </div>
-    </header>      <section>    <div data-showcase="tabs"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tabs"></pre>
-  <footer data-showcase-caption="tabs"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>accordion(multiple) / collapsible(summary, open) · blocks</h3>      </div>
-    </header>      <section>    <div data-showcase="collapsible"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="collapsible"></pre>
-  <footer data-showcase-caption="collapsible"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>tooltip(text, side, align) · block = the trigger</h3>      </div>
-    </header>      <section>    <div data-showcase="tooltip"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tooltip"></pre>
-  <footer data-showcase-caption="tooltip"></footer>
-
-  </div>
-
-</section></div></div>
-<hr class="border-border">
-
-<div id="overlay">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">Overlays: popover, menus, select, drawer, command</h2><p class="text-muted-foreground text-sm">One id in, four out — and a mismatch fails without a word.</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        Everything in <code>ui/overlay.html</code> is driven by Basecoat's own JavaScript, which
-        the shell already loads and which re-scans on <code>htmx:afterSwap</code> — so an overlay
-        that arrives in a swap works with nothing extra.
-      </p>
-      <p>
-        What they share is <strong>id wiring</strong>. A trigger and its panel find each other
-        through four related ids, and getting one wrong fails silently: the panel opens but is
-        never announced, or never opens at all. Every macro here takes one <code>id</code> and
-        derives the rest. That is the whole reason they are macros rather than markup to copy.
-      </p>
-      <p>
-        <code>select_menu</code> and <code>combobox</code> put their value in a hidden input,
-        pre-filled — upstream ships <code>value=""</code> and writes it from JS, which loses the
-        selection on any round trip that re-renders the fragment. Prefer
-        <code>select_field</code> to either: a native <code>&lt;select&gt;</code> is correct for
-        free and costs one element instead of thirty.
-      </p>
-</div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>popover(id, label, side, align, width) · block</h3>      </div>
-    </header>      <section>    <div data-showcase="popover"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="popover"></pre>
-  <footer data-showcase-caption="popover"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>dropdown_menu(id, label) · menu_item / menu_group / menu_separator</h3>      </div>
-    </header>      <section>    <div data-showcase="dropdown_menu"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="dropdown_menu"></pre>
-  <footer data-showcase-caption="dropdown_menu"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>select_menu(name, options, selected)</h3>      </div>
-    </header>      <section>    <div data-showcase="select_menu"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="select_menu"></pre>
-  <footer data-showcase-caption="select_menu"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>combobox(name, options, selected, empty)</h3>      </div>
-    </header>      <section>    <div data-showcase="combobox"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="combobox"></pre>
-  <footer data-showcase-caption="combobox"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>drawer(id, title, side) · drawer_trigger(label, target)</h3>      </div>
-    </header>      <section>    <div data-showcase="drawer"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="drawer"></pre>
-  <footer data-showcase-caption="drawer"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>command(id, dialog) · command_group / command_item</h3>      </div>
-    </header>      <section>    <div data-showcase="command"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="command"></pre>
-  <footer data-showcase-caption="command"></footer>
-
-  </div>
-
-</section></div></div>
-<hr class="border-border">
-
-<div id="fields">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">The rest of the field set</h2><p class="text-muted-foreground text-sm">Two more fields, on the same five-parameter shape as the rest.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Form</h2><p class="text-muted-foreground text-sm">Every field takes the same five parameters, and error replaces the hint.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         Every field macro takes the same <code>name</code>, <code>label</code>, <code>hint</code>,
         <code>error</code> and <code>id</code>, and <code>error</code> replaces the hint rather
-        than stacking on it while marking the control <code>aria-invalid</code>. These two are no
-        different; what is worth knowing is what each one does <em>about</em> its mechanism.
+        than stacking on it while marking the control <code>aria-invalid</code>. The playground
+        walks five shapes of the same form: the htmx one, a field in error, the long controls, the
+        radios-versus-select choice, and switches inside a <code>fieldset</code>.
       </p>
       <p>
-        <code>range_field</code> writes the filled part of the track for the first paint. Basecoat
+        <code>target=</code> is what makes a form an htmx form; drop it and the same macro emits an
+        ordinary POST that works without JavaScript.
+      </p>
+      <p>
+        The two below are the fields that do something <em>about</em> their own mechanism.
+        <code>range_field</code> writes the filled part of the track for the first paint — Basecoat
         paints it from a custom property and only updates it from JavaScript on drag, so without
         that the bar sits at upstream's default and disagrees with the number beside it.
       </p>
 </div>
+    <div class="card">          <div id="form-controls" data-controls></div>
+
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Preview</h3>      </div>
+    </header>      <section>    <div id="form-preview"></div>
+
+</section>
+  </div><div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="Representation"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="form-jinja"
+                aria-selected="true">what you write</button>
+        <button type="button" role="tab" aria-controls="form-html"
+                aria-selected="false">what it emits</button>
+    </nav><div id="form-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the Jinja call"></pre></div><div id="form-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="the HTML it emits"></pre></div></div>  <footer id="form-caption"></footer>
+
+  </div>
+
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>range_field(name, label, value, min, max, step, output)</h3>      </div>
@@ -601,15 +495,25 @@ fjkit
   <footer data-showcase-caption="input_group_field"></footer>
 
   </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>input_group_field(name, revealable=true) — needs reveal_scripts()</h3>      </div>
+    </header>      <section>    <div data-showcase="reveal"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="reveal"></pre>
+  <footer data-showcase-caption="reveal"></footer>
+
+  </div>
 
 </section></div></div>
 <hr class="border-border">
 
-<div id="icons">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+<div id="icon">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">icon(): any Lucide name, inlined</h2><p class="text-muted-foreground text-sm">1,767 names, no sprite sheet, no icon font, no request.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Icon</h2><p class="text-muted-foreground text-sm">1,767 names, no sprite sheet, no icon font, no request.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         <code>icon("plus")</code> inlines the Lucide path as an <code>&lt;svg&gt;</code>. It
         inherits <code>currentColor</code>, so an icon inside a primary button is already the right
@@ -639,37 +543,448 @@ fjkit
 </section></div></div>
 <hr class="border-border">
 
-<div id="cheatsheet">
+<div id="layout">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Layout</h2><p class="text-muted-foreground text-sm">The moment you type <code>grid gap-4</code>, the no-build promise is over.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Components alone do not get you to a closed vocabulary. The first time you need two cards
+        side by side you reach for a utility class, and the stylesheet fjkit shipped has no idea you
+        wanted it. So spacing and columns are macros too. Every value is a lookup whose entries
+        appear <em>verbatim</em> in the kit's source, where Tailwind can see them.
+      </p>
+      <p>
+        The dashed tiles are your content. Change the knobs and watch the source line change with them.
+      </p>
+      <p>
+        The other three in this file are what a page is made of before any of its data arrives.
+        <code>page_header</code> takes a block, and the block is its actions: a title, a description
+        and a row of buttons stay on one line at every width, with no caller measuring anything. The
+        header at the top of this page is the same macro, called plainly, with no actions to place.
+      </p>
+</div>
+<div class="card">            <div id="layout-controls"></div>
+
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Preview</h3>      </div>
+    </header>      <section>        <div id="layout-preview"></div>
+
+</section>
+  </div>
+<div class="card">            <pre class="code-block scrollbar" tabindex="0" id="layout-code"></pre>
+      <footer id="layout-caption"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>centered(width=&#34;sm&#34;, gap=6) — the block is the children</h3>      </div>
+    </header>      <section>    <div data-showcase="centered"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="centered"></pre>
+  <footer data-showcase-caption="centered"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>page_header(title, description) — the block is the actions</h3>      </div>
+    </header>      <section>    <div data-showcase="page_header"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="page_header"></pre>
+  <footer data-showcase-caption="page_header"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>section(title, description, gap=4) — the block is the children</h3>      </div>
+    </header>      <section>    <div data-showcase="section"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="section"></pre>
+  <footer data-showcase-caption="section"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>divider()</h3>      </div>
+    </header>      <section>    <div data-showcase="divider"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="divider"></pre>
+  <footer data-showcase-caption="divider"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="nav">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Nav</h2><p class="text-muted-foreground text-sm">The header's three pieces, and the trail that says where you are.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        These are the shell's header, split out so an app can import them without importing the
+        template it extends. Two of the three are already on this page: the mark at the top of the
+        rail is <code>brand</code>, and the switch in the header is <code>theme_toggle</code>.
+      </p>
+      <p>
+        <code>nav_links</code> takes route <em>names</em>, not URLs, so the active state is decided
+        by comparing routes rather than string-matching paths — which stays correct when a URL gains
+        a query string. Past about six destinations a header row runs out of width; that is the
+        point at which you fill the shell's <code>sidebar</code> block instead.
+      </p>
+      <p>
+        <code>breadcrumb</code> takes <code>(label, href)</code> pairs where a null href
+        <em>is</em> the current page. That is deliberate: the usual way this component goes wrong
+        is a trail whose last entry links to the page you are already on, and the shape of the
+        argument makes that unspellable.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>brand(label, href, icon_name | icon_src)</h3>      </div>
+    </header>      <section>    <div data-showcase="brand"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="brand"></pre>
+  <footer data-showcase-caption="brand"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>nav_links(request, links) — links is (route, label) pairs</h3>      </div>
+    </header>      <section>    <div data-showcase="nav_links"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="nav_links"></pre>
+  <footer data-showcase-caption="nav_links"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>theme_toggle() — live: it toggles this page</h3>      </div>
+    </header>      <section>    <div data-showcase="theme_toggle"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="theme_toggle"></pre>
+  <footer data-showcase-caption="theme_toggle"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>breadcrumb(trail, separator) — href=none marks the current page</h3>      </div>
+    </header>      <section>    <div data-showcase="breadcrumb"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="breadcrumb"></pre>
+  <footer data-showcase-caption="breadcrumb"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="overlay">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Overlay</h2><p class="text-muted-foreground text-sm">One id in, four out — and a mismatch fails without a word.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Everything in <code>ui/overlay.html</code> is driven by Basecoat's own JavaScript, which
+        the shell already loads and which re-scans on <code>htmx:afterSwap</code> — so an overlay
+        that arrives in a swap works with nothing extra.
+      </p>
+      <p>
+        What they share is <strong>id wiring</strong>. A trigger and its panel find each other
+        through four related ids, and getting one wrong fails silently: the panel opens but is
+        never announced, or never opens at all. Every macro here takes one <code>id</code> and
+        derives the rest. That is the whole reason they are macros rather than markup to copy.
+      </p>
+      <p>
+        <code>select_menu</code> and <code>combobox</code> put their value in a hidden input,
+        pre-filled — upstream ships <code>value=""</code> and writes it from JS, which loses the
+        selection on any round trip that re-renders the fragment. Prefer
+        <code>select_field</code> to either: a native <code>&lt;select&gt;</code> is correct for
+        free and costs one element instead of thirty.
+      </p>
+      <p>
+        Both take <code>multiple=true</code>, and both then want a <strong>list</strong> in
+        <code>selected</code> where they took a scalar before. The hidden input carries Basecoat's
+        JSON array, and <code>multiselect_scripts()</code> — one script, opted into by the page
+        that has such a field — re-emits it on submit as the repeated field HTML has always used:
+        <code>labels=bug&amp;labels=ui</code>. So the route stays ordinary:
+        <code>labels: list[str] = Form([])</code>, no parsing anywhere. Forget the script and the
+        field posts one JSON-shaped string instead, which is a 422 on a page that looks correctly
+        filled in.
+      </p>
+      <p>
+        A checkbox group inside a <code>fieldset</code> posts exactly the same thing and needs no
+        script at all. It is the better answer up to about a dozen options, which is where these
+        two start.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>popover(id, label, side, align, width) — the block is the body</h3>      </div>
+    </header>      <section>    <div data-showcase="popover"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="popover"></pre>
+  <footer data-showcase-caption="popover"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>dropdown_menu(id, label) with menu_item / menu_group / menu_separator</h3>      </div>
+    </header>      <section>    <div data-showcase="dropdown_menu"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="dropdown_menu"></pre>
+  <footer data-showcase-caption="dropdown_menu"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>select_menu(name, options, selected)</h3>      </div>
+    </header>      <section>    <div data-showcase="select_menu"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="select_menu"></pre>
+  <footer data-showcase-caption="select_menu"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>combobox(name, options, selected, empty)</h3>      </div>
+    </header>      <section>    <div data-showcase="combobox"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="combobox"></pre>
+  <footer data-showcase-caption="combobox"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>select_menu(name, options, selected, multiple) — needs multiselect_scripts()</h3>      </div>
+    </header>      <section>    <div data-showcase="select_menu_multiple"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="select_menu_multiple"></pre>
+  <footer data-showcase-caption="select_menu_multiple"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>combobox(name, options, selected, multiple) — chips are drawn by JS</h3>      </div>
+    </header>      <section>    <div data-showcase="combobox_multiple"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="combobox_multiple"></pre>
+  <footer data-showcase-caption="combobox_multiple"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>visible_label / hint / error — the same two controls rendered as fields</h3>      </div>
+    </header>      <section>    <div data-showcase="select_menu_field"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="select_menu_field"></pre>
+  <footer data-showcase-caption="select_menu_field"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>drawer(id, title, side) with drawer_trigger(label, target)</h3>      </div>
+    </header>      <section>    <div data-showcase="drawer"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="drawer"></pre>
+  <footer data-showcase-caption="drawer"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>command(id, dialog) with command_group / command_item</h3>      </div>
+    </header>      <section>    <div data-showcase="command"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="command"></pre>
+  <footer data-showcase-caption="command"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="shell">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Shell</h2><p class="text-muted-foreground text-sm">The one file you extend instead of importing — and the page you are reading.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>shell.html</code> has no macros and no preview, because the preview is this page. It
+        owns the <code>&lt;head&gt;</code>, the theme flash-guard, the asset links, the toaster and
+        the header/main/footer skeleton. What it does not own — your brand, your navigation, your
+        footer text — are blocks.
+      </p>
+      <p>
+        One of them changes the shape of the page rather than its contents. Fill
+        <code>sidebar</code> and the skeleton becomes a side column plus a thin top bar; the shell
+        tests that block for emptiness itself and adds the <code>sidebar_trigger</code> to the
+        header, so an app never sets a flag to say which layout it wanted.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>your base.html, in full</h3>      </div>
+    </header>      <div class="border-t">  <pre class="code-block scrollbar" tabindex="0" data-snippet-code="shell"></pre>
+  <footer data-snippet-caption="shell"></footer>
+</div>
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>every block the shell exposes, in source order</h3>      </div>
+    </header>      <div class="border-t">  <pre class="code-block scrollbar" tabindex="0" data-snippet-code="shell_blocks"></pre>
+  <footer data-snippet-caption="shell_blocks"></footer>
+</div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="sidebar">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Every macro in ui/, by file</h2><p class="text-muted-foreground text-sm">Twelve files. If it isn't here, it's a parameter you haven't found yet.</p>      </div>
-      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+<h2 class="text-lg font-semibold tracking-tight">Sidebar</h2><p class="text-muted-foreground text-sm">A back office outgrows a header bar at about six destinations.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        The rail on the left of this page is this file. There is no preview in a card below, and
+        that is the honest rendering: the panel is <code>position: fixed</code>, so a copy of it
+        here would cover the page rather than sit in it. The running instance is two feet to the
+        left, and the call that produced it is printed below.
+      </p>
+      <p>
+        Route names again, an icon by name, closed enumerations, and no class string anywhere in
+        the signature. <code>open</code> is the <em>desktop</em> starting state only: on a narrow
+        screen the sidebar always starts closed, because it renders as a full-screen overlay there
+        and a page that opens covered by its own navigation is a bug rather than a preference.
+      </p>
+      <p>
+        With JavaScript off, the server-rendered <code>aria-hidden="false"</code> leaves a wide
+        screen fully navigable and hides the overlay on a narrow one. The links are in the HTML
+        either way, so a crawler and reader mode still see them.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>packages/fjkit/src/fjkit/templates/ui/</h3>      </div>
-    </header>      <div class="border-t">      <pre class="code-block scrollbar" tabindex="0" id="cheatsheet-code"></pre>
+<h3>the sidebar block, as this site fills it</h3>      </div>
+    </header>      <div class="border-t">  <pre class="code-block scrollbar" tabindex="0" data-snippet-code="sidebar"></pre>
+  <footer data-snippet-caption="sidebar"></footer>
 </div>
   </div>
-<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="table">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
+</div><section class="flex flex-col gap-6">
       <div>
-<h3>Read next</h3>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Table</h2><p class="text-muted-foreground text-sm">Pass rows and the macro owns the empty case.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>columns</code> is a list of dicts — <code>label</code>, and optionally
+        <code>align</code> or <code>width</code> — and <code>rows</code> is what the macro tests to
+        decide whether to render your body or the empty state. That is the whole reason it takes the
+        rows it does not iterate: no caller repeats the if-rows-else branch, and no page can ship a
+        table that renders as a lone header row.
+      </p>
+      <p>
+        A repeated row is a macro call inside your loop. <code>{% include %}</code>
+        there is a template lookup plus a fresh context per iteration, which is the difference the
+        benchmark on the Learn page measures.
+      </p>
+</div>
+    <div class="card">          <div id="table-controls" data-controls></div>
+
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Preview</h3>      </div>
+    </header>      <section>    <div id="table-preview"></div>
+
+</section>
+  </div><div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="Representation"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="table-jinja"
+                aria-selected="true">what you write</button>
+        <button type="button" role="tab" aria-controls="table-html"
+                aria-selected="false">what it emits</button>
+    </nav><div id="table-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the Jinja call"></pre></div><div id="table-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="the HTML it emits"></pre></div></div>  <footer id="table-caption"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="tabs">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">13</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Tabs</h2><p class="text-muted-foreground text-sm">Two ids, passed once, and the keyboard is Basecoat's.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Basecoat owns which tab is selected, the roving tabindex and the arrow keys, and the shell
+        already loads it. What this macro carries is the aria contract that behaviour reads:
+        a <code>[role="tab"]</code> whose <code>aria-controls</code> names a
+        <code>[role="tabpanel"]</code> with that id. Getting that pairing right by hand is exactly
+        what a component should stop you having to think about.
+      </p>
+      <p>
+        <code>selected</code> names the tab that starts open, and the server knows which one the
+        request was for — so it is a parameter rather than something a script decides after paint.
+        The two representations under every playground on this page are one of these.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>tabs(items, label, selected) / tab_panel(id) — both take a block</h3>      </div>
+    </header>      <section>    <div data-showcase="tabs"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tabs"></pre>
+  <footer data-showcase-caption="tabs"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="next">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Read next</h2><p class="text-muted-foreground text-sm">Fourteen files, and the index that lists all of them on one page.</p>      </div>
+    <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The rest of the documentation</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>Learn</h4><p><a href="learn.html">how the pieces fit, and what htmx sends</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Cheatsheet</h4><p><a href="cheatsheet.html">every macro in one table per file, with the block it takes and the htmx attributes that go with it</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Learn</h4><p><a href="learn.html">how the pieces fit, and what htmx sends</a></p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The source</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>examples/fjkit-demo/</h4><p>these macros inside a working app, in the repo</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>src/fjkit/templates/ui/</h4><p>the macro source — each one opens with its signature comment</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>src/fjkit/static/src/fjkit.css</h4><p>the token table behind every variant</p>    </section>  </div></div></div>
   </div>
-      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>When a macro is missing</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>check the parameters</h4><p>most requests are a keyword that already exists — size, tone, padded, align</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>pass it through</h4><p>any extra keyword becomes an attribute, which covers every hx-*, aria-* and data-*</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fjkit eject</h4><p>copy the component into your app to edit it — and lose upstream fixes to it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>open an issue</h4><p>a blocked class names the component that does not exist yet; that is the report</p>    </section>  </div></div></div>
-  </div>
 </div>
-</section></div></div>
+</section></div>
 <hr class="border-border">
 
 </div>    </main>
@@ -684,8 +999,16 @@ fjkit
   </div>
 
 <div id="toaster" class="toaster" data-align="end"></div>
+  <script>
+    document.body.addEventListener("fjkit:toast", (event) => {
+      const toaster = document.getElementById("toaster");
+      if (!toaster || !toaster.toast) return;
+      for (const message of event.detail?.messages ?? []) toaster.toast(message);
+    });
+  </script>
   <script defer src="assets/data.js?v=0.1.0.dev0"></script>
   <script defer src="assets/common.js?v=0.1.0.dev0"></script>
   <script defer src="assets/components.js?v=0.1.0.dev0"></script>
+  <script defer src="assets/js/reveal.js?v=1788336837"></script>
 </body>
 </html>

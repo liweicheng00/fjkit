@@ -1,0 +1,94 @@
+{#
+  The page a failed *navigation* lands on.
+
+  Only a navigation. An htmx swap is answered with a toast and the page it was
+  already on — see `fjkit.errors` — because replacing one region of a working
+  page with a whole error document is a worse outcome than the error.
+
+  **An app replaces this by writing its own `errors/page.html`.** The app's
+  template directory is searched before the kit's, so a file at this path wins,
+  exactly the way `fjkit eject` works — there is no separate "custom error page"
+  setting to find. An app doing that will usually want `{% extends "base.html" %}`
+  so the page keeps its nav; this one extends the shell directly because the kit
+  cannot know what an app called its base.
+
+  Context, and nothing else is available:
+
+      status_code   422 or 500
+      errors        `FieldErrors` on a 422, `none` on a 500
+
+  There is deliberately no `detail` and no traceback. A 500 means the app is in
+  a state nobody predicted, and the honest thing to show a visitor is that
+  something broke — the specifics go to the log, where they can be read by
+  someone who can act on them.
+#}
+{% extends "ui/shell.html" %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import bullet_list, card, list_item %}
+{% from "ui/layout.html" import centered, stack %}
+
+{% set _TITLES = {
+  400: "That request could not be read",
+  404: "There is nothing at this address",
+  422: "That form could not be saved",
+} %}
+{% set heading = _TITLES.get(status_code, "Something went wrong") %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block content %}
+  {#
+    `centered` rather than a bare stack, and this is the page that page shape
+    was added for: an apology and a way out, on a page with no navigation, has
+    no business running to the shell's full 1152px. It is also the only
+    standalone page the kit itself ships, so it is where the macro gets used
+    rather than only documented.
+  #}
+  {% call centered("lg", gap=6) %}
+    {% call card(heading) %}
+      {% call stack(4) %}
+        {#
+          The errors are listed rather than dropped, because on a 422 they are
+          the entire point of the page: the person filled something in and needs
+          to know which part to change. On a 500 `errors` is `none` and the
+          paragraph below is all there is to say.
+        #}
+        {% if errors %}
+          {#
+            `bullet_list`, not a hand-written `<ul>` with the two Tailwind
+            utilities that name a disc marker and a left pad. Neither is in the
+            built stylesheet — nothing else in the kit emits them, and the
+            stylesheet only contains what the kit's own templates use — so the
+            list would have arrived with no bullets and no indent. A kit
+            template reaching for a utility on a hunch is the same mistake
+            `fjkit check` exists to stop an app making. (Named in prose rather
+            than written out, because a class in a comment is still a class to
+            a checker that reads attributes.)
+          #}
+          {% call bullet_list() %}
+            {% for message in errors.messages() %}
+              {% call list_item() %}{{ message }}{% endcall %}
+            {% endfor %}
+          {% endcall %}
+          <p class="text-muted-foreground text-sm">
+            Nothing was saved. Go back, correct the highlighted fields and try again.
+          </p>
+        {% else %}
+          <p class="text-muted-foreground text-sm">
+            The action was not completed and nothing was saved. If it keeps happening,
+            the details are in the server log.
+          </p>
+        {% endif %}
+
+        <div>
+          {#
+            A link home rather than a "back" button. Going back is the browser's
+            job and it already has a control for it; what a page like this can
+            offer is somewhere that definitely works.
+          #}
+          {{ button("Back to the start", variant="outline", size="sm", href="/") }}
+        </div>
+      {% endcall %}
+    {% endcall %}
+  {% endcall %}
+{% endblock %}

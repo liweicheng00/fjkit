@@ -8,10 +8,12 @@
   on it, because two messages under one control is two things to read and only
   one of them matters.
 
-  Pydantic error round-tripping is 0.3. Nothing here changes when it lands:
-  filling `error=` from a `ValidationError` is the whole of the integration.
+  A rejected submit fills the same `<p>` from the browser: `js/errors.js`
+  reads FastAPI's 422 and writes each message under the control its `loc`
+  names. `error=` is for a message known at first paint.
 #}
 {% from "ui/attrs.html" import attrs %}
+{% from "ui/button.html" import button %}
 
 {#
   form(action, method, target, swap) — the <form> element itself.
@@ -26,24 +28,128 @@
       form(action=…, target="#board")  ->  hx-post + hx-target + hx-swap
       form(action=…)                   ->  action= + method=
 
+  The htmx form also sets `hx-disinherit="hx-target hx-swap"`: a control
+  inside it that fires its own request names its own target, or it swaps into
+  itself — never into the form's target by inheritance.
+
   A form with a target is an htmx form; one without is an ordinary POST that
   needs no JavaScript. Same macro and the same fields either way — that
   symmetry is what makes progressive enhancement cheap. `hx-post` without a
   target would swap the reply into the form itself, which is never what a
   caller who omitted `target` meant.
+
+  `method` is where that symmetry runs out, and it does so quietly enough to be
+  worth stating. htmx issues all five verbs; a browser issues two. So
+
+      form(action=…, method="put", target="#form")  ->  hx-put
+      form(action=…, method="put")                  ->  method="post"
+
+  and the second is not a bug being papered over: `<form method="put">` is
+  treated by every browser as GET, which drops the body entirely. A save that
+  becomes a read is worse than a save that arrives as a POST. See
+  `_NATIVE_METHODS` below.
+
+  `encoding` decides what the submit *carries*, which is a different question
+  from what it targets:
+
+      form(action=…, target="#board")                     ->  title=Ship+it
+      form(action=…, target="#board", encoding="json")    ->  {"title":"Ship it"}
+
+  JSON is for a route that declares its body as a model — `def create(payload:
+  TaskCreate)` — because FastAPI reads such a body as JSON and refuses a form
+  outright. Everything after that is unchanged: the values arrive as strings
+  either way, pydantic's lax mode reads `"3"` as an int and `"on"` as `True`,
+  and a rejected submit is drawn under the fields by `js/errors.js` with
+  everything still typed in them.
+
+  Three things it cannot do, all of them properties of the extension rather
+  than of this macro:
+
+  - **No `target`, no JSON.** A browser submitting a form natively can send
+    urlencoded or multipart and nothing else, so `encoding="json"` on a form
+    with no `target` is ignored rather than silently changing what a no-JS
+    submit posts.
+  - **No nesting.** Every field lands at the top level of the object, so
+    `name="items.0.title"` posts that string as a key. A model with a nested
+    shape needs a flat DTO in front of it.
+  - **No file upload.** `JSON.stringify` has nothing to say about a `File`.
+
+  And the page has to load the extension — `form_scripts()`, below.
+
+  `reset_on_success` means what it says, and only since 0.3. It used to emit an
+  unconditional `this.reset()`, and `htmx:afterRequest` fires whether the
+  request succeeded or not — so a rejected submit cleared the box the person
+  had just typed into. Keeping what was typed is the whole of how a rejected
+  form comes back, so this is the line that guards it.
 #}
-{% macro form(action=none, method="post", target=none, swap="outerHTML", reset_on_success=false, card=true) -%}
+{% set _ENCODINGS = {"urlencoded": none, "json": "json-enc"} %}
+
+{#
+  What each `method` is called on each path, and the asymmetry is the whole
+  point of two tables rather than one.
+
+  htmx will issue any of the five. A browser submitting a form natively will
+  issue two: anything else in a `<form method=…>` is treated as GET, which
+  drops the body — a save that silently becomes a read. So the native table
+  answers `post` to everything that is not a read, and a `method="put"` form
+  with no `target` posts rather than quietly losing what was typed. Use
+  `_method`-style tunnelling in the route if the server needs to know.
+#}
+{% set _HX_METHODS = {
+  "get": "hx-get",
+  "post": "hx-post",
+  "put": "hx-put",
+  "patch": "hx-patch",
+  "delete": "hx-delete",
+} %}
+{% set _NATIVE_METHODS = {"get": "get", "post": "post", "put": "post", "patch": "post", "delete": "post"} %}
+
+{% macro form(action=none, method="post", target=none, swap="outerHTML", reset_on_success=false, card=true, encoding="urlencoded") -%}
+  {#
+    Only on the htmx path: `hx-ext` is an instruction to htmx, and a form
+    without a target is submitted by the browser, which has never heard of it.
+  #}
+  {%- set extension = _ENCODINGS.get(encoding) if target else none -%}
   <form class="{{ "card" if card else "" }}"
     {%- if action %}
-      {%- if target %} {{ "hx-post" if method == "post" else "hx-get" }}="{{ action }}"
-      {%- else %} action="{{ action }}" method="{{ method }}"
+      {%- if target %} {{ _HX_METHODS.get(method, "hx-post") }}="{{ action }}"
+      {%- else %} action="{{ action }}" method="{{ _NATIVE_METHODS.get(method, "post") }}"
       {%- endif %}
     {%- endif %}
-    {%- if target %} hx-target="{{ target }}" hx-swap="{{ swap }}"{% endif %}
-    {%- if reset_on_success %} hx-on::after-request="this.reset()"{% endif %}
+    {#
+      `hx-target`/`hx-swap` are inherited by every descendant that makes its
+      own request. A delete button inside the form would silently take the
+      form's target and swap; `hx-disinherit` makes it say its own.
+    #}
+    {%- if target %} hx-target="{{ target }}" hx-swap="{{ swap }}" hx-disinherit="hx-target hx-swap"{% endif %}
+    {%- if extension %} hx-ext="{{ extension }}"{% endif %}
+    {%- if reset_on_success %} hx-on::after-request="if (event.detail.successful) this.reset()"{% endif %}
     {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     {% if card %}<section>{{ caller() }}</section>{% else %}{{ caller() }}{% endif %}
   </form>
+{%- endmacro %}
+
+{#
+  form_scripts() — what a page loads to be allowed `encoding="json"`.
+
+      {% block scripts %}{{ form_scripts() }}{% endblock %}
+
+  Per page, and never from the shell. CHARTER §7 budgets what a page downloads
+  *by default* and the answer has to stay "htmx and Basecoat" — so 1,012 bytes
+  that only some forms need are opted into by the page that has one, exactly
+  the way `chart_scripts()` opts into Plotly.
+
+  `defer` keeps it after htmx: deferred scripts run in document order, htmx is
+  deferred in the shell's head, and the extension calls `htmx.defineExtension`
+  the moment it runs. Ordinary `<script>` here would run *before* the deferred
+  htmx and throw on an undefined global.
+
+  A form asking for `encoding="json"` on a page that forgot this posts
+  urlencoded to a route that only reads JSON, and the reply is a 422 nobody
+  can act on — see the skill's list of failures tests do not catch.
+#}
+{% macro form_scripts() -%}
+  <script defer src="{{ fjkit_static("vendor/htmx/json-enc.js") }}"></script>
 {%- endmacro %}
 
 {#
@@ -90,7 +196,13 @@
 
   Native <select> on purpose: no JS, keyboard and screen-reader correct for
   free, and one element instead of the ~30 a scripted listbox emits. Reach for
-  the JS combobox (0.8) only when you actually need search or multi-select.
+  `ui/overlay.html`'s `combobox` when you need to type-to-filter, and either
+  that or `select_menu(multiple=true)` when you need more than one value —
+  both of those cost the page a script, which is the trade being made.
+
+  A checkbox group in a `fieldset` is the third answer and often the right one:
+  it needs no JS at all and posts the same repeated field. It stops scaling at
+  about a dozen options, which is where the two above start.
 #}
 {% macro select_field(name, label=none, options=(), selected=none, id=none, blank=none, hint=none, error=none) -%}
   {%- set field_id = id or ("f-" ~ name) -%}
@@ -302,8 +414,30 @@
   Basecoat strips the border from the inner control and paints it on the group
   instead, so the input is `class="input"`-free on purpose: giving it one
   draws a second box inside the first.
+
+  **revealable** puts a Show/Hide toggle in the end group, for the one field
+  that always wants one:
+
+      {{ input_group_field("password", label="Password", type="password",
+                           required=true, autocomplete="current-password",
+                           revealable=true) }}
+
+      {% block scripts %}{{ reveal_scripts() }}{% endblock %}
+
+  It lives here rather than in `text_field` because the reveal has to sit inside
+  the input's box, and `.input-group` is the only markup in the kit that has a
+  place to put it — a plain `.input` with a button after it is two boxes.
+
+  `reveal_show` / `reveal_hide` are the button's two labels. They are parameters
+  and not constants because a Spanish sign-in page is not a fork of the kit; the
+  script reads both off the element, so it never holds an English string.
+
+  A page that forgets `reveal_scripts()` gets a button that does nothing when
+  clicked, which is the loudest of this kit's missing-script failures and still
+  not loud enough — the field itself keeps working, so nothing is broken except
+  the affordance.
 #}
-{% macro input_group_field(name, label=none, value="", placeholder="", type="text", start=none, end=none, required=false, hint=none, error=none, id=none) -%}
+{% macro input_group_field(name, label=none, value="", placeholder="", type="text", start=none, end=none, required=false, hint=none, error=none, id=none, revealable=false, reveal_show="Show", reveal_hide="Hide") -%}
   {%- set field_id = id or ("f-" ~ name) -%}
   <div class="field">
     {% if label %}<label class="label" for="{{ field_id }}">{{ label }}</label>{% endif %}
@@ -320,8 +454,46 @@
         markup where it belongs for the label association to read naturally.
       #}
       {%- if start %}<span role="group" data-align="start">{{ start }}</span>{% endif %}
-      {%- if end %}<span role="group" data-align="end">{{ end }}</span>{% endif %}
+      {#
+        The reveal button shares the end group with whatever the caller passed,
+        and comes after it: an addon is usually a unit (a currency, a count) and
+        the control that changes the field belongs next to the field's edge.
+      #}
+      {%- if end or revealable %}
+      <span role="group" data-align="end">
+        {{- end if end }}
+        {%- if revealable %}
+          {#
+            `type="button"`, or the first thing a reveal does is submit the form.
+            `aria-pressed` is the state — this is a toggle, not a command — and
+            `aria-controls` is how `js/reveal.js` finds the input without
+            knowing that ids here are `f-<name>`.
+          #}
+          {{ button(reveal_show, variant="ghost", size="xs",
+                    aria_controls=field_id, aria_pressed="false",
+                    data_fjkit_reveal=true, data_show=reveal_show, data_hide=reveal_hide) }}
+        {%- endif %}
+      </span>
+      {%- endif %}
     </div>
     {{ _message(field_id, hint, error) }}
   </div>
+{%- endmacro %}
+
+{#
+  reveal_scripts() — the script behind `input_group_field(revealable=true)`.
+
+  Per page, and never from the shell, for the same reason `form_scripts()` and
+  `multiselect_scripts()` are: CHARTER §7 budgets what a page downloads *by
+  default*, and the answer has to stay "htmx and Basecoat". A sign-in page is
+  one page.
+
+  What it buys is a toggle that survives a rejected submit. The listener is on
+  `document`, so the button that arrives in the swapped-in panel works as well
+  as the one that was there at first paint — which is the case that matters,
+  because the form a password lives in is the form most likely to come back
+  with a 422 and a fresh copy of itself.
+#}
+{% macro reveal_scripts() -%}
+  <script defer src="{{ fjkit_static("js/reveal.js") }}"></script>
 {%- endmacro %}

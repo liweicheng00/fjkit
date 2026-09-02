@@ -1,0 +1,33 @@
+{#
+  The siblings panel's body: everything else assigned to the open task's owner.
+
+  A different endpoint asking a different question about the same id, which is
+  why it is a second panel rather than more markup in the first one. In tabs that
+  separation buys something it does not buy on `/search`: only the panel being
+  looked at costs a request.
+#}
+{% set selected = selected | default(none) %}
+{% set related = related | default([]) %}
+{% from "ui/data.html" import card, empty_state, item, item_list %}
+{% from "panels/macros.html" import stamp %}
+
+{% if selected %}
+  {% call card("Also " ~ selected.owner ~ "'s",
+               related | length ~ (" other task" if related | length == 1 else " other tasks"),
+               actions=stamp(rendered_label), padded=false) %}
+    {% if related %}
+      {% call item_list() %}
+        {% for task in related %}
+          {{ item(task.title, task.status.value | capitalize, icon_name="circle-dot") }}
+        {% endfor %}
+      {% endcall %}
+    {% else %}
+      {{ empty_state("Nothing else", selected.owner ~ " owns this one alone.", icon_name="users") }}
+    {% endif %}
+  {% endcall %}
+{% else %}
+  {% call card("Owner", "Nothing picked yet.", actions=stamp(rendered_label)) %}
+    {{ empty_state("No owner yet", "Open a row and this panel loads that owner's other rows.",
+                   icon_name="users") }}
+  {% endcall %}
+{% endif %}

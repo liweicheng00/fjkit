@@ -1,0 +1,44 @@
+{#
+  The board, and the one place the open task's id is written down.
+
+  Nothing on this page subscribes to a broadcast, so the table carries no `hx-*`
+  of its own. It is only ever a reply, swapped in band by a pick or an advance.
+
+  The hidden input is what makes the lazy panels possible. An `intersect` carries
+  no event to read an id out of, and a panel that was hidden when the pick
+  happened never heard one either — so the id has to sit somewhere both paths can
+  reach, and that is the page. Its being *current* by the time anything reads it
+  is the routes' job: they broadcast with `hx_trigger_after_swap`, which fires
+  after this table is in the document rather than before.
+
+  It is written down only when there *is* an id, and that is not tidiness. An
+  `hx-include` sends whatever it selects, so an input rendered `value=""` on the
+  cold page sends `task_id=`, and an empty string is not an integer: the first
+  panel to open on a fresh page answers 422 before anyone has picked anything.
+  A selector that matches nothing sends nothing, which is exactly what "nothing
+  is picked" means, and it is the state every panel route already takes as its
+  default. A value a route cannot parse is never the way to say a value is
+  absent.
+#}
+{% from "ui/data.html" import card %}
+{% from "ui/table.html" import table %}
+{% from "panels/macros.html" import BOARD_COLUMNS, pick_row, stamp %}
+{% set selected_id = selected_id | default(none) %}
+
+<div id="panels-matches">
+  {% if selected_id is not none %}
+    <input type="hidden" name="task_id" value="{{ selected_id }}">
+  {% endif %}
+  {% call card("The board",
+               matches | length ~ (" task" if matches | length == 1 else " tasks"),
+               actions=stamp(rendered_label), padded=false) %}
+    {% call table(BOARD_COLUMNS, rows=matches,
+                  empty_title="Nothing on the board",
+                  empty_description="Add a task and it shows up here.",
+                  empty_icon="search") %}
+      {% for task in matches %}
+        {{ pick_row(request, task, selected_id) }}
+      {% endfor %}
+    {% endcall %}
+  {% endcall %}
+</div>

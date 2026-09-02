@@ -1,26 +1,77 @@
 {% extends "base.html" %}
-{% from "_parts.html" import defs, lesson, prose, stage %}
+{% from "_parts.html" import band, defs, lesson, prose, stage %}
 {% from "ui/data.html" import card, code_block %}
 {% from "ui/tabs.html" import tab_panel, tabs %}
 {% from "ui/layout.html" import grid, page_header, stack %}
+{% from "ui/form.html" import reveal_scripts %}
 
 {#
   Components 的中文版。結構、id、macro 呼叫與腳本掛點必須跟英文版逐字對應——
   頁面骨架是同一份 `base.html` 與同一支 components.js，這裡只有文字不同。
+
+  章節就是 `src/fjkit/templates/ui/` 的目錄列表，順序與 `ls` 印出來的一致。
+  唯一沒有章節的檔案是 `attrs.html`：它是其他每支 macro 轉送多餘關鍵字的管線，
+  app 不會呼叫它，它做的事寫在 01 裡第一個 `hx_*` 關鍵字出現的地方。
+  cheatsheet 仍然列著它，因為那份清單是按檔案列而不是按章節列。
 #}
 {% set sections = [
-  {"id": "macros",     "title": "每個 macro：呼叫與 HTML"},
-  {"id": "layout",     "title": "版面：stack、row、grid、split"},
-  {"id": "structure",  "title": "page_header、section、divider"},
-  {"id": "display",    "title": "empty_state、metric_group、清單"},
-  {"id": "feedback",   "title": "回饋：alert、spinner、skeleton、dialog"},
-  {"id": "content",    "title": "內容：avatar、item_list、code_block、breadcrumb"},
-  {"id": "disclosure", "title": "顯示與收合：tabs、collapsible、tooltip"},
-  {"id": "overlay",    "title": "浮層：popover、選單、select、drawer、command"},
-  {"id": "fields",     "title": "剩下的兩個欄位"},
-  {"id": "icons",      "title": "icon()：任何 Lucide 名字，直接內嵌"},
-  {"id": "cheatsheet", "title": "ui/ 裡的每個 macro，按檔案列"},
+  {"id": "button",     "title": "Button"},
+  {"id": "data",       "title": "Data"},
+  {"id": "disclosure", "title": "Disclosure"},
+  {"id": "feedback",   "title": "Feedback"},
+  {"id": "form",       "title": "Form"},
+  {"id": "icon",       "title": "Icon"},
+  {"id": "layout",     "title": "Layout"},
+  {"id": "nav",        "title": "Nav"},
+  {"id": "overlay",    "title": "Overlay"},
+  {"id": "shell",      "title": "Shell"},
+  {"id": "sidebar",    "title": "Sidebar"},
+  {"id": "table",      "title": "Table"},
+  {"id": "tabs",       "title": "Tabs"},
+  {"id": "next",       "title": "接著讀"},
 ] %}
+
+{#
+  底下兩個共用骨架需要的字串。設一次，在 macro 裡讀——換一個語言只改這幾個。
+#}
+{% set t_preview = "預覽" %}
+{% set t_write = "你寫的" %}
+{% set t_emit = "它吐出來的" %}
+{% set t_jinja = "那行 Jinja 呼叫" %}
+{% set t_html = "產生的 HTML" %}
+
+{#
+  One playground. `slug` names the section, and `components.js` finds its four
+  panes by that name: a tab strip when the file has more than one macro to
+  offer, a bare control row when it has one, and below them the preview, the
+  two representations and the caption.
+
+  The tablist and its panels are filled by the script, because the list of
+  macros lives there — a hardcoded list here would be a second source of truth
+  that silently loses a tab the day one is added.
+#}
+{% macro playground(slug, tabbed=true) %}
+{% call card(padded=false) %}
+  {% if tabbed %}
+    <div class="tabs" id="{{ slug }}-picker" data-picker>
+      <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
+    </div>
+  {% else %}
+    <div id="{{ slug }}-controls" data-controls></div>
+  {% endif %}
+{% endcall %}
+{% call stage(t_preview) %}
+  <div id="{{ slug }}-preview"></div>
+{% endcall %}
+{% call card(padded=false) %}
+  {% call tabs([{"id": slug ~ "-jinja", "label": t_write},
+                {"id": slug ~ "-html", "label": t_emit}], label="Representation") %}
+    {% call tab_panel(slug ~ "-jinja") %}{{ code_block("", label=t_jinja) }}{% endcall %}
+    {% call tab_panel(slug ~ "-html") %}{{ code_block("", label=t_html, wrap=true) }}{% endcall %}
+  {% endcall %}
+  <footer id="{{ slug }}-caption"></footer>
+{% endcall %}
+{% endmacro %}
 
 {#
   One showcase = one macro that has nothing to configure. The preview and the
@@ -29,9 +80,6 @@
   never means pasting markup.
 #}
 {% macro showcase(key, name) %}
-{# Preview and source are two cards, like 02 and 05: a preview needs the card's
-   own padding around it, and a code block needs the card's edge. One card
-   cannot give both, and a padded=false card hands the preview to the border. #}
 {% call stage(name) %}
   <div data-showcase="{{ key }}"></div>
 {% endcall %}
@@ -41,128 +89,118 @@
 {% endcall %}
 {% endmacro %}
 
+{#
+  A call with no preview beside it — the two files whose live instance is this
+  page rather than something that fits in a card. Same source as everything
+  else: `SNIPPET` in components.js.
+#}
+{% macro snippet(key, name) %}
+{% call card(name, padded=false) %}
+  {{ code_block("", data_snippet_code=key) }}
+  <footer data-snippet-caption="{{ key }}"></footer>
+{% endcall %}
+{% endmacro %}
+
 {% block content %}
 {% call stack(8) %}
 
   {% set intro %}
-    每一個 macro，都有實際渲染的預覽與產生它的那行呼叫。
+    每一個 macro，都有實際渲染的預覽與產生它的那行呼叫；依照 macro 所在的檔案分節，
+    順序與 <code>src/fjkit/templates/ui/</code> 列出來的一致。
     轉動旋鈕，兩件事會一起變：元件本身，以及你要打出這個結果會寫的那行 Jinja。
     底下每一個預覽都是 build 時由 fjkit 自己的 Environment 渲染出來的。
   {% endset %}
   {{ page_header("每個 macro，以及產生它的那行呼叫", intro) }}
 
   {# ============================================================== 01 #}
-  {% set c01 %}沒有任何 macro 收 class 字串，所以沒有任何呼叫端能自己發明一個顏色。{% endset %}
-  {% call lesson("macros", "01", "每個 macro：呼叫與 HTML", c01) %}
+  {% set c02 %}一個元素、七種 variant、七種 size——而且呼叫端一個 class 都不寫。{% endset %}
+  {% call lesson("button", "01", "Button", c02) %}
     {% call prose() %}
       <p>
-        底下每一個參數都是<strong>封閉列舉</strong>。沒有 <code>class=</code> 這個逃生口，也沒有色相可以傳。
-        你挑一個 variant，長什麼樣由 token 層決定。多傳給 macro 的東西一律變成 HTML 屬性：
-        <code>hx_post="/tasks"</code> 會渲染成 <code>hx-post="/tasks"</code>。
-        這就是 htmx 從頭到尾不必出現在任何一個 macro 定義裡的原因。
+        這一頁上的每一個參數都是<strong>封閉列舉</strong>。沒有 <code>class=</code> 這個逃生口，
+        也沒有色相可以傳：你挑一個 variant，長什麼樣由 token 層決定。
+        <em>其餘</em>多傳給 macro 的東西一律變成 HTML 屬性——<code>hx_post="/tasks"</code>
+        會渲染成 <code>hx-post="/tasks"</code>。做這件轉換的是 <code>ui/attrs.html</code> 這一個檔案，
+        每一支 macro 都把多出來的關鍵字轉送給它，而 app 永遠不會自己呼叫它。
+        這就是 htmx 從頭到尾不必出現在 kit 任何一個 macro 定義裡的原因，
+        也是「macro 沒聽過的關鍵字」變成屬性而不是報錯的原因。
+      </p>
+      <p>
+        <code>button</code> 是其他每個檔案都會用到的 macro，也是最值得先讀簽名的那一支：
+        <code>variant</code> 與 <code>size</code> 都是封閉查表，<code>href</code> 會把元素換成
+        <code>&lt;a&gt;</code> 並拿掉 <code>type</code>，而 <code>icon_name</code> 收任何 Lucide 名字——
+        所以呼叫端不必為了在按鈕上放一個圖示而去 import <code>icon</code>。
+      </p>
+      <p>
+        <code>button_group</code> 是一個名字底下的兩種元件，旋鈕會告訴你是哪一種：
+        horizontal 就是一個 <code>row</code>，間距歸你管；vertical 是 Basecoat 的
+        <code>.button-group</code>，它把幾個按鈕併成一個控制項並共用邊框，沒有間距可以給。
       </p>
     {% endcall %}
 
-    {% call card(padded=false) %}
-      {#
-        The tablist and its panels are filled by components.js, because the list
-        of macros lives there — a hardcoded list here would be a second source
-        of truth that silently loses a tab the day one is added. So this is the
-        `.tabs` skeleton only, and the script writes the aria contract that
-        Basecoat's own tab behaviour reads.
-      #}
-      <div class="tabs" id="macro-picker">
-        <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
-      </div>
-    {% endcall %}
-
-    {% call stage("預覽") %}
-      <div id="macro-preview"></div>
-    {% endcall %}
-
-    {% call card(padded=false) %}
-      {% call tabs([{"id": "macro-jinja", "label": "你寫的"},
-                    {"id": "macro-html", "label": "它吐出來的"}], label="Representation") %}
-        {% call tab_panel("macro-jinja") %}{{ code_block("", label="那行 Jinja 呼叫") }}{% endcall %}
-        {% call tab_panel("macro-html") %}{{ code_block("", label="產生的 HTML", wrap=true) }}{% endcall %}
-      {% endcall %}
-      <footer id="macro-caption"></footer>
-    {% endcall %}
+    {{ playground("button") }}
   {% endcall %}
 
   {# ============================================================== 02 #}
-  {% set c02 %}你打下 <code>grid gap-4</code> 的那一刻，零建置這個承諾就結束了。{% endset %}
-  {% call lesson("layout", "02", "版面：stack、row、grid、split", c02) %}
+  {% set c03 %}負責把一個值顯示出來的那個檔案——數字、狀態、人、定義。{% endset %}
+  {% call lesson("data", "02", "Data", c03) %}
     {% call prose() %}
       <p>
-        光有元件到不了封閉詞彙表。你第一次要把兩張 card 並排，手就伸向 utility class，
-        而 fjkit 出貨的那份 stylesheet 根本不知道你想要它。所以間距與欄數也是 macro。
-        每一個值都是查表，表裡的字串<em>原封不動</em>出現在 kit 的原始碼裡，Tailwind 掃得到。
-      </p>
-      <p>
-        虛線方塊代表你的內容。轉旋鈕，看著底下那行原始碼跟著變。
-      </p>
-    {% endcall %}
-
-    {% call card(padded=false) %}
-      <div id="layout-controls"></div>
-    {% endcall %}
-
-    {% call stage("預覽") %}
-      <div id="layout-preview"></div>
-    {% endcall %}
-
-    {% call card(padded=false) %}
-      {{ code_block("", id="layout-code") }}
-      <footer id="layout-caption"></footer>
-    {% endcall %}
-  {% endcall %}
-
-  {# ============================================================== 03 #}
-  {% set c03 %}標題、分隔線與群組也是元件——不然它們就會是 utility class。{% endset %}
-  {% call lesson("structure", "03", "page_header、section、divider", c03) %}
-    {% call prose() %}
-      <p>
-        這三個是資料還沒進來以前，一頁就已經由它們組成的部分。
-        <code>page_header</code> 收一個 block，那個 block 就是它的動作區。
-        所以標題、說明與一排按鈕在任何寬度下都待在同一行，呼叫端不必量任何東西。
-        這一頁最上面那個 header 就是同一個 macro，平鋪直敘地呼叫，沒有動作要放。
-      </p>
-    {% endcall %}
-
-    {{ showcase("page_header", "page_header(title, description) · block = actions") }}
-    {{ showcase("section", "section(title, description, gap=4) · block") }}
-    {{ showcase("divider", "divider()") }}
-  {% endcall %}
-
-  {# ============================================================== 04 #}
-  {% set c04 %}<code>data.html</code> 裡剩下的——負責把一個值顯示出來的那些。{% endset %}
-  {% call lesson("display", "04", "empty_state、metric_group、清單", c04) %}
-    {% call prose() %}
-      <p>
-        一張塞滿 row 的表格是簡單的那種情況。這些是另外幾種：後面還沒有任何 row 的那個數字、
-        表格上方那排數值、句子裡夾著一組按鍵的那種說明。
+        <code>ui/</code> 裡最大的一個檔案，也是一般頁面呼叫次數最多的一個。
+        有旋鈕可以轉的四支在下面；其餘各自有一個渲染好的範例。
       </p>
       <p>
         <code>empty_state</code> 值得在你需要它之前就先知道。<code>rows</code> 是空的時候，
         <code>table</code> 會自己把它渲染出來，所以沒有任何呼叫端要寫 if-rows-else 那段分支。
       </p>
+      <p>
+        <code>avatar</code> 是值得先讀簽名的那一個。名字同時是 <code>alt</code> 文字和退回時的縮寫，
+        所以兩者不可能互相矛盾；而且一旦有圖片承載了名字，縮寫就會退出無障礙樹——否則同一個人會被唸兩次，
+        一次是正常的，一次是兩個沒頭沒尾的字母。
+      </p>
     {% endcall %}
+
+    {{ playground("data") }}
 
     {{ showcase("empty_state", "empty_state(title, description, icon_name)") }}
     {{ showcase("metric_group", "metric_group(items, cols=3)") }}
-    {{ showcase("bullet_list", "bullet_list(tone) / list_item() · blocks") }}
-    {{ showcase("inline", "link(label, href) · kbd(keys)") }}
+    {{ showcase("bullet_list", "bullet_list(tone) / list_item()——兩支都吃區塊") }}
+    {{ showcase("caption", "caption(text)——也吃區塊，用在說明裡要放連結的時候") }}
+    {{ showcase("inline", "link(label, href) 與 kbd(keys)") }}
+    {{ showcase("item_list", "item_list() 的區塊裡放 item(title, description, clamp)") }}
+    {{ showcase("code_block", "code_block(source, label, wrap)") }}
+    {{ showcase("avatar", "avatar(name, src, size, badge_tone) 與 avatar_group(overflow)") }}
   {% endcall %}
 
-  {# ============================================================== 05 #}
-  {% set c05 %}四種說「等一下」「好了」和「這件事沒成功」的方式。{% endset %}
-  {% call lesson("feedback", "05", "回饋：alert、spinner、skeleton、dialog", c05) %}
+  {# ============================================================== 03 #}
+  {% set c04 %}兩個收合元件，中間沒有一行 fjkit 自己的 JavaScript。{% endset %}
+  {% call lesson("disclosure", "03", "Disclosure", c04) %}
     {% call prose() %}
       <p>
-        這四個的差別在<em>誰在等、等什麼</em>，挑哪一個也是照這條分。<code>alert</code> 是一件留在頁面上的事實。
+        <code>collapsible</code> 是原生的 <code>&lt;details&gt;</code>：開合狀態、鍵盤操作、disclosure 角色
+        全部來自那個元素，Basecoat 用 CSS 替它加動畫。<code>tooltip</code> 完全畫自一個
+        <code>data-tooltip</code> 屬性——根本不存在第二個元素。
+      </p>
+      <p>
+        tooltip 的機制有一個後果要講白：CSS <code>content()</code> 從來不會進無障礙樹。
+        tooltip 是<em>提示</em>，永遠不能是一個控制項唯一的標籤。當 tooltip 是那個控制項身上唯一的文字時，
+        請另外給它 <code>aria_label</code>。
+      </p>
+    {% endcall %}
+
+    {{ showcase("collapsible", "accordion(multiple) / collapsible(summary, open)——兩支都吃區塊") }}
+    {{ showcase("tooltip", "tooltip(text, side, align)——區塊是被它包住的元素") }}
+  {% endcall %}
+
+  {# ============================================================== 04 #}
+  {% set c05 %}五種說「等一下」「好了」和「這件事沒成功」的方式。{% endset %}
+  {% call lesson("feedback", "04", "Feedback", c05) %}
+    {% call prose() %}
+      <p>
+        這幾個的差別在<em>誰在等、等什麼</em>，挑哪一個也是照這條分。<code>alert</code> 是一件留在頁面上的事實。
         <code>spinner</code> 和 <code>skeleton</code> 都表示「還沒好」，選哪一個取決於你知不知道等一下會出現什麼形狀：
         skeleton 把那個形狀畫出來，spinner 承認你畫不出來。<code>dialog</code> 則是打斷。
+        <code>toast</code> 是唯一活得比那個回應更久的一個。
       </p>
       <p>
         其中兩個替你做了無障礙的決定。<code>alert(variant="destructive")</code> 會拿到
@@ -172,106 +210,45 @@
       </p>
     {% endcall %}
 
-    {{ showcase("alert", "alert(title, body, variant, icon_name) · 區塊 = 動作") }}
+    {{ showcase("alert", "alert(title, body, variant, icon_name)——區塊是動作按鈕") }}
     {{ showcase("spinner", "spinner(size, tone, label, indicator)") }}
     {{ showcase("skeleton", "skeleton(shape, width, lines)") }}
-    {{ showcase("dialog", "dialog(id, title, description, size, footer) · 區塊") }}
+    {{ showcase("dialog", "dialog(id, title, description, size, footer)——區塊是內容") }}
+    {{ snippet("toaster", "toaster(align) 搭配 toast(title, description, category)") }}
   {% endcall %}
 
-  {# ============================================================== 06 #}
-  {% set c06 %}承載一個人、一則定義、一段程式或一條路徑的那幾個。{% endset %}
-  {% call lesson("content", "06", "內容：avatar、item_list、code_block、breadcrumb", c06) %}
-    {% call prose() %}
-      <p>
-        <code>avatar</code> 是值得先讀簽名的那一個。名字同時是 <code>alt</code> 文字和退回時的縮寫，
-        所以兩者不可能互相矛盾；而且一旦有圖片承載了名字，縮寫就會退出無障礙樹——否則同一個人會被唸兩次，
-        一次是正常的，一次是兩個沒頭沒尾的字母。
-      </p>
-      <p>
-        <code>breadcrumb</code> 收的是 <code>(label, href)</code> 成對的清單，其中 href 為 none 的那一項
-        <em>就是</em>當前頁。這是刻意的：這個元件最常見的做錯方式，就是麵包屑最後一項連到你已經在看的這一頁——
-        而參數的形狀讓那件事根本寫不出來。
-      </p>
-    {% endcall %}
-
-    {{ showcase("avatar", "avatar(name, src, size, badge_tone) · avatar_group(overflow)") }}
-    {{ showcase("item_list", "item_list() / item(term, clamp) · 區塊") }}
-    {{ showcase("code_block", "code_block(source, label, wrap)") }}
-    {{ showcase("breadcrumb", "breadcrumb(trail, separator) · none = 當前頁") }}
-  {% endcall %}
-
-  {# ============================================================== 07 #}
-  {% set c07 %}三個收合元件，中間沒有一行 fjkit 自己的 JavaScript。{% endset %}
-  {% call lesson("disclosure", "07", "顯示與收合：tabs、collapsible、tooltip", c07) %}
-    {% call prose() %}
-      <p>
-        <code>collapsible</code> 是原生的 <code>&lt;details&gt;</code>：開合狀態、鍵盤操作、disclosure 角色
-        全部來自那個元素，Basecoat 用 CSS 替它加動畫。<code>tooltip</code> 完全畫自一個
-        <code>data-tooltip</code> 屬性——根本不存在第二個元素。<code>tabs</code> 是 Basecoat 的，外殼已經載好了。
-      </p>
-      <p>
-        tooltip 的機制有一個後果要講白：CSS <code>content()</code> 從來不會進無障礙樹。
-        tooltip 是<em>提示</em>，永遠不能是一個控制項唯一的標籤。當 tooltip 是那個控制項身上唯一的文字時，
-        請另外給它 <code>aria_label</code>。
-      </p>
-    {% endcall %}
-
-    {{ showcase("tabs", "tabs(items, label) / tab_panel(id) · 區塊") }}
-    {{ showcase("collapsible", "accordion(multiple) / collapsible(summary, open) · 區塊") }}
-    {{ showcase("tooltip", "tooltip(text, side, align) · 區塊 = 觸發元素") }}
-  {% endcall %}
-
-  {# ============================================================== 08 #}
-  {% set c08 %}一個 id 進去，四個出來——而且對不上時不會出聲。{% endset %}
-  {% call lesson("overlay", "08", "浮層：popover、選單、select、drawer、command", c08) %}
-    {% call prose() %}
-      <p>
-        <code>ui/overlay.html</code> 裡的每一個都由 Basecoat 自己的 JavaScript 驅動，外殼已經載了它，
-        而且它會在 <code>htmx:afterSwap</code> 時重新掃描——所以由 swap 送進來的浮層不需要任何額外處理就能用。
-      </p>
-      <p>
-        它們共同的東西是 <strong>id 接線</strong>。一個觸發元素和它的面板靠四個相關的 id 互相找到對方，
-        錯一個就靜靜地失敗：面板打得開但永遠不會被唸出來，或者根本打不開。這裡每個 macro 都只收一個
-        <code>id</code> 再自己推導其餘的。這就是它們是 macro 而不是一段可以複製的標記的全部理由。
-      </p>
-      <p>
-        <code>select_menu</code> 和 <code>combobox</code> 把值放在一個<strong>預先填好</strong>的隱藏欄位裡——
-        上游出貨的是 <code>value=""</code> 再用 JS 寫進去，那會讓任何重繪這個片段的來回弄丟已經選好的值。
-        這兩個都不如 <code>select_field</code>：原生的 <code>&lt;select&gt;</code> 一開始就是正確的，
-        而且只花一個元素而不是三十個。
-      </p>
-    {% endcall %}
-
-    {{ showcase("popover", "popover(id, label, side, align, width) · 區塊") }}
-    {{ showcase("dropdown_menu", "dropdown_menu(id, label) · menu_item / menu_group / menu_separator") }}
-    {{ showcase("select_menu", "select_menu(name, options, selected)") }}
-    {{ showcase("combobox", "combobox(name, options, selected, empty)") }}
-    {{ showcase("drawer", "drawer(id, title, side) · drawer_trigger(label, target)") }}
-    {{ showcase("command", "command(id, dialog) · command_group / command_item") }}
-  {% endcall %}
-
-  {# ============================================================== 09 #}
-  {% set c09 %}再兩個欄位，形狀跟其他欄位一模一樣。{% endset %}
-  {% call lesson("fields", "09", "剩下的兩個欄位", c09) %}
+  {# ============================================================== 05 #}
+  {% set c06 %}每一支欄位都收同樣五個參數，而且 error 是取代 hint。{% endset %}
+  {% call lesson("form", "05", "Form", c06) %}
     {% call prose() %}
       <p>
         每一支欄位 macro 都收同樣的 <code>name</code>、<code>label</code>、<code>hint</code>、
         <code>error</code>、<code>id</code>，而且 <code>error</code> 是<strong>取代</strong> hint 而不是疊在它上面，
-        同時把控制項標成 <code>aria-invalid</code>。這兩個也一樣；值得知道的是它們各自針對自己的機制做了什麼。
+        同時把控制項標成 <code>aria-invalid</code>。底下的旋鈕會走過同一份表單的五種樣子：
+        htmx 版、有錯誤的欄位、比較長的控制項、radio 與 select 的取捨，以及放在
+        <code>fieldset</code> 裡的一組 switch。
       </p>
       <p>
-        <code>range_field</code> 會替第一次繪製寫好軌道已填滿的那一段。Basecoat 是從一個自訂屬性去畫它，
-        而且只在拖曳時才用 JavaScript 更新——沒有這一步，長條會停在上游的預設值，跟旁邊那個數字對不上。
+        讓一份表單成為 htmx 表單的是 <code>target=</code>；把它拿掉，同一支 macro 就吐出一份
+        沒有 JavaScript 也能用的普通 POST。
+      </p>
+      <p>
+        底下這兩支是針對自己的機制多做了一件事的欄位。<code>range_field</code> 會替第一次繪製
+        寫好軌道已填滿的那一段——Basecoat 是從一個自訂屬性去畫它，而且只在拖曳時才用 JavaScript 更新，
+        沒有這一步，長條會停在上游的預設值，跟旁邊那個數字對不上。
       </p>
     {% endcall %}
 
+    {{ playground("form", tabbed=false) }}
+
     {{ showcase("range_field", "range_field(name, label, value, min, max, step, output)") }}
     {{ showcase("input_group_field", "input_group_field(name, label, start, end)") }}
+    {{ showcase("reveal", "input_group_field(name, revealable=true)——需要 reveal_scripts()") }}
   {% endcall %}
 
-  {# ============================================================== 10 #}
-  {% set c10 %}1,767 個名字，沒有 sprite sheet，沒有 icon font，一個請求都不用發。{% endset %}
-  {% call lesson("icons", "10", "icon()：任何 Lucide 名字，直接內嵌", c10) %}
+  {# ============================================================== 06 #}
+  {% set c07 %}1,767 個名字，沒有 sprite sheet，沒有 icon font，一個請求都不用發。{% endset %}
+  {% call lesson("icon", "06", "Icon", c07) %}
     {% call prose() %}
       <p>
         <code>icon("plus")</code> 會把 Lucide 的路徑當成 <code>&lt;svg&gt;</code> 內嵌進去。
@@ -299,26 +276,213 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 11 #}
-  {% set c11 %}十二個檔案。如果這裡沒有，那就是你還沒找到的某個參數。{% endset %}
-  {% call lesson("cheatsheet", "11", "ui/ 裡的每個 macro，按檔案列", c11) %}
-    {% call card("packages/fjkit/src/fjkit/templates/ui/", padded=false) %}
-      {{ code_block("", id="cheatsheet-code") }}
+  {# ============================================================== 07 #}
+  {% set c08 %}你打下 <code>grid gap-4</code> 的那一刻，零建置這個承諾就結束了。{% endset %}
+  {% call lesson("layout", "07", "Layout", c08) %}
+    {% call prose() %}
+      <p>
+        光有元件到不了封閉詞彙表。你第一次要把兩張 card 並排，手就伸向 utility class，
+        而 fjkit 出貨的那份 stylesheet 根本不知道你想要它。所以間距與欄數也是 macro。
+        每一個值都是查表，表裡的字串<em>原封不動</em>出現在 kit 的原始碼裡，Tailwind 掃得到。
+      </p>
+      <p>
+        虛線方塊代表你的內容。轉旋鈕，看著底下那行原始碼跟著變。
+      </p>
+      <p>
+        這個檔案裡另外三支，是資料還沒進來以前一頁就已經由它們組成的部分。
+        <code>page_header</code> 收一個 block，那個 block 就是它的動作區：
+        標題、說明與一排按鈕在任何寬度下都待在同一行，呼叫端不必量任何東西。
+        這一頁最上面那個 header 就是同一個 macro，平鋪直敘地呼叫，沒有動作要放。
+      </p>
     {% endcall %}
 
+    {% call card(padded=false) %}
+      <div id="layout-controls"></div>
+    {% endcall %}
+
+    {% call stage(t_preview) %}
+      <div id="layout-preview"></div>
+    {% endcall %}
+
+    {% call card(padded=false) %}
+      {{ code_block("", id="layout-code") }}
+      <footer id="layout-caption"></footer>
+    {% endcall %}
+
+    {{ showcase("centered", "centered(width=\"sm\", gap=6)——區塊是子元素") }}
+    {{ showcase("page_header", "page_header(title, description)——區塊是動作按鈕") }}
+    {{ showcase("section", "section(title, description, gap=4)——區塊是子元素") }}
+    {{ showcase("divider", "divider()") }}
+  {% endcall %}
+
+  {# ============================================================== 08 #}
+  {% set c09 %}頁首的三個零件，以及那條說明你在哪裡的路徑。{% endset %}
+  {% call lesson("nav", "08", "Nav", c09) %}
+    {% call prose() %}
+      <p>
+        這些是外殼的頁首，單獨拆成一個檔案，好讓 app 可以只 import 它們而不必 import 那份
+        它 extends 的模板。其中兩支就在這一頁上：側欄最上面那個標記是 <code>brand</code>，
+        頁首那個切換鈕是 <code>theme_toggle</code>。
+      </p>
+      <p>
+        <code>nav_links</code> 收的是路由<em>名稱</em>而不是 URL，所以「目前在哪一頁」是比對路由
+        而不是字串比對路徑——URL 多了一段 query string 之後它照樣正確。
+        目的地超過大約六個，一排頁首就不夠寬了；那就是改去填外殼 <code>sidebar</code> block 的時機。
+      </p>
+      <p>
+        <code>breadcrumb</code> 收的是 <code>(label, href)</code> 成對的清單，其中 href 為 none 的那一項
+        <em>就是</em>當前頁。這是刻意的：這個元件最常見的做錯方式，就是麵包屑最後一項連到你已經在看的這一頁——
+        而參數的形狀讓那件事根本寫不出來。
+      </p>
+    {% endcall %}
+
+    {{ showcase("brand", "brand(label, href, icon_name | icon_src)") }}
+    {{ showcase("nav_links", "nav_links(request, links)——links 是 (route, label) 的序對") }}
+    {{ showcase("theme_toggle", "theme_toggle()——這顆是活的，會切換這一頁") }}
+    {{ showcase("breadcrumb", "breadcrumb(trail, separator)——href=none 標示當前頁") }}
+  {% endcall %}
+
+  {# ============================================================== 09 #}
+  {% set c10 %}一個 id 進去，四個出來——而且對不上時不會出聲。{% endset %}
+  {% call lesson("overlay", "09", "Overlay", c10) %}
+    {% call prose() %}
+      <p>
+        <code>ui/overlay.html</code> 裡的每一個都由 Basecoat 自己的 JavaScript 驅動，外殼已經載了它，
+        而且它會在 <code>htmx:afterSwap</code> 時重新掃描——所以由 swap 送進來的浮層不需要任何額外處理就能用。
+      </p>
+      <p>
+        它們共同的東西是 <strong>id 接線</strong>。一個觸發元素和它的面板靠四個相關的 id 互相找到對方，
+        錯一個就靜靜地失敗：面板打得開但永遠不會被唸出來，或者根本打不開。這裡每個 macro 都只收一個
+        <code>id</code> 再自己推導其餘的。這就是它們是 macro 而不是一段可以複製的標記的全部理由。
+      </p>
+      <p>
+        <code>select_menu</code> 和 <code>combobox</code> 把值放在一個<strong>預先填好</strong>的隱藏欄位裡——
+        上游出貨的是 <code>value=""</code> 再用 JS 寫進去，那會讓任何重繪這個片段的來回弄丟已經選好的值。
+        這兩個都不如 <code>select_field</code>：原生的 <code>&lt;select&gt;</code> 一開始就是正確的，
+        而且只花一個元素而不是三十個。
+      </p>
+      <p>
+        兩個都收 <code>multiple=true</code>，而且從那一刻起 <code>selected</code> 收的是一個
+        <strong>list</strong>，不再是單一值。隱藏欄位裡放的是 Basecoat 的 JSON 陣列，
+        <code>multiselect_scripts()</code>——一支腳本，由有這種欄位的那一頁自己載入——在送出時
+        把它改寫成 HTML 一直以來的重複欄位寫法：<code>labels=bug&amp;labels=ui</code>。
+        所以路由那邊完全是平常的樣子：<code>labels: list[str] = Form([])</code>，沒有任何地方需要自己解析。
+        忘了載那支腳本的話，欄位會送出一整串 JSON 字串，換來一個 422——而頁面看起來明明填對了。
+      </p>
+      <p>
+        放在 <code>fieldset</code> 裡的一組 checkbox 送出的東西一模一樣，而且完全不需要腳本。
+        選項在十來個以內時它是更好的答案；超過那個數量，才輪到這兩個。
+      </p>
+    {% endcall %}
+
+    {{ showcase("popover", "popover(id, label, side, align, width)——區塊是內容") }}
+    {{ showcase("dropdown_menu", "dropdown_menu(id, label) 搭配 menu_item / menu_group / menu_separator") }}
+    {{ showcase("select_menu", "select_menu(name, options, selected)") }}
+    {{ showcase("combobox", "combobox(name, options, selected, empty)") }}
+    {{ showcase("select_menu_multiple", "select_menu(name, options, selected, multiple)——需要 multiselect_scripts()") }}
+    {{ showcase("combobox_multiple", "combobox(name, options, selected, multiple)——chips 由 JS 畫") }}
+    {{ showcase("select_menu_field", "visible_label / hint / error——同樣兩支控制項，渲染成 field") }}
+    {{ showcase("drawer", "drawer(id, title, side) 搭配 drawer_trigger(label, target)") }}
+    {{ showcase("command", "command(id, dialog) 搭配 command_group / command_item") }}
+  {% endcall %}
+
+  {# ============================================================== 10 #}
+  {% set c11 %}唯一一個你 extends 而不是 import 的檔案——也就是你正在看的這一頁。{% endset %}
+  {% call lesson("shell", "10", "Shell", c11) %}
+    {% call prose() %}
+      <p>
+        <code>shell.html</code> 沒有 macro，也沒有預覽，因為預覽就是這一頁。
+        它擁有 <code>&lt;head&gt;</code>、深色模式的閃爍防護、資源連結、toaster，
+        以及 header／main／footer 這副骨架。它不擁有的——你的品牌、你的導覽、你的頁尾文字——都是 block。
+      </p>
+      <p>
+        其中一個 block 改變的是頁面的形狀而不是內容。填了 <code>sidebar</code>，
+        骨架就變成側邊欄加一條細的頂列；外殼自己會去測那個 block 是不是空的，
+        並在頁首補上 <code>sidebar_trigger</code>——所以 app 從來不必另外設一個旗標說自己要哪一種版面。
+      </p>
+    {% endcall %}
+
+    {{ snippet("shell", "你的 base.html，完整版") }}
+    {{ snippet("shell_blocks", "外殼開放的每一個 block，依原始碼順序") }}
+  {% endcall %}
+
+  {# ============================================================== 11 #}
+  {% set c12 %}一個後台大約在六個目的地之後就撐不住一排頁首導覽。{% endset %}
+  {% call lesson("sidebar", "11", "Sidebar", c12) %}
+    {% call prose() %}
+      <p>
+        這一頁左邊那條側欄就是這個檔案。底下沒有放進 card 的預覽，而那才是誠實的呈現：
+        面板是 <code>position: fixed</code>，複製一份放在這裡只會蓋住整頁，而不是待在卡片裡。
+        正在跑的那一個就在左邊，產生它的那段呼叫印在下面。
+      </p>
+      <p>
+        一樣是路由名稱、用名字指定的圖示、封閉列舉，簽名裡沒有任何 class 字串。
+        <code>open</code> 只是<em>桌面</em>的起始狀態：在窄螢幕上側欄一律從關閉開始，
+        因為它在那裡是整頁覆蓋的浮層，而一開啟就被自己的導覽蓋住的頁面是 bug，不是偏好。
+      </p>
+      <p>
+        關掉 JavaScript 時，伺服器端渲染的 <code>aria-hidden="false"</code> 讓寬螢幕照樣可以導覽，
+        並在窄螢幕上把浮層藏起來。兩種情況下連結都留在 HTML 裡，所以爬蟲與閱讀模式仍然看得到。
+      </p>
+    {% endcall %}
+
+    {{ snippet("sidebar", "sidebar block，就是這個站填的那一份") }}
+  {% endcall %}
+
+  {# ============================================================== 12 #}
+  {% set c13 %}把 rows 傳進去，空狀態就歸 macro 管。{% endset %}
+  {% call lesson("table", "12", "Table", c13) %}
+    {% call prose() %}
+      <p>
+        <code>columns</code> 是一串 dict——<code>label</code>，需要時再加 <code>align</code> 或
+        <code>width</code>——而 <code>rows</code> 是這支 macro 用來決定要渲染你的內容還是空狀態的東西。
+        這就是它收了一份自己並不迭代的 rows 的全部理由：沒有任何呼叫端要重寫 if-rows-else，
+        也沒有任何一頁能出貨一張只剩表頭的表格。
+      </p>
+      <p>
+        重複的 row 是你迴圈裡的一次 macro 呼叫。在那裡用
+        <code>{% raw %}{% include %}{% endraw %}</code> 等於每一輪都多一次模板查找與一份新的 context，
+        那正是「上手」那一頁的 benchmark 量到的差距。
+      </p>
+    {% endcall %}
+
+    {{ playground("table", tabbed=false) }}
+  {% endcall %}
+
+  {# ============================================================== 13 #}
+  {% set c14 %}兩個 id，傳一次，鍵盤的事歸 Basecoat。{% endset %}
+  {% call lesson("tabs", "13", "Tabs", c14) %}
+    {% call prose() %}
+      <p>
+        哪一個分頁被選取、roving tabindex、方向鍵，全部是 Basecoat 的，而外殼已經載好了它。
+        這支 macro 帶的是那套行為要讀的 aria 契約：一個 <code>[role="tab"]</code>，
+        它的 <code>aria-controls</code> 指到同名 id 的 <code>[role="tabpanel"]</code>。
+        手寫這組配對正好是元件應該替你省掉的那種事。
+      </p>
+      <p>
+        <code>selected</code> 指名一開始就打開的那個分頁，而伺服器知道這次請求是為了哪一個——
+        所以它是一個參數，而不是繪製之後由腳本決定的東西。
+        這一頁每一組旋鈕底下那兩個表示法，用的就是這支 macro。
+      </p>
+    {% endcall %}
+
+    {{ showcase("tabs", "tabs(items, label, selected) / tab_panel(id)——兩支都吃區塊") }}
+  {% endcall %}
+
+  {# ============================================================== next #}
+  {% set lead_next %}十四個檔案，以及把它們全部列在同一頁的那份索引。{% endset %}
+  {% call band("next", "接著讀", lead_next) %}
     {% call grid(cols=2, gap=4) %}
+      {% set d_sheet %}<a href="{{ url_for(request, "cheatsheet") }}">每一支 macro，一個檔案一張表，含它吃不吃區塊，以及搭配的 htmx 屬性</a>{% endset %}
       {% set d_learn %}<a href="{{ url_for(request, "learn") }}">各個零件怎麼接，以及 htmx 送出什麼</a>{% endset %}
-      {{ defs("接著讀", [
+      {{ defs("文件的其他部分", [
+        ("速查表", d_sheet),
         ("上手", d_learn),
+      ]) }}
+      {{ defs("原始碼", [
         ("examples/fjkit-demo/", "同一批 macro 放在一支能跑的 app 裡，在 repo 中"),
         ("src/fjkit/templates/ui/", "macro 原始碼——每一個都以自己的簽名註解開頭"),
         ("src/fjkit/static/src/fjkit.css", "每個 variant 背後那張 token 表"),
-      ]) }}
-      {{ defs("找不到想要的 macro 時", [
-        ("先看參數", "多數需求其實是一個已經存在的關鍵字——size、tone、padded、align"),
-        ("直接傳過去", "任何多的關鍵字都會變成屬性，這涵蓋了所有 hx-*、aria-* 與 data-*"),
-        ("fjkit eject", "把元件複製進你的 app 再改——代價是之後上游的修正你拿不到"),
-        ("開一張 issue", "被擋下來的 class 指名了那個還不存在的元件；那就是最好的回報內容"),
       ]) }}
     {% endcall %}
   {% endcall %}
@@ -328,4 +492,7 @@
 
 {% block page_scripts %}
   <script defer src="{{ fjkit_static('components.js') }}"></script>
+  {# The reveal showcase is a working control, so the page opts into its script
+     the same way an app's sign-in page does. #}
+  {{ reveal_scripts() }}
 {% endblock %}

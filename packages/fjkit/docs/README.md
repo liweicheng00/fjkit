@@ -6,7 +6,7 @@ swaps, composed as Jinja macros in the same codebase as your handlers — with n
 front-end toolchain on your side.
 
 **Learn it by operating it:** the
-[**published site**](https://liweicheng00.github.io/fjkit/) is three pages in
+[**published site**](https://liweicheng00.github.io/fjkit/) is five pages in
 two languages — English at the root, 中文 under
 [`zh/`](https://liweicheng00.github.io/fjkit/zh/) — two of which you can drive. Set macro parameters and watch the real output. Fire genuine htmx
 requests and watch the swap land. Turn the brand knob and watch the page
@@ -18,7 +18,7 @@ Rebuild it from this checkout with:
 uv run python packages/fjkit/docs/workbench/build.py
 ```
 
-Three pages and their shared assets, written to `docs/` at the repo root —
+Five pages and their shared assets, written to `docs/` at the repo root —
 which is what GitHub Pages serves (*Settings → Pages → Deploy from a branch →
 `main` / `docs`*):
 
@@ -26,15 +26,18 @@ which is what GitHub Pages serves (*Settings → Pages → Deploy from a branch 
 |---|---|---|
 | `docs/index.html` | Introduction | the landing page — what fjkit is, who it is for, five decisions, what ships in the wheel |
 | `docs/learn.html` | Learn | wiring, the htmx exchange, hx-target/hx-swap/hx-trigger, partials, `hx-swap-oob`, `hx-indicator`/`hx-disabled-elt`, rebranding, `fjkit check` |
-| `docs/components.html` | Components | every macro, live, with the Jinja call and the HTML it emits |
+| `docs/plugins.html` | Plugins | the extension seam — middleware, exception handlers and template globals in one registered object, and the session plugin that needed it |
+| `docs/components.html` | Components | every macro, live, with the Jinja call and the HTML it emits — one section per file in `src/fjkit/templates/ui/`, in the order the directory lists them |
+| `docs/cheatsheet.html` | Cheatsheet | the index — every macro with its full signature, whether it is called with a block and what goes inside it, plus the shell's blocks, the template globals and the htmx attributes. Rows come from `workbench/cheatsheet.py`, one source for both languages |
 | `docs/assets/dist/`, `docs/assets/vendor/` | — | the default pack's `fjkit-vega.css`, htmx and Basecoat's JS, byte-identical to the wheel |
 | `docs/assets/brand.css` | — | the site's own stylesheet — tokens, typography, and the gaps |
-| `docs/zh/index.html`, `docs/zh/learn.html`, `docs/zh/components.html` | 中文 | the same three pages, translated — `templates/zh/`, one directory deeper, sharing every asset |
+| `docs/zh/*.html` | 中文 | the same five pages, translated — `templates/zh/`, one directory deeper, sharing every asset |
 
 **Two languages, one skeleton.** `base.html`, `_parts.html`, the request
-diagram and every `assets/*.js` file are shared; `templates/zh/` holds the three
-translated pages and `build.py` holds the chrome strings (rail headings, the
-footer, the diagram's labels). Each language is one `build_environment()` with
+diagram and every `assets/*.js` file are shared; `templates/zh/` holds the five
+translated pages, `build.py` holds the chrome strings (rail headings, the
+footer, the diagram's labels), and `cheatsheet.py` holds the macro index in both
+languages at once, so the two indexes cannot describe different macros. Each language is one `build_environment()` with
 its own `static_url` — `assets` at the root, `../assets` from `zh/` — because
 GitHub Pages serves the site from `/fjkit/`, where an absolute link leaves the
 site. `test_docs_site.py` checks that on the built files: no link starts with

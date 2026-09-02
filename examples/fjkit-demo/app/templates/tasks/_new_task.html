@@ -1,0 +1,16 @@
+{#
+  The create form. A success replaces `#board` and resets the form; a rejection is a
+  422 drawn under the fields by `js/errors.js`.
+#}
+{% from "ui/button.html" import button %}
+{% from "ui/form.html" import form, field_row, text_field, select_field %}
+
+{% call form(action=url_for(request, "tasks_create"), target="#board", reset_on_success=true,
+             encoding="json", id="new-task", hx_disabled_elt="find button[type=submit]") %}
+  {% call field_row("wide-then-actions") %}
+    {{ text_field("title", label="New task", placeholder="What needs doing?", required=true) }}
+    {{ select_field("priority", label="Priority", options=priority_options, selected="normal") }}
+    {{ text_field("owner", label="Owner", placeholder="unassigned") }}
+    {{ button("Add", variant="primary", type="submit", icon_name="plus") }}
+  {% endcall %}
+{% endcall %}

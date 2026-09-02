@@ -1,14 +1,6 @@
-"""Snapshot what the app does, so a rewrite can be checked against it.
+"""Write `tests/baseline/routes.json`: status codes, links, fields, htmx wiring and words for each probe.
 
     uv run python scripts/capture_baseline.py
-
-Run this BEFORE replacing an implementation, never after: a baseline captured
-from the new code just asserts that the new code equals itself.
-
-What it records is *semantic*, not byte-level. The markup is expected to change
-— that is the point of the rewrite. What must not change is the route set, the
-status codes, the links, the form fields, the htmx wiring, and the domain data
-on the page.
 """
 
 from __future__ import annotations
@@ -22,19 +14,10 @@ from fastapi.testclient import TestClient
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "tests" / "baseline" / "routes.json"
 
-#: Sent on the probes that only htmx ever calls. Every request htmx makes
-#: carries it, so a bare request to a swap endpoint models a client that does
-#: not exist — and under `render_mode="auto"` it is answered with the model
-#: rather than the fragment.
-#:
-#: This does not weaken the comparison. The pre-fjkit app read no htmx headers
-#: at all, so it would have returned exactly the same markup with or without
-#: this one: the baseline the probes are checked against is unchanged, and
-#: every field in `EXACT` is still compared exactly.
+#: Header sent on the probes that hit swap endpoints.
 HTMX = {"HX-Request": "true"}
 
-#: Each entry is a fresh client, so a mutating call cannot contaminate the next
-#: snapshot. `TaskService` seeds deterministically, so repeated runs agree.
+#: (method, url, JSON body, headers). Each probe runs against a fresh app.
 PROBES: list[tuple[str, str, dict | None, dict | None]] = [
     ("GET", "/", None, None),
     ("GET", "/tasks", None, None),
@@ -55,7 +38,7 @@ SCRIPT = re.compile(r"<(script|style)\b.*?</\1>", re.DOTALL | re.IGNORECASE)
 
 
 def signature(html: str) -> dict:
-    """The parts of a response a rewrite must preserve."""
+    """Extract the links, fields, htmx attributes, ids, words and row count from `html`."""
     body = SCRIPT.sub(" ", html)
     words = TAG.sub(" ", body).split()
 
@@ -67,8 +50,6 @@ def signature(html: str) -> dict:
         "hx_urls": sorted(set(re.findall(r'hx-(?:get|post|delete|put|patch)="([^"]*)"', html))),
         "form_actions": sorted(set(re.findall(r'<form[^>]*hx-post="([^"]*)"', html))),
         "ids": sorted(set(re.findall(r'\bid="([^"]*)"', html))),
-        # Every word on the page, as a set. Used to assert nothing was lost;
-        # additions (a changed footer, new copy) are allowed.
         "words": sorted(set(words)),
         "row_count": html.count("<tr>"),
     }
@@ -76,9 +57,9 @@ def signature(html: str) -> dict:
 
 def capture(create_app) -> dict:
     snapshot: dict = {}
-    for method, url, data, headers in PROBES:
+    for method, url, body, headers in PROBES:
         with TestClient(create_app()) as client:
-            response = client.request(method, url, data=data, headers=headers)
+            response = client.request(method, url, json=body, headers=headers)
             entry: dict = {"status": response.status_code}
             if response.headers.get("content-type", "").startswith("text/html"):
                 entry |= signature(response.text)

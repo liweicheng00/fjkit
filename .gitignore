@@ -27,3 +27,6 @@ packages/fjkit/docs/workbench/data.json
 
 # 私人目標文件 — 刻意不進版控
 /goal/
+
+# Agent worktrees — embedded checkouts, never part of a commit.
+.claude/worktrees/

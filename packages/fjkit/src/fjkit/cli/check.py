@@ -12,6 +12,16 @@ Two families of violation:
 2. **Non-component classes** — anything that is not part of the published
    component vocabulary. Layout is a component too (`stack`, `row`, `grid`),
    so there is no legitimate reason for an app template to say `flex gap-4`.
+
+Two things are deliberately *not* checked.
+
+**Jinja comments.** `{# … #}` never reaches the browser, so a colour named
+inside one cannot break a rebrand. Scanning them made the rule unable to
+describe itself: `nav.html`'s signature comment explains why the brand tile
+must not say `text-white`, and that sentence was a violation.
+
+**An ejected file's classes.** A copy made by `fjkit eject` is judged by the
+kit's rules, not the app's — see `_ejected_paths`.
 """
 
 from __future__ import annotations
@@ -20,7 +30,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from fjkit.cli.ejected import stale_ejects
+from fjkit.cli.ejected import find_ejected, stale_ejects
 from fjkit.cli.vocabulary import component_classes, emitted_classes
 
 #: Tailwind palette hues used as a colour utility: bg-blue-600, text-red-500 …
@@ -50,6 +60,19 @@ CLASS_ATTR = re.compile(r"""class\s*=\s*"([^"]*)\"""", re.DOTALL)
 #: "never build a class by interpolation" rule is what covers that case.
 _JINJA_EXPR = re.compile(r"\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}", re.DOTALL)
 
+#: A Jinja comment, blanked out before either family of check runs.
+_JINJA_COMMENT = re.compile(r"\{#.*?#\}", re.DOTALL)
+_NOT_NEWLINE = re.compile(r"[^\n]")
+
+
+def _without_comments(text: str) -> str:
+    """The template with every `{# … #}` replaced by spaces of the same shape.
+
+    Blanked rather than removed so that every remaining character keeps its line
+    number — the violation report is only useful if it points at the right line.
+    """
+    return _JINJA_COMMENT.sub(lambda m: _NOT_NEWLINE.sub(" ", m.group(0)), text)
+
 
 @dataclass(frozen=True, slots=True)
 class Violation:
@@ -63,20 +86,47 @@ class Violation:
         return f"  {rel}:{self.line}  {self.token!r}\n      {self.reason}"
 
 
+def _ejected_paths(template_dir: Path) -> frozenset[Path]:
+    """The files `fjkit eject` wrote, which the class rule does not apply to.
+
+    The escape hatch has to be walkable. A kit macro writes utility classes —
+    that is its job, and it is the reason an app never has to — so a copy of one
+    fails the closed-vocabulary rule the instant it lands. Judging an ejected
+    file by the app's rules means the supported way to change a component is to
+    produce a red build, which is the same as not supporting it.
+
+    So a stamped file is judged by the kit's rules instead: colours still belong
+    to the token layer (that survives an eject — a hue in an ejected macro breaks
+    a rebrand exactly as it would anywhere else), and the closed vocabulary does
+    not apply, because the closed vocabulary is a promise the kit makes *to* the
+    app about classes the app did not write.
+
+    The whole class family is dropped rather than just the utilities: without a
+    built stylesheet `emitted_classes()` is empty and every utility looks like a
+    typo, so "allow the utilities, still catch the typos" would report a clean
+    eject as broken on any machine that has not run `fjkit build-css`.
+    """
+    return frozenset(e.path for e in find_ejected(template_dir))
+
+
 def check_templates(template_dir: Path) -> list[Violation]:
     """Every violation in an app's template directory, in file order."""
     allowed = component_classes()
     emitted = emitted_classes()
+    ejected = _ejected_paths(template_dir)
     violations: list[Violation] = []
 
     paths = sorted(template_dir.rglob("*.html")) + sorted(template_dir.rglob("*.jinja"))
     for path in paths:
-        text = path.read_text(encoding="utf-8")
+        text = _without_comments(path.read_text(encoding="utf-8"))
 
         for lineno, line in enumerate(text.splitlines(), 1):
             for pattern, reason in COLOUR_CHECKS:
                 for match in pattern.finditer(line):
                     violations.append(Violation(path, lineno, match.group(0), reason))
+
+        if path in ejected:
+            continue
 
         for match in CLASS_ATTR.finditer(text):
             lineno = text.count("\n", 0, match.start()) + 1

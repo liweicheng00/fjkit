@@ -62,8 +62,16 @@
     brand section of the docs. Empty by default.
   #}
   {% block stylesheets %}{% endblock %}
+  {#
+    htmx's default handling: 2xx/3xx swap, 4xx/5xx do not. A 422 is read by
+    `js/errors.js` in `htmx:beforeSwap` instead; 204 is what `fjkit.errors`
+    answers a swap with when there is only a toast to raise.
+  #}
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="{{ fjkit_static('vendor/htmx/htmx.min.js') }}"></script>
   <script defer src="{{ fjkit_static('vendor/basecoat/js/all.min.js') }}"></script>
+  {# Draws a 422 under the fields of the form that sent it. After htmx: it listens to htmx's events. #}
+  <script defer src="{{ fjkit_static('js/errors.js') }}"></script>
   {% block head %}{% endblock %}
 </head>
 {#
@@ -104,13 +112,17 @@
   </div>
 
   {#
-    Where a message that outlived a redirect arrives.
+    Where a message arrives — one raised on this very response, or one that
+    outlived a redirect.
 
-    `flash` is not something a route passes in — it comes from `FlashPlugin`'s
-    context processor, so a page that has never heard of flash messages still
-    shows one. `is defined` rather than a truth test: without the plugin the
-    name does not exist at all, and `strict_undefined` would make that an error
-    on every page of every app that never wanted this.
+    `fjkit_messages()` is a global rather than a context key, so a route
+    passes nothing in and a page that has never heard of messages still shows
+    one. `FlashPlugin` queues its cookie into the same place, which is why
+    there is one loop here and not two.
+
+    Iterating is what marks them delivered — see `fjkit.messages._Queue`. So
+    this `{% for %}` is load-bearing: it is what lets the flash cookie be
+    cleared, and asking `{% if %}` deliberately does not count.
 
     The region is rendered whether or not anything is in it. It is one empty
     element, and always having it is what lets a toast appear on a page that
@@ -118,14 +130,41 @@
   #}
   {% block toasts %}
     {% call toaster() %}
-      {% if flash is defined and flash %}
-        {% for message in flash %}
-          {{ toast(message.title, message.text, category=message.category) }}
-        {% endfor %}
-      {% endif %}
+      {% for message in fjkit_messages() %}
+        {{ toast(message.title, message.text, category=message.category) }}
+      {% endfor %}
     {% endcall %}
   {% endblock %}
 
+  {#
+    A message raised on a response that only swapped a fragment has nowhere to
+    render: the toaster is on the page, not in the fragment. `fjkit.messages`
+    sends those as `HX-Trigger`, and this turns the event back into a toast.
+
+    Two reasons it is a listener and not markup. htmx reads `HX-Trigger` in
+    `handleAjaxResponse` *before* it consults `responseHandling`, so this path
+    still works on a 500 — which is exactly the response that most needs to say
+    something. And Basecoat exposes its toaster as a method on the element
+    (`#toaster.toast({…})`) rather than as a document-level event listener, so
+    something has to make the call.
+
+    `detail.messages`, because `fjkit.messages` sends an object. htmx hands a
+    JSON object straight through as `event.detail` but wraps anything else,
+    arrays included, as `{value: …}` — a difference that is invisible in a test
+    and silent in a browser, where it shows up as an empty toast.
+
+    ~180 bytes. CHARTER §7 budgets client JS per page; this listener and
+    `js/errors.js` in the head are what fjkit adds beyond the two vendored
+    files. `errors.js` dispatches this same event for a message that has no
+    field to land on, so there is one path into the toaster and not two.
+  #}
+  <script>
+    document.body.addEventListener({{ fjkit_toast_event | tojson }}, (event) => {
+      const toaster = document.getElementById("toaster");
+      if (!toaster || !toaster.toast) return;
+      for (const message of event.detail?.messages ?? []) toaster.toast(message);
+    });
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

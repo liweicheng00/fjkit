@@ -1,33 +1,26 @@
 {#
-  The one fragment that is not out-of-band: it is what `hx-target` names, so it
-  arrives the ordinary way and carries no `hx-swap-oob`. Marking it too would
-  be a bug — htmx lifts every out-of-band element out of the response before
-  swapping the remainder, and the remainder would be nothing.
+  The results table. Two routes answer with it in band — a query, and a pick —
+  and it subscribes to `task-changed` because a row shows a status and no reply
+  on this page contains the table.
 
-  The rows are `tasks/macros.html`'s, with this page's own action in the
-  trailing cell instead of the board's. A search result is a place to find a
-  task, not a place to advance or delete one — but it is a place to open one,
-  and that chevron is the second swap: it arrives inside this fragment and
-  targets `#search-detail`, which arrived out-of-band in the same reply.
-
-  Nothing registers it. htmx processes every node it swaps in, so a row
-  rendered a keystroke ago is live the moment it lands.
+  It must not hear `task-selected`. A pick already replaces it; subscribing as
+  well would fetch it a second time for the same click.
 #}
 {% from "ui/data.html" import card %}
 {% from "ui/table.html" import table %}
-{% from "tasks/macros.html" import task_row, TASK_COLUMNS %}
-{% from "search/macros.html" import detail_action %}
+{% from "search/macros.html" import match_row, stamp, subscribe, MATCH_COLUMNS %}
+{% set selected_id = selected_id | default(none) %}
 
-<div id="search-matches">
+<div id="search-matches" {{ subscribe(request, "search_matches", ["task-changed"], with_query=true) }}>
   {% call card(matches | length ~ (" match" if matches | length == 1 else " matches"),
                "“" ~ query ~ "”" if query else "everything on the board",
-               padded=false) %}
-    {% call table(TASK_COLUMNS, rows=matches,
+               actions=stamp(rendered_label), padded=false) %}
+    {% call table(MATCH_COLUMNS, rows=matches,
                   empty_title="No match",
                   empty_description="Nothing on the board mentions “" ~ query ~ "”.",
                   empty_icon="search") %}
       {% for task in matches %}
-        {{ task_row(request, task, actions=detail_action(request, task)) }}
+        {{ match_row(request, task, selected_id) }}
       {% endfor %}
     {% endcall %}
   {% endcall %}

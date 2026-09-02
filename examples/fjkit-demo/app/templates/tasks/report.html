@@ -1,11 +1,4 @@
-{#
-  The streamed page.
-
-  Nothing special in the markup — streaming is a property of how the route
-  renders it (@render(..., stream=True)), not of the template. The one thing that
-  matters: the expensive loop is at the *end*, so <head> and the shell are
-  already on the wire while the rows are still being generated.
-#}
+{# The streamed report page; the row loop is at the end. #}
 {% extends "base.html" %}
 {% from "ui/data.html" import badge, card %}
 {% from "ui/layout.html" import page_header %}

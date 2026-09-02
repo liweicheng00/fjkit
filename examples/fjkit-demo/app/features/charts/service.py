@@ -1,22 +1,4 @@
-"""Business logic for the charts page: numbers in, figures out.
-
-No `Request`, no template name, and — the one this feature adds to the usual
-list — **no colour**. A trace built here carries its numbers and its shape;
-the series colours are Plotly's own, applied in the browser.
-
-The split that keeps this honest, and the rule to apply when adding a chart:
-
-    Python decides the shape.   The browser decides the colour.
-
-`hole`, `textposition`, `mode`, `dtick` — shape, and they belong in the figure
-because they follow from the data or from what the chart is trying to say. A
-hue never does: it is a fact about the theme, and the theme is not knowable
-here.
-
-Bucketing lives here rather than in the template for the reason the layer table
-gives, with a sharper version for charts: a `{% for %}` loop that sums into a
-dict is a query, and a query in a template is one nobody will ever profile.
-"""
+"""Build the charts page's figures from the task list. No colours are set here."""
 
 from __future__ import annotations
 
@@ -34,21 +16,12 @@ STATUS_LABEL: dict[Status, str] = {
     Status.DONE: "Done",
 }
 
-#: How many days the trend chart covers. Short on purpose: the seed data spans
-#: about two days, and a 90-day axis of zeroes is a chart that lies about how
-#: much it knows.
+#: Days covered by the trend and intake charts.
 TREND_DAYS = 7
 
 
 def status_mix(tasks: list[Task]) -> Chart:
-    """The board in one donut.
-
-    Labels sit outside the slices, and that is not a taste call: Plotly's pie
-    `textfont` defaults to #444 and does **not** inherit `layout.font`, so
-    on-slice numbers come out dark grey on a saturated fill — unreadable in
-    dark mode. Outside, they land on the card, where the one foreground colour
-    the theme already resolved is correct.
-    """
+    """Donut of tasks by status. Labels sit outside the slices."""
     counts = Counter(task.status for task in tasks)
     statuses = [status for status in Status if counts[status]]
 
@@ -77,12 +50,7 @@ def status_mix(tasks: list[Task]) -> Chart:
 
 
 def workload(tasks: list[Task], grouping: Grouping) -> Chart:
-    """One stacked bar per owner (or per priority), split by status.
-
-    One trace per status rather than one per bucket: that is what makes the
-    stack segments line up with the legend, and it is why the x axis can change
-    under the same figure shape when the control switches.
-    """
+    """Stacked bar per owner or priority, one trace per status."""
     if grouping is Grouping.OWNER:
         key, buckets, label = (lambda t: t.owner), sorted({t.owner for t in tasks}), "owner"
     else:
@@ -110,9 +78,6 @@ def workload(tasks: list[Task], grouping: Grouping) -> Chart:
     return Chart(
         id="chart-workload",
         title=f"Workload by {label}",
-        # No colour named in the copy. The palette is Plotly's, so "a tall bar
-        # of grey" was a sentence that stopped being true the moment the roles
-        # came out — and nothing would have caught it but reading the page.
         description="Stacked by status: the height is what someone is holding, the split is how much is finished.",
         summary=_sentence(len(tasks), totals, unit=f"across {len(buckets)} {label}s"),
         figure=figure_of(fig),
@@ -120,12 +85,7 @@ def workload(tasks: list[Task], grouping: Grouping) -> Chart:
 
 
 def created_trend(tasks: list[Task], days: int = TREND_DAYS, now: datetime | None = None) -> Chart:
-    """Tasks created per day.
-
-    `now` is a parameter with a default rather than a call to `datetime.now()`
-    in the body, so a test can pin the window instead of asserting on whatever
-    day it happens to run.
-    """
+    """Line of tasks created per day over the last `days` days."""
     today = (now or datetime.now(UTC)).date()
     window = [today - timedelta(days=offset) for offset in range(days - 1, -1, -1)]
     counts = Counter(task.created_at.date() for task in tasks)
@@ -159,7 +119,7 @@ def created_trend(tasks: list[Task], days: int = TREND_DAYS, now: datetime | Non
 
 
 def owner_share(tasks: list[Task]) -> Chart:
-    """Who is carrying the board."""
+    """Donut of tasks by owner."""
     counts = Counter(task.owner for task in tasks)
     owners = sorted(counts, key=lambda owner: (-counts[owner], owner))
 
@@ -188,11 +148,7 @@ def owner_share(tasks: list[Task]) -> Chart:
 
 
 def intake(tasks: list[Task], days: int = TREND_DAYS, now: datetime | None = None) -> Chart:
-    """Created per day against how many of those are still open.
-
-    Two series over the same window, which is what makes the gap between the
-    lines readable as a backlog rather than as two unrelated numbers.
-    """
+    """Two lines over the same window: tasks created per day, and how many are still open."""
     today = (now or datetime.now(UTC)).date()
     window = [today - timedelta(days=offset) for offset in range(days - 1, -1, -1)]
     created = Counter(task.created_at.date() for task in tasks)
@@ -233,21 +189,11 @@ def intake(tasks: list[Task], days: int = TREND_DAYS, now: datetime | None = Non
 
 
 def oldest_open(tasks: list[Task], limit: int = 5, now: datetime | None = None) -> Chart:
-    """The oldest unfinished tasks, as a horizontal bar.
-
-    `orientation="h"` is not a field `PlotlyTrace` types — it rides the
-    `extra="allow"` tail. That is this chart's second job: it is the demo that
-    the tail actually works, and that reaching past the typed subset costs
-    nothing at the call site.
-
-    A horizontal bar is also the only honest way to show a ranking whose labels
-    are sentences. Rotated x-axis text is a chart that has given up.
-    """
+    """Horizontal bar of the `limit` oldest open tasks, by age in hours."""
     moment = now or datetime.now(UTC)
     open_tasks = [task for task in tasks if task.status is not Status.DONE]
     ranked = sorted(open_tasks, key=lambda task: task.created_at)[:limit]
-    # Plotly draws the first entry at the bottom, so the oldest goes last for
-    # the eye to find it at the top.
+    # Plotly draws the first entry at the bottom; reversed so the oldest is on top.
     ranked.reverse()
 
     ages = [round((moment - task.created_at).total_seconds() / 3600, 1) for task in ranked]
@@ -272,7 +218,7 @@ def oldest_open(tasks: list[Task], limit: int = 5, now: datetime | None = None) 
 
 
 def build(tasks: list[Task], grouping: Grouping) -> list[Chart]:
-    """Everything the page shows, in the order it shows it."""
+    """All charts the page shows, in page order."""
     return [
         status_mix(tasks),
         workload(tasks, grouping),
@@ -284,20 +230,12 @@ def build(tasks: list[Task], grouping: Grouping) -> list[Chart]:
 
 
 def _clip(text: str, width: int = 34) -> str:
-    """Axis labels are not the place to read a sentence; the hover and the
-    board are."""
+    """Shorten `text` to `width` characters with an ellipsis."""
     return text if len(text) <= width else text[: width - 1].rstrip() + "…"
 
 
 def _integer_axis(fig: go.Figure, stacked_totals: list[float]) -> None:
-    """Integer ticks for integer data, decided here because the data is here.
-
-    Plotly will happily label a count "1.5". Which ticks are legitimate is a
-    fact about the numbers, not a drawing preference, so it is settled once by
-    the side that has the numbers rather than re-derived by whatever draws
-    them. `dtick=1` only while the axis is short enough for that to be
-    readable; the format alone covers the rest.
-    """
+    """Use integer y ticks when every value is an integer; `dtick=1` when the peak is at most 10."""
     if not all(float(value).is_integer() for value in stacked_totals):
         return
     peak = max(stacked_totals, default=0)
@@ -305,12 +243,7 @@ def _integer_axis(fig: go.Figure, stacked_totals: list[float]) -> None:
 
 
 def _sentence(total: int, parts: list[tuple[str, int]], unit: str | None = None) -> str:
-    """The text alternative, assembled from the same counts the traces got.
-
-    A chart's accessible name is the one string that must not be written by
-    hand next to the data: hand-written, it describes the board as it was on
-    the day someone typed it.
-    """
+    """Build the chart's text summary from its counts."""
     head = f"{total} tasks" + (f" {unit}" if unit else "")
     if not parts:
         return f"{head}. Nothing to plot yet."

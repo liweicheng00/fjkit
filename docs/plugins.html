@@ -11,10 +11,12 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1787416553">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788337205">
   <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
-  <script defer src="assets/vendor/htmx/htmx.min.js?v=1786876367"></script>
-  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1786876367"></script>
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
+  <script defer src="assets/js/errors.js?v=1787594535"></script>
   <meta name="description" content="Add middleware, an exception handler or a value every template gets, in one object registered in one place — and the session plugin that was the first to need it.">
   <meta property="og:title" content="fjkit plugins">
   <meta property="og:description" content="Add middleware, an exception handler or a value every template gets, in one object registered in one place — and the session plugin that was the first to need it.">
@@ -42,6 +44,10 @@ fjkit
     <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>Components</span>
     </a>
   </li>
+        <li>
+    <a href="cheatsheet.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>      <span>Cheatsheet</span>
+    </a>
+  </li>
 </ul>
   </div>
 <div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
@@ -65,7 +71,15 @@ fjkit
     </a>
   </li>
         <li>
+    <a href="plugins.html#messages">      <span>Messages: three layers</span>
+    </a>
+  </li>
+        <li>
     <a href="plugins.html#write">      <span>The flash plugin</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#errors">      <span>When a form is rejected</span>
     </a>
   </li>
         <li>
@@ -113,13 +127,14 @@ fjkit
 <h2 class="text-lg font-semibold tracking-tight">What a plugin is</h2><p class="text-muted-foreground text-sm">Two contribution points, because the kit has two moments.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         A macro covers what a page draws. It does not cover what happens before the handler runs, or
-        what every template should know without a route passing it along. Sessions need both. So do
-        flash messages, locales and feature flags.
+        what every template should know without a route passing it along. Sessions need both.
+        Locales and feature flags need the second. A flash message needs only the first.
       </p>
       <p>
         A plugin is one object with two optional methods. <code>mount()</code> runs when the app is
         constructed. <code>extend()</code> runs when the Jinja environment is built. Both are
-        optional — a plugin that only puts a value in every template writes only the second.
+        optional — a plugin that only puts a value in every template writes only the second, and one
+        that only touches the request on its way past writes only the first.
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">config = FjkitConfig(
@@ -213,7 +228,7 @@ mount_fjkit(app, config)</pre>
         it, the clash is a startup error naming both.
       </p>
       <p>
-        <code>add_template_dir()</code> is how a plugin that ships UI ships it — section 07 is the
+        <code>add_template_dir()</code> is how a plugin that ships UI ships it — section 09 is the
         worked example. One thing goes with it: the Tailwind build scans an explicit list of
         directories in <code>fjkit.css</code>, so a plugin inside the kit adds its template
         directory to that list. Miss it and nothing fails — the templates render, every utility
@@ -385,8 +400,131 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
 </section></div></div>
 <hr class="border-border">
 
-<div id="write">
+<div id="messages">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<span class="badge" data-variant="secondary">fjkit.messages</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Messages: three layers</h2><p class="text-muted-foreground text-sm">One message, three layers — and only the top one needs a secret.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Showing a line of text to the person who made this request is not one feature. It is three,
+        stacked: the surface that draws it, the way it gets onto a response, and the way it survives
+        a redirect. Only the last one needs a signing secret, and that is the whole reason one of
+        them is a plugin and the other two are not.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The three layers</h3><p>Two of them are core, because neither of them needs anything from you.</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">Layer</th>
+              <th class=" ">Where it lives</th>
+              <th class=" ">Core or plugin</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">the surface</td>
+          <td class="">ui/feedback.html&#39;s toaster region, drawn by ui/shell.html on every page whether or not anything is in it</td>
+          <td class=""><span class="badge" data-variant="secondary">core</span></td>
+        </tr>
+        <tr>
+          <td class="font-medium">onto this response</td>
+          <td class="">fjkit.messages — messages.add(request, …), from a route, a service or an exception handler</td>
+          <td class=""><span class="badge" data-variant="secondary">core</span></td>
+        </tr>
+        <tr>
+          <td class="font-medium">past a redirect</td>
+          <td class="">fjkit.flash — a short-lived signed cookie, section 07</td>
+          <td class=""><span class="badge" data-variant="info">plugin</span></td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="anywhere that has the request" data-lang="python">from fjkit import messages
+
+messages.add(request, &#34;Saved&#34;, category=&#34;success&#34;)
+messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;, category=&#34;error&#34;)</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        No plugin, no secret, no configuration — which is the point of drawing the line here. Signing
+        a cookie needs a secret, and requiring one from every app, including one with no forms and
+        nothing to say, would end <code>mount_fjkit(app)</code> working with no config at all.
+        Everything that does not need a secret is core.
+      </p>
+      <p>
+        The third layer is not a superset of the second, either. A redirect replaces the page, so the
+        document that would have shown the message is gone before the response arrives and a cookie
+        is the only thing that crosses. For a response that is <em>not</em> a redirect that same
+        cookie is the wrong tool — a round trip for a message that is about to be rendered anyway. So
+        the two are layered rather than merged: <code>FlashPlugin</code> queues into
+        <code>fjkit.messages</code>, and the shell has one loop instead of one per delivery
+        mechanism.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>How it reaches the browser</h3><p>@render picks the channel. The caller never has to know which.</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">What the response is</th>
+              <th class=" ">The channel</th>
+              <th class=" ">What draws it</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">a full page render</td>
+          <td class="">the context</td>
+          <td class="">the shell&#39;s toaster region, straight into the markup</td>
+        </tr>
+        <tr>
+          <td class="font-medium">a fragment, an htmx swap</td>
+          <td class=""><span class="badge" data-variant="info">HX-Trigger</span></td>
+          <td class="">the shell&#39;s listener, which turns the event back into a toast</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        A header rather than markup, because a fragment has no toaster in it: an htmx swap replaces
+        one region, and the region a toast belongs in is somewhere else on the page. It also works on
+        a response htmx will not swap at all — htmx reads <code>HX-Trigger</code> in
+        <code>handleAjaxResponse</code> <em>before</em> it consults <code>responseHandling</code> for
+        the status code, so a 422 or a 500 can still raise a toast on the page the person is looking
+        at. That is the entire delivery mechanism for section 08.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Worth knowing</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>fjkit_messages() is a global, not a context key</h4><p>so a route passes nothing in, and a page that has never heard of messages still shows one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>consumed by being iterated</h4><p>      a template that loops over the queue marks it delivered; asking whether there is anything to
+      show does not, because that is not showing it. Section 07 depends on the distinction
+</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>HX-Trigger is merged, not replaced</h4><p>a handler that set an event of its own keeps it — dropping it because a toast happened to be queued is a bug that only appears when both are in play</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>category</h4><p>      <code>info</code>, <code>success</code>, <code>warning</code>, <code>error</code> — a meaning,
+      not a colour. <code>toast()</code> maps each to an icon and a timeout and
+      <code>fjkit.css</code> maps each to a role token, so "error is red" is decided once and
+      survives a rebrand
+</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="write">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
 <span class="badge" data-variant="secondary">fjkit.flash</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">The flash plugin</h2><p class="text-muted-foreground text-sm">A message that outlives the response that raised it.</p>      </div>
@@ -396,11 +534,12 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
         JavaScript involved at all. The cookie jar is the only thing that crosses.
       </p>
       <p>
-        So a flash is written as a short-lived signed cookie, read back on the request that lands,
-        rendered into the next page, and cleared in the same breath — which is why it appears once
-        and not again on reload. <code>ui/shell.html</code> already carries a toaster region and
-        fills it from <code>flash</code>, so registering the plugin is the entire setup and no
-        template in your app changes.
+        So a flash is written as a short-lived signed cookie on the response that redirects, read
+        back on the request that lands, queued into <code>fjkit.messages</code> like any other
+        message, and cleared once it has actually been shown — which is why it appears once and not
+        again on reload. The toaster region in <code>ui/shell.html</code> is already there and
+        already draws that queue, so registering the plugin is the entire setup and no template in
+        your app changes.
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">flash = FlashPlugin(secret=os.environ[&#34;FJKIT_SECRET&#34;])
@@ -416,19 +555,30 @@ config = FjkitConfig(template_dir=…, plugins=(flash, auth))</pre>
         connects them, which is the same reason there is no dependency resolution in section 04.
       </p>
       <p>
-        The whole of its Jinja side is one processor, and the reason it hands over a small object
-        rather than a list is worth knowing: a page load fires more requests than the page — an
-        htmx poll, a prefetch, a stylesheet — and any of them would consume the message if
-        consumption meant "a request carried the cookie". So the queue is marked read when it is
-        <em>iterated</em>, which only happens where the toasts are actually drawn.
+        It has no Jinja side at all — no <code>extend()</code>, and not one context key of its own.
+        The cookie is queued into <code>fjkit.messages</code> from middleware, so a template never
+        learns that a message arrived by cookie rather than from the handler it is rendering. That is
+        what the layering in section 06 buys: one loop in the shell, not one per delivery mechanism.
+      </p>
+      <p>
+        The interesting half is when the cookie is cleared, and the answer is "once
+        <code>messages.shown(request)</code> is true" — that is, once a template iterated the queue
+        or the queue was serialised into an <code>HX-Trigger</code>. A page load fires more requests
+        than the page — an htmx poll, a prefetch — and if "shown" meant "this request carried the
+        cookie", any of them would eat the message and leave the page it belonged to empty.
       </p>
 </div>
-    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="fjkit/flash.py" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
-    setup.add_context_processor(self._read, provides=[&#34;flash&#34;])
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="fjkit/flash.py" data-lang="python">def mount(self, setup: AppSetup) -&gt; None:
+    setup.add_middleware(_FlashMiddleware, plugin=self)
 
-def _read(self, request: Request) -&gt; dict[str, object]:
-    # A queue, not a list: it marks itself read when something iterates it.
-    return {&#34;flash&#34;: _Queue(getattr(request.state, &#34;flash&#34;, ()), request)}</pre>
+# what that middleware does, on the way in and on the way back out:
+carried = self.plugin.load(request)
+if carried:
+    messages.extend(request, carried)      # queued like any other message
+
+response = await call_next(request)
+if carried and messages.shown(request):
+    self.plugin.clear(response)            # only once it reached a page</pre>
 
 
 <div class="flex flex-col gap-3">      <p>
@@ -451,8 +601,132 @@ def _read(self, request: Request) -&gt; dict[str, object]:
 </section></div></div>
 <hr class="border-border">
 
+<div id="errors">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+<span class="badge" data-variant="secondary">fjkit.errors</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">When a form is rejected</h2><p class="text-muted-foreground text-sm">A rejected form used to be a screen of JSON. Now it says what was wrong, under the field, and no route asked for that.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        FastAPI answers a rejected form with <code>{"detail":[{"type":"missing",…}]}</code> and a
+        422. For an API that is exactly right. For a page it is nothing at all: htmx does not swap a
+        4xx, so the person filling the form watches nothing happen, and a plain POST lands them on a
+        screen of JSON.
+      </p>
+      <p>
+        The fix is to notice what that reply already is. It names every field that failed, in the
+        string the form posted it under, with a message a person can read — and the form is still
+        on the page, with everything the person typed still in its controls. Nothing has to be
+        rendered again, remembered, or rebuilt. So <code>mount_fjkit()</code> sends the 422 back as
+        it is, and one script the shell loads, <code>js/errors.js</code>, writes each message under
+        its field. Every handler keeps the signature FastAPI wrote for it, and no route names a
+        template for its rejected state, because there is nothing to render.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What each caller gets</h3><p>The same question @render asks about the wire, asked about a submit that was refused.</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">Who asked</th>
+              <th class=" ">Answer</th>
+              <th class=" ">Why</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">htmx</td>
+          <td class=""><span class="badge" data-variant="info">FastAPI&#39;s 422, drawn by the page</span></td>
+          <td class="">the form is still there; the script writes each message under the control its loc names, and what was typed stays put</td>
+        </tr>
+        <tr>
+          <td class="font-medium">a browser navigation</td>
+          <td class=""><span class="badge" data-variant="info">422 and a page</span></td>
+          <td class="">a plain &lt;form method=&#34;post&#34;&gt; has left the page, so errors/page.html is rendered through your own shell</td>
+        </tr>
+        <tr>
+          <td class="font-medium">a script, curl, a service</td>
+          <td class=""><span class="badge" data-variant="outline">FastAPI&#39;s own reply</span></td>
+          <td class="">— byte for byte, with the status it always had. The same bytes as the first row; only the reader differs</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        The last row is the one worth saying out loud. A caller that did not ask for markup keeps
+        <code>{"detail": …}</code>, because turning an API's error into an HTML page would be a worse
+        bug than the one this fixes. And the first row is the same bytes — which is the whole
+        design. An endpoint that is also somebody's API has one error contract, and the page
+        reads it the way any other client would.
+      </p>
+      <p>
+        What that asks of a route is one thing, and it is the thing FastAPI already asks:
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="invalid-route"
+                aria-selected="true">router.py</button>
+        <button type="button" role="tab" aria-controls="invalid-form"
+                aria-selected="false">_new_task.html</button>
+    </nav><div id="invalid-route" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.post(&#34;/tasks&#34;, name=&#34;tasks_create&#34;)
+@render(&#34;tasks/_board.html&#34;)
+def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
+    service.create(payload)
+    return _board(service)</pre>
+
+<footer>The model is the signature. Its fields, its limits and its OpenAPI schema are one declaration, and a rejected one is FastAPI&#39;s to report — under body, with the field&#39;s name.</footer></div><div id="invalid-form" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="_new_task.html" data-lang="jinja">{% call form(action=url_for(request, &#34;tasks_create&#34;), target=&#34;#board&#34;,
+             reset_on_success=true, encoding=&#34;json&#34;, id=&#34;new-task&#34;) %}
+  {{ text_field(&#34;title&#34;, label=&#34;New task&#34;, required=true) }}
+  {{ select_field(&#34;priority&#34;, label=&#34;Priority&#34;, options=priority_options,
+                  selected=&#34;normal&#34;) }}
+{% endcall %}</pre>
+
+<footer>One form, written once, with nothing about errors in it. The script finds each control by name and the paragraph under it by aria-describedby — the wiring every field macro already does.</footer></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        Keeping what was typed costs nothing because nothing touches it. The old answer to a 422
+        was to render the form again with the values echoed back, and it worked right up until a
+        field held more than one value, or the form needed something only the handler that never
+        ran could have built. Both problems disappear when the form is not rendered again.
+      </p>
+      <p>
+        A message with no field to land on — a whole-model rule, a body that could not be parsed,
+        a bad path segment — is raised as a toast, through the same event <code>fjkit.messages</code>
+        uses. And the next request from the same form clears what the last one said, so an accepted
+        resubmit does not leave a stale rejection on screen.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The rest of the surface</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>a ValidationError your own code raised</h4><p>      left to travel, on purpose. It is the same shape as a rejected form and it is not one: it is
+      equally what <code>Task(**row)</code> failing three layers down in a service looks like, and
+      drawing a bug as a friendly message hides it behind an apology about a field nobody filled in.
+      Declare the model in the signature and FastAPI raises the request-scoped error that <em>is</em>
+      handled
+</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>catch_unexpected_errors</h4><p>      off by default, and that default is the useful one: in development a traceback in the terminal
+      beats a tidy apology in the browser. <code>FjkitConfig.for_production()</code> turns it on,
+      with the other two dev-only knobs. The 422 handler is installed either way — a rejected form is
+      not a bug
+</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>unexpected_error</h4><p>the words that toast says. Leave it and the kit says &lt;em&gt;Something went wrong&lt;/em&gt;; set a &lt;code&gt;Message&lt;/code&gt; to change them once, or a callable &lt;code&gt;(request, exc) -&amp;gt; Message&lt;/code&gt; to pick them per exception. Choose the words from the exception — never put &lt;code&gt;str(exc)&lt;/code&gt; in them, that is the inside of your app</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>errors/page.html</h4><p>the page a failed navigation lands on. Replace it by writing a file at the same path in your own template directory — the same shadowing fjkit eject uses, so there is no separate custom-error-page mechanism to learn</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>js/errors.js</h4><p>the third and last file every page loads, after htmx and Basecoat. It listens to htmx:beforeSwap, so a 422 that is not FastAPI&#39;s list — a route answering with markup of its own — is left alone</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
 <div id="apidocs">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
 <span class="badge" data-variant="secondary">fjkit.apidocs</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">The API console</h2><p class="text-muted-foreground text-sm">Sign in on the page, and every call below goes out as you.</p>      </div>
@@ -549,7 +823,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>its routes are out of your document</h4><p>include_in_schema=False, for the same reason FastAPI keeps /docs out of it: these are a way of reading the API, not part of it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>a call is capped</h4><p>64 KB of body and 30 seconds, both arguments. The console is a reading tool, not a load generator</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>form bodies become fields</h4><p>an Annotated[str, Form()] route gets one input per field rather than a text box, because that is the shape a fjkit app posts most often. A JSON body stays an editable example</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>form bodies become fields</h4><p>an Annotated[str, Form()] route gets one input per field rather than a text box, so nobody is asked to hand-write urlencoding. A JSON body stays a single editable example, prefilled from the schema</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>nothing on the page can read the credential</h4><p>signing in is a form your app defines, not a box to paste a token into — which is the same property that makes the cookie worth having</p>    </section>  </div></div></div>
   </div>
 
@@ -568,6 +842,13 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
   </div>
 
 <div id="toaster" class="toaster" data-align="end"></div>
+  <script>
+    document.body.addEventListener("fjkit:toast", (event) => {
+      const toaster = document.getElementById("toaster");
+      if (!toaster || !toaster.toast) return;
+      for (const message of event.detail?.messages ?? []) toaster.toast(message);
+    });
+  </script>
   <script defer src="assets/data.js?v=0.1.0.dev0"></script>
   <script defer src="assets/common.js?v=0.1.0.dev0"></script>
 </body>

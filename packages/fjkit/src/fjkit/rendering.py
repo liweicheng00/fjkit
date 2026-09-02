@@ -1,30 +1,19 @@
 """`@render` — the handler returns data, the decorator picks the wire format.
 
-Calling `templates.page()` in the body of a handler commits the route to HTML at
-the one place that should still be talking about data, and it costs every route
-two parameters (`request`, `templates`) that exist only to be passed straight
-back out again. Moving the template name onto a decorator leaves a handler that
-reads the request, calls a service and returns a model:
-
     @router.get("/tasks", name="tasks_page")
     @render("tasks/page.html", partial="tasks/_board.html")
     def tasks_page(service: ServiceDep, status: Status | None = None) -> BoardResponse:
         return BoardResponse(...)
 
-The return annotation then does double duty. FastAPI already reads it to infer
-`response_model`, so it documents the JSON; `@render` spreads the same model
-into the template context. One annotation, two representations, and neither is a
-reshaping of the other.
-
-The decorator goes **below** the routing decorator. `@router.get(...)` registers
-whatever function it is handed, so a `@render` above it would decorate a
-function nobody calls.
+The return annotation is both FastAPI's `response_model` and the template
+context. `@render` goes below the routing decorator.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import inspect
+import json
 import sys
 from collections.abc import Callable, Mapping
 from functools import wraps
@@ -32,9 +21,11 @@ from typing import Any, TypeVar, get_type_hints
 
 from fastapi import Request, Response
 
+from fjkit import htmx, messages
 from fjkit.config import RenderMode
+from fjkit.forms import NO_ERRORS
 
-__all__ = ["SCOPE_RENDER_MODE", "render"]
+__all__ = ["SCOPE_RENDER_MODE", "Trigger", "TriggerValue", "render"]
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -56,15 +47,71 @@ _REQUEST = "__fjkit_request"
 _RESPONSE = "__fjkit_response"
 
 
+#: What a route broadcasts alongside its markup: a mapping of event name to
+#: detail, a bare event name, or `None` for "not this time".
+TriggerValue = Mapping[str, Any] | str | None
+
+#: `hx_trigger`, as written on the decorator. A callable is resolved per request
+#: — see `_TriggerSpec` for what it is handed.
+Trigger = TriggerValue | Callable[..., TriggerValue]
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _TriggerSpec:
+    """A `hx_trigger` callable, and the names it asked for.
+
+    The names are read **once**, when the decorator is applied, because a
+    signature does not change between requests and `inspect` is not cheap.
+
+    A callable takes its arguments by name, out of the handler's own resolved
+    parameters plus `result` — what the handler returned. That is what lets the
+    event be written where the route is declared while still reading a path
+    parameter the route only has at request time:
+
+        @render(None, hx_trigger=lambda task_id: {"task-selected": {"id": task_id}})
+        def select_task(service: ServiceDep, task_id: int) -> None: ...
+
+    Declaring `**kwargs` asks for all of them.
+    """
+
+    call: Callable[..., TriggerValue]
+    #: The parameter names, or `None` for a callable that declared `**kwargs`.
+    wants: frozenset[str] | None
+
+    @classmethod
+    def of(cls, trigger: Trigger) -> _TriggerSpec | None:
+        if not callable(trigger):
+            return None
+        params = inspect.signature(trigger).parameters.values()
+        if any(p.kind is p.VAR_KEYWORD for p in params):
+            return cls(trigger, None)
+        return cls(trigger, frozenset(p.name for p in params))
+
+    def resolve(self, result: Any, call_kwargs: Mapping[str, Any]) -> TriggerValue:
+        available = {**call_kwargs, "result": result}
+        if self.wants is None:
+            return self.call(**available)
+        return self.call(**{name: available[name] for name in self.wants if name in available})
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class _Plan:
     """What the decorator was asked to do. Built once, read on every request."""
 
-    template: str
+    template: str | None
     partial: str | None
     mode: RenderMode | None
     stream: bool
     buffer_size: int
+    #: What to put in `HX-Trigger`. A literal value, or a spec resolved per
+    #: request. See `render`.
+    hx_trigger: TriggerValue
+    trigger_spec: _TriggerSpec | None
+    #: The same, for `HX-Trigger-After-Swap`. A separate field rather than a
+    #: header name on one, because a route may raise both and they are not
+    #: interchangeable: the two headers differ in what a listener may read.
+    hx_trigger_after_swap: TriggerValue
+    trigger_after_swap_spec: _TriggerSpec | None
     #: Whether a request that is not from htmx still has markup waiting for it.
     #: Decided once, when the decorator is applied, because it is a property of
     #: the route rather than of the request.
@@ -72,33 +119,75 @@ class _Plan:
 
 
 def render(
-    template: str,
+    template: str | None,
     *,
     partial: str | None = None,
     mode: RenderMode | None = None,
     stream: bool = False,
     buffer_size: int = 64,
+    hx_trigger: Trigger = None,
+    hx_trigger_after_swap: Trigger = None,
 ) -> Callable[[F], F]:
     """Render `template` with whatever the handler returned.
 
     :param template: the full page, or the only template when there is one.
-    :param partial: rendered instead of `template` for an htmx swap, so the
-        page route and its swap endpoint are the same handler (CHARTER A6).
+    `None` for a route that answers with no body at all — the status code and
+    the headers still apply, so it is how a route broadcasts and renders
+    nothing.
+    :param partial: rendered instead of `template` for an htmx swap.
     :param mode: `"html"`, `"json"` or `"auto"` for this route, overriding
-        `FjkitConfig.render_mode`. Leave it `None` to follow the app default,
-        which is `"auto"`: render whenever this caller has markup waiting —
-        htmx gets its fragment, a navigation gets the page — and serialise the
-        model when it does not. A fragment endpoint is therefore the app's API
-        without a second route, while a page route keeps answering a cold
-        navigation in HTML, which is the request it exists for.
+    `FjkitConfig.render_mode`. `"auto"` renders for htmx and for a page
+    route's navigation, and serialises the model otherwise.
     :param stream: render through `templates.stream()` rather than `page()`.
-        For output the user sizes — exports, long report tables.
-    :param buffer_size: chunk size when `stream=True`. Never 0; unbuffered
-        streaming is 65× slower than buffered.
+    :param buffer_size: chunk size when `stream=True`. Never 0.
+    :param hx_trigger: an event to raise in the browser on this response, as
+    `HX-Trigger`. Usually a callable, which is given the handler's own
+    parameters and `result` **by name**:
+
+        @render("selection/_list.html",
+                hx_trigger=lambda task_id: {"task-selected": {"task_id": task_id}})
+
+    so one route answers with its own partial *and* tells the rest of the page
+    what happened — the swap and the broadcast declared in one place, on a
+    route that is otherwise an ordinary partial route.
+
+    A `str` names an event with no detail. `None` — as the argument, or
+    returned by the callable — raises nothing, which is how a route broadcasts
+    only sometimes. Merged with any `HX-Trigger` the handler set on its
+    `Response` and with a queued toast, so none of the three can silently drop
+    another.
+
+    Sent on the HTML representation only, exactly like a toast. `HX-Trigger` is
+    htmx's protocol, and a caller that asked this route for JSON has no htmx in
+    it to read the header — see `mode`.
+
+    Send an **object** as the detail. htmx passes an object through as
+    `event.detail` and wraps anything else — an array included — as
+    `{value: ...}`, so a listener reading `event.detail.task_id` finds nothing.
+
+    :param hx_trigger_after_swap: the same event, in `HX-Trigger-After-Swap`.
+    It takes every form `hx_trigger` does, and the only difference is *when*
+    htmx raises it — which decides what a subscriber is allowed to read.
+
+    `HX-Trigger` fires **before** this response is swapped in. A subscriber
+    that reads `event.detail` is unaffected; one that reads the page is not,
+    because the markup it reads is the markup this reply is about to replace.
+    A route that answers with the table *and* raises `task-selected` in
+    `HX-Trigger` therefore cannot be heard by a fragment whose `hx-include`
+    points at a value that table carries: it would read the previous id.
+
+    `HX-Trigger-After-Swap` fires once the swap is in the document, which is
+    what lets the event carry no detail at all and every subscriber pick what
+    it needs up off the page with `hx-include`. That is the shape a lazy tab
+    panel needs, because a panel that was hidden when the pick happened never
+    saw the event and has only the page to read — see `ui/tabs.html`.
+
+    Both may be set on one route; they are separate headers and neither
+    merges into the other. Reach for `hx_trigger` when the listeners read
+    `event.detail`, and for this when they read the DOM.
 
     The handler may return a Pydantic model, a dataclass, a mapping, `None`, or
-    a `Response`. A `Response` is passed through untouched, which is the escape
-    hatch for redirects and files.
+    a `Response`; a `Response` is passed through untouched.
     """
     plan = _Plan(
         template=template,
@@ -106,11 +195,16 @@ def render(
         mode=mode,
         stream=stream,
         buffer_size=buffer_size,
+        hx_trigger=None if callable(hx_trigger) else hx_trigger,
+        trigger_spec=_TriggerSpec.of(hx_trigger),
+        hx_trigger_after_swap=None if callable(hx_trigger_after_swap) else hx_trigger_after_swap,
+        trigger_after_swap_spec=_TriggerSpec.of(hx_trigger_after_swap),
         # `partial=` is definitive: it exists precisely because `template` is
         # the page that a navigation gets. Otherwise the filename answers, on
         # the convention every template in the codebase already follows and
         # `test_conventions.py` enforces — a fragment is `_*.html`.
-        serves_a_page=partial is not None or not template.rpartition("/")[2].startswith("_"),
+        serves_a_page=template is not None
+        and (partial is not None or not template.rpartition("/")[2].startswith("_")),
     )
 
     def decorate(func: F) -> F:
@@ -125,7 +219,7 @@ def render(
             @wraps(func)
             async def wrapper(**kwargs: Any) -> Any:
                 request, response, call_kwargs = endpoint.unpack(kwargs)
-                return _finish(await func(**call_kwargs), request, response, plan)
+                return _finish(await func(**call_kwargs), request, response, plan, call_kwargs)
 
         else:
             # A sync handler keeps a sync wrapper on purpose. Starlette sends
@@ -135,9 +229,14 @@ def render(
             @wraps(func)
             def wrapper(**kwargs: Any) -> Any:
                 request, response, call_kwargs = endpoint.unpack(kwargs)
-                return _finish(func(**call_kwargs), request, response, plan)
+                return _finish(func(**call_kwargs), request, response, plan, call_kwargs)
 
         wrapper.__signature__ = endpoint.signature  # type: ignore[attr-defined]
+        # Stamped on the function FastAPI registers, so `fjkit.errors` can find
+        # it from `request.scope["route"].endpoint` with nothing kept in step:
+        # the route table already knows which function serves the request, and
+        # this rides on that instead of a second registry beside it.
+        wrapper.__fjkit_plan__ = plan  # type: ignore[attr-defined]
         return wrapper  # type: ignore[return-value]
 
     return decorate
@@ -146,19 +245,9 @@ def render(
 class _Endpoint:
     """The handler's signature, resolved and amended, ready for FastAPI.
 
-    Two things have to happen before FastAPI inspects the wrapper.
-
-    Annotations are resolved here rather than left as strings. FastAPI
-    evaluates string annotations — which is all of them under `from __future__
-    import annotations` — against `endpoint.__globals__`, and a wrapper's
-    globals are *fjkit's* module namespace, where the app's own names do not
-    exist. Resolving against the original function's globals first is what
-    keeps `ServiceDep` working.
-
-    Then `Request` and `Response` are appended if the handler did not ask for
-    them, so routes stop declaring plumbing they never use. Both are needed:
-    `Request` to reach the Environment and the htmx headers, `Response` because
-    a handler that sets `response.headers["HX-Trigger"]` expects it to arrive.
+    String annotations are resolved against the original function's globals
+    (a wrapper's globals are fjkit's). `Request` and `Response` are appended
+    if the handler did not declare them.
     """
 
     __slots__ = ("injected", "request_param", "response_param", "signature")
@@ -185,9 +274,16 @@ class _Endpoint:
         # rejects that outright.
         var_kw = [p for p in params if p.kind is inspect.Parameter.VAR_KEYWORD]
         fixed = [p for p in params if p.kind is not inspect.Parameter.VAR_KEYWORD]
+        # `get_type_hints` resolves `-> None` to `NoneType`, and FastAPI reads
+        # the return annotation to infer `response_model`. `None` is falsy and
+        # means "no model"; the class is not, so a handler annotated `-> None`
+        # would acquire a response model it never had — and on a 204 route
+        # FastAPI refuses outright, because a body is not allowed there. Hand
+        # back what the source said.
+        returns = hints.get("return", original.return_annotation)
         self.signature = original.replace(
             parameters=fixed + added + var_kw,
-            return_annotation=hints.get("return", original.return_annotation),
+            return_annotation=None if returns is type(None) else returns,
         )
 
     def unpack(self, kwargs: dict[str, Any]) -> tuple[Request, Response | None, dict[str, Any]]:
@@ -228,14 +324,29 @@ def _param_named(params: list[inspect.Parameter], kind: type) -> str | None:
     return None
 
 
-def _finish(result: Any, request: Request, response: Response | None, plan: _Plan) -> Any:
+def _finish(
+    result: Any,
+    request: Request,
+    response: Response | None,
+    plan: _Plan,
+    call_kwargs: Mapping[str, Any],
+) -> Any:
     # An explicit Response is the escape hatch — redirects, files, a hand-built
     # StreamingResponse. Nothing here second-guesses one.
     if isinstance(result, Response):
         return result
 
+    # A route with no template answers with headers alone. Nothing below this
+    # applies to it: there is no representation to negotiate, so no `Vary`, and
+    # no shell that could carry a toast instead of the header.
+    if plan.template is None:
+        status_code, headers = _response_args(request, response)
+        _deliver_trigger(plan, result, call_kwargs, headers)
+        _deliver_messages(request, headers, renders_shell=False)
+        return Response(status_code=status_code, headers=headers)
+
     requested = _mode(request, plan.mode)
-    htmx = _is_htmx(request)
+    from_htmx = htmx.is_htmx(request)
 
     # Whether the reply depends on the header, and so whether a shared cache is
     # allowed to reuse it. Two ways it can: a route with a `partial` answers one
@@ -246,11 +357,11 @@ def _finish(result: Any, request: Request, response: Response | None, plan: _Pla
         _vary_on_htmx(response)
 
     if requested == "auto":
-        # `_is_htmx`, not `_is_htmx_swap`: a boosted link is htmx doing an
+        # `is_htmx`, not `is_swap`: a boosted link is htmx doing an
         # ordinary navigation, so it is excluded from the page-or-fragment
         # decision but not from this one — it is still a browser waiting for
         # markup. The two questions read different headers.
-        requested = "html" if htmx or plan.serves_a_page else "json"
+        requested = "html" if from_htmx or plan.serves_a_page else "json"
 
     if requested == "json":
         # Handed back untouched: FastAPI validates and serialises it through
@@ -259,9 +370,15 @@ def _finish(result: Any, request: Request, response: Response | None, plan: _Pla
         return result
 
     templates = _templates(request)
-    name = plan.partial if plan.partial and _is_htmx_swap(request) else plan.template
+    name = plan.partial if plan.partial and htmx.is_swap(request) else plan.template
     context = _context(result, plan.template)
+    # Every render can ask `errors.<name>`, including the ones with nothing to
+    # report, so a template that passes `error=errors.title` never has to
+    # guard the key — see `fjkit.forms.NO_ERRORS`.
+    context.setdefault("errors", NO_ERRORS)
     status_code, headers = _response_args(request, response)
+    _deliver_trigger(plan, result, call_kwargs, headers)
+    _deliver_messages(request, headers, renders_shell=name == plan.template and plan.serves_a_page)
     if plan.stream:
         return templates.stream(
             request, name, context, buffer_size=plan.buffer_size, status_code=status_code, headers=headers
@@ -269,26 +386,102 @@ def _finish(result: Any, request: Request, response: Response | None, plan: _Pla
     return templates.page(request, name, context, status_code=status_code, headers=headers)
 
 
+def _deliver_trigger(plan: _Plan, result: Any, call_kwargs: Mapping[str, Any], headers: dict[str, str]) -> None:
+    """Write the route's own events into their headers, merging with what is there.
+
+    Runs before `_deliver_messages`, so a toast queued on the same response is
+    added to `HX-Trigger` rather than replacing it — the merge lives in one
+    place, and `messages.trigger_header` is already the one that does it.
+
+    The two headers are written independently and never merge into each other.
+    They are different moments, so an event in one is not the same event in the
+    other, and folding them together would silently change when a subscriber
+    hears it.
+    """
+    _write_trigger(headers, "HX-Trigger", plan.hx_trigger, plan.trigger_spec, result, call_kwargs)
+    _write_trigger(
+        headers,
+        "HX-Trigger-After-Swap",
+        plan.hx_trigger_after_swap,
+        plan.trigger_after_swap_spec,
+        result,
+        call_kwargs,
+    )
+
+
+def _write_trigger(
+    headers: dict[str, str],
+    name: str,
+    literal: TriggerValue,
+    spec: _TriggerSpec | None,
+    result: Any,
+    call_kwargs: Mapping[str, Any],
+) -> None:
+    """One event into one header. `None` — literal or resolved — writes nothing."""
+    value = spec.resolve(result, call_kwargs) if spec is not None else literal
+    if value is None:
+        return
+    # Case-insensitively, because `_response_args` copies out of a Starlette
+    # `MutableHeaders`, which lowercases every name it was given.
+    existing = next((key for key in headers if key.lower() == name.lower()), None)
+    headers[existing or name] = _merge_trigger(headers.get(existing) if existing else None, value)
+
+
+def _merge_trigger(existing: str | None, value: Mapping[str, Any] | str) -> str:
+    """`value` added to whatever the handler's own `Response` already carried.
+
+    A bare name stays a bare name when nothing else is in play: htmx accepts
+    `HX-Trigger: task-selected`, and a route with one detail-free event should
+    not pay for JSON to say so.
+    """
+    if existing is None and isinstance(value, str):
+        return value
+    events = _as_events(existing)
+    events.update({value: None} if isinstance(value, str) else value)
+    return json.dumps(events, separators=(",", ":"))
+
+
+def _as_events(header: str | None) -> dict[str, Any]:
+    """An `HX-Trigger` value as the mapping htmx reads it as.
+
+    Same promotion `messages.trigger_header` does, for the same reason: htmx
+    accepts a bare event name or a comma-separated list as well as JSON, and
+    neither may be discarded just because something else wants to be in the
+    header too.
+    """
+    if not header:
+        return {}
+    text = header.strip()
+    if text.startswith("{"):
+        try:
+            return dict(json.loads(text))
+        except ValueError:
+            return {text: None}
+    return {name.strip(): None for name in text.split(",") if name.strip()}
+
+
+def _deliver_messages(request: Request, headers: dict[str, str], *, renders_shell: bool) -> None:
+    """Pick the channel a queued message goes out on. See `fjkit.messages`.
+
+    A render of the shell carries the toaster, so the message is in the
+    document; anything else sends it as `HX-Trigger`. Never both.
+    """
+    if renders_shell:
+        return
+    # Case-insensitively, because `_response_args` copies out of a Starlette
+    # `MutableHeaders`, which lowercases every name it was given. A handler
+    # writes `HX-Trigger`; what arrives here is `hx-trigger`.
+    existing = next((key for key in headers if key.lower() == "hx-trigger"), None)
+    trigger = messages.trigger_header(request, headers.get(existing) if existing else None)
+    if trigger is not None:
+        headers[existing or "HX-Trigger"] = trigger
+
+
 def _mode(request: Request, override: RenderMode | None) -> RenderMode:
-    """Decorator argument, then what the caller asked for, then the app default.
+    """Decorator argument, then `SCOPE_RENDER_MODE`, then the app default.
 
-    All three are *configuration*, which is the property that matters. `"auto"`
-    resolves against the request afterwards, but a request still never overrides
-    a route that said `"html"` or `"json"` — the decorator is checked first and
-    wins outright.
-
-    The middle level is `SCOPE_RENDER_MODE`, and it is deliberately not a header
-    or a query parameter. Only something already inside this process can put a
-    key in an ASGI scope, so this is the app asking itself for a representation,
-    not a client asking to be treated differently. `fjkit.apidocs.console` is
-    the caller: an API console is exactly the "everybody else" that `"auto"`
-    promises the model to, and without this it would be handed a page instead —
-    because `serves_a_page` is a property of the route's shape, decided to
-    protect a cold navigation, and an in-process replay is not one.
-
-    Resolved per request rather than at import time, because the decorator runs
-    while the router module is being imported — which is before the app has a
-    config, and would make the answer depend on import order.
+    The scope key can only be set in-process (`fjkit.apidocs.console` uses
+    it). Resolved per request: the decorator runs before the app has a config.
     """
     if override is not None:
         return override
@@ -319,34 +512,9 @@ def _vary_on_htmx(response: Response | None) -> None:
         response.headers["vary"] = f"{existing}, HX-Request"
 
 
-def _is_htmx(request: Request) -> bool:
-    """True for any request htmx made, boosted navigations included.
-
-    This is the html-or-json question. A boosted link wants HTML as much as a
-    swap does, so unlike `_is_htmx_swap` it does not look at `hx-boosted`.
-    """
-    return request.headers.get("hx-request", "").lower() == "true"
-
-
-def _is_htmx_swap(request: Request) -> bool:
-    """True for an htmx request that is replacing part of the page.
-
-    `hx-boosted` is excluded deliberately: a boosted link is htmx performing an
-    ordinary navigation, and it wants the whole page. Swapping a partial into it
-    would leave the browser on a document with no shell.
-    """
-    headers = request.headers
-    return headers.get("hx-request", "").lower() == "true" and headers.get("hx-boosted", "").lower() != "true"
-
-
-def _context(result: Any, template: str) -> Mapping[str, Any]:
-    """Template context from whatever the handler returned.
-
-    A model is spread field by field rather than dumped, so the template gets
-    the live objects — `stats.done_pct`, `task.status.value` — while the same
-    model handed to FastAPI in json mode becomes the wire form. Dumping here
-    would flatten every nested model to a dict and break the templates that
-    call methods on them.
+def _context(result: Any, template: str) -> dict[str, Any]:
+    """Template context from whatever the handler returned. A model is spread
+    field by field, not dumped, so the template gets the live objects.
     """
     if result is None:
         return {}
@@ -370,13 +538,9 @@ def _context(result: Any, template: str) -> Mapping[str, Any]:
 
 
 def _response_args(request: Request, response: Response | None) -> tuple[int, dict[str, str]]:
-    """Status and headers, in precedence order: handler, route, 200.
-
-    FastAPI merges a handler's `Response` parameter into the reply it builds —
-    but only when the handler returned data. Here the reply is ours to build, so
-    the merge is ours to do, or a `response.headers["HX-Trigger"] = ...` would
-    silently vanish. Same for `@router.post(..., status_code=201)`, which
-    FastAPI likewise only applies to replies it constructs itself.
+    """Status and headers, in precedence order: handler's `Response`, the
+    route's `status_code`, 200. FastAPI merges these only into replies it
+    builds itself.
     """
     route = request.scope.get("route")
     status_code = getattr(route, "status_code", None) or 200

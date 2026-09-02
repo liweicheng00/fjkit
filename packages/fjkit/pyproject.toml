@@ -4,12 +4,74 @@ version = "0.1.0.dev0"
 description = "Server-rendered UI kit for FastAPI — Jinja2 + Basecoat + htmx, no front-end build"
 readme = "README.md"
 requires-python = ">=3.13"
-# Runtime dependencies are deliberately two. Adding a third needs an RFC
-# (CHARTER.md §7).
+authors = [{ name = "liweicheng00" }]
+
+# Discovery metadata. The name carries no search surface — "fjkit" is not a word
+# anyone types — so every term someone would actually search for has to live
+# here, in the description, or in the README's first paragraph. That is the
+# deliberate trade: an opaque name paid for with explicit metadata.
+keywords = [
+    "fastapi",
+    "jinja2",
+    "htmx",
+    "basecoat",
+    "ui",
+    "ui-components",
+    "server-side-rendering",
+    "server-rendered",
+    "html",
+    "templates",
+    "forms",
+    "tables",
+    "dark-mode",
+    "no-build",
+]
+
+# Every entry verified against `https://pypi.org/pypi?:action=list_classifiers`
+# — an unlisted classifier is rejected at upload, not at build.
+#
+# `Framework :: FastAPI` is the load-bearing one: PyPI has a browse-by-classifier
+# facet, so it is the only line here that puts fjkit on a page a stranger can
+# arrive at without knowing the name. There is no `Framework :: Jinja2`
+# classifier; jinja2 is covered by the keyword instead.
+#
+# `Typing :: Typed` is a claim backed by `src/fjkit/py.typed`. Python 3.14 is
+# permitted by requires-python but not claimed here, because nothing tests it.
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: User Interfaces",
+    "Topic :: Text Processing :: Markup :: HTML",
+    "Typing :: Typed",
+]
+
+# Three, since 0.3, and the third was a decision rather than a drift
+# (CHARTER.md §7, §11.2). `pydantic` is declared because `fjkit/errors.py`
+# imports `ValidationError` and `fjkit/charts/figures.py` builds models an app
+# embeds in its own `response_model`.
+#
+# It costs nothing to install: `fastapi` requires `pydantic>=2.9.0` with no
+# extra marker, so it is already there and already imported by the time
+# `import fjkit` returns. Declaring it says so, rather than relying on a
+# transitive edge and a duck-typed `.errors()` to keep this list at two.
 dependencies = [
     "fastapi>=0.115",
     "jinja2>=3.1.6",
+    "pydantic>=2.9",
 ]
+
+# These become the sidebar links on the PyPI project page. Without them the page
+# offers a visitor nowhere to go but the README.
+[project.urls]
+Homepage = "https://liweicheng00.github.io/fjkit/"
+Documentation = "https://liweicheng00.github.io/fjkit/"
+Repository = "https://github.com/liweicheng00/fjkit"
+Issues = "https://github.com/liweicheng00/fjkit/issues"
 
 # Install-time style selection:  uv add "fjkit[nova]"
 #
@@ -51,5 +113,7 @@ packages = ["src/fjkit"]
 artifacts = [
     "src/fjkit/templates/**/*",
     "src/fjkit/apidocs/templates/**/*",
+    "src/fjkit/charts/templates/**/*",
+    "src/fjkit/charts/static/**/*",
     "src/fjkit/static/**/*",
 ]

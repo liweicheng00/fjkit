@@ -1,17 +1,9 @@
 {#
-  The one page in this demo that loads a third-party JavaScript library, and
-  the only one that pays for it: `{% block scripts %}` is per page, so Plotly's
-  1.1 MB never reaches the board, the jobs page or the overview.
-
-  This is what an app-level escape hatch looks like. fjkit ships htmx and
-  Basecoat and stops there (CHARTER §7) — a charting library is two orders of
-  magnitude past that budget, so it is not in the wheel. Nothing stops an app
-  from loading one, and this page is the demo's evidence that "no build step"
-  survives the moment you do: the library is vendored by
-  `scripts/vendor_plotly.py`, committed, and served from this app's own
-  `static/`. No npm, no bundler, no CDN at runtime.
+  The charts page: the shell, a grouping control and the chart cards. Loads Plotly
+  with `chart_scripts()`.
 #}
 {% extends "base.html" %}
+{% from "charts/macros.html" import chart_scripts %}
 {% from "ui/data.html" import kbd %}
 {% from "ui/form.html" import select_field %}
 {% from "ui/layout.html" import page_header, stack %}
@@ -19,21 +11,6 @@
 {% block title %}Charts{% endblock %}
 
 {% block content %}
-  {#
-    Three claims earlier versions of this note made, all wrong, all worth not
-    making again:
-
-    "The figures name a role" — they never did after the figure became a
-    Plotly figure; a separate list did, and that list is gone too.
-
-    "…and the style picker" — the eight style packs define no colour tokens at
-    all. They differ in geometry: radii, control heights, borders, shadows.
-    Nothing a pack changes can reach a colour these charts read.
-
-    "the theme toggle reaches the charts" — it reaches their *chrome*. The
-    series colours are Plotly's and stay put. Saying more than that would be
-    promising something the page does not do.
-  #}
   {% set note %}
     Six views of the same board. The series run on Plotly's own palette; what
     follows the theme is everything around them — axis text, grid lines, the
@@ -45,12 +22,7 @@
   {{ page_header("Charts", note) }}
 
   {% call stack(4) %}
-    {#
-      A bare `hx-get` on the select, no form around it: htmx sends the value of
-      the element that triggered the request, so `name="group"` is the whole
-      wiring. `hx-push-url` keeps the address bar honest — reload, or share the
-      link, and you get the grouping you were looking at.
-    #}
+    {# The grouping select sends `group` via `hx-get` and pushes the URL. #}
     {{ select_field("group", label="Break the workload down",
                     options=grouping_options, selected=active_grouping,
                     hx_get=url_for(request, "charts_page"),
@@ -61,7 +33,5 @@
   {% endcall %}
 {% endblock %}
 
-{% block scripts %}
-  <script defer src="{{ url_for(request, 'static', path='vendor/plotly/plotly-basic.min.js') }}"></script>
-  <script defer src="{{ url_for(request, 'static', path='js/charts.js') }}"></script>
-{% endblock %}
+{# Loads Plotly and charts.js for this page only. #}
+{% block scripts %}{{ chart_scripts() }}{% endblock %}

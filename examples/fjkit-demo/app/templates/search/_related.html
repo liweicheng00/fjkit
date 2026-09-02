@@ -1,0 +1,37 @@
+{#
+  The siblings panel: everything else assigned to the picked task's owner.
+
+  It hears the same event as the detail panel and asks a different endpoint a
+  different question — which is the reason the two are separate fragments rather
+  than one bigger one. It also hears `task-changed`, because a sibling's status
+  is on the row.
+#}
+{% set oob = oob | default(false) %}
+{% set selected = selected | default(none) %}
+{% set related = related | default([]) %}
+{% from "ui/data.html" import card, empty_state, item, item_list %}
+{% from "search/macros.html" import stamp, subscribe %}
+
+<div id="search-related"{% if oob %} hx-swap-oob="true"{% endif %}
+     {{ subscribe(request, "search_related", ["task-selected", "task-changed"]) }}>
+  {% if selected %}
+    {% call card("Also " ~ selected.owner ~ "'s",
+                 related | length ~ (" other task" if related | length == 1 else " other tasks"),
+                 actions=stamp(rendered_label), padded=false) %}
+      {% if related %}
+        {% call item_list() %}
+          {% for task in related %}
+            {{ item(task.title, task.status.value | capitalize, icon_name="circle-dot") }}
+          {% endfor %}
+        {% endcall %}
+      {% else %}
+        {{ empty_state("Nothing else", selected.owner ~ " owns this one alone.", icon_name="users") }}
+      {% endif %}
+    {% endcall %}
+  {% else %}
+    {% call card("Owner", "Listening for an id.", actions=stamp(rendered_label)) %}
+      {{ empty_state("No owner yet", "Open a row and this panel loads that owner's other rows.",
+                     icon_name="users") }}
+    {% endcall %}
+  {% endif %}
+</div>

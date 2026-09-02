@@ -9,6 +9,7 @@ dropped. Each of those is a test here.
 from __future__ import annotations
 
 import inspect
+import json
 import sys
 from dataclasses import dataclass
 from typing import Annotated
@@ -17,7 +18,7 @@ import pytest
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from fastapi.testclient import TestClient
-from fjkit import FjkitConfig, Templates, render
+from fjkit import FjkitConfig, Templates, messages, render
 from jinja2 import DictLoader
 from pydantic import BaseModel
 
@@ -508,6 +509,271 @@ def test_httpexception_is_untouched(make_app):
 
 
 # --------------------------------------------------------------------------- #
+# trigger
+# --------------------------------------------------------------------------- #
+
+
+def test_a_callable_trigger_reads_what_the_handler_returned(make_app):
+    """The point of the callable: the detail is per-request, the decorator is not."""
+    router = APIRouter()
+
+    @router.get("/thing")
+    @render("_partial.html", hx_trigger=lambda result: {"picked": {"id": result.title}})
+    def thing() -> Payload:
+        return Payload(title="7", body="b")
+
+    got = make_app(router).get("/thing", headers={"HX-Request": "true"})
+    assert json.loads(got.headers["HX-Trigger"]) == {"picked": {"id": "7"}}
+    assert got.text == "<div id=fragment>b</div>", "the partial is still the body"
+
+
+def test_a_trigger_returning_none_raises_nothing(make_app):
+    """A route that broadcasts only sometimes must not send an empty header."""
+    router = APIRouter()
+
+    @router.get("/thing")
+    @render("page.html", hx_trigger=lambda result: {"picked": {}} if result.title else None)
+    def thing(title: str = "") -> Payload:
+        return Payload(title=title, body="b")
+
+    client = make_app(router)
+    assert "HX-Trigger" not in client.get("/thing").headers
+    assert "HX-Trigger" in client.get("/thing", params={"title": "x"}).headers
+
+
+def test_a_bare_name_stays_a_bare_name(make_app):
+    """htmx accepts `HX-Trigger: refresh`; a detail-free event should not pay for JSON."""
+    router = APIRouter()
+
+    @router.get("/thing")
+    @render("page.html", hx_trigger="refresh")
+    def thing() -> Payload:
+        return Payload(title="t", body="b")
+
+    assert make_app(router).get("/thing").headers["HX-Trigger"] == "refresh"
+
+
+def test_the_trigger_joins_a_header_the_handler_set(make_app):
+    """Neither may drop the other — the failure only shows when both are in play."""
+    router = APIRouter()
+
+    @router.get("/thing")
+    @render("page.html", hx_trigger=lambda result: {"picked": {"id": 1}})
+    def thing(response: Response) -> Payload:
+        response.headers["HX-Trigger"] = "refresh"
+        return Payload(title="t", body="b")
+
+    events = json.loads(make_app(router).get("/thing").headers["HX-Trigger"])
+    assert events == {"refresh": None, "picked": {"id": 1}}
+
+
+def test_the_trigger_joins_a_queued_toast(make_app):
+    """`messages` merges into whatever is already there, and this is now one of them."""
+    router = APIRouter()
+
+    @router.get("/thing")
+    @render("_partial.html", hx_trigger=lambda result: {"picked": {"id": 1}})
+    def thing(request: Request) -> Payload:
+        messages.add(request, "Saved", category="success")
+        return Payload(title="t", body="b")
+
+    events = json.loads(make_app(router).get("/thing", headers={"HX-Request": "true"}).headers["HX-Trigger"])
+    assert events["picked"] == {"id": 1}
+    assert events[messages.TOAST_EVENT]["messages"][0]["title"] == "Saved"
+
+
+def test_a_json_reply_raises_nothing(make_app):
+    """`HX-Trigger` is htmx's protocol, and there is no htmx on this path.
+
+    The same rule a toast follows. A route serving both representations declares
+    the trigger once and only the markup one carries it, which is better than
+    the alternative — a JSON client receiving a header it will never read.
+    """
+    router = APIRouter()
+
+    @router.get("/thing")
+    @render("_partial.html", mode="json", hx_trigger=lambda result: {"picked": {"id": result.title}})
+    def thing() -> Payload:
+        return Payload(title="7", body="b")
+
+    got = make_app(router).get("/thing")
+    assert got.json()["title"] == "7"
+    assert "HX-Trigger" not in got.headers
+
+
+def test_a_response_returned_by_the_handler_is_still_untouched(make_app):
+    """The escape hatch stays an escape hatch: `@render` does not decorate it."""
+    router = APIRouter()
+
+    @router.get("/thing")
+    @render("_partial.html", hx_trigger=lambda result: {"picked": {"id": 1}})
+    def thing() -> Payload:
+        return Response(status_code=204)
+
+    got = make_app(router).get("/thing")
+    assert got.status_code == 204
+    assert "HX-Trigger" not in got.headers
+
+
+def test_a_trigger_reads_the_handler_s_own_parameters(make_app):
+    """The reason a callable and not a literal: the detail is a path parameter.
+
+    Resolved by name out of what FastAPI handed the handler, so the event can be
+    written where the route is declared — the decorator body cannot close over
+    `task_id`, which does not exist until the request does.
+    """
+    router = APIRouter()
+
+    @router.get("/thing/{task_id}")
+    @render("page.html", hx_trigger=lambda task_id: {"picked": {"task_id": task_id}})
+    def thing(task_id: int) -> Payload:
+        return Payload(title="t", body="b")
+
+    got = make_app(router).get("/thing/7")
+    assert json.loads(got.headers["HX-Trigger"]) == {"picked": {"task_id": 7}}
+
+
+def test_a_trigger_may_ask_for_both(make_app):
+    """`result` is available alongside the parameters, under that name."""
+    router = APIRouter()
+
+    @router.get("/thing/{task_id}")
+    @render("page.html", hx_trigger=lambda task_id, result: {"picked": {"id": task_id, "was": result.title}})
+    def thing(task_id: int) -> Payload:
+        return Payload(title="t", body="b")
+
+    got = make_app(router).get("/thing/7")
+    assert json.loads(got.headers["HX-Trigger"]) == {"picked": {"id": 7, "was": "t"}}
+
+
+def test_a_trigger_declaring_kwargs_gets_everything(make_app):
+    router = APIRouter()
+
+    @router.get("/thing/{task_id}")
+    @render("page.html", hx_trigger=lambda **kw: {"picked": sorted(kw)})
+    def thing(task_id: int) -> Payload:
+        return Payload(title="t", body="b")
+
+    got = make_app(router).get("/thing/7")
+    assert json.loads(got.headers["HX-Trigger"]) == {"picked": ["result", "task_id"]}
+
+
+def test_a_route_with_no_template_answers_with_headers_alone(make_app):
+    """`template=None`: a route that broadcasts and renders nothing."""
+    router = APIRouter()
+
+    @router.get("/thing/{task_id}", status_code=204)
+    @render(None, hx_trigger=lambda task_id: {"picked": {"task_id": task_id}})
+    def thing(task_id: int) -> None:
+        return None
+
+    got = make_app(router).get("/thing/7")
+    assert got.status_code == 204
+    assert got.content == b""
+    assert json.loads(got.headers["HX-Trigger"]) == {"picked": {"task_id": 7}}
+
+
+def test_a_route_with_no_template_ignores_the_htmx_header(make_app):
+    """There is no second representation to negotiate, so nothing varies on it."""
+    router = APIRouter()
+
+    @router.get("/thing", status_code=204)
+    @render(None, hx_trigger="refresh")
+    def thing() -> None:
+        return None
+
+    client = make_app(router)
+    for headers in ({}, {"HX-Request": "true"}):
+        got = client.get("/thing", headers=headers)
+        assert got.status_code == 204
+        assert got.headers["HX-Trigger"] == "refresh"
+        assert "vary" not in got.headers
+
+
+# --------------------------------------------------------------------------- #
+# trigger, after the swap
+# --------------------------------------------------------------------------- #
+
+
+def test_after_swap_uses_its_own_header(make_app):
+    """The two headers are two moments. Writing one into the other would change
+    when a subscriber hears the event, silently."""
+    router = APIRouter()
+
+    @router.get("/thing")
+    @render("_partial.html", hx_trigger_after_swap="task-selected")
+    def thing() -> Payload:
+        return Payload(title="t", body="b")
+
+    got = make_app(router).get("/thing", headers={"HX-Request": "true"})
+    assert got.headers["HX-Trigger-After-Swap"] == "task-selected"
+    assert "HX-Trigger" not in got.headers
+
+
+def test_after_swap_takes_a_callable_like_the_other_one(make_app):
+    """Same resolution, so a route does not have to learn a second convention."""
+    router = APIRouter()
+
+    @router.get("/thing/{task_id}")
+    @render("page.html", hx_trigger_after_swap=lambda task_id: {"task-selected": {"task_id": task_id}})
+    def thing(task_id: int) -> Payload:
+        return Payload(title="t", body="b")
+
+    got = make_app(router).get("/thing/7")
+    assert json.loads(got.headers["HX-Trigger-After-Swap"]) == {"task-selected": {"task_id": 7}}
+
+
+def test_after_swap_returning_none_raises_nothing(make_app):
+    router = APIRouter()
+
+    @router.get("/thing")
+    @render("page.html", hx_trigger_after_swap=lambda result: {"picked": {}} if result.title else None)
+    def thing(title: str = "") -> Payload:
+        return Payload(title=title, body="b")
+
+    client = make_app(router)
+    assert "HX-Trigger-After-Swap" not in client.get("/thing").headers
+    assert "HX-Trigger-After-Swap" in client.get("/thing", params={"title": "x"}).headers
+
+
+def test_one_route_may_raise_both_and_they_stay_apart(make_app):
+    """The reason both exist on one route: an event whose listeners read
+    `event.detail` and one whose listeners read the page are different events,
+    and a page can need both at the same moment."""
+    router = APIRouter()
+
+    @router.get("/thing/{task_id}")
+    @render(
+        "_partial.html",
+        hx_trigger=lambda task_id: {"task-selected": {"task_id": task_id}},
+        hx_trigger_after_swap="task-settled",
+    )
+    def thing(task_id: int) -> Payload:
+        return Payload(title="t", body="b")
+
+    got = make_app(router).get("/thing/7", headers={"HX-Request": "true"})
+    assert json.loads(got.headers["HX-Trigger"]) == {"task-selected": {"task_id": 7}}
+    assert got.headers["HX-Trigger-After-Swap"] == "task-settled"
+
+
+def test_a_queued_message_joins_hx_trigger_and_not_the_after_swap_one(make_app):
+    """A toast is for the page it arrives on, so it goes in the header the
+    shell's listener reads. Merging it into the after-swap header would move
+    every toast on a route that happens to use one."""
+    router = APIRouter()
+
+    @router.get("/thing")
+    @render("_partial.html", hx_trigger_after_swap="task-selected")
+    def thing(request: Request) -> Payload:
+        messages.add(request, "Saved", category="success")
+        return Payload(title="t", body="b")
+
+    got = make_app(router).get("/thing", headers={"HX-Request": "true"})
+    assert got.headers["HX-Trigger-After-Swap"] == "task-selected"
+    assert "Saved" in got.headers["HX-Trigger"]
+
+
+# --------------------------------------------------------------------------- #
 # streaming
 # --------------------------------------------------------------------------- #
 
@@ -550,38 +816,72 @@ def test_stream_in_json_mode_still_returns_json(make_app):
 # --------------------------------------------------------------------------- #
 
 
-def test_the_kit_still_imports_nothing_but_fastapi_and_jinja2():
-    """CHARTER §7 budgets fjkit at two runtime dependencies, and §11.2 makes a
-    third a human decision. `@render` handles pydantic models, so the tempting
-    line is `from pydantic import BaseModel` — which is exactly what would turn
-    a package FastAPI already installs into a dependency fjkit declares."""
-    import ast
+def test_the_kit_imports_nothing_outside_its_declared_dependencies():
+    """CHARTER §7 budgets fjkit's runtime dependencies, and §11.2 makes each one
+    a human decision. This is the test that makes the budget real: an import
+    nobody signed off on fails here rather than turning up in a wheel."""
     from pathlib import Path
 
     import fjkit
 
-    #: `starlette` and `markupsafe` are the declared two seen from the inside:
-    #: FastAPI *is* Starlette's routing, and `markupsafe.Markup` is the type
-    #: Jinja2's autoescaping is built on — Jinja 3 stopped re-exporting it, so
-    #: `ui/icon` has nowhere else to get it. Pydantic is the one that looks like
-    #: it belongs on this list and does not: it is a separate framework whose
-    #: API fjkit would be putting in front of its users.
-    declared = {"fastapi", "starlette", "jinja2", "markupsafe", "fjkit"}
+    #: `starlette` and `markupsafe` are `fastapi` and `jinja2` seen from the
+    #: inside: FastAPI *is* Starlette's routing, and `markupsafe.Markup` is the
+    #: type Jinja2's autoescaping is built on — Jinja 3 stopped re-exporting it,
+    #: so `ui/icon` has nowhere else to get it.
+    #:
+    #: **`pydantic` was added in 0.3, deliberately** (2026-08-23). It used to be
+    #: the one that looked like it belonged here and did not, and `fjkit/charts/`
+    #: held a path exemption to keep it out. Both are gone. `fastapi` requires
+    #: `pydantic>=2.9.0` unconditionally — no extra marker, first line of
+    #: `importlib.metadata.requires("fastapi")` after starlette — so it is
+    #: already installed and already imported by the time `import fjkit` returns.
+    #: The install cost is zero and the import cost is zero, and an exemption
+    #: that says "this directory is excused" is worth less than a list that says
+    #: what the kit actually depends on.
+    declared = {"fastapi", "starlette", "jinja2", "markupsafe", "pydantic", "fjkit"}
+
+    package_root = Path(fjkit.__file__).parent
     offenders: list[str] = []
-    for path in Path(fjkit.__file__).parent.rglob("*.py"):
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                roots = [alias.name.split(".")[0] for alias in node.names]
-            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-                roots = [node.module.split(".")[0]]
-            else:
-                continue
-            for root in roots:
-                # Anything in the stdlib is free; a third-party root is not.
-                if root not in declared and root not in sys.stdlib_module_names:
-                    offenders.append(f"{path.name}: {root}")
+    for path in package_root.rglob("*.py"):
+        for module_root in _imported_roots(path):
+            # Anything in the stdlib is free; a third-party root is not.
+            if module_root not in declared and module_root not in sys.stdlib_module_names:
+                offenders.append(f"{path.relative_to(package_root)}: {module_root}")
     assert not offenders, f"undeclared runtime dependency: {offenders}"
+
+
+def test_no_part_of_the_kit_imports_a_charting_library():
+    """The half of the old charts exemption that still earns its keep.
+
+    `fjkit.charts` ships Plotly's *JavaScript* (CHARTER §7 whitelists the
+    bundle) but never the Python library: `figure_of` is duck-typed on
+    `to_plotly_json()`. An `import plotly` anywhere in the package would make
+    the 20 MB `plotly.py` a runtime dependency of every install, quietly, and
+    the only visible symptom would be a slower `uv sync`."""
+    from pathlib import Path
+
+    import fjkit
+
+    banned = {"plotly", "pandas", "numpy", "matplotlib"}
+    package_root = Path(fjkit.__file__).parent
+    offenders = [
+        f"{path.relative_to(package_root)}: {module_root}"
+        for path in package_root.rglob("*.py")
+        for module_root in _imported_roots(path)
+        if module_root in banned
+    ]
+    assert not offenders, f"a charting library must not be imported by the kit: {offenders}"
+
+
+def _imported_roots(path):
+    """Every top-level package name imported at any level of one module."""
+    import ast
+
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            yield from (alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            yield node.module.split(".")[0]
 
 
 def test_a_missing_templates_state_says_what_to_do():

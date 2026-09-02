@@ -6,15 +6,27 @@ is that the copy stops receiving upstream fixes — silently, which is the part
 worth solving. A year later nobody remembers which version a file was ejected
 from, or whether the kit has changed it since.
 
-So the copy carries its provenance in a Jinja comment on the first line:
+So the copy carries its provenance in a Jinja comment on the first line, in one
+of two shapes:
 
     {# fjkit:eject button 0.2.1 sha256:6b1f0c9a2d34 #}
+    {# fjkit:eject data 0.2.1 macros:badge=1f0c9a2d3456 #}
 
-`name` is what to re-eject, the version is when, and the digest is *the kit's
-source at that moment*. The digest is what makes staleness detectable: compare
-it against the installed kit's copy of the same component and an inequality
-means upstream moved. Comparing versions instead would false-positive on every
-release, since most releases touch no component the app happens to have ejected.
+The first is a copy of the whole file; the second owns the macros it names and
+re-exports the rest from the kit (see `fjkit.cli.eject`). `name` is the
+component, the version is when, and each digest is *the kit's source at that
+moment*. The digest is what makes staleness detectable: compare it against the
+installed kit and an inequality means upstream moved. Comparing versions instead
+would false-positive on every release, since most releases touch no component
+the app happens to have ejected.
+
+Per macro, not per file, and that is the whole point of the second shape. A
+file-wide digest marks your copy of `badge` stale because the kit changed
+`avatar` — which is noise you learn to ignore, and an alert you ignore is not an
+alert. The report can now say *`badge` moved*, about a macro you actually own.
+
+A macro's digest covers its `{% macro %}` block and not the signature comment
+above it: rewording a paragraph should not tell you your copy has fallen behind.
 
 Not an error, ever. Ejecting is a supported escape hatch and diverging is what
 it is for. `fjkit check` reports these as a note beside the violation list and
@@ -33,8 +45,9 @@ from fjkit.config import TEMPLATE_DIR
 #: The first line of an ejected file. `[^\S\n]` rather than `\s` so the line
 #: cannot swallow the newline and match into the template body.
 STAMP = re.compile(
-    r"\{#[^\S\n]*fjkit:eject[^\S\n]+(?P<name>[\w-]+)[^\S\n]+"
-    r"(?P<version>\S+)[^\S\n]+sha256:(?P<digest>[0-9a-f]+)"
+    r"\{#[^\S\n]*fjkit:eject[^\S\n]+(?P<name>[\w-]+)[^\S\n]+(?P<version>\S+)[^\S\n]+"
+    r"(?:sha256:(?P<digest>[0-9a-f]+)"
+    r"|macros:(?P<macros>[\w-]+=[0-9a-f]+(?:,[\w-]+=[0-9a-f]+)*))"
 )
 
 #: Enough to identify a revision, short enough to read in a diff. Collisions
@@ -59,7 +72,14 @@ def kit_source(name: str) -> str | None:
 
 
 def stamp_line(name: str, version: str, source: str) -> str:
+    """The stamp for a copy of the whole file."""
     return f"{{# fjkit:eject {name} {version} sha256:{digest(source)} #}}\n"
+
+
+def macro_stamp(name: str, version: str, digests: dict[str, str]) -> str:
+    """The stamp for an override that owns some of a component's macros."""
+    listing = ",".join(f"{macro}={value}" for macro, value in digests.items())
+    return f"{{# fjkit:eject {name} {version} macros:{listing} #}}\n"
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,28 +89,71 @@ class Ejected:
     path: Path
     name: str
     version: str
-    digest: str
-    #: The kit's digest for the same component now. None when the kit no longer
-    #: ships that component at all — a rename or a removal.
-    current: str | None
+    #: What this copy owns: macro name → the kit's digest when it was taken. A
+    #: whole-file copy owns one pseudo-entry named after the component, because
+    #: it took the imports and the lookup tables too, not only the macros.
+    owned: tuple[tuple[str, str], ...]
+    #: The same names' digests in the installed kit now. A name missing from
+    #: here is one the kit no longer ships.
+    current: tuple[tuple[str, str], ...]
+    #: False when the copy owns named macros rather than the file.
+    whole_file: bool
+
+    @property
+    def digest(self) -> str:
+        """The stamped digest of a whole-file copy. Kept for the file case."""
+        return self.owned[0][1]
+
+    @property
+    def moved(self) -> tuple[str, ...]:
+        """The macros you own that the kit has changed since."""
+        now = dict(self.current)
+        return tuple(name for name, was in self.owned if name in now and now[name] != was)
+
+    @property
+    def missing(self) -> tuple[str, ...]:
+        """The macros you own that the kit no longer ships at all."""
+        now = dict(self.current)
+        return tuple(name for name, _ in self.owned if name not in now)
 
     @property
     def is_stale(self) -> bool:
-        return self.current is not None and self.current != self.digest
+        return bool(self.moved)
 
     @property
     def is_orphaned(self) -> bool:
-        return self.current is None
+        return bool(self.missing)
 
     def render(self, root: Path) -> str:
         rel = self.path.relative_to(root).as_posix()
-        if self.is_orphaned:
-            return f"  {rel}\n      ejected from fjkit {self.version}, which no longer ships a {self.name!r} component"
-        return (
-            f"  {rel}\n"
-            f"      ejected from fjkit {self.version}; the kit's {self.name!r} has changed since\n"
-            f"      re-eject into a scratch file and diff, or delete this copy to go back to the kit's"
-        )
+        if self.whole_file:
+            if self.is_orphaned:
+                return (
+                    f"  {rel}\n      ejected from fjkit {self.version}, which no longer ships "
+                    f"a {self.name!r} component"
+                )
+            return (
+                f"  {rel}\n"
+                f"      ejected from fjkit {self.version}; the kit's {self.name!r} has changed since\n"
+                f"      re-eject into a scratch file and diff, or delete this copy to go back to the kit's"
+            )
+        lines = [f"  {rel}"]
+        if self.missing:
+            lines.append(
+                f"      ejected from fjkit {self.version}, which no longer ships "
+                f"{_names(self.missing)} in {self.name!r}"
+            )
+        if self.moved:
+            lines.append(
+                f"      ejected from fjkit {self.version}; the kit has since changed "
+                f"{_names(self.moved)}, and you own a copy\n"
+                f"      re-eject into a scratch directory and diff that macro, or delete your copy of it"
+            )
+        return "\n".join(lines)
+
+
+def _names(names: tuple[str, ...]) -> str:
+    return ", ".join(repr(n) for n in names)
 
 
 def find_ejected(template_dir: Path) -> list[Ejected]:
@@ -100,6 +163,8 @@ def find_ejected(template_dir: Path) -> list[Ejected]:
     writes it at the top, and scanning the whole file would match a stamp
     quoted inside documentation about this very feature.
     """
+    from fjkit.cli.eject import kit_macro_digests
+
     found: list[Ejected] = []
     for path in sorted(template_dir.rglob("*.html")):
         with path.open(encoding="utf-8") as handle:
@@ -108,14 +173,25 @@ def find_ejected(template_dir: Path) -> list[Ejected]:
         if match is None:
             continue
         name = match["name"]
-        source = kit_source(name)
+
+        if match["macros"]:
+            owned = tuple(tuple(entry.split("=", 1)) for entry in match["macros"].split(","))
+            current = tuple(sorted(kit_macro_digests(name, [m for m, _ in owned]).items()))
+            whole_file = False
+        else:
+            source = kit_source(name)
+            owned = ((name, match["digest"]),)
+            current = () if source is None else ((name, digest(source)),)
+            whole_file = True
+
         found.append(
             Ejected(
                 path=path,
                 name=name,
                 version=match["version"],
-                digest=match["digest"],
-                current=digest(source) if source is not None else None,
+                owned=owned,  # type: ignore[arg-type]
+                current=current,
+                whole_file=whole_file,
             )
         )
     return found

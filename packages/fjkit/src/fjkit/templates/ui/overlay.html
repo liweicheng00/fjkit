@@ -14,9 +14,40 @@
 
   `drawer` is the exception: it is a native `<dialog>` and needs no JS from
   Basecoat, only `showModal()`.
+
+  `multiselect_scripts()` is the one macro here that adds a file to the page,
+  and only a page using `multiple=true` calls it. What it fixes is the wire
+  format rather than the widget — see its own comment.
 #}
 {% from "ui/attrs.html" import attrs %}
 {% from "ui/icon.html" import icon %}
+
+{#
+  _message(field_id, hint, error) — the paragraph under a scripted control.
+
+  A second copy of the macro `ui/form.html` calls under every field, written
+  out here rather than imported. Jinja refuses to import a name beginning with
+  an underscore, and renaming that one to make it importable would publish a
+  helper no app template should ever call — and would change what `fjkit
+  eject` does with it, because a private helper is copied into the file you
+  own while a public one is re-exported and keeps moving under you. `_GAP` is
+  written out twice for the same reason.
+
+  It differs from that copy in one way, and the difference is the point: it
+  always renders the paragraph, empty and hidden when there is nothing to say.
+  `js/errors.js` reuses the `<p>` a control names in `aria-describedby` and
+  *creates* one where it finds none, inserting it directly after the control.
+  For the two macros below the control carrying `name` is a hidden input at
+  the end of a wrapper div, so "after" is inside that wrapper — the 422 would
+  draw its red text inside the select box. Reserving the paragraph gives it a
+  target in the right place.
+#}
+{% macro _message(field_id, hint=none, error=none) -%}
+  {%- if error %}<p class="text-destructive text-xs" id="{{ field_id }}-hint">{{ error }}</p>
+  {%- elif hint %}<p class="text-muted-foreground text-xs" id="{{ field_id }}-hint">{{ hint }}</p>
+  {%- else %}<p class="text-muted-foreground text-xs" id="{{ field_id }}-hint" hidden></p>
+  {%- endif -%}
+{%- endmacro %}
 
 {#
   Panel widths. A popover has to be told how wide to be — its content is out
@@ -135,43 +166,108 @@
 {%- endmacro %}
 
 {#
+  Multiple selection, shared by `select_menu` and `combobox`.
+
+  Basecoat drives both off one attribute — `aria-multiselectable="true"` on the
+  listbox — so `multiple=true` is the whole switch. What it changes here:
+
+  - `selected` becomes a list. It stays a scalar when `multiple` is false, so
+    the two are not interchangeable and the macro does not guess.
+  - the hidden input carries a JSON array and is marked `data-fjkit-multi`,
+    which is what `multiselect_scripts()` looks for.
+  - the panel stops closing on each pick. `data-close-on-select` is Basecoat's
+    knob, absent means "stay open", and staying open is the only sane default
+    for a control whose point is picking more than one thing. `close_on_select`
+    is there for the list short enough that one pick is the usual case.
+
+  The page must load `multiselect_scripts()`. Without it the field posts
+  `labels=["bug","ui"]` — one string, JSON-shaped — instead of `labels=bug&
+  labels=ui`, and a route declaring `list[str]` answers 422 while the page
+  looks perfectly filled in. That is the failure this pair of parameters is
+  most likely to produce, so it is stated twice: here and on the script macro.
+
+  An empty selection posts the field zero times, exactly as an untouched
+  checkbox group does. Declare `Form([])`, not `Form(...)`, if choosing nothing
+  is allowed — otherwise "I cleared it" and "I never opened it" are both a 422.
+#}
+{#
   select_menu(name, options, …) — the scripted listbox.
 
   Prefer `select_field`. A native `<select>` is keyboard- and screen-reader-
   correct for free and costs one element; this one is ~30 and depends on JS
   being present. Reach for it only when the rows need markup a native option
-  cannot hold — an icon, two lines, a swatch.
+  cannot hold — an icon, two lines, a swatch — or when you need `multiple`,
+  which a native `<select multiple>` renders as a scrolling box nobody has ever
+  found by accident.
 
   The value reaches the server through the hidden input, which carries `name`;
   the visible trigger is a button and submits nothing. That is why `name` is
   the first parameter and the button has none: a form that posts the button
   posts nothing at all.
+
+      {{ select_menu("labels", options=label_options,
+                     selected=task.labels, multiple=true) }}
+
+  `label` is an `aria-label` on the trigger and draws nothing. Pass
+  `visible_label` instead when the control sits in a form beside `text_field`
+  and has to look like one: it renders the `.field` wrapper, a real `<label
+  for>` and the message paragraph, so the field lines up with its neighbours
+  and a rejected submit has somewhere to put red text. `hint` and `error` work
+  as they do on every other field, and either one alone is enough to make this
+  a field — a hint with no label is still a field.
+
+      {{ select_menu("phase", options=phases, multiple=true,
+                     visible_label="Trial phase", hint="Post-filter") }}
 #}
-{% macro select_menu(name, options=(), selected=none, id=none, placeholder="Select…", width="lg", label=none) -%}
+{% macro select_menu(name, options=(), selected=none, id=none, placeholder="Select…", width="lg", label=none,
+                     multiple=false, close_on_select=false, visible_label=none, hint=none, error=none) -%}
   {%- set field_id = id or ("s-" ~ name) -%}
   {#
-    `| list` then index, not `| first`: `first` on an empty sequence is an
-    Undefined that raises the moment it is tested, and StrictUndefined is
-    the point of the config — nothing selected is the ordinary case here.
+    Any one of the three turns this into a field: the `.field` wrapper, a
+    visible `<label>` and the message paragraph, exactly as `text_field`
+    renders them. Without them the macro emits the bare control it always did.
   #}
-  {%- set matches = options | selectattr("0", "equalto", selected) | list -%}
-  {%- set chosen = matches[0] if matches else none -%}
+  {%- set as_field = visible_label is not none or hint is not none or error is not none -%}
+  {#
+    A list either way, so one expression marks the options. `selectattr("0",
+    "in", …)` rather
+    than `equalto`: one expression then covers both, and for a single select it
+    is the same test it always was, over a one-element list.
+  #}
+  {%- set values = (selected or []) | list if multiple else ([selected] if selected is not none else []) -%}
+  {%- set chosen = options | selectattr("0", "in", values) | map(attribute=1) | list -%}
+  {%- if as_field %}<div class="field">
+    {%- if visible_label %}<label class="label" for="{{ field_id }}-trigger">{{ visible_label }}</label>{% endif %}
+  {%- endif %}
   <div id="{{ field_id }}" class="select" data-placeholder="{{ placeholder }}"
+       {%- if multiple and close_on_select %} data-close-on-select="true"{% endif %}
        {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     <button type="button" id="{{ field_id }}-trigger"
             {%- set trigger_width = _PANEL_WIDTHS.get(width, "w-72") %}
             {%- if trigger_width %} class="{{ trigger_width }}"{% endif %}
             aria-haspopup="listbox" aria-expanded="false" aria-controls="{{ field_id }}-listbox"
-            {%- if label %} aria-label="{{ label }}"{% endif %}>
-      <span class="truncate">{{ chosen[1] if chosen else placeholder }}</span>
+            {#
+              Only when nothing visible names the control: a visible `<label
+              for>` already names it, and an `aria-label` beside one overrides
+              the text on screen with the text in the attribute.
+            #}
+            {%- if label and not visible_label %} aria-label="{{ label }}"{% endif %}
+            {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}
+            {%- if error %} aria-invalid="true"{% endif %}>
+      {#
+        Comma-joined, which is what Basecoat's JS writes the moment it runs.
+        Anything else here would be a visible change at first paint.
+      #}
+      <span class="truncate">{{ chosen | join(", ") if chosen else placeholder }}</span>
       {{ icon("chevron-down", 16, "text-muted-foreground shrink-0 opacity-50") }}
     </button>
     <div id="{{ field_id }}-popover" data-popover aria-hidden="true">
       <div role="listbox" id="{{ field_id }}-listbox" aria-orientation="vertical"
+           {%- if multiple %} aria-multiselectable="true"{% endif %}
            aria-labelledby="{{ field_id }}-trigger">
         {%- for value, option_label in options %}
           <div role="option" data-value="{{ value }}"
-               {%- if value == selected %} aria-selected="true"{% endif %}>{{ option_label }}</div>
+               {%- if value in values %} aria-selected="true"{% endif %}>{{ option_label }}</div>
         {%- endfor %}
       </div>
     </div>
@@ -180,9 +276,31 @@
       lets its JS write the value on first interaction, so a form submitted
       without touching the select posts nothing — and the round trip that
       re-renders this partial would lose the selection it was given.
+
+      Single-quoted in the multiple case because `tojson` escapes `<`, `>`, `&`
+      and `'` but not `"`, and `["a","b"]` inside a double-quoted attribute is
+      a truncated value rather than an error.
     #}
-    <input type="hidden" name="{{ name }}" value="{{ selected if selected is not none else "" }}">
+    {#
+      `aria-describedby` on the hidden input as well as the trigger, and it is
+      not for a screen reader — a hidden input is not exposed to one. It is for
+      `js/errors.js`, which finds the control a 422 names by `[name]`, and that
+      is this input. Pointed at the reserved paragraph, a rejected `continents`
+      draws red text under the field; unpointed, the script builds its own
+      paragraph and inserts it here, inside the `.select` box.
+    #}
+    {%- if multiple %}
+    <input type="hidden" name="{{ name }}" data-fjkit-multi value='{{ values | tojson }}'
+           {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}>
+    {%- else %}
+    <input type="hidden" name="{{ name }}" value="{{ selected if selected is not none else "" }}"
+           {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}>
+    {%- endif %}
   </div>
+  {%- if as_field %}
+  {{ _message(field_id, hint, error) }}
+  </div>
+  {%- endif %}
 {%- endmacro %}
 
 {#
@@ -197,19 +315,43 @@
   Filtering is client-side over the options rendered here. Server-side search
   is a different component: an `input` with `hx-get` and a listbox swapped by
   the response.
+
+  `multiple` works here too, and reads better than it does on `select_menu` —
+  Basecoat wraps the text input in a `.combobox-chips` div and renders one chip
+  per pick, so a long selection stays legible instead of becoming a comma-joined
+  line that truncates. The one thing to know is that the chips are drawn by that
+  JS: at first paint a pre-filled multiple combobox shows an empty box. Use
+  `select_menu(multiple=true)` where the selection has to be visible with
+  JavaScript off — and read the note on `multiselect_scripts()` either way.
+
+  `visible_label`, `hint` and `error` behave as they do on `select_menu`: any
+  one of them wraps the control in a `.field` and gives it the label and the
+  message paragraph an ordinary field has.
 #}
-{% macro combobox(name, options=(), selected=none, id=none, placeholder="Select…", empty="No results found.", label=none) -%}
+{% macro combobox(name, options=(), selected=none, id=none, placeholder="Select…", empty="No results found.", label=none,
+                  multiple=false, close_on_select=false, visible_label=none, hint=none, error=none) -%}
   {%- set field_id = id or ("c-" ~ name) -%}
+  {# Same three parameters as `select_menu`, same rule — see its comment. #}
+  {%- set as_field = visible_label is not none or hint is not none or error is not none -%}
   {#
-    `| list` then index, not `| first`: `first` on an empty sequence is an
-    Undefined that raises the moment it is tested, and StrictUndefined is
-    the point of the config — nothing selected is the ordinary case here.
+    Same normalisation as `select_menu`, and the same reason: `equalto` against
+    a list would never match, so the shape of `selected` follows `multiple`.
   #}
-  {%- set matches = options | selectattr("0", "equalto", selected) | list -%}
-  {%- set chosen = matches[0] if matches else none -%}
-  <div id="{{ field_id }}" class="combobox"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
-    <input type="text" role="combobox" placeholder="{{ placeholder }}"
-           value="{{ chosen[1] if chosen else "" }}"
+  {%- set values = (selected or []) | list if multiple else ([selected] if selected is not none else []) -%}
+  {%- set chosen = options | selectattr("0", "in", values) | map(attribute=1) | list -%}
+  {%- if as_field %}<div class="field">
+    {%- if visible_label %}<label class="label" for="{{ field_id }}-input">{{ visible_label }}</label>{% endif %}
+  {%- endif %}
+  <div id="{{ field_id }}" class="combobox"
+       {%- if multiple and close_on_select %} data-close-on-select="true"{% endif %}
+       {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {#
+      Empty when `multiple`: this input is the filter box, not the display. The
+      selection lives in the chips beside it, and pre-filling it with a label
+      would filter the list down to that one option before anybody typed.
+    #}
+    <input type="text" role="combobox" id="{{ field_id }}-input" placeholder="{{ placeholder }}"
+           value="{{ "" if multiple else (chosen | join(", ")) }}"
            {#
              Off, all three: a combobox filters a list the page already holds,
              so the browser's own history dropdown would cover the listbox with
@@ -217,18 +359,70 @@
            #}
            autocomplete="off" autocorrect="off" spellcheck="false"
            aria-autocomplete="list" aria-expanded="false" aria-controls="{{ field_id }}-listbox"
-           {%- if label %} aria-label="{{ label }}"{% endif %}>
+           {%- if label and not visible_label %} aria-label="{{ label }}"{% endif %}
+           {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}
+           {%- if error %} aria-invalid="true"{% endif %}>
     {{ icon("chevron-down", 16, "combobox-trigger-icon") }}
     <div id="{{ field_id }}-popover" data-popover aria-hidden="true">
-      <div role="listbox" id="{{ field_id }}-listbox" aria-orientation="vertical" data-empty="{{ empty }}">
+      <div role="listbox" id="{{ field_id }}-listbox" aria-orientation="vertical" data-empty="{{ empty }}"
+           {%- if multiple %} aria-multiselectable="true"{% endif %}>
         {%- for value, option_label in options %}
           <div role="option" data-value="{{ value }}"
-               {%- if value == selected %} aria-selected="true"{% endif %}>{{ option_label }}</div>
+               {%- if value in values %} aria-selected="true"{% endif %}>{{ option_label }}</div>
         {%- endfor %}
       </div>
     </div>
-    <input type="hidden" name="{{ name }}" value="{{ selected if selected is not none else "" }}">
+    {# The hidden input carries the 422, same as in `select_menu`. #}
+    {%- if multiple %}
+    <input type="hidden" name="{{ name }}" data-fjkit-multi value='{{ values | tojson }}'
+           {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}>
+    {%- else %}
+    <input type="hidden" name="{{ name }}" value="{{ selected if selected is not none else "" }}"
+           {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}>
+    {%- endif %}
   </div>
+  {%- if as_field %}
+  {{ _message(field_id, hint, error) }}
+  </div>
+  {%- endif %}
+{%- endmacro %}
+
+{#
+  multiselect_scripts() — what a page loads to be allowed `multiple=true`.
+
+      {% block scripts %}{{ multiselect_scripts() }}{% endblock %}
+
+  Per page, and never from the shell, for the same reason `form_scripts()` is:
+  CHARTER §7 budgets what a page downloads *by default*, and the answer has to
+  stay "htmx and Basecoat".
+
+  What it buys is one line of wire format. Basecoat serialises a multiple
+  selection as `JSON.stringify(values)` in a single hidden input, so without
+  this script the route is handed one string:
+
+      labels=%5B%22bug%22%2C%22ui%22%5D        ->  labels: str  == '["bug","ui"]'
+
+  With it, the selection is re-emitted the way HTML has always carried a
+  repeated field, and the FastAPI signature is the ordinary one:
+
+      labels=bug&labels=ui                     ->  labels: list[str] = Form([])
+
+  It covers both halves of `form()`: htmx submits are rewritten in
+  `htmx:configRequest`, browser submits in a capture-phase `submit` handler,
+  and a form is only ever handled by one of the two.
+
+  `encoding="json"` composes, in one direction: this runs first and json-enc
+  collects the repeats into an array. One caveat — json-enc collects *repeats*,
+  so a one-item selection arrives as `"bug"`, not `["bug"]`. Give the model a
+  `mode="before"` validator that wraps a bare string in a list; `TaskUpdate` in
+  `examples/fjkit-demo` is the worked example.
+
+  A page that forgets this macro fails the way every missing-script failure in
+  this kit does: no console error, no visual difference, and a 422 naming a
+  field that looks correctly filled in.
+#}
+{% macro multiselect_scripts() -%}
+  <script defer src="{{ fjkit_static("js/multiselect.js") }}"></script>
 {%- endmacro %}
 
 {#

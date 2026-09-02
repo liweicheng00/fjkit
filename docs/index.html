@@ -11,10 +11,12 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1787416553">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788337205">
   <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
-  <script defer src="assets/vendor/htmx/htmx.min.js?v=1786876367"></script>
-  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1786876367"></script>
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
+  <script defer src="assets/js/errors.js?v=1787594535"></script>
   <meta name="description" content="fjkit integrates Jinja, Tailwind CSS and shadcn-style components with FastAPI: pages, tables, forms, navigation and htmx swaps as Jinja macros, with no build step on your side.">
   <meta property="og:title" content="fjkit — a fast UI for FastAPI">
   <meta property="og:description" content="fjkit integrates Jinja, Tailwind CSS and shadcn-style components with FastAPI: pages, tables, forms, navigation and htmx swaps as Jinja macros, with no build step on your side.">
@@ -40,6 +42,10 @@ fjkit
   </li>
         <li>
     <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>Components</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>      <span>Cheatsheet</span>
     </a>
   </li>
 </ul>
@@ -146,7 +152,7 @@ fjkit
       <h4>FjkitConfig, mount_fjkit</h4><p>the wiring, once per app</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>@render</h4><p>name a template on the decorator; the handler returns data</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>fjkit check</h4><p>the vocabulary gate. Run it in your CI.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fjkit eject</h4><p>the escape hatch: copy a component into your app and edit it</p>    </section>  </div></div></div>
+      <h4>fjkit eject</h4><p>the escape hatch: take one macro into your app and edit it</p>    </section>  </div></div></div>
   </div>
 </div>
 <div class="flex flex-col gap-3">      <p>
@@ -185,6 +191,13 @@ fjkit
   </div>
 
 <div id="toaster" class="toaster" data-align="end"></div>
+  <script>
+    document.body.addEventListener("fjkit:toast", (event) => {
+      const toaster = document.getElementById("toaster");
+      if (!toaster || !toaster.toast) return;
+      for (const message of event.detail?.messages ?? []) toaster.toast(message);
+    });
+  </script>
   <script defer src="assets/data.js?v=0.1.0.dev0"></script>
   <script defer src="assets/common.js?v=0.1.0.dev0"></script>
 </body>

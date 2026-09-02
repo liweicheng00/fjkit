@@ -21,8 +21,10 @@ Routes name their template on a decorator and return data:
 
 from __future__ import annotations
 
+from fjkit import messages
 from fjkit.config import FjkitConfig, RenderMode
 from fjkit.flash import FlashMessage, FlashPlugin
+from fjkit.messages import Message
 from fjkit.mounting import mount_fjkit
 from fjkit.plugins import AppSetup, EnvSetup, Plugin, PluginWarning
 from fjkit.rendering import render
@@ -34,12 +36,14 @@ __all__ = [
     "FjkitConfig",
     "FlashMessage",
     "FlashPlugin",
+    "Message",
     "Plugin",
     "PluginWarning",
     "RenderMode",
     "Templates",
     "build_environment",
     "get_templates",
+    "messages",
     "mount_fjkit",
     "render",
 ]

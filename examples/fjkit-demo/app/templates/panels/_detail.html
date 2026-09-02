@@ -1,0 +1,47 @@
+{#
+  The detail panel's body — no wrapper, and no id.
+
+  The tab panel is the element htmx swaps, so this partial is only ever its
+  contents. Compare `search/_detail.html`, which has to wrap itself in
+  `#search-detail` and re-declare its whole subscription on every render, because
+  it is its own target. A lazy panel moves both of those into `tab_panel`, and
+  what is left in this file is the markup.
+#}
+{% set selected = selected | default(none) %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import badge, card, empty_state, metric_group %}
+{% from "ui/layout.html" import row, stack %}
+{% from "panels/macros.html" import advance_action, stamp %}
+
+{% if selected %}
+  {% set actions %}
+    {% call row(gap=2) %}
+      {{ advance_action(request, selected) }}
+      {{ button("Edit", variant="ghost", size="xs", icon_name="pencil",
+                href=url_for(request, "tasks_edit", task_id=selected.id)) }}
+      {{ stamp(rendered_label) }}
+    {% endcall %}
+  {% endset %}
+  {% call card(selected.title, selected.notes or "no notes on this one", actions=actions) %}
+    {% call stack(4) %}
+      {% call row(gap=2) %}
+        {{ badge(selected.status.value | capitalize, variant=selected.status_variant) }}
+        {{ badge(selected.priority.value | capitalize, variant=selected.priority_variant) }}
+        {% if selected.blocked %}{{ badge("Blocked", variant="destructive") }}{% endif %}
+        {% if selected.watching %}{{ badge("Watching", variant="info") }}{% endif %}
+      {% endcall %}
+
+      {{ metric_group([
+        ("Owner", selected.owner),
+        ("Created", selected.created_label),
+        ("Task", "#" ~ selected.id),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+{% else %}
+  {% call card("Detail", "Nothing picked yet.", actions=stamp(rendered_label)) %}
+    {{ empty_state("No task open",
+                   "Open a row above. This panel fetched itself when you chose the tab, and it will fetch again when you come back to it.",
+                   icon_name="radio-tower") }}
+  {% endcall %}
+{% endif %}

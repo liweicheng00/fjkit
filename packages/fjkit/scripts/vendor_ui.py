@@ -15,7 +15,7 @@ from pathlib import Path
 
 # Single source of truth lives in the package, so the footer the shell renders
 # cannot drift from the bytes on disk.
-from fjkit.vendored import BASECOAT_VERSION, HTMX_VERSION  # noqa: E402
+from fjkit.vendored import BASECOAT_VERSION, HTMX_JSON_ENC_VERSION, HTMX_VERSION, PLOTLY_VERSION  # noqa: E402
 
 PACKAGE = Path(__file__).resolve().parent.parent / "src" / "fjkit"
 ROOT = PACKAGE
@@ -96,8 +96,31 @@ def vendor_htmx() -> None:
         fetch(f"{JSDELIVR}/htmx.org@{HTMX_VERSION}/dist/htmx.min.js"),
     )
 
+    # Beside the core, because it is an htmx extension and reads as one on
+    # disk. Not minified upstream and not minified here: it is 1 KB of
+    # readable source, and a build step to save 300 bytes is the exact trade
+    # this project exists to refuse. No page loads it unless it says so —
+    # `form_scripts()`, and `HTMX_JSON_ENC_VERSION` says why.
+    print(f"htmx-ext-json-enc@{HTMX_JSON_ENC_VERSION}")
+    write(
+        VENDOR / "htmx" / "json-enc.js",
+        fetch(f"{JSDELIVR}/htmx-ext-json-enc@{HTMX_JSON_ENC_VERSION}/json-enc.js"),
+    )
+
+
+def vendor_plotly() -> None:
+    # The basic bundle, not the full one — `PLOTLY_VERSION` says why. Served
+    # from the kit's static mount like htmx, and loaded by nothing but the page
+    # that calls `chart_scripts()`.
+    print(f"plotly.js-basic-dist-min@{PLOTLY_VERSION}")
+    write(
+        VENDOR / "plotly" / "plotly-basic.min.js",
+        fetch(f"{JSDELIVR}/plotly.js-basic-dist-min@{PLOTLY_VERSION}/plotly-basic.min.js"),
+    )
+
 
 if __name__ == "__main__":
     vendor_basecoat()
     vendor_htmx()
+    vendor_plotly()
     print("\nNow rebuild the stylesheet:  uv run fjkit build-css")

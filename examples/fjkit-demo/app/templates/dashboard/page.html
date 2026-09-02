@@ -9,10 +9,9 @@
 
 {% block content %}
   {{ page_header("Overview",
-     "FastAPI renders these pages with Jinja2. fjkit supplies the components; htmx supplies the interactivity.") }}
+     "FastAPI renders these pages with Jinja2. fjkit supplies the components and the interactivity.") }}
 
-  {# Two layout blocks in one page: stack them, or they render flush against
-     each other — a layout macro is a bare div with no margin of its own. #}
+  {# Two layout blocks, stacked. #}
      
   {% call stack(4) %}
 
@@ -32,7 +31,7 @@
       {% endset %}
 
       {% call card("Recent", actions=all_tasks, padded=false) %}
-        {# Same row as the board, without mutations — those live on /tasks. #}
+        {# The board's rows without their actions. #}
         {% call table(TASK_COLUMNS[:-1]) %}
           {% for task in recent %}{{ task_row(request, task, show_actions=false) }}{% endfor %}
         {% endcall %}

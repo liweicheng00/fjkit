@@ -27,6 +27,7 @@
  * every utility class in them is absent from the stylesheet, which looks like a
  * broken page and says nothing. `tests/test_apidocs.py` holds this one. */
 @source "../../apidocs/templates";
+@source "../../charts/templates";
 @source "../vendor/basecoat/js";
 
 /* Basecoat ships Tailwind *source* CSS: @apply rules plus the shadcn token
@@ -174,9 +175,28 @@
 
   /* The panel is already capped at `max-h-[calc(100%-2rem)]`; without this the
    * body of a long one overflows past the viewport, where a mouse can still
-   * reach it by scrolling the page but a keyboard cannot reach it at all. */
+   * reach it by scrolling the page but a keyboard cannot reach it at all.
+   *
+   * The margin/padding swap makes the section carry the panel's 24px inline
+   * padding itself (the panel is `p-6`, so the two cancel exactly and nothing
+   * moves). Scrolling has to happen inside the section, and everything a
+   * scroll container puts at its own edges was landing on the content:
+   *
+   *   - a classic scrollbar track sat on the right edge of a full-bleed
+   *     child, drawing over its border;
+   *   - a macOS overlay scrollbar takes no layout width, so no gutter can
+   *     help it — the thumb floats over whatever is at the right edge;
+   *   - a focus ring is painted outside the border box, so on a child at the
+   *     section's edge it was clipped by the overflow itself.
+   *
+   * With the padding inside the scroll container all three now happen in the
+   * section's own 24px band instead of on the content. `scrollbar-gutter:
+   * stable` still matters, but for one thing only: without it a classic
+   * scrollbar appears by taking layout width, and the body reflows at the
+   * moment it grows long enough to scroll. */
   .dialog > * > section {
-    @apply overflow-y-auto;
+    @apply -mx-6 overflow-y-auto px-6;
+    scrollbar-gutter: stable;
   }
 
   /* A button group inside a field. Basecoat's field-group rule —

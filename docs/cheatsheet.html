@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fjkit cheatsheet · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788337205">
+  <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
+  <script defer src="assets/js/errors.js?v=1787594535"></script>
+  <meta name="description" content="Every fjkit macro in one table per file, with its full signature, whether it is called with a block and what goes inside it — plus the shell&#39;s blocks, the template globals and the htmx attributes a fjkit page actually uses.">
+  <meta property="og:title" content="fjkit cheatsheet">
+  <meta property="og:description" content="Every fjkit macro in one table per file, with its full signature, whether it is called with a block and what goes inside it — plus the shell&#39;s blocks, the template globals and the htmx attributes a fjkit page actually uses.">
+  <meta property="og:type" content="article">
+  <script src="assets/mock-server.js?v=0.1.0.dev0"></script>
+</head>
+<body class="min-h-full antialiased">
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png?v=1787150370" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="Documentation"><h3>Documentation</h3>    <ul>        <li>
+    <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>Introduction</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>Learn</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>Plugins</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>Components</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>      <span>Cheatsheet</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
+    <a href="cheatsheet.html#reading">      <span>How to read this</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#basics">      <span>Buttons and icons</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#layout">      <span>Layout and page structure</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#data">      <span>Data display</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#form">      <span>Forms</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#nav">      <span>Navigation</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#overlay">      <span>Overlays and disclosure</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#feedback">      <span>Feedback</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#shell">      <span>The shell</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#globals">      <span>Globals</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#htmx">      <span>htmx attributes</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html#missing">      <span>When it is not here</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="Language"><h3>Language</h3>    <ul>      <li>
+    <a href="zh/cheatsheet.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>中文</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-screen flex-col px-5">
+      <header class="flex items-center gap-6 py-5">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>        <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit on GitHub">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>        </div>
+      </header>
+
+    <main class="flex-1 pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">fjkit cheatsheet</h1>
+<p class="text-muted-foreground text-sm">    Every macro the kit ships, grouped by what it is for, with the one question an index is asked
+    most often answered on the row itself: does this take a block, and what goes inside it. The
+    <a href="components.html">Components</a> page is where you see them
+    running; this is where you look one up.
+</p>    </div>
+  </div>
+
+<div id="reading">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">How to read this</h2><p class="text-muted-foreground text-sm">What is on a row, and two rules that apply to every one of them.</p>      </div>
+    <div class="flex flex-col gap-3">      <p>
+        A Jinja macro is called in one of two ways, and which one it is, is not something you can
+        guess from the name. A macro with nothing inside it is printed. A macro that wraps
+        something is called with <code>{% call %}</code>, and whatever sits
+        between that and <code>{% endcall %}</code> is handed to the macro to
+        place — Jinja calls it the <em>caller block</em>, and every macro below that wants one
+        carries a badge saying what goes in it.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the two shapes" data-lang="jinja">{% from &#34;ui/data.html&#34; import badge, card %}
+
+{# printed — this macro takes no block #}
+{{ badge(&#34;Doing&#34;, variant=&#34;info&#34;) }}
+
+{# a block — the card renders it as its body #}
+{% call card(&#34;Tasks&#34;, &#34;Everything open right now.&#34;) %}
+  &lt;p&gt;Anything that belongs inside the card.&lt;/p&gt;
+{% endcall %}</pre>
+
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What is on a row</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>The signature</h4><p>the call, with every parameter and its default. The heading above each list is the file you <code>import</code> it from</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>A block badge</h4><p>on the right of a row, and only on the rows that have one: this macro is called with <code>{% call %}</code>, and the badge says what goes inside. No badge means print it with <code>{{ }}</code></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>One line under it</h4><p>the thing the signature does not say. Absent when the signature says all of it</p>    </section>  </div></div></div>
+  </div>
+
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Two rules, everywhere</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>Extra keywords</h4><p>anything you pass that is not in the signature becomes an attribute, with underscores turned into dashes: <code>hx_post="/tasks"</code> arrives as <code>hx-post="/tasks"</code>. That is every <code>hx-*</code>, <code>aria-*</code> and <code>data-*</code>, on every macro</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Roles, not colours</h4><p><code>variant</code>, <code>tone</code> and <code>category</code> name a role — <code>success</code>, <code>destructive</code>, <code>muted</code> — never a colour. The colour is the token layer's, so a rebrand moves it once</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div>
+<hr class="border-border">
+
+<div id="basics">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Buttons and icons</h2><p class="text-muted-foreground text-sm">The two smallest things, and the plumbing every other macro forwards through.</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/button.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>button(label, variant=&#34;&#34;, size=&#34;&#34;, type=&#34;button&#34;, href=none,
+       icon_name=none, icon_end=false, disabled=false)</code></h4><p>Passing href renders an &lt;a&gt; that still looks and behaves like a button.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>button_group(gap=2, orientation=&#34;horizontal&#34;)</code></h4><p>Spacing only. Each button keeps its own variant.</p>    </section><aside><span class="badge" data-variant="outline">block: the buttons</span></aside>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/icon.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>icon(name, size=16, cls=&#34;&#34;)</code></h4><p>1,767 Lucide names. An unknown name raises at render time rather than drawing nothing.</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/attrs.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>attrs(mapping)</code></h4><p>An app never calls this. Every macro ends with **kwargs and runs it through here, which is how hx_post=&#34;/tasks&#34; reaches the markup as hx-post=&#34;/tasks&#34;.</p>    </section>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="layout">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Layout and page structure</h2><p class="text-muted-foreground text-sm">Everything here takes a block, because a layout macro is a wrapper by definition. Reach for these before any utility class — that is the whole point of the closed vocabulary.</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/layout.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>stack(gap=4, align=none)</code></h4><p>Vertical rhythm. The default gap for a page&#39;s bands.</p>    </section><aside><span class="badge" data-variant="outline">block: the children</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>row(gap=3, align=&#34;center&#34;, justify=none, wrap=true)</code></h4><p>Horizontal, and it wraps by default so a narrow screen never clips.</p>    </section><aside><span class="badge" data-variant="outline">block: the children</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>grid(cols=3, gap=4)</code></h4><p>cols is 2, 3 or 4. The breakpoints belong to the macro; a caller that picks its own is how a layout vocabulary turns back into utility classes.</p>    </section><aside><span class="badge" data-variant="outline">block: the children</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>split(aside=&#34;md&#34;, gap=6)</code></h4><p>Called as {% call(slot) split() %}, and the block is rendered twice — once with slot=&#34;main&#34;, once with slot=&#34;aside&#34;.</p>    </section><aside><span class="badge" data-variant="outline">block: two slots — main and aside</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>centered(width=&#34;sm&#34;, gap=6)</code></h4><p>The width cap the rest of this file cannot express. width is xs, sm, md, lg, xl or prose — a sign-in card, a settings form, a page of prose. It centres horizontally only.</p>    </section><aside><span class="badge" data-variant="outline">block: the children</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>page_header(title, description=none)</code></h4><p>Called without a block it is just the title and the description. The block is the actions slot, so buttons stay level with the title at every width.</p>    </section><aside><span class="badge" data-variant="outline">block: the actions (optional)</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>section(title=none, description=none, gap=4)</code></h4><p>One level below page_header. Use it when a page has more than one topic on it.</p>    </section><aside><span class="badge" data-variant="outline">block: the children</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>divider()</code></h4><p>A hairline on the border token, so it survives both colour schemes. Prefer a section heading where the split has a name.</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/sidebar.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar(id=&#34;sidebar&#34;, label=&#34;Main&#34;, side=&#34;left&#34;, open=true,
+        header=none, footer=none)</code></h4><p>Fill the shell&#39;s sidebar block with this, or its nav block with nav_links — not both.</p>    </section><aside><span class="badge" data-variant="outline">block: the groups</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_group(title=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: sidebar_link() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_link(request, route, label, icon_name=none)</code></h4><p>route is a route name, not a URL. The active state is is_active&#39;s, so a link cannot disagree with the page it is on.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_submenu(label, icon_name=none, open=false)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: sidebar_link() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_trigger(target=&#34;sidebar&#34;, label=&#34;Toggle navigation&#34;)</code></h4><p>The shell already renders one in the header when a sidebar is present.</p>    </section>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="data">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Data display</h2><p class="text-muted-foreground text-sm">What a row, a figure or a list of things looks like. Build the list in Python — a template that zips two lists is doing the router&#39;s job.</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/data.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>badge(label, variant=&#34;&#34;)</code></h4><p>variant is a role: success, warning, destructive, info, secondary, outline.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>card(title=none, description=none, size=&#34;&#34;, actions=none, padded=true)</code></h4><p>padded=false hands the body to the card&#39;s own edge — what a table or a code block needs.</p>    </section><aside><span class="badge" data-variant="outline">block: the body</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>stat(label, value, hint=none, icon_name=none, tone=none)</code></h4><p>One figure. Several of them are metric_group.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>metric_group(items, cols=3)</code></h4><p>items is a list of (label, value) pairs.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>progress(value, label=none)</code></h4><p>value is 0–100.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>empty_state(title, description=none, icon_name=&#34;sparkle&#34;)</code></h4><p>table renders this for you when rows is empty — pass empty_title and empty_description instead of writing the branch.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>bullet_list(tone=&#34;muted&#34;)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: list_item() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>list_item()</code></h4>    </section><aside><span class="badge" data-variant="outline">block: the text</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>item_list()</code></h4>    </section><aside><span class="badge" data-variant="outline">block: item() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>item(title, description=none, icon_name=none, actions=none,
+     href=none, clamp=true)</code></h4><p>clamp=false lets a description run past two lines — what a definition needs and a feed does not.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>avatar(name, src=none, size=&#34;&#34;, initials=none, badge_tone=none,
+       badge_icon=none)</code></h4><p>Initials are derived from name unless you override them.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>avatar_group(overflow=none, label=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: avatar() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>code_block(source, label=none, wrap=false)</code></h4><p>Carries the scroll region and its focusability, so a keyboard can reach a listing that overflows.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>caption(text=none)</code></h4><p>A muted line that stands on its own. card, section and page_header each render a description already, but those are bound to a heading.</p>    </section><aside><span class="badge" data-variant="outline">block: the text (optional)</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>link(label, href)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>kbd(keys)</code></h4><p>A key or a chord.</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/table.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>table(columns, rows=none, empty_title=&#34;Nothing here&#34;,
+      empty_description=none, empty_icon=&#34;list&#34;)</code></h4><p>columns is a list of dicts — label, and optionally align or width. Passing rows lets the macro own the empty case; pass rows=none to always render the body yourself.</p>    </section><aside><span class="badge" data-variant="outline">block: the rows</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>cell(value=none, tone=none, numeric=false, align=none)</code></h4><p>Pass value for text, or omit it and use a block for markup. tone is a closed lookup, so no colour can be passed through.</p>    </section><aside><span class="badge" data-variant="outline">block: the cell content (optional)</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>row_actions()</code></h4><p>The trailing cell, right-aligned and tight.</p>    </section><aside><span class="badge" data-variant="outline">block: the buttons</span></aside>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="form">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Forms</h2><p class="text-muted-foreground text-sm">Every field takes name, label, hint, error and id. Pass error and the field draws the message, the red ring and the aria-describedby wiring together.</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/form.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>form(action=none, method=&#34;post&#34;, target=none, swap=&#34;outerHTML&#34;,
+     reset_on_success=false, card=true, encoding=&#34;urlencoded&#34;)</code></h4><p>target and swap are the htmx pair. encoding=&#34;json&#34; posts JSON, and then the page needs form_scripts().</p>    </section><aside><span class="badge" data-variant="outline">block: the fields</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>form_scripts()</code></h4><p>Per page, not in the shell — this is what encoding=&#34;json&#34; needs.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>field_row(template=&#34;two&#34;, gap=3)</code></h4><p>Two or three fields on one line, collapsing to one column when narrow.</p>    </section><aside><span class="badge" data-variant="outline">block: the fields</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fieldset(legend=none, hint=none)</code></h4><p>A named group inside a form, with the legend the group needs.</p>    </section><aside><span class="badge" data-variant="outline">block: the fields</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>text_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;, type=&#34;text&#34;,
+           required=false, hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>textarea_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;, rows=none,
+               required=false, hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>select_field(name, label=none, options=(), selected=none, id=none,
+             blank=none, hint=none, error=none)</code></h4><p>options is a list of (value, label) pairs.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>checkbox_field(name, label=none, checked=false, value=&#34;on&#34;,
+               hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>switch_field(name, label=none, checked=false, value=&#34;on&#34;,
+             hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>radio_group(name, label=none, options=(), selected=none,
+            hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>range_field(name, label=none, value=50, min=0, max=100, step=1,
+            hint=none, error=none, id=none, output=false)</code></h4><p>output=true shows the live value beside the track, from the control itself rather than from a second source.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>input_group_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;,
+                  type=&#34;text&#34;, start=none, end=none, required=false,
+                  hint=none, error=none, id=none, revealable=false,
+                  reveal_show=&#34;Show&#34;, reveal_hide=&#34;Hide&#34;)</code></h4><p>start and end are the affixes — a currency symbol, a unit, a button. revealable=true adds the Show/Hide toggle a password field wants, and then the page needs reveal_scripts().</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>reveal_scripts()</code></h4><p>Per page, not in the shell — this is what revealable=true needs. The listener is on document, so the button still works in a panel a 422 swapped in.</p>    </section>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="nav">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Navigation</h2><p class="text-muted-foreground text-sm">Route names are the currency. Nothing here takes a URL, so a moved route cannot leave a dead link behind.</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/nav.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>brand(label, href=&#34;/&#34;, icon_name=none, icon_src=none)</code></h4><p>icon_name for a Lucide glyph, icon_src for your own mark.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>nav_links(request, links)</code></h4><p>links is a list of (route, label) pairs. The header alternative to a sidebar.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>theme_toggle()</code></h4><p>The shell renders one already; call it only when you have replaced header_actions.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>breadcrumb(trail, separator=&#34;chevron&#34;, label=&#34;Breadcrumb&#34;)</code></h4><p>trail is a list of (label, href) pairs, and href=none marks the current page — the last entry, which is not a link.</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/tabs.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>tabs(items, label=&#34;Tabs&#34;, selected=none, orientation=&#34;horizontal&#34;)</code></h4><p>items is a list of {id, label}. selected names the tab that starts open, so the server decides it rather than a script after paint.</p>    </section><aside><span class="badge" data-variant="outline">block: tab_panel() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>tab_panel(id, lazy=none, on=none, include=none)</code></h4><p>id has to match the tab&#39;s. That pairing is the whole aria contract Basecoat&#39;s keyboard behaviour reads.</p>    </section><aside><span class="badge" data-variant="outline">block: the body</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>tab_panel(&#34;detail&#34;, lazy=url_for(request, &#34;detail&#34;),
+          on=[&#34;task-selected&#34;], include=&#34;[name=task_id]&#34;)</code></h4><p>lazy is a URL: the panel fetches its own body when its tab is shown, and the block is what stands in until it arrives. on lists the broadcasts it follows while it is visible, include the selector for what it sends. Not revealed — a panel hidden by display:none reports an all-zero rect, which passes htmx&#39;s visibility test, so a revealed panel fetches at page load.</p>    </section><aside><span class="badge" data-variant="outline">block: the placeholder calls</span></aside>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="overlay">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Overlays and disclosure</h2><p class="text-muted-foreground text-sm">Anything that opens. Basecoat owns the open/close behaviour and the shell already loads it, so these macros carry the aria contract and nothing else.</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/overlay.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>popover(id, label, variant=&#34;outline&#34;, size=&#34;&#34;, side=&#34;bottom&#34;,
+        align=&#34;center&#34;, width=&#34;lg&#34;, icon_name=none)</code></h4><p>Free markup in a floating panel. A menu of choices is dropdown_menu.</p>    </section><aside><span class="badge" data-variant="outline">block: the body</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>dropdown_menu(id, label, variant=&#34;outline&#34;, size=&#34;&#34;, side=&#34;bottom&#34;,
+              align=&#34;start&#34;, width=&#34;default&#34;, icon_name=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: menu_item() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>menu_item(label, shortcut=none, variant=&#34;&#34;, disabled=false,
+          checked=none, radio=false, href=none)</code></h4><p>checked and radio give the item the matching aria role.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>menu_group(heading=none, id=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: menu_item() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>menu_separator()</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>select_menu(name, options=(), selected=none, id=none,
+            placeholder=&#34;Select…&#34;, width=&#34;lg&#34;, label=none,
+            multiple=false, close_on_select=false,
+            visible_label=none, hint=none, error=none)</code></h4><p>A styled select that still posts a field. multiple=true needs multiselect_scripts() on the page. label is an aria-label and draws nothing; visible_label makes it a field, with the wrapper, the label and the message line every other field has.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>combobox(name, options=(), selected=none, id=none,
+         placeholder=&#34;Select…&#34;, empty=&#34;No results found.&#34;,
+         label=none, multiple=false, close_on_select=false,
+         visible_label=none, hint=none, error=none)</code></h4><p>select_menu with a filter box. Same multiple=true rule, same visible_label.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>multiselect_scripts()</code></h4><p>Per page. Without it, multiple=true posts one JSON string instead of repeated fields.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>drawer(id, title=none, description=none, side=&#34;bottom&#34;,
+       footer=none, dismissible=true)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: the body</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>drawer_trigger(label, target, variant=&#34;outline&#34;, size=&#34;&#34;, icon_name=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>command(id, placeholder=&#34;Type a command or search…&#34;,
+        empty=&#34;No results found.&#34;, label=&#34;Command menu&#34;,
+        dialog=false, bordered=true)</code></h4><p>dialog=true makes it the overlay palette rather than an inline list.</p>    </section><aside><span class="badge" data-variant="outline">block: command_group() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>command_group(heading=none, id=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: command_item() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>command_item(label, keywords=none, icon_name=none, shortcut=none,
+             disabled=false, filter=none, href=none)</code></h4><p>keywords is what the filter box matches on beyond the label.</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/disclosure.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>collapsible(summary, open=false, icon_name=none)</code></h4><p>One section that opens. It is a &lt;details&gt;, so it works with scripting off.</p>    </section><aside><span class="badge" data-variant="outline">block: the panel body</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>accordion(multiple=false, label=none)</code></h4><p>multiple=false closes the others when one opens.</p>    </section><aside><span class="badge" data-variant="outline">block: collapsible() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>tooltip(text, side=&#34;top&#34;, align=&#34;center&#34;)</code></h4><p>A CSS ::after, so there is no second element and no script. The text is not in the accessibility tree — a tooltip is a hint, never the only label, and it cannot contain markup.</p>    </section><aside><span class="badge" data-variant="outline">block: the element it wraps</span></aside>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+<div id="feedback">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Feedback</h2><p class="text-muted-foreground text-sm">What the interface says back. The variant decides the colour and, for an alert, whether a screen reader interrupts.</p>      </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/feedback.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>spinner(size=&#34;default&#34;, tone=&#34;muted&#34;, label=none, indicator=false)</code></h4><p>indicator=true makes it an htmx indicator: hidden until the request it belongs to is in flight.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>alert(title, body=none, variant=&#34;&#34;, icon_name=none)</code></h4><p>variant=&#34;destructive&#34; gets role=&#34;alert&#34;, which interrupts a screen reader. Everything else gets role=&#34;status&#34;, which waits for a pause.</p>    </section><aside><span class="badge" data-variant="outline">block: the actions (optional)</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>skeleton(shape=&#34;text&#34;, width=&#34;full&#34;, lines=1, label=none)</code></h4><p>shape is text, heading, control, avatar or block.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>dialog(id, title=none, description=none, size=&#34;default&#34;,
+       footer=none, dismissible=true)</code></h4><p>A native &lt;dialog&gt;. The footer is a slot rather than a block, because the body already is one.</p>    </section><aside><span class="badge" data-variant="outline">block: the body</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>toaster(align=&#34;end&#34;)</code></h4><p>One per page, in the shell&#39;s toasts block. Server-sent toasts arrive through HX-Trigger.</p>    </section><aside><span class="badge" data-variant="outline">block: toast() calls (optional)</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>toast(title, description=none, category=&#34;info&#34;, duration=none,
+      action_label=none, action_href=none)</code></h4>    </section>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+
+<div id="shell">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">The shell</h2><p class="text-muted-foreground text-sm">Blocks, not macros — the one file you extend rather than import.</p>      </div>
+    <div class="flex flex-col gap-3">      <p>
+        <code>ui/shell.html</code> carries the <code>&lt;head&gt;</code>, the theme flash-guard, the
+        asset links and the header/main/footer skeleton. An app extends it once, in its own
+        <code>base.html</code>, and fills the blocks it needs. Fill <code>sidebar</code> or
+        <code>nav</code> — the shell lays the header out differently for each, and filling both
+        gives you two navigations.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/base.html" data-lang="jinja">{% extends &#34;ui/shell.html&#34; %}
+
+{% block site_title %}Acme{% endblock %}
+{% block sidebar %}{# your rail #}{% endblock %}
+{% block content %}{# the page #}{% endblock %}</pre>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/shell.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>site_title</code></h4><p>The product name, after the page title in &lt;title&gt;.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>title</code></h4><p>This page&#39;s title.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>lang</code></h4><p>The &lt;html lang&gt; value.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>brand</code></h4><p>The mark in the header. Usually one brand() call.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>nav</code></h4><p>Header navigation. Fill this OR sidebar, never both.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar</code></h4><p>The rail. Fill this OR nav, never both.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>header</code></h4><p>The whole header bar, when the pieces above are not enough.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>header_actions</code></h4><p>The right-hand end of the header. Defaults to theme_toggle().</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_trigger</code></h4><p>The button that opens the rail on a narrow screen.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>content</code></h4><p>The page itself.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>footer</code></h4><p>Footer text.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>footer_wrapper</code></h4><p>The footer element around it.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>stylesheets</code></h4><p>Your own stylesheet — token overrides and element typography.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>head</code></h4><p>Anything else in &lt;head&gt;: meta tags, og: tags.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>toasts</code></h4><p>Where toaster() goes. The shell renders one by default.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>scripts</code></h4><p>Your scripts, at the end of &lt;body&gt;. Use defer — htmx and Basecoat are deferred too, and a plain script here would run before either.</p>    </section>  </div>
+</div></div>
+  </div>
+
+</section></div>
+<hr class="border-border">
+
+<div id="globals">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Globals</h2><p class="text-muted-foreground text-sm">In every template already — no import, no context variable.</p>      </div>
+        <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>build_environment()</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>url_for(request, name, **params)</code></h4><p>A route name to a URL. Names, not paths, so a moved route updates every link.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>is_active(request, name)</code></h4><p>True when the request is for that route. What sidebar_link marks with.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fjkit_static(path)</code></h4><p>A URL under the mounted static tree, stamped with ?v=&lt;mtime&gt; so a browser cannot serve a stale stylesheet against current markup.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fjkit_version</code></h4><p>The versions in the footer: fjkit, fastapi, jinja2, basecoat, htmx.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fjkit_icon_path(name)</code></h4><p>The raw SVG path data for a Lucide name. icon() is what a template calls.</p>    </section>  </div>
+</div></div>
+  </div>
+
+</section></div>
+<hr class="border-border">
+
+<div id="htmx">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">htmx attributes</h2><p class="text-muted-foreground text-sm">Not fjkit's, but passed to fjkit macros — so they belong next to the index.</p>      </div>
+    <div class="flex flex-col gap-3">      <p>
+        Every one of these reaches the markup as an extra keyword on a macro:
+        <code>{{ button("Refresh", hx_get="/tasks/board", hx_target="#board") }}</code>.
+        Underscores become dashes on the way through, which is the whole of the integration —
+        there is no htmx-specific parameter on any macro, and there does not need to be.
+        The full reference is <a href="https://htmx.org/reference/">htmx.org/reference</a>;
+        what follows is what a fjkit page actually uses.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Which request</h3><p>The verb and the URL.</p>      </div>
+    </header>      <div class="border-t"><div class="item-group">            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-get=&#34;/tasks&#34;      hx-post=&#34;/tasks&#34;
+hx-put=&#34;/tasks/5&#34;    hx-patch=&#34;/tasks/5&#34;
+hx-delete=&#34;/tasks/5&#34;</code></h4><p>Fires the request. The response is HTML, not JSON — that is the whole difference from fetch().</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Where the answer goes</h3><p>Which element is replaced, and how.</p>      </div>
+    </header>      <div class="border-t"><div class="item-group">            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-target=&#34;#board&#34;        a CSS selector
+hx-target=&#34;closest tr&#34;    the nearest ancestor
+hx-target=&#34;this&#34;          the element itself
+hx-target=&#34;next .row&#34;     the one after it</code></h4><p>Defaults to the element that fired the request.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-swap=&#34;outerHTML&#34;    replace the target
+hx-swap=&#34;innerHTML&#34;    replace what is inside it
+hx-swap=&#34;beforeend&#34;    append   (afterbegin prepends)
+hx-swap=&#34;afterend&#34;     insert after  (beforebegin: before)
+hx-swap=&#34;delete&#34;       remove it   (none: change nothing)</code></h4><p>Modifiers ride on the same string: swap:200ms, settle:100ms, scroll:top.</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>When it fires</h3><p>One attribute, and each form is a different job.</p>      </div>
+    </header>      <div class="border-t"><div class="item-group">            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;click&#34;    hx-trigger=&#34;submit&#34;
+hx-trigger=&#34;change&#34;</code></h4><p>The defaults — a button clicks, a form submits, an input changes. Write them out only when you are adding a modifier.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;keyup changed delay:400ms&#34;</code></h4><p>Search as you type. changed skips the request when the value did not move; delay debounces the keystrokes.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;revealed&#34;</code></h4><p>Lazy load: fires when the element scrolls into view. It tests that with getBoundingClientRect, so it is wrong for anything inside an overflow container or hidden by display:none — a hidden element reports an all-zero rect and counts as visible.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;intersect once&#34;
+hx-trigger=&#34;intersect threshold:0.5&#34;</code></h4><p>Lazy load through an IntersectionObserver, which reports a hidden element as not intersecting. This is the one that works in a tab panel or a scroll container. Without once it fires every time the element becomes visible again; root: and threshold: take the observer&#39;s own options.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;load&#34;</code></h4><p>Fires once, as soon as the element is inserted.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;every 2s&#34;</code></h4><p>Polling. Stop it by returning markup without the attribute.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-trigger=&#34;click from:body&#34;</code></h4><p>Listens somewhere else — a keyboard shortcut, a click outside a menu.</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What else goes with it</h3><p>Extra data, confirmation, history.</p>      </div>
+    </header>      <div class="border-t"><div class="item-group">            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-vals=&#39;{&#34;id&#34;: 3}&#39;</code></h4><p>Values sent with the request, on top of the form fields.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-include=&#34;#filters&#34;</code></h4><p>Other fields to send — a filter bar that sits outside the form.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-confirm=&#34;Delete this task?&#34;</code></h4><p>A native confirm before the request fires.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-indicator=&#34;#spinner&#34;</code></h4><p>That element gets the htmx-request class while the request is in flight. spinner(indicator=true) is already shaped for it.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-push-url=&#34;true&#34;</code></h4><p>Puts the URL in the address bar, so Back works.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>hx-swap-oob=&#34;true&#34;</code></h4><p>Written in a response, not on the trigger: swaps a second element by id, somewhere else on the page.</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Headers the route reads and writes</h3><p>The half of htmx that lives in Python rather than in a template.</p>      </div>
+    </header>      <div class="border-t"><div class="item-group">            <div class="item" data-clamp="false">    <section>
+      <h4><code>HX-Request: true                 (request)</code></h4><p>On every htmx request. How one route answers a navigation with a page and a swap with a fragment.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>HX-Trigger: {&#34;toast&#34;: {…}}       (response)</code></h4><p>Fires a client event. This is how a toast raised in a route reaches the toaster in the shell.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>HX-Redirect: /tasks              (response)
+HX-Refresh: true                 (response)</code></h4><p>Full-page navigation, asked for by a fragment response.</p>    </section>  </div>
+            <div class="item" data-clamp="false">    <section>
+      <h4><code>HX-Retarget: #errors             (response)</code></h4><p>Changes the target from the server — an error that belongs somewhere other than where the success would have gone.</p>    </section>  </div>
+</div></div>
+  </div>
+</section></div>
+<hr class="border-border">
+
+<div id="missing">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">When it is not here</h2><p class="text-muted-foreground text-sm">The answer is a parameter, a keyword, or an issue — in that order.</p>      </div>
+    <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>When a macro is missing</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>check the parameters</h4><p>most requests are a keyword that already exists — size, tone, padded, align</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>pass it through</h4><p>any extra keyword becomes an attribute, which covers every hx-*, aria-* and data-*</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit eject badge</h4><p>take that one macro into your app to edit; every other macro in its file is re-exported from the kit and keeps its fixes</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>open an issue</h4><p>a blocked class names the component that does not exist yet; that is the report</p>    </section>  </div></div></div>
+  </div>
+
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Read next</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>Learn</h4><p><a href="learn.html">how the pieces fit, and what htmx sends</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Components</h4><p><a href="components.html">every macro running, with the knobs turned</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>examples/fjkit-demo/</h4><p>these macros inside a working app, in the repo</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>src/fjkit/static/src/fjkit.css</h4><p>the token table behind every variant</p>    </section>  </div></div></div>
+  </div>
+</div>
+</section></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.1.0.dev0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
+  This site is a fjkit app: it extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script>
+    document.body.addEventListener("fjkit:toast", (event) => {
+      const toaster = document.getElementById("toaster");
+      if (!toaster || !toaster.toast) return;
+      for (const message of event.detail?.messages ?? []) toaster.toast(message);
+    });
+  </script>
+  <script defer src="assets/data.js?v=0.1.0.dev0"></script>
+  <script defer src="assets/common.js?v=0.1.0.dev0"></script>
+</body>
+</html>

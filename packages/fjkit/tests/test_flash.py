@@ -7,8 +7,11 @@ from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, FlashMessage, FlashPlugin, mount_fjkit, render
 from jinja2 import DictLoader
 
+#: The shell reads `fjkit_messages()`, not a `flash` key: since 0.3 the cookie
+#: is queued into `fjkit.messages` rather than delivered through a context
+#: processor of its own, so a template cannot tell how a message arrived.
 TEMPLATES = {
-    "page.html": "{% for m in flash %}[{{ m.category }}:{{ m.title }}:{{ m.text }}]{% endfor %}",
+    "page.html": "{% for m in fjkit_messages() %}[{{ m.category }}:{{ m.title }}:{{ m.text }}]{% endfor %}",
     "quiet.html": "no flash read here",
 }
 

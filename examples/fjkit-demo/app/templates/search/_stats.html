@@ -1,20 +1,21 @@
 {#
-  The counters, over the matches rather than over the board.
+  The counters over the matches. Both mechanisms reach this one: a query carries
+  it out of band, and an advance changes a count, so it also subscribes.
 
-  `oob` is the whole of what makes this fragment out-of-band, and it defaults
-  to false right here so the partial still renders standalone — the page
-  includes it without saying anything, `_results.html` includes it with
-  `oob=true`, and neither has to know what the other does.
+  `with_query` because a count is over the *matches*, and the query lives in the
+  search box rather than in the event.
 #}
 {% set oob = oob | default(false) %}
 {% from "ui/data.html" import stat %}
-{% from "ui/layout.html" import grid %}
+{% from "ui/layout.html" import grid, row %}
+{% from "search/macros.html" import stamp, subscribe %}
 
-<div id="search-stats"{% if oob %} hx-swap-oob="true"{% endif %}>
+<div id="search-stats"{% if oob %} hx-swap-oob="true"{% endif %}
+     {{ subscribe(request, "search_stats", ["task-changed"], with_id=false, with_query=true) }}>
   {% call grid(cols=4, gap=4) %}
     {{ stat("Matches", stats.total, hint="of " ~ total ~ " on the board", icon_name="search") }}
     {{ stat("To do", stats.todo, icon_name="circle-dot") }}
     {{ stat("In progress", stats.doing, icon_name="sparkle", tone="info") }}
-    {{ stat("Done", stats.done, icon_name="check", tone="success") }}
+    {{ stat("Done", stats.done, hint=rendered_label, icon_name="check", tone="success") }}
   {% endcall %}
 </div>

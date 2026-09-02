@@ -1,0 +1,17 @@
+{#
+  The counters panel's body — counts over the whole board.
+
+  It is here because it needs no id. `include` is per panel, and a panel that has
+  nothing to send sends nothing; the route's signature is the proof, since it
+  takes no `task_id` at all. It hears only `task-changed`, because a pick changes
+  no count.
+#}
+{% from "ui/data.html" import stat %}
+{% from "ui/layout.html" import grid %}
+
+{% call grid(cols=2, gap=4) %}
+  {{ stat("On the board", total, icon_name="search") }}
+  {{ stat("To do", stats.todo, icon_name="circle-dot") }}
+  {{ stat("In progress", stats.doing, icon_name="sparkle", tone="info") }}
+  {{ stat("Done", stats.done, hint=rendered_label, icon_name="check", tone="success") }}
+{% endcall %}

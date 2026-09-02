@@ -38,6 +38,25 @@
 {% endmacro %}
 
 {#
+  `lesson` without the number.
+
+  The Learn and Components pages are read in order, and the badge is what says
+  so. A reference page is not: nobody starts the Cheatsheet at the top and
+  works down, so a "07" beside a heading there would be claiming a sequence
+  that does not exist. Same anchor, same rail contract, same divider — the
+  count is the only thing dropped.
+#}
+{% macro band(id, title, thesis="") %}
+{% set body = caller() %}
+<div id="{{ id }}">
+  {% call section(title, thesis, gap=6) %}
+    {{ body }}
+  {% endcall %}
+</div>
+{{ divider() }}
+{% endmacro %}
+
+{#
   Body copy. Bare <p> inside a stack: the gap is the component's, and the
   measure is set on `main` in brand.css — an element rule, so no paragraph on
   the site carries a class.

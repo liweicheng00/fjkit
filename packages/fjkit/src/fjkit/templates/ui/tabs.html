@@ -68,13 +68,68 @@
 {%- endmacro %}
 
 {#
-  tab_panel(id) — the body for one tab. The id is what the tab's `aria-controls`
-  named; Basecoat hides and reveals it from there.
+  tab_panel(id, lazy, on, include) — the body for one tab. The id is what the
+  tab's `aria-controls` named; Basecoat hides and reveals it from there.
 
   No `hidden` is rendered here: its script sets that on init, and a panel that
   arrived pre-hidden would be invisible to a reader with JavaScript off. This
   way the panels stack and every one is legible.
+
+  `lazy` is a URL, and it is the whole of what a panel needs to fetch its own
+  body when it is shown instead of when the page loads. The block's body is then
+  what stands in until the answer arrives — a `skeleton`, usually. Without
+  `lazy` the panel is inert markup, exactly as before, and `on` and `include`
+  are read only alongside it because neither means anything on its own.
+
+  Three decisions are baked in here so that no app template has to remember
+  them, and each of the three is a way this goes silently wrong by hand:
+
+  * **`intersect`, never `revealed`.** htmx tests `revealed` with
+    `getBoundingClientRect`, and an element hidden by `display:none` — which is
+    what the `hidden` Basecoat sets means — reports an all-zero rect. `top <
+    innerHeight` and `bottom >= 0` both hold for that rect, so every panel on
+    the page counts as revealed and fetches at load. There is no error and no
+    empty panel to notice; the page is simply not lazy. `intersect` is an
+    `IntersectionObserver`, which reports a `display:none` element as not
+    intersecting, and fires when the tab is chosen.
+  * **A filter on every broadcast.** The events in `on` are raised on `<body>`,
+    and a hidden panel hears them exactly as well as the open one does. Four
+    tabs would mean four requests per broadcast, three of them for markup
+    nobody is looking at. `[!this.hidden]` is the whole of the fix, and it is
+    this short only because the trigger sits on the panel — the element that
+    carries the `hidden` — rather than on something inside it.
+  * **`innerHTML` onto the panel.** An element carrying `intersect` has to
+    survive its own reply. A panel replaced by markup that asked for `intersect`
+    again would be processed while on screen, fire immediately, and loop.
+
+  `include` is a selector for what the panel has to send: the id it is about,
+  the query it is filtered by. It is a selector rather than a value carried in
+  the event because the two paths into this panel do not agree on what an event
+  is — `intersect` has none. A panel that was hidden when the pick happened
+  never heard `task-selected` and has only the page to read, so the id has to be
+  *on* the page and the route that changes it has to say so **after** its own
+  swap: `@render(..., hx_trigger_after_swap=...)`. See `fjkit.rendering.render`.
+
+  A lazy panel refetches every time it is shown, not only the first time. That
+  is the trade for not tracking which panels went stale while they were hidden,
+  and tracking that would need a listener on `<body>` — a script, for a page
+  that otherwise has none.
+
+      {% call tab_panel("tab-detail", lazy=url_for(request, "search_detail"),
+                        on=["task-selected"], include="[name=task_id]") %}
+        {{ skeleton(lines=4, label="Loading the detail") }}
+      {% endcall %}
 #}
-{% macro tab_panel(id) -%}
-  <div id="{{ id }}" role="tabpanel"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ caller() }}</div>
+{% macro tab_panel(id, lazy=none, on=none, include=none) -%}
+  {%- set trigger %}intersect
+    {%- for event in on or [] %}, {{ event }}[!this.hidden] from:body{% endfor %}
+  {%- endset -%}
+  <div id="{{ id }}" role="tabpanel"
+    {%- if lazy %} hx-get="{{ lazy }}" hx-trigger="{{ trigger }}"
+    {%- if include %} hx-include="{{ include }}"{% endif %} hx-target="this" hx-swap="innerHTML"
+    {%- endif %}
+    {#- `attrs` last: a caller adding an attribute of its own must be able to
+        sit beside these, and a caller that needs a different swap is telling
+        you it is not this component. -#}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ caller() }}</div>
 {%- endmacro %}

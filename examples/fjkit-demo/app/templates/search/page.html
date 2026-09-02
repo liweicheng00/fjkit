@@ -1,12 +1,10 @@
 {#
-  Full page. It composes the same four partials `_results.html` does, in the
-  places they belong — counters across the top, the table in the main column,
-  progress and facets in the aside.
+  The search page: both htmx mechanisms, in one workflow.
 
-  That is the whole trick of an out-of-band swap: the page decides *where* each
-  fragment lives, once, and the reply only has to say *which* fragment it is.
-  Move the facet card into the main column and nothing in the router, the
-  response model or the swap changes.
+  A query is one question the server answers completely, so it is one reply and
+  four `hx-swap-oob` passengers. A pick is not — it produces an id, and the
+  panels that care each have a different question to ask with it — so it is one
+  in-band region plus an event, and the subscribers fetch themselves.
 #}
 {% extends "base.html" %}
 {% from "ui/button.html" import button %}
@@ -19,9 +17,10 @@
 
 {% block content %}
   {% set note %}
-    Matches the title, the owner and the notes. One request updates five
-    regions — four of them arrive as {{ kbd("hx-swap-oob") }} — and each row
-    opens a sixth swap of its own.
+    Typing moves five regions with one reply — four of them arrive as
+    {{ kbd("hx-swap-oob") }}. Opening a row moves three with three, the id
+    carried in {{ kbd("HX-Trigger") }}. Every card is stamped with the moment it
+    rendered, so which regions each action reached is readable on the page.
   {% endset %}
 
   {{ page_header("Search", note) }}
@@ -29,22 +28,12 @@
   {% call stack(4) %}
 
     {#
-      The input carries the htmx attributes; the form around it carries a plain
-      `action` and `method="get"`. Both paths lead to the same route: typing
-      swaps four fragments, and pressing Enter — or arriving with JavaScript
-      off — loads `/search?q=…` as a page. `hx-push-url` is what keeps those
-      two the same URL, so a result stays bookmarkable and the back button
-      works.
+      The input carries the fragment attributes; the form's `action` and
+      `method="get"` load the same route as a page. `hx-push-url` keeps the URL in
+      step, and `name="q"` is what every `hx-include` on this page selects.
     #}
     {% call form(action=url_for(request, "search_page"), method="get") %}
       {% call field_row("field-and-button") %}
-        {#
-          No `hint` on this field, and the sentence it carried is in the page
-          description instead. `field_row` bottom-aligns its columns, so a hint
-          under the input would push the field's bottom edge a line lower than
-          the button's and the two would stop sitting on the same baseline —
-          the board's create row has no hints for the same reason.
-        #}
         {{ text_field("q", label="Search tasks", value=query, type="search",
                       placeholder="Try “cache”, “kai” or “stream”",
                       hx_get=url_for(request, "search_page"),
@@ -58,25 +47,13 @@
       {% endcall %}
     {% endcall %}
 
-    {#
-      `oob` is false for every fragment here: this is the first paint, nothing
-      is being swapped into anything, and a page that shipped `hx-swap-oob` in
-      its own markup would be describing a swap that never happened.
-
-      `selected` is unset too, so the detail panel opens empty — the same
-      branch a fresh query puts it back into.
-    #}
+    {# First paint: `oob` is false and `selected` is unset. #}
     {% with oob = false %}
       {% include "search/_stats.html" %}
 
       {% call(slot) split(gap=4) %}
         {% if slot == "main" %}
-          {#
-            The table and the panel its rows fill, in that order and in the
-            same column. The panel is a region of the search reply like any
-            other; what makes it the nested one is that its `hx-target` is
-            named by markup the search reply itself delivered.
-          #}
+          {# The matches table and the detail panel its rows fill. #}
           {% call stack(4) %}
             {% include "search/_matches.html" %}
             {% include "search/_detail.html" %}
@@ -84,6 +61,7 @@
         {% else %}
           {% call stack(4) %}
             {% include "search/_progress.html" %}
+            {% include "search/_related.html" %}
             {% include "search/_facets.html" %}
           {% endcall %}
         {% endif %}

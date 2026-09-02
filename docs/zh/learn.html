@@ -11,10 +11,12 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1787416553">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788337205">
   <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
-  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1786876367"></script>
-  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1786876367"></script>
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
+  <script defer src="../assets/js/errors.js?v=1787594535"></script>
   <meta name="description" content="不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。">
   <meta property="og:title" content="學會 fjkit">
   <meta property="og:description" content="不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。">
@@ -42,6 +44,10 @@ fjkit
     <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>元件</span>
     </a>
   </li>
+        <li>
+    <a href="cheatsheet.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>      <span>速查表</span>
+    </a>
+  </li>
 </ul>
   </div>
 <div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
@@ -66,6 +72,10 @@ fjkit
   </li>
         <li>
     <a href="learn.html#oob">      <span>一次回應，換掉好幾塊：hx-swap-oob</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#broadcast">      <span>一個 id，好幾份 fragment：HX-Trigger</span>
     </a>
   </li>
         <li>
@@ -117,7 +127,7 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">在寫路由的地方，把介面一起寫完</h1>
-<p class="text-muted-foreground text-sm">    十一課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 掛掉的指令。
+<p class="text-muted-foreground text-sm">    十二課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 掛掉的指令。
     底下每個示範都是活的。
 </p>    </div>
   </div>
@@ -170,7 +180,7 @@ fjkit
       </p>
       <p>
         這中間沒有東西被序列化。前端沒有重新渲染。也沒有狀態同時活在兩個地方。
-        同一條路由很樂意用 JSON 回應一支腳本，那是<a href="#json">第 06 課</a>，是另一道門，
+        同一條路由很樂意用 JSON 回應一支腳本，那是<a href="#json">第 09 課</a>，是另一道門，
         不是這段交換裡的一個步驟。按下按鈕：<strong>底下那個請求是真的</strong>。
         這一頁載了 htmx，而瀏覽器裡有一支 mock server 扮演 FastAPI 那一側。
       </p>
@@ -378,16 +388,17 @@ fjkit
 <h3>值得先知道的陷阱</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>整頁跑回來</h4><p>從 htmx 路由回傳 <code>page.html</code>，等於把一整份文件塞進你的 div 裡——回 partial</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>4xx 不會換</h4><p>htmx 預設忽略錯誤回應；表單錯誤請回 200，並把重繪過的表單一起帶回來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>4xx 不會換</h4><p>htmx 預設忽略錯誤回應。shell 把 422（而且只有 422）加了回去，這就是一份被退回的表單能以表單本身回來的原因</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>外框弄丟</h4><p><code>outerHTML</code> 需要回應裡帶著那層外框，否則目標會直接消失</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>篩選條件掉了</h4><p>列上的動作必須帶著目前的篩選，否則換進去的內容會默默把畫面重設</p>    </section>  </div></div></div>
+      <h4>篩選條件掉了</h4><p>列上的動作必須帶著目前的篩選，否則換進去的內容會默默把畫面重設</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>swap 被繼承</h4><p><code>hx-target</code> 和 <code>hx-swap</code> 會從祖先繼承。放在一張用 <code>outerHTML</code> 輪詢自己的卡片裡的按鈕，會繼承那個 swap，把本來要填內容的元素整個換掉——巢在另一個 htmx 元素裡的觸發器，這兩個都要明講</p>    </section>  </div></div></div>
   </div>
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>伺服器端的幫手</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>HX-Request</h4><p>讓路由知道自己正在回應一個局部更新的那個標頭</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>HX-Trigger</h4><p>回應標頭，會在前端觸發一個事件——toast 就是這樣被叫起來的（fjkit 0.6）</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>HX-Trigger</h4><p>回應標頭，會在前端觸發一個事件——fjkit 就是這樣從一次 swap 裡叫出 toast 的，因為 fragment 裡沒有 toaster</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>HX-Redirect</h4><p>從局部更新的回應裡做整頁轉址</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>hx-swap-oob</h4><p>一次回應，換掉好幾塊——下一課</p>    </section>  </div></div></div>
   </div>
@@ -399,18 +410,18 @@ fjkit
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">一次回應，換掉好幾塊：hx-swap-oob</h2><p class="text-muted-foreground text-sm"><code>hx-target</code> 只指得到一個元素。當一個答案要動五塊時，另外四塊自己帶著地址。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">一次回應，換掉好幾塊：hx-swap-oob</h2><p class="text-muted-foreground text-sm"><code>hx-target</code> 只指得到一個元素。當一個答案要動六塊時，另外五塊自己帶著地址。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         到這裡為止每一次 swap 都只有一個 target。會變的東西都包在同一個元素底下時，那樣就夠了——
         板子就是一個 <code>&lt;div id="board"&gt;</code>，上面每一顆按鈕都指著它，每一次回應都是整塊板子。
       </p>
       <p>
-        搜尋結果不是一個東西。一次查詢要動的是：表格上方那排計數、表格自己、側欄的進度卡與 facet 清單、
-        表格下面的明細面板——五塊分散在三個地方，唯一同時包住它們的元素叫 <code>&lt;body&gt;</code>。
-        換掉 body 就是重新整理，只是多繞了一圈。
+        搜尋結果不是一個東西。一次查詢要動的是：表格上方那排計數、表格自己、側欄的進度卡、facet 清單
+        與同負責人面板、表格下面的明細面板——六塊分散在三個地方，唯一同時包住它們的元素叫
+        <code>&lt;body&gt;</code>。換掉 body 就是重新整理，只是多繞了一圈。
       </p>
       <p>
-        所以回應把另外四塊<strong>走頻外（out of band）</strong>送回去——不走
+        所以回應把另外五塊<strong>走頻外（out of band）</strong>送回去——不走
         <code>hx-target</code> 描述的那條唯一通道。每一塊靠自己身上的 id 說出它要去哪裡。
       </p>
 </div>
@@ -421,6 +432,7 @@ fjkit
 &lt;div id=&#34;search-stats&#34;    hx-swap-oob=&#34;true&#34;&gt;…&lt;/div&gt;   ← 自己飛去頂端的計數列
 &lt;div id=&#34;search-progress&#34; hx-swap-oob=&#34;true&#34;&gt;…&lt;/div&gt;   ← 自己飛去側欄
 &lt;div id=&#34;search-facets&#34;   hx-swap-oob=&#34;true&#34;&gt;…&lt;/div&gt;   ← 自己飛去側欄
+&lt;div id=&#34;search-related&#34;  hx-swap-oob=&#34;true&#34;&gt;…&lt;/div&gt;   ← 自己飛去側欄
 &lt;div id=&#34;search-detail&#34;   hx-swap-oob=&#34;true&#34;&gt;…&lt;/div&gt;   ← 自己飛去表格下方</pre>
 
 </div>
@@ -445,7 +457,7 @@ fjkit
   </div>
 </div>
 <div class="flex flex-col gap-3">      <p>
-        fjkit 這一側沒有新機制。頁面與回應 <code>{% include %}</code> 的是同樣五支
+        fjkit 這一側沒有新機制。頁面與回應 <code>{% include %}</code> 的是同樣六支
         partial，差別只有一個變數：頁面冷冷地渲染它們，回應則讓它們帶上地址。每支 partial 自己給那個
         旗標一個預設值，所以它照樣單獨渲染得出來。
       </p>
@@ -460,6 +472,7 @@ fjkit
   {% include &#34;search/_progress.html&#34; %}
   {% include &#34;search/_facets.html&#34; %}
   {% include &#34;search/_detail.html&#34; %}
+  {% include &#34;search/_related.html&#34; %}
 {% endwith %}
 
 {# _stats.html —— 其餘每一塊的開頭都一樣 #}
@@ -473,14 +486,236 @@ fjkit
 <div class="flex flex-col gap-3">      <p>
         換來的好處是：<em>哪一塊放在哪裡</em>由頁面決定，而且只決定一次。把 facet 卡從側欄搬到主欄，
         router、response model、swap 三者一個字都不用改。實際的檔案是 repo 裡的
-        <code>examples/fjkit-demo/app/templates/search/</code>。
+        <code>examples/fjkit-demo/app/templates/search/</code>——而下一課講的是同一頁的另外一半，
+        因為真實的畫面兩種都需要。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="broadcast">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">一個 id，好幾份 fragment：HX-Trigger</h2><p class="text-muted-foreground text-sm">第 06 課的反面題：觸發者產生的是一個 <em>id</em>，而每一塊區域拿著這個 id 要問的問題都不一樣。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        上一課成立的前提，是一支 handler 有辦法一次回答所有區域——一次查詢、六份 fragment、
+        一個裝得下全部的 response model。在同一頁上點開一列不是這個形狀。點擊產生的是一個
+        <code>id</code>，而在意它的每一塊面板各自需要<em>不同</em>的查詢：那個任務的細節、
+        那個負責人手上的其他任務。要一支 handler 回答全部，它就得 import 這一頁上的每一個 service，
+        而且多加第三塊面板就要回頭改它。
+      </p>
+      <p>
+        所以這次選取回應的是<em>它自己那一塊</em>——結果表，而且那一列現在被標記起來了——
+        並把 id 放在 <code>HX-Trigger</code> 裡送出去。htmx 把這個標頭轉成一個 DOM 事件，
+        在意它的 fragment 各自聽到之後，自己去要自己的資料。這條路由不知道有幾個訂閱者，
+        也不知道它們存在。多一塊面板就是多一個訂閱者，沒有任何一條路由要改。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>負責「選取」的那條路由</h3><p>用 GET，因為選取沒有改動伺服器上的任何東西。結果表就是這顆按鈕的 hx-target，所以回應就地把它換掉。</p>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.get(&#34;/search/select/{task_id}&#34;, name=&#34;search_select&#34;)
+@render(&#34;search/_matches.html&#34;,
+        hx_trigger=lambda task_id: {&#34;task-selected&#34;: {&#34;task_id&#34;: task_id}})
+def select_task(service: ServiceDep, task_id: int, q: str = &#34;&#34;) -&gt; MatchesResponse:
+    &#34;&#34;&#34;Mark the row, answer with the table, and tell the panels which id.&#34;&#34;&#34;
+    return _matches(service, q, _selected(service, task_id).id)</pre>
+
+
+</div>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        事件宣告在 <code>hx_trigger</code>，而它是 <code>@render</code> 的參數、不是 handler 自己寫的標頭，
+        理由只有一個：這樣它在<em>會</em>渲染的路由上是同一套用法。callable 每次請求解析一次，
+        依名字從 handler 自己的參數裡取值——這裡是 <code>task_id</code>——外加 <code>result</code>，
+        也就是 handler 的回傳值。callable 回傳 <code>None</code> 就什麼都不發，所以一條路由可以只在某些時候廣播。
+      </p>
+      <p>
+        除此之外那條路由沒有任何特別之處。它就是一條普通的 partial 路由——一份樣板、一個 response
+        model——上面掛了一個事件，而這正是這個模式便宜的原因：那次 swap 與那次廣播是一趟來回，
+        寫在同一個地方。
+      </p>
+      <p>
+        同一頁上的第二個動作展示了另外一半。推進會改變狀態，所以它發出<em>不同</em>的事件，
+        而在意的是另一組 fragment。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>第二個事件，來自一條會改變東西的路由</h3><p>回應本身就是那次 swap——detail 面板正是這顆按鈕的 hx-target——而標頭是另外四塊聽到的東西。</p>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.post(&#34;/search/advance/{task_id}&#34;, name=&#34;search_advance&#34;)
+@render(&#34;search/_detail.html&#34;,
+        hx_trigger=lambda task_id: {&#34;task-changed&#34;: {&#34;task_id&#34;: task_id}})
+def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
+    &#34;&#34;&#34;Advance the task, answer with the detail panel, and say what changed.&#34;&#34;&#34;
+    if service.advance(task_id) is None:
+        raise HTTPException(status_code=404, detail=&#34;task not found&#34;)
+    return DetailResponse(selected=service.get(task_id))</pre>
+
+
+</div>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        兩個事件，每一份 fragment 各自挑它有理由聽的那些。計數面板聽 <code>task-changed</code>、
+        不聽 <code>task-selected</code>，因為選取不會改變任何一個計數。facet 面板兩個都不聽，
+        因為推進一個任務既不會換負責人、也不會換優先級。要聽哪些廣播是 fragment 自己的決定，
+        而沒有任何一條路由知道它存在。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>誰聽什麼</h3>      </div>
+    </header>      <div class="border-t">      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">fragment</th>
+              <th class=" ">task-selected</th>
+              <th class=" ">task-changed</th>
+              <th class=" ">為什麼</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">結果表</td>
+          <td class=""><span class="badge" data-variant="outline">不聽</span></td>
+          <td class=""><span class="badge" data-variant="success">聽</span></td>
+          <td class="">它就是選取回應的 target；推進會改變一列上寫的東西</td>
+        </tr>
+        <tr>
+          <td class="font-medium">detail 面板</td>
+          <td class=""><span class="badge" data-variant="success">聽</span></td>
+          <td class=""><span class="badge" data-variant="outline">不聽</span></td>
+          <td class="">它就是 advance 回應的 target——聽那個事件就是迴圈</td>
+        </tr>
+        <tr>
+          <td class="font-medium">同負責人面板</td>
+          <td class=""><span class="badge" data-variant="success">聽</span></td>
+          <td class=""><span class="badge" data-variant="success">聽</span></td>
+          <td class="">這些是誰的任務，以及它們的狀態</td>
+        </tr>
+        <tr>
+          <td class="font-medium">計數面板、進度卡</td>
+          <td class=""><span class="badge" data-variant="outline">不聽</span></td>
+          <td class=""><span class="badge" data-variant="success">聽</span></td>
+          <td class="">選取不會改變任何計數，推進會</td>
+        </tr>
+        <tr>
+          <td class="font-medium">facet 面板</td>
+          <td class=""><span class="badge" data-variant="outline">不聽</span></td>
+          <td class=""><span class="badge" data-variant="outline">不聽</span></td>
+          <td class="">那張卡上沒有任何一個 facet 跟狀態有關</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</div>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        撐住這整套的只有一條規則：<strong>一條路由回應的那份 fragment，不可以訂閱這條路由發出的事件</strong>。
+        它已經被就地換掉了，再聽到那個事件就是同一次點擊抓它第二次——而如果那份 fragment 就是自己的
+        target，它永遠不會停。htmx 不會攔你，因為「訂閱者去要自己的 URL」正是那些屬性寫的意思。
+        所以結果表只聽 <code>task-changed</code>、detail 面板只聽 <code>task-selected</code>：
+        每一份對其中一個事件是 target、對另一個是訂閱者，從不對同一個事件兩者兼具。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>訂閱端</h3><p>在意的區域都寫這些屬性；不在意的一個都不寫。</p>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="Jinja">{# 只需要 id 的面板 #}
+&lt;div id=&#34;search-detail&#34;
+     hx-get=&#34;/search/detail&#34;
+     hx-trigger=&#34;task-selected from:body&#34;
+     hx-vals=&#34;js:{task_id: event.detail.task_id}&#34;
+     hx-target=&#34;this&#34; hx-swap=&#34;outerHTML&#34;&gt;…&lt;/div&gt;
+
+{# 還要看搜尋框的區域 #}
+&lt;div id=&#34;search-stats&#34;
+     hx-get=&#34;/search/stats&#34;
+     hx-trigger=&#34;task-changed from:body&#34;
+     hx-include=&#34;[name=&#39;q&#39;]&#34;
+     hx-target=&#34;this&#34; hx-swap=&#34;outerHTML&#34;&gt;…&lt;/div&gt;</pre>
+
+</div>
+  </div>
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>要緊的幾個屬性</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>誰在聽</h4><p><code>from:body</code>——htmx 是在「發出那次請求的元素」上觸發這個事件，然後往上冒泡。面板離那個元素很遠，所以它們在事件會抵達的地方聽</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>id 怎麼進來</h4><p><code>hx-vals="js:…"</code> 是 id 變回查詢參數的唯一一個地方。從事件裡把它讀出來、而不是把選取狀態記在伺服器上，正是端點得以維持無狀態、兩個分頁得以互不干擾的原因</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>還缺什麼</h4><p><code>hx-include</code>——給事件<em>沒有</em>帶的東西。計數算的是<em>符合的結果</em>，所以它除了 id 還需要搜尋框的值；用一個 selector 從頁面上取，而不是讓每個事件都得帶著它</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>換掉的是誰</h4><p><code>hx-target="this"</code>——每個訂閱者都是替換自己，所以一次回應永遠只有一塊區域，而發送端從頭到尾不需要知道這一頁有幾塊區域</p>    </section>  </div></div></div>
+  </div>
+
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>四件要知道的事</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>送物件</h4><p>trigger 的值必須是一個 JSON <strong>物件</strong>。htmx 會把物件原樣交給 <code>event.detail</code>，其他型別——包含陣列——則包成 <code>{value: …}</code>，於是讀 <code>event.detail.task_id</code> 的監聽者什麼都拿不到</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>它在 swap 之前觸發</h4><p><code>HX-Trigger</code> 在 swap <strong>之前</strong>觸發。這正是 id 要走事件這條路的原因：一個存放選取狀態的 hidden input，在訂閱者去讀它的當下還是舊值。要另一種順序的話，標頭是 <code>HX-Trigger-After-Swap</code></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>繼承會滲進來</h4><p><code>hx-vals</code> 會被繼承，而 htmx 是沿著 DOM 往上<strong>合併</strong>它，走的那條路徑不看 <code>hx-disinherit</code>。訂閱者<em>內部</em>的 htmx 元素——也就是那一列的標題，它本身就是開啟這一列的按鈕——必須寫 <code>hx-vals="unset"</code>，那是唯一能中斷這趟走訪的值</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>N 塊面板，N 次請求</h4><p>N 個訂閱者就是 N 次請求。這是這個做法的代價：扇出發生在頁面上，而不是收斂在 handler 裡；查詢很貴的時候，用 <code>hx-sync</code> 或一層快取把它換回來</p>    </section>  </div></div></div>
+  </div>
+</div>
+<div class="flex flex-col gap-3">      <p>
+        這兩課不是在互相競爭，而 demo 也沒有把它們拆成兩頁。它們回答的是不同的問題，
+        而 <code>/search</code> 兩個都在問：一次查詢是伺服器有辦法完整回答的一個問題，
+        而一次選取是一個 id，三塊區域各自拿它問不同的事。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>一頁該用哪一種</h3>      </div>
+    </header>      <div class="border-t">      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+              <th class=" ">問題</th>
+              <th class=" ">hx-swap-oob</th>
+              <th class=" ">HX-Trigger</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">是什麼造成了改變</td>
+          <td class="">一次查詢，伺服器有辦法一口氣回答所有區域</td>
+          <td class="">一個 id，每塊區域拿它問的問題都不同</td>
+        </tr>
+        <tr>
+          <td class="font-medium">誰知道有哪些區域</td>
+          <td class="">handler——所有區域都由它渲染</td>
+          <td class="">沒有人；每塊區域自己表態</td>
+        </tr>
+        <tr>
+          <td class="font-medium">每次互動的請求數</td>
+          <td class=""><span class="badge" data-variant="success">1</span></td>
+          <td class=""><span class="badge" data-variant="outline">1 + 每個訂閱者一次</span></td>
+        </tr>
+        <tr>
+          <td class="font-medium">要多加一塊區域</td>
+          <td class="">改 handler、改 model、改回應樣板</td>
+          <td class="">多一個訂閱者；其他什麼都不用動</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</div>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        可以動的檔案在倉庫的 <code>examples/fjkit-demo/app/features/search/</code> 與
+        <code>app/templates/search/</code>——跟上一課是同一頁。那裡每一塊區域都帶著一個渲染時間戳，
+        所以「哪一次動作動到了哪幾塊」在頁面上就讀得出來，不用打開 network 分頁。
+        一次查詢是一個請求、六個新的時間戳。一次選取是三個請求、三個時間戳——結果表、detail 面板、
+        同負責人面板——而計數、進度卡與 facet 卡動都不動。一次推進是五個，而這次不動的只剩 facet 卡。
       </p>
 </div>
 </section></div></div>
 <hr class="border-border">
 
 <div id="pending">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">請求進行中的那段時間</h2><p class="text-muted-foreground text-sm">一次 swap 是一趟來回，而這中間沒有任何東西擋得住第二次點擊。兩個屬性就涵蓋了整段等待。</p>      </div>
@@ -555,7 +790,7 @@ fjkit
 <hr class="border-border">
 
 <div id="json">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">沒有 HX-Request：同一條路由回 JSON</h2><p class="text-muted-foreground text-sm">handler 回傳的是 model，不是標記。要送出什麼，只取決於一個問題：這個呼叫端有沒有在等標記？</p>      </div>
@@ -716,7 +951,7 @@ vary: HX-Request
 <hr class="border-border">
 
 <div id="patterns">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">九種 htmx 模式，以及對應的 handler</h2><p class="text-muted-foreground text-sm">畫面各有不同；形狀沒有。每一種都是一個 trigger、一個 target 與一份 partial。</p>      </div>
@@ -765,8 +1000,6 @@ vary: HX-Request
       <div>
 <h3>刻意還沒做的</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>欄位錯誤</h4><p>每個欄位 macro 都已經收 error=；Pydantic 那趟來回是 0.3</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>toast</h4><p>HX-Trigger 標頭今天就有；元件是 0.6</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>對話框</h4><p>在那之前用 hx-confirm——那是瀏覽器自己的，而且它能用</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>排序</h4><p>換一組 query 參數的篩選列；table macro 會在 0.4 學會</p>    </section>  </div></div></div>
   </div>
@@ -775,7 +1008,7 @@ vary: HX-Request
 <hr class="border-border">
 
 <div id="knob">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
 <span class="badge" data-variant="secondary">theming</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">換品牌：品牌 token 與狀態 token</h2><p class="text-muted-foreground text-sm">換品牌是一個 CSS 變數。「綠色代表完成」不在那個轉盤上。</p>      </div>
@@ -850,7 +1083,7 @@ vary: HX-Request
 <hr class="border-border">
 
 <div id="gate">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">fjkit check：封閉詞彙表</h2><p class="text-muted-foreground text-sm">一條沒有人能不小心違反的慣例，比一條寫下來的慣例值錢。</p>      </div>
@@ -885,7 +1118,7 @@ vary: HX-Request
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>fastapi dev</h4><p>把 app 跑起來——旁邊沒有東西要一起重建</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>fjkit check</h4><p>每個 class 都在詞彙表裡</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fjkit eject</h4><p>把元件複製進來改——代價是拿不到上游的修正</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit eject</h4><p>逃生口：把一支 macro 拿進來改；同檔其餘的仍是 kit 的</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>fjkit build-css</h4><p>fjkit 自己的發佈步驟，永遠不是你的</p>    </section>  </div></div></div>
   </div>
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -913,6 +1146,13 @@ vary: HX-Request
   </div>
 
 <div id="toaster" class="toaster" data-align="end"></div>
+  <script>
+    document.body.addEventListener("fjkit:toast", (event) => {
+      const toaster = document.getElementById("toaster");
+      if (!toaster || !toaster.toast) return;
+      for (const message of event.detail?.messages ?? []) toaster.toast(message);
+    });
+  </script>
   <script defer src="../assets/data.js?v=0.1.0.dev0"></script>
   <script defer src="../assets/common.js?v=0.1.0.dev0"></script>
   <script defer src="../assets/learn.js?v=0.1.0.dev0"></script>

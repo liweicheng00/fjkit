@@ -1,0 +1,69 @@
+{#
+  The panels page: lesson 07's fragments, in tabs.
+
+  On `/search` the same regions are all on screen, so a broadcast reaching every
+  one of them is the point. Put them in tabs and three of the four are `hidden`,
+  a broadcast still reaches all four, and three of the four requests are for
+  markup nobody is looking at.
+
+  So the panels here do not subscribe in order to fetch. They fetch when they are
+  shown — `tab_panel(lazy=…)` — and they listen for a broadcast only while they
+  are showing. Every attribute that says so is in `ui/tabs.html`; what this file
+  contains is three parameters per panel.
+#}
+{% extends "base.html" %}
+{% from "ui/data.html" import kbd %}
+{% from "ui/feedback.html" import skeleton %}
+{% from "ui/layout.html" import page_header, stack %}
+{% from "ui/tabs.html" import tab_panel, tabs %}
+
+{% block title %}Panels{% endblock %}
+
+{% block content %}
+  {% set note %}
+    Three panels over one id, and only the open one costs a request. Each panel
+    fetches on {{ kbd("intersect") }} — when its tab is chosen — and hears a
+    broadcast only while it is visible. The pick raises its event with
+    {{ kbd("HX-Trigger-After-Swap") }}, so the id is on the page before anything
+    reads it. Every panel is stamped with the moment it rendered: open a tab,
+    pick a different row, and come back to see which stamps moved.
+  {% endset %}
+
+  {{ page_header("Panels", note) }}
+
+  {% call stack(4) %}
+    {% include "panels/_matches.html" %}
+
+    {#
+      `include` is per panel and each one asks for exactly what its route reads.
+      The counters take no id, so they send nothing — the signature of
+      `panels_counters` is the whole argument for that being a parameter rather
+      than something the component assumes.
+    #}
+    {% call tabs([{"id": "panel-detail",   "label": "Detail"},
+                  {"id": "panel-related",  "label": "Owner's other tasks"},
+                  {"id": "panel-counters", "label": "Counters"}], label="Open task") %}
+
+      {% call tab_panel("panel-detail",
+                        lazy=url_for(request, "panels_detail"),
+                        on=["task-selected", "task-changed"],
+                        include="[name=task_id]") %}
+        {{ skeleton(lines=4, label="Loading the detail") }}
+      {% endcall %}
+
+      {% call tab_panel("panel-related",
+                        lazy=url_for(request, "panels_related"),
+                        on=["task-selected", "task-changed"],
+                        include="[name=task_id]") %}
+        {{ skeleton(lines=3, label="Loading the owner's other tasks") }}
+      {% endcall %}
+
+      {# A pick changes no count, so this one hears one event and not two. #}
+      {% call tab_panel("panel-counters",
+                        lazy=url_for(request, "panels_counters"),
+                        on=["task-changed"]) %}
+        {{ skeleton(shape="control", lines=2, label="Loading the counters") }}
+      {% endcall %}
+    {% endcall %}
+  {% endcall %}
+{% endblock %}

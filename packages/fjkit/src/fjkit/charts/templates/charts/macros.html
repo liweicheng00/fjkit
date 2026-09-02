@@ -1,0 +1,77 @@
+{#
+  The chart component, and the two script tags that make it draw.
+
+  A macro rather than an includable partial, because charts come in groups and
+  `{% include %}` in a loop re-parses the same scaffolding per chart on every
+  swap (CLAUDE.md, A8).
+
+  What the markup deliberately does *not* contain:
+
+    * a colour. The figure carries none; the series run on Plotly's palette and
+      the chart's chrome — axis text, grid lines, the gaps between pie slices —
+      is resolved from the live tokens by `charts.js`. A hex code here would
+      fail `fjkit check`, and be wrong in one of the two themes.
+    * a class. There is no chart class in fjkit's vocabulary, and inventing one
+      is how a closed vocabulary stops being closed. The card around it is the
+      component; the figure is a plain box.
+    * a height. It rides in `data-height` and is applied by the same script
+      that draws, because a `style=""` attribute in markup is the other way an
+      app starts writing CSS.
+#}
+{% from "ui/attrs.html" import attrs %}
+{% from "ui/data.html" import card %}
+
+{#
+  chart(item) — one figure in a card.
+
+  `item` is a `fjkit.charts.Chart`: id, title, summary, height and figure.
+
+  `<figure>`/`<figcaption>` rather than a div and a p, because the caption is
+  the chart's text alternative, not a note beside it. `aria-hidden` on the
+  canvas half is the honest annotation: Plotly's SVG is a thousand unlabelled
+  `<path>` elements, so a screen reader is better served by the sentence the
+  service wrote from the same numbers. Without JavaScript that sentence is all
+  there is, and it is still a true description of the data.
+
+  `boxed=false` drops the card, for a chart that already sits inside one.
+#}
+{% macro chart(item, boxed=true) -%}
+  {%- if boxed %}
+    {% call card(item.title, item.description) %}{{ _figure(item, kwargs) }}{% endcall %}
+  {%- else %}
+    {{ _figure(item, kwargs) }}
+  {%- endif %}
+{%- endmacro %}
+
+{% macro _figure(item, extra) -%}
+  <figure>
+    <div id="{{ item.id }}"
+         data-chart
+         data-height="{{ item.height }}"
+         data-figure="{{ item.figure_json }}"
+         aria-hidden="true"{% if extra %}{{ attrs(extra) }}{% endif %}></div>
+    <figcaption>{{ item.summary }}</figcaption>
+  </figure>
+{%- endmacro %}
+
+{#
+  chart_scripts() — put this in the page's `{% block scripts %}`.
+
+  Not in the shell, and not injected by the plugin: Plotly's basic bundle is
+  1.1 MB, and a plugin that could reach into `ui/shell.html` would put it on
+  every page including the ones with no chart. Calling it here is the opt-in,
+  and it is per page.
+
+  `defer` on both, in this order: `charts.js` reads `window.Plotly` at the
+  point it runs, and deferred scripts execute in document order. It degrades
+  rather than throwing if Plotly is absent — it warns to the console and every
+  chart keeps its figcaption, which is the fallback that was always there.
+
+  Emits nothing for Plotly when it has not been vendored (see `ChartsPlugin`),
+  so a missing vendor step costs the charts rather than a 404 in the console.
+#}
+{% macro chart_scripts() -%}
+  {%- set plotly = fjkit_charts_plotly() -%}
+  {%- if plotly %}<script defer src="{{ plotly }}"></script>{% endif %}
+  <script defer src="{{ fjkit_charts_script() }}"></script>
+{%- endmacro %}

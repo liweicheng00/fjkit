@@ -8,6 +8,7 @@ settings onto this; apps that don't, don't have to.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -15,7 +16,18 @@ from typing import TYPE_CHECKING, Literal
 from fjkit.vendored import StylePack
 
 if TYPE_CHECKING:
+    from fastapi import Request
+
+    from fjkit.messages import Message
     from fjkit.plugins import Plugin
+
+    #: What the person is told when `catch_unexpected_errors` catches something.
+    #: Either one fixed `Message`, or a callable handed the request and the
+    #: exception that returns the `Message` for it — so an app can say something
+    #: different for a `TimeoutError` than for a `KeyError`. The exception is for
+    #: *choosing* the words; putting `str(exc)` in them shows a visitor the inside
+    #: of the app.
+    UnexpectedErrorMessage = Message | Callable[[Request, Exception], Message]
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 TEMPLATE_DIR = PACKAGE_DIR / "templates"
@@ -33,7 +45,8 @@ class FjkitConfig:
     """Everything tunable, in one object.
 
     The defaults are the dev-friendly side. Production flips `auto_reload` and
-    `strict_undefined` off — see `for_production()`.
+    `strict_undefined` off and `catch_unexpected_errors` on — see
+    `for_production()`.
     """
 
     #: Where the app's own templates live. Searched *before* the kit's, so an
@@ -77,6 +90,23 @@ class FjkitConfig:
     #: Slightly slower and it can 500 a page, so: on in dev, off in prod.
     strict_undefined: bool = True
 
+    #: Whether an unhandled exception becomes a toast and an error page rather
+    #: than a traceback. Off by default, and that default is the useful one:
+    #: in development a traceback in the terminal beats a tidy apology in the
+    #: browser, and a handler that swallows one turns a real bug into a
+    #: mystery. `for_production()` turns it on. Validation failures (422) are
+    #: handled either way — a rejected form is not a bug.
+    catch_unexpected_errors: bool = False
+
+    #: The toast (and, on a navigation, the note on the error page's toaster) a
+    #: caught exception raises. `None` is the kit's own wording — "Something
+    #: went wrong", with a text saying nothing was saved. Set a `Message` to
+    #: change the words once, or a callable `(request, exc) -> Message` to pick
+    #: them per exception. Only read when `catch_unexpected_errors` is on. The
+    #: traceback is logged either way; this decides the sentence, not whether
+    #: it is logged.
+    unexpected_error: UnexpectedErrorMessage | None = None
+
     #: Extra values exposed to every template. Prefer this over threading the
     #: same key through every route's context dict.
     globals: dict[str, object] = field(default_factory=dict)
@@ -101,4 +131,4 @@ class FjkitConfig:
         """The same config with the two dev-only knobs turned off."""
         from dataclasses import replace
 
-        return replace(self, auto_reload=False, strict_undefined=False)
+        return replace(self, auto_reload=False, strict_undefined=False, catch_unexpected_errors=True)

@@ -1,13 +1,11 @@
-{#
-  Full page. Same three jobs as every other page here: extend the shell, set
-  the title, drop in the partial the htmx endpoints return.
-#}
+{# The jobs page: the shell, a title, the start form and the job list. #}
 {% extends "base.html" %}
 {% from "ui/button.html" import button %}
-{% from "ui/data.html" import kbd %}
+{% from "ui/data.html" import badge, item, item_list, kbd %}
 {% from "ui/feedback.html" import spinner %}
-{% from "ui/form.html" import form, field_row, select_field %}
+{% from "ui/form.html" import form, field_row, form_scripts, select_field %}
 {% from "ui/layout.html" import page_header, row, stack %}
+{% from "ui/overlay.html" import drawer, drawer_trigger %}
 
 {% block title %}Jobs{% endblock %}
 
@@ -15,10 +13,11 @@
   {% set note %}
     The work runs after the response is sent. Each card then re-requests
     {{ kbd("GET /jobs/{id}") }} once a second, and stops when it is finished.
-    {{ kbd("Details") }} opens a panel the browser owns and htmx fills.
+    {{ kbd("Details") }} opens a panel the browser owns and the server fills.
   {% endset %}
 
   {% call page_header("Jobs", note) %}
+    {{ drawer_trigger("Job kinds", "job-kinds", size="sm", icon_name="info") }}
     {{ button("Clear finished", variant="outline", size="sm", icon_name="trash",
               hx_delete=url_for(request, "jobs_clear"),
               hx_target="#job-list", hx_swap="outerHTML",
@@ -26,16 +25,9 @@
   {% endcall %}
 
   {% call stack(4) %}
-    {#
-      `hx-indicator` names the element htmx marks while this request is in
-      flight; the spinner below carries htmx's own indicator class, so it is
-      hidden until then and needs no CSS or JS from us.
-
-      Expect it to barely flash — the handler queues the job and returns. That
-      is the point of the page, not a fault in the indicator: what takes four
-      seconds is happening after the response, which is why the card polls.
-    #}
-    {% call form(action=url_for(request, "jobs_start"), target="#job-list",
+    {# `hx-indicator` marks the spinner below while the request is in flight. #}
+    {# Posts JSON; `jobs_start` reads a model body. #}
+    {% call form(action=url_for(request, "jobs_start"), target="#job-list", encoding="json",
                  hx_indicator="#job-busy", hx_disabled_elt="find button[type=submit]") %}
       {% call field_row("field-and-button") %}
         {{ select_field("kind", label="Background job", options=kind_options, selected="export") }}
@@ -48,4 +40,30 @@
 
     {% include "jobs/_jobs.html" %}
   {% endcall %}
+
+  {#
+    The page's second overlay, and deliberately the other kind. A job's Details
+    is a `dialog` — a popover, non-modal, so the list behind it stays readable
+    while it is open. This one is a `drawer`: a native <dialog> opened with
+    `showModal()`, which is what a panel you are meant to read and dismiss
+    should be. It sits outside `#job-list`, so a swap of the list never touches
+    it, and its body is rendered with the page because it never changes.
+  #}
+  {% call drawer("job-kinds", "Job kinds",
+                 "What each option in the select above actually does.", side="right") %}
+    {% call item_list() %}
+      {% for kind in kind_guide %}
+        {% set marks %}
+          {% call row(gap=2) %}
+            {{ badge(kind.steps ~ " steps", variant="outline") }}
+            {% if kind.fails %}{{ badge("Fails", variant="destructive") }}{% endif %}
+          {% endcall %}
+        {% endset %}
+        {{ item(kind.name, kind.note, actions=marks, clamp=false) }}
+      {% endfor %}
+    {% endcall %}
+  {% endcall %}
 {% endblock %}
+
+{# Loads the json-enc extension for this page only. #}
+{% block scripts %}{{ form_scripts() }}{% endblock %}

@@ -6,10 +6,11 @@ description: >
   build or change a page, partial, form, table or navigation in a fjkit app.
   Style, lay out or colour a template. Add an icon.
   Fix a violation reported by `fjkit check`. Find why a class has no effect.
-  Wire an htmx swap. Rebrand, or change a theme token.
+  Wire an htmx swap. Show a validation error, or a toast. Rebrand, or change a
+  theme token.
   Add or change a component inside fjkit itself.
   也適用於中文情境：「加一個頁面／表單／表格」「這裡要排版」「換品牌色」
-  「htmx 局部刷新」「fjkit check 沒過」「加一個 fjkit 元件」。
+  「htmx 局部刷新」「fjkit check 沒過」「表單錯誤要顯示」「加一個 fjkit 元件」。
 ---
 
 # fjkit
@@ -35,6 +36,7 @@ renders wrong markup silently.
 | macro signatures, shell blocks, closed enumerations | `src/fjkit/templates/ui/*.html` |
 | template globals, `page()` vs `stream()`, config knobs | `src/fjkit/templating.py`, `config.py`, `rendering.py` |
 | partials, swaps, forms, filter bars | `examples/fjkit-demo/app/features/*/` — the worked example |
+| validation errors, toasts, the 500 page | `src/fjkit/errors.py`, `forms.py`, `messages.py` |
 | tokens, rebranding, dark mode | `src/fjkit/static/src/fjkit.css`, `src/fjkit/styles.py` |
 | a blocked class, `eject`, building the CSS | `src/fjkit/cli/` |
 | what the benchmarks measured | `docs/jinja-performance.md` |
@@ -94,6 +96,48 @@ pattern the kit supports. Read it before inventing one.
    its own URL takes `partial=` instead of a second route.
 5. **Repeated rows** become a macro in `<name>/macros.html` taking `request` as a
    parameter, called inside the caller's loop.
+6. **A form that can be rejected** needs nothing at all to behave. Declare the
+   model in the handler's signature and stop:
+
+   ```python
+   @render("tasks/_board.html")
+   def create_task(service: ServiceDep, payload: Annotated[TaskCreate, Form()]) -> BoardResponse:
+   ```
+
+   A rejected submit is FastAPI's own 422 — the list of fields and messages it
+   always wrote — and the form that is still on the page draws it: the shell
+   loads `js/errors.js`, which writes each message under the control named in
+   its `loc` and leaves everything the person typed in place. No `invalid=`
+   template, no context to rebuild, no `values` to echo back, no retarget. The
+   template is one form, written once, with `value=task.title` and nothing
+   about errors in it. A plain `<form method="post">` with no `target=` is the
+   one case that gets a document instead — `errors/page.html`, through your
+   shell — because the browser has already left the page.
+
+   `Form()` fields or a whole model, urlencoded or `form(encoding="json")`:
+   the reply is the same shape either way, and a nested body is named the way
+   an HTML form would post it — `{"items": [{"title": …}]}` fails as
+   `items.0.title`. A JSON form's page has to load the extension —
+   `{% block scripts %}{{ form_scripts() }}{% endblock %}` — and needs a
+   `target`, because only an htmx submit can carry JSON.
+
+   Two rules, and each is a trap when broken:
+
+   - **The model goes in the signature, not in the body.** `TaskCreate(**form)`
+     inside a handler raises the same error one layer too late, where it is
+     the shape of a bug — `Task(**row)` failing in a service — and is treated
+     as one: it travels, and lands as a 500. fjkit does not guess which it was.
+   - **A control's `name` is the field's `loc`.** That is how the script finds
+     it; a field posted under one name and declared under another is an error
+     the script can only raise as a toast. Same for a control that has no
+     `<p>` to write under — `select_menu` — which is why its options and its
+     type are one enum: a value the form never offered cannot be picked.
+
+   Raise a message of your own with `messages.add(request, "Saved",
+   category="success")`. It goes into the page's toaster on a full render and
+   out as `HX-Trigger` on a swap; the caller never picks. Use `FlashPlugin`
+   **only** for a message that has to survive a redirect — that is the one
+   thing `messages` cannot do, and the only reason the plugin exists.
 
 ## Verify before reporting done
 
@@ -102,6 +146,12 @@ uv run fjkit check app/templates    # every class is in the vocabulary
 uv run pytest                       # app suite + fjkit's own
 uv run ruff check
 ```
+
+**A green suite is not the whole check.** Tests assert on what the server sent;
+several of the ways this kit breaks happen after the browser has it — a toast
+that renders empty, an input reading `None`, a class the stylesheet does not
+contain. Open the page for anything that changes what a form or a message
+looks like.
 
 A class blocked by `fjkit check` is information, not an obstacle. That class
 names the component or the parameter that does not exist yet. Add it to
@@ -127,8 +177,42 @@ that is meant to be an optimisation.
 - **A partial that renders only inside its page.** The full page looks correct,
   but the htmx swap returns a 500 error. The cause is a missing import, or a
   variable the partial inherited from the page's context.
+- **`hx-swap` or `hx-target` inherited from an ancestor.** Both are inherited.
+  A button inside a card that polls itself with `hx-swap="outerHTML"` inherits
+  that swap and replaces the element it meant to fill — taking its `id` with
+  it, so every later open of the same dialog quietly finds no target. Spell
+  both out on any trigger nested inside another htmx element
+  (`jobs/macros.html` is the worked case).
 - **An icon-only button with no `aria_label`.** The label is empty, so nothing
   else names it.
+- **A utility the stylesheet does not contain.** The CSS is built from what the
+  kit's own templates use, so a plausible Tailwind class an app invents — or one
+  a *kit* template invents, which `fjkit check` does not scan for — compiles,
+  renders, and styles nothing. `grep` the class in
+  `src/fjkit/static/dist/fjkit-vega.css` before believing it works.
+- **`HX-Trigger` carrying a JSON array.** htmx passes a JSON *object* through as
+  `event.detail` and wraps anything else — arrays included — as `{value: …}`.
+  A listener reading `event.detail` directly then finds nothing, and the symptom
+  is an empty toast rather than an error. Send an object.
+- **`None` in `value=`.** It renders the four letters `None` into the box. Only
+  `errors.<field>` answers `None` for an absent name; `values.<field>` answers
+  `""`, because a field with nothing typed in it has a value and that value is
+  empty.
+- **A body taken with `Body(embed=True)`, or a second body parameter.** FastAPI
+  then names the failure `body.payload.title`, so the key is `payload.title` and
+  a template asking `errors.title` gets `None` — which is the same answer a
+  field with nothing wrong with it gives. The red text never appears and nothing
+  says why. Take the model as a single un-embedded parameter, or look the error
+  up under its whole key.
+- **`encoding="json"` on a page that never called `form_scripts()`.** The
+  extension is not loaded, htmx submits urlencoded to a route that only reads
+  JSON, and the reply is a 422 whose message is about the body not being an
+  object — no field is named, so nothing turns red and the toast is addressed
+  to a developer. `form_scripts()` is per page for the same reason
+  `chart_scripts()` is: CHARTER §7 budgets what every page loads by default.
+- **A form that clears itself when it is rejected.** `htmx:afterRequest` fires
+  whether the request succeeded or not, so any `hx-on::after-request` that
+  resets or navigates must test `event.detail.successful` first.
 
 ## Working on fjkit itself
 

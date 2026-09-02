@@ -1,4 +1,4 @@
-"""Build the documentation site — four pages in two languages, and the site is
+"""Build the documentation site — five pages in two languages, and the site is
 a fjkit app.
 
     uv run python packages/fjkit/docs/workbench/build.py
@@ -8,10 +8,14 @@ Output, all under `docs/` at the repo root, which is what GitHub Pages serves:
     index.html       Introduction — what the kit is, who it is for, what it is not
     learn.html       Learn        — the narrative: wiring, htmx, theming, the gate
     plugins.html     Plugins      — the extension seam, and the session plugin
-    components.html  Components   — every macro, live, with the code that made it
-    zh/              the same four pages in Chinese, from `templates/zh/`
+    components.html  Components   — every macro, live, with the code that made it,
+                                    one section per file in templates/ui/
+    cheatsheet.html  Cheatsheet   — the index: every macro in one table each, with
+                                    the block it takes stated rather than encoded
+    zh/              the same five pages in Chinese, from `templates/zh/`
     assets/dist/     fjkit.css, exactly as the wheel ships it
     assets/vendor/   htmx and Basecoat's JS, exactly as the wheel ships them
+    assets/js/       errors.js, the kit's own script the shell loads
     assets/brand/    the brand mark, exactly as the wheel ships it
     assets/          the site's own brand.css and page scripts — one copy for
                      both languages, because only the prose is translated
@@ -57,6 +61,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import cheatsheet
 from fjkit import FjkitConfig, build_environment
 from fjkit.vendored import DEFAULT_STYLE
 
@@ -75,6 +80,8 @@ DOCS_STYLE = DEFAULT_STYLE
 CSS = STATIC / "dist" / f"fjkit-{DOCS_STYLE}.css"
 HTMX = STATIC / "vendor" / "htmx" / "htmx.min.js"
 BASECOAT = STATIC / "vendor" / "basecoat" / "js" / "all.min.js"
+ERRORS_JS = STATIC / "js" / "errors.js"
+REVEAL_JS = STATIC / "js" / "reveal.js"
 MARK = STATIC / "brand" / "torii-bolt.png"
 
 OUT = REPO / "docs"
@@ -82,7 +89,7 @@ OUT_ASSETS = OUT / "assets"
 
 DEMO = REPO / "examples" / "fjkit-demo"
 
-#: The three pages, in reading order. Both the sidebar and `url_for` are built
+#: The five pages, in reading order. Both the sidebar and `url_for` are built
 #: from this, so a page added here appears in the navigation of the others and
 #: becomes addressable by name without touching a template. The first entry is
 #: `index.html`, because that is what GitHub Pages serves to someone arriving
@@ -175,6 +182,28 @@ PAGES = [
             "description": (
                 "每一個 fjkit macro 都有實際渲染的預覽、產生它的那行 Jinja，以及吐出來的 HTML——"
                 "全部由 kit 自己渲染，所以這裡的簽名不可能跟套件對不上。"
+            ),
+        },
+    },
+    {
+        "route": "cheatsheet",
+        "file": "cheatsheet.html",
+        "icon": "table-properties",
+        "en": {
+            "label": "Cheatsheet",
+            "title": "fjkit cheatsheet",
+            "description": (
+                "Every fjkit macro in one table per file, with its full signature, whether it is "
+                "called with a block and what goes inside it — plus the shell's blocks, the "
+                "template globals and the htmx attributes a fjkit page actually uses."
+            ),
+        },
+        "zh": {
+            "label": "速查表",
+            "title": "fjkit 速查表",
+            "description": (
+                "每一支 fjkit macro，一個檔案一張表：完整簽名、要不要用區塊呼叫、區塊裡放什麼——"
+                "外加外殼的 block、模板 global，以及 fjkit 頁面實際會用到的 htmx 屬性。"
             ),
         },
     },
@@ -355,6 +384,10 @@ VENDORED = [
     (CSS, f"dist/fjkit-{DOCS_STYLE}.css", "uv run fjkit build-css"),
     (HTMX, "vendor/htmx/htmx.min.js", "uv run python packages/fjkit/scripts/vendor_ui.py"),
     (BASECOAT, "vendor/basecoat/js/all.min.js", "uv run python packages/fjkit/scripts/vendor_ui.py"),
+    (ERRORS_JS, "js/errors.js", "git restore packages/fjkit/src/fjkit/static/js/errors.js"),
+    # The Components page calls `reveal_scripts()`, so the reveal showcase is a
+    # control a reader can press rather than a picture of one.
+    (REVEAL_JS, "js/reveal.js", "git restore packages/fjkit/src/fjkit/static/js/reveal.js"),
     (MARK, "brand/torii-bolt.png", "git restore packages/fjkit/src/fjkit/static/brand/torii-bolt.png"),
 ]
 
@@ -464,6 +497,9 @@ def build() -> int:
                 lang=lang,
                 t=strings,
                 wire=NEGOTIATION,
+                # Already in this language and already flat: the Cheatsheet page
+                # loops and prints, and never picks a string of its own.
+                sheet=cheatsheet.for_lang(lang["code"]),
             )
             out = out_dir / page["file"]
             out.write_text(html, encoding="utf-8")

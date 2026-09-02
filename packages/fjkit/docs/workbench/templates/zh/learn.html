@@ -17,6 +17,7 @@
   {"id": "triggers", "title": "hx-trigger：打字、捲動、輪詢"},
   {"id": "partials", "title": "partial：一份檔案，整頁與局部共用"},
   {"id": "oob",      "title": "一次回應，換掉好幾塊：hx-swap-oob"},
+  {"id": "broadcast","title": "一個 id，好幾份 fragment：HX-Trigger"},
   {"id": "pending",  "title": "請求進行中的那段時間"},
   {"id": "json",     "title": "沒有 HX-Request：同一條路由回 JSON"},
   {"id": "patterns", "title": "九種 htmx 模式，以及對應的 handler"},
@@ -28,7 +29,7 @@
 {% call stack(8) %}
 
   {% set intro %}
-    十一課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 掛掉的指令。
+    十二課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 掛掉的指令。
     底下每個示範都是活的。
   {% endset %}
   {{ page_header("在寫路由的地方，把介面一起寫完", intro) }}
@@ -79,7 +80,7 @@
       </p>
       <p>
         這中間沒有東西被序列化。前端沒有重新渲染。也沒有狀態同時活在兩個地方。
-        同一條路由很樂意用 JSON 回應一支腳本，那是<a href="#json">第 06 課</a>，是另一道門，
+        同一條路由很樂意用 JSON 回應一支腳本，那是<a href="#json">第 09 課</a>，是另一道門，
         不是這段交換裡的一個步驟。按下按鈕：<strong>底下那個請求是真的</strong>。
         這一頁載了 htmx，而瀏覽器裡有一支 mock server 扮演 FastAPI 那一側。
       </p>
@@ -223,15 +224,17 @@
     {% call grid(cols=2, gap=4) %}
       {% set trap_page %}從 htmx 路由回傳 <code>page.html</code>，等於把一整份文件塞進你的 div 裡——回 partial{% endset %}
       {% set trap_wrapper %}<code>outerHTML</code> 需要回應裡帶著那層外框，否則目標會直接消失{% endset %}
+      {% set trap_inherit %}<code>hx-target</code> 和 <code>hx-swap</code> 會從祖先繼承。放在一張用 <code>outerHTML</code> 輪詢自己的卡片裡的按鈕，會繼承那個 swap，把本來要填內容的元素整個換掉——巢在另一個 htmx 元素裡的觸發器，這兩個都要明講{% endset %}
       {{ defs("值得先知道的陷阱", [
         ("整頁跑回來", trap_page),
-        ("4xx 不會換", "htmx 預設忽略錯誤回應；表單錯誤請回 200，並把重繪過的表單一起帶回來"),
+        ("4xx 不會換", "htmx 預設忽略錯誤回應。shell 把 422（而且只有 422）加了回去，這就是一份被退回的表單能以表單本身回來的原因"),
         ("外框弄丟", trap_wrapper),
         ("篩選條件掉了", "列上的動作必須帶著目前的篩選，否則換進去的內容會默默把畫面重設"),
+        ("swap 被繼承", trap_inherit),
       ]) }}
       {{ defs("伺服器端的幫手", [
         ("HX-Request", "讓路由知道自己正在回應一個局部更新的那個標頭"),
-        ("HX-Trigger", "回應標頭，會在前端觸發一個事件——toast 就是這樣被叫起來的（fjkit 0.6）"),
+        ("HX-Trigger", "回應標頭，會在前端觸發一個事件——fjkit 就是這樣從一次 swap 裡叫出 toast 的，因為 fragment 裡沒有 toaster"),
         ("HX-Redirect", "從局部更新的回應裡做整頁轉址"),
         ("hx-swap-oob", "一次回應，換掉好幾塊——下一課"),
       ]) }}
@@ -239,7 +242,7 @@
   {% endcall %}
 
   {# ============================================================== 06 #}
-  {% set t06 %}<code>hx-target</code> 只指得到一個元素。當一個答案要動五塊時，另外四塊自己帶著地址。{% endset %}
+  {% set t06 %}<code>hx-target</code> 只指得到一個元素。當一個答案要動六塊時，另外五塊自己帶著地址。{% endset %}
   {% call lesson("oob", "06", "一次回應，換掉好幾塊：hx-swap-oob", t06, tag="htmx") %}
     {% call prose() %}
       <p>
@@ -247,12 +250,12 @@
         板子就是一個 <code>&lt;div id="board"&gt;</code>，上面每一顆按鈕都指著它，每一次回應都是整塊板子。
       </p>
       <p>
-        搜尋結果不是一個東西。一次查詢要動的是：表格上方那排計數、表格自己、側欄的進度卡與 facet 清單、
-        表格下面的明細面板——五塊分散在三個地方，唯一同時包住它們的元素叫 <code>&lt;body&gt;</code>。
-        換掉 body 就是重新整理，只是多繞了一圈。
+        搜尋結果不是一個東西。一次查詢要動的是：表格上方那排計數、表格自己、側欄的進度卡、facet 清單
+        與同負責人面板、表格下面的明細面板——六塊分散在三個地方，唯一同時包住它們的元素叫
+        <code>&lt;body&gt;</code>。換掉 body 就是重新整理，只是多繞了一圈。
       </p>
       <p>
-        所以回應把另外四塊<strong>走頻外（out of band）</strong>送回去——不走
+        所以回應把另外五塊<strong>走頻外（out of band）</strong>送回去——不走
         <code>hx-target</code> 描述的那條唯一通道。每一塊靠自己身上的 id 說出它要去哪裡。
       </p>
     {% endcall %}
@@ -261,6 +264,7 @@
 <div id=\"search-stats\"    hx-swap-oob=\"true\">…</div>   ← 自己飛去頂端的計數列
 <div id=\"search-progress\" hx-swap-oob=\"true\">…</div>   ← 自己飛去側欄
 <div id=\"search-facets\"   hx-swap-oob=\"true\">…</div>   ← 自己飛去側欄
+<div id=\"search-related\"  hx-swap-oob=\"true\">…</div>   ← 自己飛去側欄
 <div id=\"search-detail\"   hx-swap-oob=\"true\">…</div>   ← 自己飛去表格下方" %}
     {% call stage("一個按鍵拿回來的東西",
                   "GET /search?q=cache，由一個 handler 與一個 response model 回答。", padded=false) %}
@@ -291,7 +295,7 @@
 
     {% call prose() %}
       <p>
-        fjkit 這一側沒有新機制。頁面與回應 {% raw %}<code>{% include %}</code>{% endraw %} 的是同樣五支
+        fjkit 這一側沒有新機制。頁面與回應 {% raw %}<code>{% include %}</code>{% endraw %} 的是同樣六支
         partial，差別只有一個變數：頁面冷冷地渲染它們，回應則讓它們帶上地址。每支 partial 自己給那個
         旗標一個預設值，所以它照樣單獨渲染得出來。
       </p>
@@ -304,6 +308,7 @@
   {% include \"search/_progress.html\" %}
   {% include \"search/_facets.html\" %}
   {% include \"search/_detail.html\" %}
+  {% include \"search/_related.html\" %}
 {% endwith %}
 
 {# _stats.html —— 其餘每一塊的開頭都一樣 #}
@@ -319,14 +324,215 @@
       <p>
         換來的好處是：<em>哪一塊放在哪裡</em>由頁面決定，而且只決定一次。把 facet 卡從側欄搬到主欄，
         router、response model、swap 三者一個字都不用改。實際的檔案是 repo 裡的
-        <code>examples/fjkit-demo/app/templates/search/</code>。
+        <code>examples/fjkit-demo/app/templates/search/</code>——而下一課講的是同一頁的另外一半，
+        因為真實的畫面兩種都需要。
       </p>
     {% endcall %}
   {% endcall %}
 
   {# ============================================================== 07 #}
-  {% set t07 %}一次 swap 是一趟來回，而這中間沒有任何東西擋得住第二次點擊。兩個屬性就涵蓋了整段等待。{% endset %}
-  {% call lesson("pending", "07", "請求進行中的那段時間", t07, tag="htmx") %}
+  {% set t07 %}第 06 課的反面題：觸發者產生的是一個 <em>id</em>，而每一塊區域拿著這個 id 要問的問題都不一樣。{% endset %}
+  {% call lesson("broadcast", "07", "一個 id，好幾份 fragment：HX-Trigger", t07, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        上一課成立的前提，是一支 handler 有辦法一次回答所有區域——一次查詢、六份 fragment、
+        一個裝得下全部的 response model。在同一頁上點開一列不是這個形狀。點擊產生的是一個
+        <code>id</code>，而在意它的每一塊面板各自需要<em>不同</em>的查詢：那個任務的細節、
+        那個負責人手上的其他任務。要一支 handler 回答全部，它就得 import 這一頁上的每一個 service，
+        而且多加第三塊面板就要回頭改它。
+      </p>
+      <p>
+        所以這次選取回應的是<em>它自己那一塊</em>——結果表，而且那一列現在被標記起來了——
+        並把 id 放在 <code>HX-Trigger</code> 裡送出去。htmx 把這個標頭轉成一個 DOM 事件，
+        在意它的 fragment 各自聽到之後，自己去要自己的資料。這條路由不知道有幾個訂閱者，
+        也不知道它們存在。多一塊面板就是多一個訂閱者，沒有任何一條路由要改。
+      </p>
+    {% endcall %}
+
+    {% set bcast_route = "@router.get(\"/search/select/{task_id}\", name=\"search_select\")
+@render(\"search/_matches.html\",
+        hx_trigger=lambda task_id: {\"task-selected\": {\"task_id\": task_id}})
+def select_task(service: ServiceDep, task_id: int, q: str = \"\") -> MatchesResponse:
+    \"\"\"Mark the row, answer with the table, and tell the panels which id.\"\"\"
+    return _matches(service, q, _selected(service, task_id).id)" %}
+    {% call stage("負責「選取」的那條路由",
+                  "用 GET，因為選取沒有改動伺服器上的任何東西。結果表就是這顆按鈕的 hx-target，所以回應就地把它換掉。", padded=false) %}
+      {{ code(bcast_route, label="router.py") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        事件宣告在 <code>hx_trigger</code>，而它是 <code>@render</code> 的參數、不是 handler 自己寫的標頭，
+        理由只有一個：這樣它在<em>會</em>渲染的路由上是同一套用法。callable 每次請求解析一次，
+        依名字從 handler 自己的參數裡取值——這裡是 <code>task_id</code>——外加 <code>result</code>，
+        也就是 handler 的回傳值。callable 回傳 <code>None</code> 就什麼都不發，所以一條路由可以只在某些時候廣播。
+      </p>
+      <p>
+        除此之外那條路由沒有任何特別之處。它就是一條普通的 partial 路由——一份樣板、一個 response
+        model——上面掛了一個事件，而這正是這個模式便宜的原因：那次 swap 與那次廣播是一趟來回，
+        寫在同一個地方。
+      </p>
+      <p>
+        同一頁上的第二個動作展示了另外一半。推進會改變狀態，所以它發出<em>不同</em>的事件，
+        而在意的是另一組 fragment。
+      </p>
+    {% endcall %}
+
+    {% set bcast_shared = "@router.post(\"/search/advance/{task_id}\", name=\"search_advance\")
+@render(\"search/_detail.html\",
+        hx_trigger=lambda task_id: {\"task-changed\": {\"task_id\": task_id}})
+def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
+    \"\"\"Advance the task, answer with the detail panel, and say what changed.\"\"\"
+    if service.advance(task_id) is None:
+        raise HTTPException(status_code=404, detail=\"task not found\")
+    return DetailResponse(selected=service.get(task_id))" %}
+    {% call stage("第二個事件，來自一條會改變東西的路由",
+                  "回應本身就是那次 swap——detail 面板正是這顆按鈕的 hx-target——而標頭是另外四塊聽到的東西。", padded=false) %}
+      {{ code(bcast_shared, label="router.py") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        兩個事件，每一份 fragment 各自挑它有理由聽的那些。計數面板聽 <code>task-changed</code>、
+        不聽 <code>task-selected</code>，因為選取不會改變任何一個計數。facet 面板兩個都不聽，
+        因為推進一個任務既不會換負責人、也不會換優先級。要聽哪些廣播是 fragment 自己的決定，
+        而沒有任何一條路由知道它存在。
+      </p>
+    {% endcall %}
+
+    {% call stage("誰聽什麼", none, padded=false) %}
+      {% call table([{"label": "fragment"}, {"label": "task-selected"}, {"label": "task-changed"}, {"label": "為什麼"}]) %}
+        <tr>
+          {{ cell("結果表", tone="strong") }}
+          {{ cell(badge("不聽", variant="outline")) }}
+          {{ cell(badge("聽", variant="success")) }}
+          {{ cell("它就是選取回應的 target；推進會改變一列上寫的東西") }}
+        </tr>
+        <tr>
+          {{ cell("detail 面板", tone="strong") }}
+          {{ cell(badge("聽", variant="success")) }}
+          {{ cell(badge("不聽", variant="outline")) }}
+          {{ cell("它就是 advance 回應的 target——聽那個事件就是迴圈") }}
+        </tr>
+        <tr>
+          {{ cell("同負責人面板", tone="strong") }}
+          {{ cell(badge("聽", variant="success")) }}
+          {{ cell(badge("聽", variant="success")) }}
+          {{ cell("這些是誰的任務，以及它們的狀態") }}
+        </tr>
+        <tr>
+          {{ cell("計數面板、進度卡", tone="strong") }}
+          {{ cell(badge("不聽", variant="outline")) }}
+          {{ cell(badge("聽", variant="success")) }}
+          {{ cell("選取不會改變任何計數，推進會") }}
+        </tr>
+        <tr>
+          {{ cell("facet 面板", tone="strong") }}
+          {{ cell(badge("不聽", variant="outline")) }}
+          {{ cell(badge("不聽", variant="outline")) }}
+          {{ cell("那張卡上沒有任何一個 facet 跟狀態有關") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        撐住這整套的只有一條規則：<strong>一條路由回應的那份 fragment，不可以訂閱這條路由發出的事件</strong>。
+        它已經被就地換掉了，再聽到那個事件就是同一次點擊抓它第二次——而如果那份 fragment 就是自己的
+        target，它永遠不會停。htmx 不會攔你，因為「訂閱者去要自己的 URL」正是那些屬性寫的意思。
+        所以結果表只聽 <code>task-changed</code>、detail 面板只聽 <code>task-selected</code>：
+        每一份對其中一個事件是 target、對另一個是訂閱者，從不對同一個事件兩者兼具。
+      </p>
+    {% endcall %}
+
+    {% set bcast_sub = "{# 只需要 id 的面板 #}
+<div id=\"search-detail\"
+     hx-get=\"/search/detail\"
+     hx-trigger=\"task-selected from:body\"
+     hx-vals=\"js:{task_id: event.detail.task_id}\"
+     hx-target=\"this\" hx-swap=\"outerHTML\">…</div>
+
+{# 還要看搜尋框的區域 #}
+<div id=\"search-stats\"
+     hx-get=\"/search/stats\"
+     hx-trigger=\"task-changed from:body\"
+     hx-include=\"[name='q']\"
+     hx-target=\"this\" hx-swap=\"outerHTML\">…</div>" %}
+    {% call stage("訂閱端", "在意的區域都寫這些屬性；不在意的一個都不寫。", padded=false) %}
+      {{ code_block(bcast_sub, label="Jinja") }}
+    {% endcall %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set sub_trigger %}<code>from:body</code>——htmx 是在「發出那次請求的元素」上觸發這個事件，然後往上冒泡。面板離那個元素很遠，所以它們在事件會抵達的地方聽{% endset %}
+      {% set sub_vals %}<code>hx-vals="js:…"</code> 是 id 變回查詢參數的唯一一個地方。從事件裡把它讀出來、而不是把選取狀態記在伺服器上，正是端點得以維持無狀態、兩個分頁得以互不干擾的原因{% endset %}
+      {% set sub_target %}<code>hx-target="this"</code>——每個訂閱者都是替換自己，所以一次回應永遠只有一塊區域，而發送端從頭到尾不需要知道這一頁有幾塊區域{% endset %}
+      {% set sub_include %}<code>hx-include</code>——給事件<em>沒有</em>帶的東西。計數算的是<em>符合的結果</em>，所以它除了 id 還需要搜尋框的值；用一個 selector 從頁面上取，而不是讓每個事件都得帶著它{% endset %}
+      {{ defs("要緊的幾個屬性", [
+        ("誰在聽", sub_trigger),
+        ("id 怎麼進來", sub_vals),
+        ("還缺什麼", sub_include),
+        ("換掉的是誰", sub_target),
+      ]) }}
+
+      {% set bc_object %}trigger 的值必須是一個 JSON <strong>物件</strong>。htmx 會把物件原樣交給 <code>event.detail</code>，其他型別——包含陣列——則包成 <code>{value: …}</code>，於是讀 <code>event.detail.task_id</code> 的監聽者什麼都拿不到{% endset %}
+      {% set bc_order %}<code>HX-Trigger</code> 在 swap <strong>之前</strong>觸發。這正是 id 要走事件這條路的原因：一個存放選取狀態的 hidden input，在訂閱者去讀它的當下還是舊值。要另一種順序的話，標頭是 <code>HX-Trigger-After-Swap</code>{% endset %}
+      {% set bc_inherit %}<code>hx-vals</code> 會被繼承，而 htmx 是沿著 DOM 往上<strong>合併</strong>它，走的那條路徑不看 <code>hx-disinherit</code>。訂閱者<em>內部</em>的 htmx 元素——也就是那一列的標題，它本身就是開啟這一列的按鈕——必須寫 <code>hx-vals="unset"</code>，那是唯一能中斷這趟走訪的值{% endset %}
+      {% set bc_cost %}N 個訂閱者就是 N 次請求。這是這個做法的代價：扇出發生在頁面上，而不是收斂在 handler 裡；查詢很貴的時候，用 <code>hx-sync</code> 或一層快取把它換回來{% endset %}
+      {{ defs("四件要知道的事", [
+        ("送物件", bc_object),
+        ("它在 swap 之前觸發", bc_order),
+        ("繼承會滲進來", bc_inherit),
+        ("N 塊面板，N 次請求", bc_cost),
+      ]) }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        這兩課不是在互相競爭，而 demo 也沒有把它們拆成兩頁。它們回答的是不同的問題，
+        而 <code>/search</code> 兩個都在問：一次查詢是伺服器有辦法完整回答的一個問題，
+        而一次選取是一個 id，三塊區域各自拿它問不同的事。
+      </p>
+    {% endcall %}
+
+    {% call stage("一頁該用哪一種", none, padded=false) %}
+      {% call table([{"label": "問題"}, {"label": "hx-swap-oob"}, {"label": "HX-Trigger"}]) %}
+        <tr>
+          {{ cell("是什麼造成了改變", tone="strong") }}
+          {{ cell("一次查詢，伺服器有辦法一口氣回答所有區域") }}
+          {{ cell("一個 id，每塊區域拿它問的問題都不同") }}
+        </tr>
+        <tr>
+          {{ cell("誰知道有哪些區域", tone="strong") }}
+          {{ cell("handler——所有區域都由它渲染") }}
+          {{ cell("沒有人；每塊區域自己表態") }}
+        </tr>
+        <tr>
+          {{ cell("每次互動的請求數", tone="strong") }}
+          {{ cell(badge("1", variant="success")) }}
+          {{ cell(badge("1 + 每個訂閱者一次", variant="outline")) }}
+        </tr>
+        <tr>
+          {{ cell("要多加一塊區域", tone="strong") }}
+          {{ cell("改 handler、改 model、改回應樣板") }}
+          {{ cell("多一個訂閱者；其他什麼都不用動") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        可以動的檔案在倉庫的 <code>examples/fjkit-demo/app/features/search/</code> 與
+        <code>app/templates/search/</code>——跟上一課是同一頁。那裡每一塊區域都帶著一個渲染時間戳，
+        所以「哪一次動作動到了哪幾塊」在頁面上就讀得出來，不用打開 network 分頁。
+        一次查詢是一個請求、六個新的時間戳。一次選取是三個請求、三個時間戳——結果表、detail 面板、
+        同負責人面板——而計數、進度卡與 facet 卡動都不動。一次推進是五個，而這次不動的只剩 facet 卡。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 08 #}
+  {% set t08 %}一次 swap 是一趟來回，而這中間沒有任何東西擋得住第二次點擊。兩個屬性就涵蓋了整段等待。{% endset %}
+  {% call lesson("pending", "08", "請求進行中的那段時間", t08, tag="htmx") %}
     {% call prose() %}
       <p>
         htmx 在請求期間會把 <code>htmx-request</code> 這個 class 掛到某個元素上，結束就拿掉。沒有寫
@@ -401,9 +607,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 08 #}
-  {% set t08 %}handler 回傳的是 model，不是標記。要送出什麼，只取決於一個問題：這個呼叫端有沒有在等標記？{% endset %}
-  {% call lesson("json", "08", "沒有 HX-Request：同一條路由回 JSON", t08, tag="htmx") %}
+  {# ============================================================== 09 #}
+  {% set t09 %}handler 回傳的是 model，不是標記。要送出什麼，只取決於一個問題：這個呼叫端有沒有在等標記？{% endset %}
+  {% call lesson("json", "09", "沒有 HX-Request：同一條路由回 JSON", t09, tag="htmx") %}
     {% call prose() %}
       <p>
         第 02 課說這段交換裡沒有 JSON，就 swap 本身而言是對的。
@@ -488,9 +694,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 09 #}
-  {% set t09 %}畫面各有不同；形狀沒有。每一種都是一個 trigger、一個 target 與一份 partial。{% endset %}
-  {% call lesson("patterns", "09", "九種 htmx 模式，以及對應的 handler", t09, tag="htmx") %}
+  {# ============================================================== 10 #}
+  {% set t10 %}畫面各有不同；形狀沒有。每一種都是一個 trigger、一個 target 與一份 partial。{% endset %}
+  {% call lesson("patterns", "10", "九種 htmx 模式，以及對應的 handler", t10, tag="htmx") %}
     {% call prose() %}
       <p>
         整套屬性詞彙一個螢幕就放得下，
@@ -536,17 +742,15 @@
         ("退化得下去", "把 hx-* 關鍵字拿掉，同一批 macro 吐出的表單與連結照樣能用"),
       ]) }}
       {{ defs("刻意還沒做的", [
-        ("欄位錯誤", "每個欄位 macro 都已經收 error=；Pydantic 那趟來回是 0.3"),
-        ("toast", "HX-Trigger 標頭今天就有；元件是 0.6"),
         ("對話框", "在那之前用 hx-confirm——那是瀏覽器自己的，而且它能用"),
         ("排序", "換一組 query 參數的篩選列；table macro 會在 0.4 學會"),
       ]) }}
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 10 #}
-  {% set t10 %}換品牌是一個 CSS 變數。「綠色代表完成」不在那個轉盤上。{% endset %}
-  {% call lesson("knob", "10", "換品牌：品牌 token 與狀態 token", t10, tag="theming") %}
+  {# ============================================================== 11 #}
+  {% set t11 %}換品牌是一個 CSS 變數。「綠色代表完成」不在那個轉盤上。{% endset %}
+  {% call lesson("knob", "11", "換品牌：品牌 token 與狀態 token", t11, tag="theming") %}
     {% call prose() %}
       <p>
         拉拉看色相。你正在編輯 <code>:root</code> 上的 <code>--primary</code>，
@@ -620,9 +824,9 @@
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 11 #}
-  {% set t11 %}一條沒有人能不小心違反的慣例，比一條寫下來的慣例值錢。{% endset %}
-  {% call lesson("gate", "11", "fjkit check：封閉詞彙表", t11) %}
+  {# ============================================================== 12 #}
+  {% set t12 %}一條沒有人能不小心違反的慣例，比一條寫下來的慣例值錢。{% endset %}
+  {% call lesson("gate", "12", "fjkit check：封閉詞彙表", t12) %}
     {% call prose() %}
       <p>
         <code>fjkit check</code> 讀你的模板，然後拒絕兩種東西：顏色字面值，以及元件詞彙表以外的任何 class。
@@ -664,7 +868,7 @@
       {{ defs("指令", [
         ("fastapi dev", "把 app 跑起來——旁邊沒有東西要一起重建"),
         ("fjkit check", "每個 class 都在詞彙表裡"),
-        ("fjkit eject", "把元件複製進來改——代價是拿不到上游的修正"),
+        ("fjkit eject", "逃生口：把一支 macro 拿進來改；同檔其餘的仍是 kit 的"),
         ("fjkit build-css", "fjkit 自己的發佈步驟，永遠不是你的"),
       ]) }}
       {% set d_components %}<a href="{{ url_for(request, "components") }}">每個簽名與列舉，實際渲染</a>{% endset %}

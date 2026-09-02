@@ -1,0 +1,74 @@
+{#
+  Feature-local macros for the panels page. `request` is a parameter, so this
+  file imports without context.
+#}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import badge %}
+{% from "ui/layout.html" import row %}
+{% from "ui/table.html" import cell %}
+
+{#
+  pick_row(request, task, selected_id) — one row of the board.
+
+  The title is the button and the row is the hit target, the same trade
+  `search/macros.html` makes and for the same reasons: a `<tr>` with the `hx-get`
+  on it would give the same mouse behaviour and no keyboard path at all.
+
+  One refusal here rather than search's two. This table subscribes to nothing, so
+  there is no inherited `hx-vals` to unset — the pick's id is in its URL, and the
+  panels read the *result* of the pick off the hidden input the table carries.
+#}
+{% macro pick_row(request, task, selected_id=none) -%}
+  <tr>
+    {% call cell() %}
+      {% call row(gap=2, wrap=false) %}
+        {{ button(task.title, variant="link", size="xs",
+                  hx_get=url_for(request, "panels_select", task_id=task.id),
+                  hx_trigger="click from:closest tr",
+                  hx_target="#panels-matches", hx_swap="outerHTML") }}
+        {% if task.id == selected_id %}{{ badge("open", variant="info") }}{% endif %}
+      {% endcall %}
+    {% endcall %}
+    {{ cell(badge(task.status.value | capitalize, variant=task.status_variant)) }}
+    {{ cell(badge(task.priority.value | capitalize, variant=task.priority_variant)) }}
+    {{ cell(task.owner, tone="muted") }}
+  </tr>
+{%- endmacro %}
+
+{% set BOARD_COLUMNS = [
+  {"label": "Task"},
+  {"label": "Status"},
+  {"label": "Priority"},
+  {"label": "Owner"},
+] %}
+
+{#
+  The button that advances the open task, drawn inside the detail panel.
+
+  Both `hx-target` and `hx-swap` are spelled out because both are inherited and
+  this button sits inside a lazy panel, which sets them to `this` and
+  `innerHTML`. Inheriting them would make the button replace the panel it is
+  drawn in — taking the panel's id with it, so every later show of that tab
+  would find no target and quietly do nothing.
+
+  It aims at the table rather than at the panel for a second reason: a lazy
+  panel's body is replaced whole every time the tab is shown, so nothing outside
+  one can usefully address a region inside it.
+#}
+{% macro advance_action(request, task) -%}
+  {{ button("Advance", variant="outline", size="xs",
+            icon_name="chevron-right", icon_end=true,
+            hx_post=url_for(request, "panels_advance", task_id=task.id),
+            hx_target="#panels-matches", hx_swap="outerHTML") }}
+{%- endmacro %}
+
+{#
+  stamp(rendered_label) — the moment the router built this fragment.
+
+  It is the page's evidence. Without a timestamp per panel there is no reading
+  which panels a given click reached, which on this page is the whole point:
+  the hidden ones are meant not to move.
+#}
+{% macro stamp(rendered_label) -%}
+  {{ badge("rendered " ~ rendered_label, variant="outline") }}
+{%- endmacro %}

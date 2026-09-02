@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% from "_parts.html" import band, defs, prose %}
+{% from "ui/data.html" import badge, card, code_block, item, item_list %}
+{% from "ui/layout.html" import grid, page_header, stack %}
+
+{#
+  英文版 `templates/cheatsheet.html` 的翻譯。結構逐段對應，翻的只有散文。
+
+  清單內容全部來自 `cheatsheet.py`，而且傳進來時已經是這個語言了——所以這一頁
+  不挑任何字串。會組字串的模板，正是英文與中文索引有可能講出不同 macro 的那個
+  地方。
+#}
+{% set sections = [{"id": "reading", "title": "怎麼讀這張表"}]
+                + sheet.rail
+                + [{"id": "shell",   "title": "外殼"},
+                   {"id": "globals", "title": "Globals"},
+                   {"id": "htmx",    "title": "htmx 屬性"},
+                   {"id": "missing", "title": "這裡找不到的時候"}] %}
+
+{% macro macro_list(file) %}
+{% call card(file.name, padded=false) %}
+  {% call item_list() %}
+    {% for macro in file.macros %}
+      {% set signature %}<code>{{ macro.call }}</code>{% endset %}
+      {% set block %}{% if macro.block %}{{ badge(macro.block, variant="outline") }}{% endif %}{% endset %}
+      {{ item(signature, macro.note, actions=block, clamp=false) }}
+    {% endfor %}
+  {% endcall %}
+{% endcall %}
+{% endmacro %}
+
+{% macro name_list(heading, entries, description=none) %}
+{% call card(heading, description, padded=false) %}
+  {% call item_list() %}
+    {% for entry in entries %}
+      {% set name %}<code>{{ entry.name }}</code>{% endset %}
+      {{ item(name, entry.note, clamp=false) }}
+    {% endfor %}
+  {% endcall %}
+{% endcall %}
+{% endmacro %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    kit 出貨的每一支 macro，依用途分組，並且把索引最常被問到的那個問題直接標在該列上：這支
+    macro 要不要用區塊呼叫，區塊裡放什麼。<a href="{{ url_for(request, "components") }}">元件</a>那一頁是看它們跑起來的地方；這一頁是查東西的地方。
+  {% endset %}
+  {{ page_header(page.title, intro) }}
+
+  {# ============================================================== reading #}
+  {% set lead_reading %}一列上有什麼，以及兩條每一列都適用的規則。{% endset %}
+  {% call band("reading", "怎麼讀這張表", lead_reading) %}
+    {% call prose() %}
+      <p>
+        Jinja macro 有兩種呼叫方式，而且從名字看不出來是哪一種。裡面不放東西的 macro
+        直接印出來；會包住東西的 macro 用 <code>{% raw %}{% call %}{% endraw %}</code>
+        呼叫，夾在它跟 <code>{% raw %}{% endcall %}{% endraw %}</code> 之間的內容會交給 macro
+        去擺放——Jinja 把它叫做 <em>caller 區塊</em>，而底下每一支需要它的 macro
+        都會掛一個標籤說明。
+      </p>
+    {% endcall %}
+
+    {{ code_block(sheet.samples.shapes, label="兩種形狀", data_lang="jinja") }}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set c_macro %}那一行呼叫，含每個參數與它的預設值。每份清單上方的標題就是你要 <code>import</code> 的檔案{% endset %}
+      {% set c_block %}在一列的右邊，而且只出現在有區塊的那幾列：代表這支 macro 要用 <code>{% raw %}{% call %}{% endraw %}</code> 呼叫，標籤上寫的是區塊裡放什麼。沒有標籤就直接用 <code>{% raw %}{{ }}{% endraw %}</code> 印出來{% endset %}
+      {% set c_note %}簽名沒說的那件事。簽名已經說完的時候就不寫{% endset %}
+      {{ defs("一列上有什麼", [
+        ("簽名", c_macro),
+        ("區塊標籤", c_block),
+        ("底下那一行說明", c_note),
+      ]) }}
+
+      {% set r_attrs %}簽名裡沒有的關鍵字都會變成屬性，底線換成連字號：<code>hx_post="/tasks"</code> 到了標記裡是 <code>hx-post="/tasks"</code>。每一支 macro 的每一個 <code>hx-*</code>、<code>aria-*</code>、<code>data-*</code> 都走這條路{% endset %}
+      {% set r_variant %}<code>variant</code>、<code>tone</code>、<code>category</code> 指的是角色——<code>success</code>、<code>destructive</code>、<code>muted</code>——不是顏色。顏色歸 token 層，換品牌時只動一個地方{% endset %}
+      {{ defs("兩條通則", [
+        ("多出來的關鍵字", r_attrs),
+        ("用角色，不用顏色", r_variant),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== the macros #}
+  {% for group in sheet.groups %}
+    {% call band(group.id, group.title, group.lead) %}
+      {% for file in group.files %}{{ macro_list(file) }}{% endfor %}
+    {% endcall %}
+  {% endfor %}
+
+  {# ============================================================== shell #}
+  {% set lead_shell %}是 block，不是 macro——唯一一個你 extends 而不是 import 的檔案。{% endset %}
+  {% call band("shell", "外殼", lead_shell) %}
+    {% call prose() %}
+      <p>
+        <code>ui/shell.html</code> 帶著 <code>&lt;head&gt;</code>、主題閃爍防護、資源連結，以及
+        header／main／footer 的骨架。一支 app 在自己的 <code>base.html</code> 裡 extends
+        它一次，然後填自己需要的 block。<code>sidebar</code> 跟 <code>nav</code>
+        只填一個——外殼會依照哪一個被填而排出不同的標頭，兩個都填就會得到兩套導覽。
+      </p>
+    {% endcall %}
+
+    {{ code_block(sheet.samples.shell, label="app/templates/base.html", data_lang="jinja") }}
+
+    {{ name_list("ui/shell.html", sheet.shell_blocks) }}
+  {% endcall %}
+
+  {# ============================================================== globals #}
+  {% set lead_globals %}每個模板裡本來就有——不用 import，也不用從 context 傳。{% endset %}
+  {% call band("globals", "Globals", lead_globals) %}
+    {{ name_list("build_environment()", sheet.globals) }}
+  {% endcall %}
+
+  {# ============================================================== htmx #}
+  {% set lead_htmx %}它們不屬於 fjkit，但是傳給 fjkit macro 的——所以該放在索引旁邊。{% endset %}
+  {% call band("htmx", "htmx 屬性", lead_htmx) %}
+    {% call prose() %}
+      <p>
+        這裡每一個都是以「多出來的關鍵字」的身分傳給 macro，再進到標記裡：<code>{% raw %}{{ button("Refresh", hx_get="/tasks/board", hx_target="#board") }}{% endraw %}</code>。路上底線會變成連字號，整套整合就只有這件事——kit
+        裡沒有任何一支 macro 有 htmx 專屬參數，也不需要有。完整參考是
+        <a href="https://htmx.org/reference/">htmx.org/reference</a>；底下列的是 fjkit
+        頁面實際會用到的部分。
+      </p>
+    {% endcall %}
+
+    {% for part in sheet.htmx %}
+      {% call card(part.title, part.lead, padded=false) %}
+        {% call item_list() %}
+          {% for entry in part.rows %}
+            {% set written %}<code>{{ entry.call }}</code>{% endset %}
+            {{ item(written, entry.note, clamp=false) }}
+          {% endfor %}
+        {% endcall %}
+      {% endcall %}
+    {% endfor %}
+  {% endcall %}
+
+  {# ============================================================== missing #}
+  {% set lead_missing %}答案是某個參數、某個關鍵字，或一張 issue——依這個順序找。{% endset %}
+  {% call band("missing", "這裡找不到的時候", lead_missing) %}
+    {% call grid(cols=2, gap=4) %}
+      {{ defs("找不到想要的 macro 時", [
+        ("先看參數", "多數需求其實是一個已經存在的關鍵字——size、tone、padded、align"),
+        ("直接傳過去", "任何多的關鍵字都會變成屬性，這涵蓋了所有 hx-*、aria-* 與 data-*"),
+        ("fjkit eject badge", "把那一支 macro 拿進你的 app 改；同檔的其他 macro 由 kit 再匯出，照樣收上游的修正"),
+        ("開一張 issue", "被擋下來的 class 指名了那個還不存在的元件；那就是最好的回報內容"),
+      ]) }}
+
+      {% set d_learn %}<a href="{{ url_for(request, "learn") }}">各個零件怎麼接，以及 htmx 送出什麼</a>{% endset %}
+      {% set d_components %}<a href="{{ url_for(request, "components") }}">每一支 macro 跑起來的樣子，旋鈕可以轉</a>{% endset %}
+      {{ defs("接著讀", [
+        ("上手", d_learn),
+        ("元件", d_components),
+        ("examples/fjkit-demo/", "同一批 macro 放在一支能跑的 app 裡，在 repo 中"),
+        ("src/fjkit/static/src/fjkit.css", "每個 variant 背後那張 token 表"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}

@@ -1,13 +1,12 @@
-{#
-  How far along the matches are. The same `BoardStats` the counters read, asked
-  a different question — which is the point the page is making: four fragments,
-  one answer, no second query.
-#}
+{# The progress card over the matches. Carried by a query, refreshed by an advance. #}
 {% set oob = oob | default(false) %}
 {% from "ui/data.html" import card, progress %}
+{% from "search/macros.html" import stamp, subscribe %}
 
-<div id="search-progress"{% if oob %} hx-swap-oob="true"{% endif %}>
-  {% call card("Progress", stats.done ~ " of " ~ stats.total ~ " done", size="sm") %}
+<div id="search-progress"{% if oob %} hx-swap-oob="true"{% endif %}
+     {{ subscribe(request, "search_progress", ["task-changed"], with_id=false, with_query=true) }}>
+  {% call card("Progress", stats.done ~ " of " ~ stats.total ~ " done",
+               actions=stamp(rendered_label), size="sm") %}
     {{ progress(stats.done_pct, label="Done") }}
   {% endcall %}
 </div>

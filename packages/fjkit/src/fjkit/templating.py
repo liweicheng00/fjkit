@@ -7,26 +7,58 @@ never touch `Environment`. One place to tune, one place to profile.
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
+from pathlib import Path
 from typing import Any
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from jinja2 import (
+    BaseLoader,
     ChainableUndefined,
     ChoiceLoader,
     Environment,
     FileSystemBytecodeCache,
     FileSystemLoader,
+    PrefixLoader,
     StrictUndefined,
+    pass_context,
     select_autoescape,
 )
 
 from fjkit.config import STATIC_DIR, TEMPLATE_DIR, FjkitConfig
 from fjkit.icons import path as _icon_path
+from fjkit.messages import TOAST_EVENT
+from fjkit.messages import queue as _message_queue
 from fjkit.plugins import collect_env
 from fjkit.styles import resolve_style
 
-__all__ = ["Templates", "build_environment", "get_templates"]
+__all__ = ["FJKIT_NAMESPACE", "Templates", "build_environment", "get_templates", "static_url"]
+
+#: The reserved prefix under which the kit's own templates are always reachable,
+#: whatever an app has shadowed. See `_ReservedNamespace`.
+FJKIT_NAMESPACE = "fjkit"
+
+
+class _ReservedNamespace(PrefixLoader):
+    """`fjkit/ui/form.html` — the kit's own copy, even when `ui/form.html` is not.
+
+    An ejected override lives at `ui/form.html` and shadows the kit's file of
+    that name. To re-export the macros it did *not* take it has to name the very
+    file it is shadowing — and by then `ui/form.html` means itself, which would
+    be an import loop. This loader gives that file a second, unshadowable name.
+
+    It sits first in the chain on purpose: an app cannot take the prefix back by
+    creating `templates/fjkit/ui/form.html`, so an override can never be tricked
+    into re-exporting from something other than the package.
+
+    It lists nothing. The same files are already listed under their bare names by
+    the loader at the end of the chain, and a second entry for each would double
+    every "compile every template" sweep — including the cold-start benchmark
+    that guards §7 of the charter.
+    """
+
+    def list_templates(self) -> list[str]:
+        return []
 
 
 def build_environment(config: FjkitConfig | None = None) -> Environment:
@@ -41,11 +73,15 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     config = config or FjkitConfig()
     contributions = collect_env(config)
 
-    # App templates first, then any a plugin shipped, then the kit's. A file at
+    # The reserved `fjkit/…` namespace first — nothing may shadow it, because an
+    # ejected override reaches back through it for the macros it did not take.
+    # Then app templates, then any a plugin shipped, then the kit's. A file at
     # the same path in the app wins — that is how `fjkit eject` works, and why
     # shadowing is a supported feature rather than a fork. Plugins sit in the
     # middle so one can replace a kit macro but never a file the app wrote.
-    searchpath: list[FileSystemLoader] = []
+    searchpath: list[BaseLoader] = [
+        _ReservedNamespace({FJKIT_NAMESPACE: FileSystemLoader(TEMPLATE_DIR, encoding="utf-8")})
+    ]
     if config.template_dir is not None:
         searchpath.append(FileSystemLoader(config.template_dir, encoding="utf-8"))
     searchpath.extend(FileSystemLoader(d, encoding="utf-8") for d in contributions.template_dirs)
@@ -80,9 +116,19 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     # belongs here rather than in every route's context dict.
     env.globals["url_for"] = _url_for
     env.globals["is_active"] = _is_active
-    env.globals["fjkit_static"] = _static_url(config.static_url, auto_reload=config.auto_reload)
+    env.globals["fjkit_static"] = static_url(config.static_url, auto_reload=config.auto_reload)
     env.globals["fjkit_icon_path"] = _icon_path
     env.globals["fjkit_version"] = _versions()
+    # A global rather than a context key: the shell reads it on every page, and
+    # a context key would have to be merged into every render — including the
+    # ones with nothing to say. It finds the request in the context itself so
+    # that the shell does not have to name it, which also means a render driven
+    # without one (the docs builder, the benchmark) simply has no messages
+    # rather than an undefined name.
+    env.globals["fjkit_messages"] = _messages_in_context
+    #: The event name the shell's listener binds. Exposed rather than written
+    #: twice, so `HX-Trigger` and the listener cannot drift apart.
+    env.globals["fjkit_toast_event"] = TOAST_EVENT
     # The shell builds its stylesheet URL from this. Exposed as the pack
     # *name* rather than a finished URL so a custom shell can also report or
     # switch on which pack is live.
@@ -99,6 +145,20 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     #: plugin asked for a per-request context — which is the common case.
     env.fjkit_context_processors = tuple(contributions.processors)  # type: ignore[attr-defined]
     return env
+
+
+@pass_context
+def _messages_in_context(context: Any) -> Any:
+    """The queue for whatever request this render is for, or an empty one.
+
+    `context.get("request")` rather than a parameter: every render through
+    `Templates` passes `request`, but a bare `Environment.from_string(...)` in a
+    test or a build script does not, and under `strict_undefined` naming it in
+    the shell would make that an error on a page that has nothing to do with
+    messages. A missing request and an `Undefined` one mean the same thing here.
+    """
+    request = context.get("request")
+    return _message_queue(request if isinstance(request, Request) else None)
 
 
 def _url_for(request: Request, name: str, /, **path_params: Any) -> str:
@@ -118,7 +178,7 @@ def _is_active(request: Request, name: str) -> bool:
     return getattr(route, "name", None) == name
 
 
-def _static_url(prefix: str, *, auto_reload: bool = False):
+def static_url(prefix: str, root: Path | None = None, *, auto_reload: bool = False):
     """Bind the configured prefix once, so templates just name the file.
 
     Not `request.url_for` on purpose: the kit's assets are mounted by
@@ -143,21 +203,27 @@ def _static_url(prefix: str, *, auto_reload: bool = False):
     Stat'd once per path and remembered, except under `auto_reload` — the same
     trade Jinja makes for templates, and for the same reason: a `stat` per
     render is unwanted in production and unavoidable in development.
+
+    `root` is where the files actually are, and it is public for one reason: a
+    plugin mounting its own assets needs the same stamping, and reimplementing
+    it would be a second answer to the caching question above. Defaults to the
+    kit's own static directory.
     """
     base = prefix.rstrip("/")
+    directory = STATIC_DIR if root is None else root
     stamps: dict[str, str] = {}
 
     def fjkit_static(path: str) -> str:
         clean = path.lstrip("/")
         stamp = stamps.get(clean)
         if stamp is None or auto_reload:
-            stamp = stamps[clean] = _stamp(clean)
+            stamp = stamps[clean] = _stamp(clean, directory)
         return f"{base}/{clean}?v={stamp}"
 
     return fjkit_static
 
 
-def _stamp(path: str) -> str:
+def _stamp(path: str, root: Path = STATIC_DIR) -> str:
     """A cache key for one asset — its mtime, or the kit's version if it is gone.
 
     A missing file is not this function's problem to report: `mount_fjkit`
@@ -166,7 +232,7 @@ def _stamp(path: str) -> str:
     render.
     """
     try:
-        return str(int((STATIC_DIR / path).stat().st_mtime))
+        return str(int((root / path).stat().st_mtime))
     except OSError:
         return _versions()["fjkit"]
 

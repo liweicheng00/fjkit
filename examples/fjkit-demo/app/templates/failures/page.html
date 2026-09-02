@@ -1,0 +1,58 @@
+{#
+  The failures page: buttons that aim `hx-get` at `#outcome`, which the error replies
+  leave untouched.
+#}
+{% extends "base.html" %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import card, kbd %}
+{% from "ui/feedback.html" import alert %}
+{% from "ui/layout.html" import grid, page_header, stack %}
+
+{% block title %}Failures{% endblock %}
+
+{% block content %}
+  {% set note %}
+    The shell tells htmx to swap on 2xx and 3xx only. Both buttons below target
+    {{ kbd("#outcome") }}; neither reply is allowed to touch it.
+  {% endset %}
+  {{ page_header("Failures", note) }}
+
+  {% call stack(4) %}
+    {# The explanation is the card's `description`. #}
+    {% set refused %}
+      The handler queues a message with {{ kbd("messages.add") }} and answers 400.
+      The message rides out as {{ kbd("HX-Trigger") }}, which htmx reads before it
+      decides not to swap — so the toast appears and nothing else moves. A bare
+      {{ kbd("HTTPException") }} would be silent here: its reply is JSON.
+    {% endset %}
+    {% set crashed %}
+      {{ kbd("fjkit.errors") }} logs the traceback, then answers an htmx swap with an
+      empty 500 and a toast — the page is left standing. The words come from this
+      app's {{ kbd("exception_handler") }}, set as {{ kbd("unexpected_error") }} in
+      {{ kbd("main.py") }}; here it quotes the exception. A plain navigation gets
+      {{ kbd("errors/page.html") }} instead, because the browser has already left this one.
+    {% endset %}
+
+    {% call grid(cols=2, gap=4) %}
+      {% call card("400 — refused", refused) %}
+        {{ button("Send a bad request", variant="outline", size="sm", icon_name="ban",
+                  hx_get=url_for(request, "failures_bad_request"),
+                  hx_target="#outcome", hx_swap="innerHTML",
+                  hx_disabled_elt="this") }}
+      {% endcall %}
+
+      {% call card("500 — a bug", crashed) %}
+        {{ button("Raise an exception", variant="destructive", size="sm", icon_name="bug",
+                  hx_get=url_for(request, "failures_crash"),
+                  hx_target="#outcome", hx_swap="innerHTML",
+                  hx_disabled_elt="this") }}
+      {% endcall %}
+    {% endcall %}
+
+    <div id="outcome">
+      {{ alert("Still here",
+               "This is the swap target. If either button had been answered with a 2xx, it would have been replaced.",
+               variant="", icon_name="shield-check") }}
+    </div>
+  {% endcall %}
+{% endblock %}

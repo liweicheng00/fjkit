@@ -13,6 +13,7 @@ it is handed, so the surrounding markup is still the genuine article.
 from __future__ import annotations
 
 import json
+import re
 from itertools import product
 from pathlib import Path
 
@@ -21,7 +22,27 @@ from fjkit.cli.vocabulary import component_classes, emitted_classes
 
 OUT = Path(__file__).parent / "data.json"
 
-env = build_environment(FjkitConfig(auto_reload=False))
+
+def _url_for(request, name: str, /, **path_params) -> str:
+    """Stand-in for the kit's global, same as `build.py` installs for the pages.
+
+    `nav_links` and `sidebar_link` take route *names*, and a preview rendered at
+    build time has no router to resolve one against. Every href in a preview is
+    inert anyway — clicking a component in a gallery should not navigate.
+    """
+    return "#"
+
+
+def _is_active(request, name: str) -> bool:
+    """One link in the `nav_links` preview has to be the current one, or the
+    preview shows a state the macro spends most of its code on and never
+    reaches."""
+    return name == "tasks"
+
+
+env = build_environment(
+    FjkitConfig(auto_reload=False, globals={"url_for": _url_for, "is_active": _is_active})
+)
 
 ICON_NAMES = [
     "plus", "trash", "check", "arrow-right", "list", "sparkle", "gauge",
@@ -45,7 +66,7 @@ def with_icon_placeholder(html: str) -> str:
 
 
 # ---------------------------------------------------------------- button
-BUTTON = '{% from "ui/button.html" import button %}'
+BUTTON = '{% from "ui/button.html" import button, button_group %}'
 VARIANTS = ["", "primary", "secondary", "outline", "ghost", "link", "destructive"]
 SIZES = ["", "xs", "sm", "lg", "icon", "icon-sm", "icon-xs"]
 ICON_POS = ["none", "start", "end"]
@@ -61,10 +82,23 @@ for variant, size, pos, disabled in product(VARIANTS, SIZES, ICON_POS, [False, T
     key = f"{variant}|{size}|{pos}|{int(disabled)}"
     buttons[key] = with_icon_placeholder(render(BUTTON + call))
 
+# ------------------------------------------------------------ button_group
+GROUP_BODY = (
+    '{{ button("Save", variant="primary") }}'
+    '{{ button("Cancel", variant="outline") }}'
+    '{{ button("Delete", variant="destructive") }}'
+)
+groups: dict[str, str] = {}
+for gap, orientation in product([1, 2, 3, 4], ["horizontal", "vertical"]):
+    groups[f"{gap}|{orientation}"] = render(
+        f'{BUTTON}{{% call button_group(gap={gap}, orientation="{orientation}") %}}'
+        f"{GROUP_BODY}{{% endcall %}}"
+    )
+
 # ---------------------------------------------------------------- badge
 DATA = (
     '{% from "ui/data.html" import badge, stat, progress, empty_state, card, '
-    'metric_group, bullet_list, list_item, link, kbd %}'
+    'metric_group, bullet_list, list_item, caption, link, kbd %}'
 )
 badges = {
     v: render(f'{DATA}{{{{ badge("__LABEL__", variant="{v}") }}}}')
@@ -95,6 +129,9 @@ misc = {
     ),
     "metric_group": render(f'{DATA}{{{{ metric_group([("Todo", 4), ("Doing", 2), ("Done", 9)]) }}}}'),
     "kbd": render(f'{DATA}{{{{ kbd("⌘K") }}}}'),
+    "caption": render(
+        f'{DATA}{{{{ caption("Counts refresh every five minutes.") }}}}'
+    ),
     "link": render(f'{DATA}{{{{ link("the 20k-row report", "#") }}}}'),
     "bullet_list": render(
         f"{DATA}{{% call bullet_list() %}}"
@@ -120,7 +157,10 @@ cards = {
 }
 
 # ---------------------------------------------------------------- layout
-LAYOUT = '{% from "ui/layout.html" import stack, row, grid, split, page_header, section, divider %}'
+LAYOUT = (
+    '{% from "ui/layout.html" import stack, row, grid, split, centered, page_header,'
+    " section, divider %}"
+)
 ITEMS = "__ITEMS__"
 
 layouts: dict[str, str] = {}
@@ -143,6 +183,16 @@ structure = {
     ),
     "section": render(f'{LAYOUT}{{% call section("__TITLE__", "__DESC__") %}}__ITEMS__{{% endcall %}}'),
     "divider": render(f"{LAYOUT}{{{{ divider() }}}}"),
+    # Shown at every width it offers, stacked, because the parameter is a cap
+    # and a cap is only legible next to another one.
+    "centered": render(
+        f"{LAYOUT}{{% call stack(3) %}}"
+        + "".join(
+            f'{{% call centered("{width}", gap=0) %}}__{width.upper()}__{{% endcall %}}'
+            for width in ["xs", "sm", "md", "lg", "xl", "prose"]
+        )
+        + "{% endcall %}"
+    ),
 }
 
 # ---------------------------------------------------------------- table + form
@@ -328,7 +378,7 @@ OVERLAY = (
     ' menu_separator, select_menu, combobox, drawer, drawer_trigger, command,'
     ' command_group, command_item %}'
 )
-NAV = '{% from "ui/nav.html" import breadcrumb %}'
+NAV = '{% from "ui/nav.html" import brand, nav_links, theme_toggle, breadcrumb %}'
 AVATARS = '{% from "ui/data.html" import avatar, avatar_group %}'
 CONTENT = '{% from "ui/data.html" import code_block, item_list, item %}'
 TABS = '{% from "ui/tabs.html" import tabs, tab_panel %}'
@@ -379,6 +429,16 @@ gallery = {
     "breadcrumb": render(
         f'{NAV}{{{{ breadcrumb([("Board", "#"), ("Tasks", "#"), ("Ship the vocabulary", none)]) }}}}'
     ),
+    #: The header's three pieces. `brand` is shown with `icon_name` only —
+    #: `icon_src` wants a URL, and this file is rendered once for two builds
+    #: that sit at different depths, so any asset path in it would be wrong for
+    #: one of them.
+    "brand": render(f'{NAV}{{{{ brand("Acme", "#", icon_name="gauge") }}}}'),
+    "nav_links": render(
+        f'{NAV}{{{{ nav_links(none, [("tasks", "Tasks"), ("board", "Board"), '
+        '("settings", "Settings")]) }}'
+    ),
+    "theme_toggle": render(f"{NAV}{{{{ theme_toggle() }}}}"),
     "avatar": render(
         f'{AVATARS}{LAYOUT}{{% call row(gap=4) %}}'
         '{{ avatar("Ana Ruiz", badge_tone="success") }}'
@@ -393,12 +453,19 @@ gallery = {
         '{{ input_group_field("q", "Search", placeholder="Type a name…", '
         'start=glyph, end="12 results") }}'
     ),
+    # The reveal is live on the page: the preview carries the button, and the
+    # Components page loads `reveal_scripts()` once for it — so a reader can
+    # click it rather than take the caption's word for what it does.
+    "reveal": render(
+        f'{RANGE}{{{{ input_group_field("password", "Password", value="correct horse battery", '
+        'type="password", revealable=true) }}'
+    ),
     "collapsible": render(
         f'{DISCLOSURE}{{% call accordion() %}}'
         '{% call collapsible("Does it need Node?", open=true) %}'
         "<p>No. The stylesheet is compiled when fjkit is released.</p>{% endcall %}"
         '{% call collapsible("Can I edit a component?") %}'
-        "<p>Yes — <code>fjkit eject</code> copies it into your app.</p>{% endcall %}"
+        "<p>Yes — <code>fjkit eject badge</code> writes that one macro into your app.</p>{% endcall %}"
         "{% endcall %}"
     ),
     "tooltip": render(
@@ -432,6 +499,33 @@ gallery = {
         f'{OVERLAY}{{{{ combobox("framework", [("next", "Next.js"), ("astro", "Astro"), '
         '("remix", "Remix")], placeholder="Select a framework", label="Framework") }}'
     ),
+    # `multiple` on both, because the two differ in what they show rather than
+    # in what they post: the select joins the labels onto its trigger, the
+    # combobox hands them to Basecoat's chips. Rendered as first paint, so the
+    # select preview shows its selection and the combobox preview does not —
+    # which is the difference worth seeing before choosing between them.
+    "select_menu_multiple": render(
+        f'{OVERLAY}{{{{ select_menu("labels", [("bug", "Bug"), ("docs", "Docs"), '
+        '("infra", "Infra"), ("perf", "Perf"), ("ui", "UI")], selected=["bug", "perf"], '
+        'multiple=true, width="xl", label="Labels") }}'
+    ),
+    "combobox_multiple": render(
+        f'{OVERLAY}{{{{ combobox("labels", [("bug", "Bug"), ("docs", "Docs"), '
+        '("infra", "Infra"), ("perf", "Perf"), ("ui", "UI")], selected=["bug", "perf"], '
+        'multiple=true, placeholder="Add a label", label="Labels") }}'
+    ),
+    # The same control twice, because the pair is the point: `visible_label`
+    # turns one of these into a field that lines up with `text_field`, and the
+    # reserved message line is what a rejected submit writes into.
+    "select_menu_field": render(
+        '{% from "ui/layout.html" import stack %}'
+        f'{OVERLAY}{{% call stack(gap=4) %}}'
+        '{{ select_menu("phase", [("1", "Phase I"), ("2", "Phase II"), ("3", "Phase III")], '
+        'multiple=true, visible_label="Trial phase", hint="Applied after the search runs.") }}'
+        '{{ combobox("continents", [("eu", "Europe"), ("na", "North America")], '
+        'visible_label="Continents", error="Choose at least one.") }}'
+        "{% endcall %}"
+    ),
     "drawer": render(
         f'{OVERLAY}{{{{ drawer_trigger("Open drawer", "g-drawer") }}}}'
         '{% call drawer("g-drawer", "Move goal", "Set your daily target.") %}'
@@ -450,6 +544,19 @@ gallery = {
     ),
 }
 
+# ---------------------------------------------------------------- shell
+# `shell.html` renders no preview: the page you are reading is the preview. What
+# the Components page can show is its seam — the blocks an app fills — and that
+# list is read out of the template rather than typed, so the page cannot offer a
+# block the shell stopped having.
+_shell_source = env.loader.get_source(env, "ui/shell.html")[0]
+shell = {
+    # dict.fromkeys: source order, deduplicated. `brand`, `nav` and `site_title`
+    # each appear twice — once as the definition and once where the shell places
+    # it — and a reader filling them in needs the name once.
+    "blocks": list(dict.fromkeys(re.findall(r"{% block (\w+) %}", _shell_source))),
+}
+
 # ---------------------------------------------------------------- vocabulary
 vocab = {
     "component_classes": sorted(component_classes()),
@@ -460,6 +567,7 @@ OUT.write_text(
     json.dumps(
         {
             "buttons": buttons,
+            "groups": groups,
             "badges": badges,
             "stats": stats,
             "misc": misc,
@@ -471,6 +579,7 @@ OUT.write_text(
             "live": live,
             "gallery": gallery,
             "icons": ICONS,
+            "shell": shell,
             "vocab": vocab,
         },
         ensure_ascii=False,

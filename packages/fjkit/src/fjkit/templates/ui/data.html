@@ -139,6 +139,33 @@
 {%- endmacro %}
 
 {#
+  caption(text) — a standalone line of secondary prose.
+
+  `card`, `section` and `page_header` all render a description already, but
+  each of those is bound to a heading: the description is the second line of a
+  title block and cannot be moved away from it. This is the line that stands on
+  its own — under a table, beneath a control, at the foot of a form — and there
+  was no way to write one, because the colour it needs
+  (`text-muted-foreground`) is a utility an app template may not write. Without
+  a macro the only options are a bare `<p>`, which renders at body weight and
+  says the wrong thing, or a colour literal the checker rejects.
+
+  Takes the text as an argument, or a body when the caption has to hold a
+  `link()`:
+
+      {{ caption("Counts refresh every five minutes.") }}
+
+      {% call caption() %}
+        Source: {{ link("the trial registry", href=registry_url) }}
+      {% endcall %}
+#}
+{% macro caption(text=none) -%}
+  <p class="text-muted-foreground text-sm"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {{- caller() if caller is defined else text -}}
+  </p>
+{%- endmacro %}
+
+{#
   link(label, href) — an inline link in body copy.
 
   Underlined by default: a link that is only distinguished by colour fails for

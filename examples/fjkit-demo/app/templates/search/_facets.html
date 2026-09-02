@@ -1,16 +1,21 @@
 {#
-  What the matches are made of. The counts and the badge variants both come
-  from the router's `Facet` list, so this template prints and never decides —
-  a "High" facet is destructive-red here because it is destructive-red on a
-  task row, from one map in `tasks/schemas.py`.
+  The facet list — the control in this experiment.
+
+  A query carries it out of band like the others, and it subscribes to nothing.
+  Advancing a task changes a status, and no facet here is about status: these
+  count owners and priorities. So its stamp moves on a search and never on a
+  pick or an advance, which is the clearest thing on the page about a
+  subscription being each fragment's own decision.
 #}
 {% set oob = oob | default(false) %}
 {% from "ui/data.html" import badge, card %}
 {% from "ui/layout.html" import row, stack %}
+{% from "search/macros.html" import stamp %}
 
 <div id="search-facets"{% if oob %} hx-swap-oob="true"{% endif %}>
   {% call stack(4) %}
-    {% call card("Owners", none if owners else "Nothing matched.", size="sm") %}
+    {% call card("Owners", none if owners else "Nothing matched.",
+                 actions=stamp(rendered_label), size="sm") %}
       {% call row(gap=2) %}
         {% for facet in owners %}{{ badge(facet.label ~ " · " ~ facet.count, variant="outline") }}{% endfor %}
       {% endcall %}

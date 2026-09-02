@@ -21,7 +21,7 @@ from fjkit.cli.check import check_templates
 DOCS = Path(__file__).resolve().parents[1] / "docs" / "workbench"
 TEMPLATES = DOCS / "templates"
 
-#: Every page template, both languages. The Chinese pages are the same four
+#: Every page template, both languages. The Chinese pages are the same five
 #: pages translated — same `sections`, same shell — so they answer to the same
 #: assertions rather than a relaxed set.
 PAGES = [
@@ -29,10 +29,12 @@ PAGES = [
     "learn.html",
     "plugins.html",
     "components.html",
+    "cheatsheet.html",
     "zh/introduction.html",
     "zh/learn.html",
     "zh/plugins.html",
     "zh/components.html",
+    "zh/cheatsheet.html",
 ]
 
 
@@ -95,8 +97,111 @@ def test_no_page_drives_tab_selection():
         )
 
 
+#: `{% macro name(` — the definition, not a call. Names starting with an
+#: underscore are the file's own helpers (`_message`, `_ROWS`) and are no more
+#: part of the vocabulary than a private function is part of an API.
+_MACRO = re.compile(r"\{%-?\s*macro\s+(\w+)\(")
+
+UI = Path(__file__).resolve().parents[1] / "src" / "fjkit" / "templates" / "ui"
+
+
+def _cheatsheet():
+    """The Cheatsheet page's data module. It sits beside `build.py` in the
+    workbench rather than in the package, so it is imported the same way."""
+    import sys
+
+    sys.path.insert(0, str(DOCS))
+    try:
+        import cheatsheet  # type: ignore[import-not-found]
+    finally:
+        sys.path.pop(0)
+    return cheatsheet
+
+
+def _rows() -> list[tuple[str, str, bool]]:
+    """Every row on the page, as (macro name, the file it is filed under, does
+    the sheet claim it takes a block)."""
+    return [
+        (macro["call"].split("(")[0], file["name"], bool(macro["block"]))
+        for group in _cheatsheet().GROUPS
+        for file in group["files"]
+        for macro in file["macros"]
+    ]
+
+
+def test_the_cheatsheet_names_every_macro():
+    """The Cheatsheet page is the index, and a reader treats it as complete: a
+    macro missing from it is a macro that does not exist as far as this site is
+    concerned.
+
+    The rows are hand-written, because the grouping, the block column and the
+    one-line notes are the half that makes an index readable and no generator
+    would produce them. This is what stops that half from falling behind the
+    package — it caught `form_scripts` and `multiselect_scripts`, both shipped
+    without a line on the page.
+
+    The file is checked as well as the name. `cheatsheet.py` files each macro
+    under the path you import it from, and a row filed under the wrong one is
+    worse than a missing row: it sends a reader to write an import that raises.
+    """
+    listed = {name: filed for name, filed, _ in _rows()}
+    wrong = []
+    for path in sorted(UI.glob("*.html")):
+        for name in _MACRO.findall(path.read_text()):
+            if name.startswith("_"):
+                continue
+            if name not in listed:
+                wrong.append(f"{path.name}: {name} — no row")
+            elif listed[name] != f"ui/{path.name}":
+                wrong.append(f"{path.name}: {name} — filed under {listed[name]}")
+    assert not wrong, "the cheatsheet and ui/ disagree:\n" + "\n".join(wrong)
+
+
+def test_the_cheatsheet_block_column_matches_the_macros():
+    """The Block column is the one thing on the page that is not copied from a
+    signature, and it is the reason the page exists: `·  block` was a notation
+    a reader had to guess at, so it became a column that says it in words.
+
+    A column of hand-written claims about the source is a column that can be
+    wrong, and this is what says so. `caller()` in the macro body is the fact —
+    a macro that calls it wants a block, and one that does not, does not.
+    """
+    listed = {name: takes_block for name, _, takes_block in _rows()}
+    wrong = []
+    for path in sorted(UI.glob("*.html")):
+        source = path.read_text()
+        names = _MACRO.findall(source)
+        bodies = re.split(r"\{%-?\s*macro\s+\w+\(", source)[1:]
+        for name, body in zip(names, bodies, strict=True):
+            if name.startswith("_"):
+                continue
+            takes = "caller(" in body.split("{% endmacro %}")[0]
+            if takes != listed[name]:
+                claim = "takes a block" if listed[name] else "takes no block"
+                wrong.append(f"{path.name}: {name} — the sheet says it {claim}")
+    assert not wrong, "the Block column disagrees with the macro bodies:\n" + "\n".join(wrong)
+
+
+def test_the_cheatsheet_reads_the_same_in_both_languages():
+    """`for_lang` is what keeps one index behind two pages. Both builds have to
+    come out of it with the same rows in the same order — the notes differ,
+    nothing structural does."""
+    en = _cheatsheet().for_lang("en")
+    zh = _cheatsheet().for_lang("zh")
+
+    assert [g["id"] for g in en["groups"]] == [g["id"] for g in zh["groups"]]
+    for group_en, group_zh in zip(en["groups"], zh["groups"], strict=True):
+        assert [f["name"] for f in group_en["files"]] == [f["name"] for f in group_zh["files"]]
+        for file_en, file_zh in zip(group_en["files"], group_zh["files"], strict=True):
+            assert [m["call"] for m in file_en["macros"]] == [m["call"] for m in file_zh["macros"]]
+            for macro_en, macro_zh in zip(file_en["macros"], file_zh["macros"], strict=True):
+                assert bool(macro_en["block"]) == bool(macro_zh["block"]), (
+                    f"{macro_en['call']} carries a block badge in only one language"
+                )
+
+
 def test_the_quoted_routes_are_the_demo_s():
-    """Lesson 06 quotes two of the demo's routes to show one handler answering
+    """Lesson 09 quotes two of the demo's routes to show one handler answering
     with HTML and with JSON. The snippet is a literal in `build.py` because a
     live capture would rewrite `docs/` on every build — so nothing but this
     stops it describing routes the demo no longer has.
@@ -120,11 +225,11 @@ def test_the_quoted_routes_are_the_demo_s():
     quoted = [line for line in build.NEGOTIATION["route"].splitlines() if line.startswith("@")]
     assert quoted, "the snippet quotes no routes at all"
     missing = [line for line in quoted if line not in router]
-    assert not missing, "Lesson 06 quotes decorators the demo no longer declares:\n" + "\n".join(missing)
+    assert not missing, "Lesson 09 quotes decorators the demo no longer declares:\n" + "\n".join(missing)
 
 
 def test_the_site_builds():
-    """End to end: all eight pages — four, twice — render through the real
+    """End to end: all ten pages — five, twice — render through the real
     Environment.
 
     Also the only test that proves `url_for`/`is_active` still satisfy the
@@ -161,6 +266,7 @@ def test_the_site_builds():
                 lang=lang,
                 t=build.STRINGS[lang["code"]],
                 wire=build.NEGOTIATION,
+                sheet=build.cheatsheet.for_lang(lang["code"]),
             )
             assert html.startswith("<!doctype html>")
             assert 'class="sidebar"' in html, "the shell's sidebar block went unfilled"
@@ -181,7 +287,7 @@ def test_every_asset_link_is_relative_to_its_page():
     if not (out / "index.html").exists():
         pytest.skip("the site has not been built in this checkout")
 
-    names = ("index.html", "learn.html", "plugins.html", "components.html")
+    names = ("index.html", "learn.html", "plugins.html", "components.html", "cheatsheet.html")
     pages = [out / name for name in names]
     pages += [out / "zh" / name for name in names]
 

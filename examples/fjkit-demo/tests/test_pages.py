@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-#: A page and the markup that proves it is *that* page rather than a shell with
-#: an empty body. Paired with the path so adding a page cannot quietly pass by
-#: matching another page's marker.
+#: Each page path with a marker unique to that page's body.
 PAGES = [("/", "Overview"), ("/tasks", 'id="board"'), ("/jobs", 'id="job-list"')]
 
 
@@ -26,13 +24,11 @@ def test_dashboard_rows_are_read_only(client):
 def test_streamed_report_is_streamed_and_complete(client):
     with client.stream("GET", "/tasks/report?rows=500") as response:
         assert response.status_code == 200
-        # A streamed response cannot know its length up front. TestClient
-        # reassembles the chunks before we see them, so the missing header is
-        # the observable proof that nothing was buffered server-side.
+        # A streamed response has no content-length header.
         assert "content-length" not in response.headers
         html = response.read().decode()
     assert html.rstrip().endswith("</html>")
-    assert html.count("<tr>") == 500 + 1  # rows + the thead row
+    assert html.count("<tr>") == 500 + 1  # 500 rows plus the thead row
 
 
 def test_normal_pages_are_not_streamed(client):

@@ -1,35 +1,29 @@
 {#
-  The nested swap's target, and the fifth region of the search reply.
+  The detail panel. A query carries it out of band, empty; a pick makes it
+  subscribe its way to a task; an advance replaces it in band.
 
-  Two callers, one template:
-
-  * `GET /search/task/{id}` renders it as the `hx-target` of a row button —
-    `oob` is false, so it arrives in band.
-  * every search renders it out-of-band with `selected` unset, which resets the
-    panel. A card describing a task that just dropped out of the results is
-    worse than an empty panel, and keeping the selection would mean the search
-    route had to know what was open.
+  It must not hear `task-changed` — it is that route's own target, and a fragment
+  that is both spins until the tab is closed.
 #}
 {% set oob = oob | default(false) %}
 {% set selected = selected | default(none) %}
 {% from "ui/button.html" import button %}
 {% from "ui/data.html" import badge, card, empty_state, metric_group %}
 {% from "ui/layout.html" import row, stack %}
+{% from "search/macros.html" import advance_action, stamp, subscribe %}
 
-<div id="search-detail"{% if oob %} hx-swap-oob="true"{% endif %}>
+<div id="search-detail"{% if oob %} hx-swap-oob="true"{% endif %}
+     {{ subscribe(request, "search_detail", ["task-selected"]) }}>
   {% if selected %}
-    {% set open_board %}
-      {{ button("Edit", variant="outline", size="xs", icon_name="pencil",
-                href=url_for(request, "tasks_edit", task_id=selected.id)) }}
+    {% set actions %}
+      {% call row(gap=2) %}
+        {{ advance_action(request, selected) }}
+        {{ button("Edit", variant="ghost", size="xs", icon_name="pencil",
+                  href=url_for(request, "tasks_edit", task_id=selected.id)) }}
+        {{ stamp(rendered_label) }}
+      {% endcall %}
     {% endset %}
-    {#
-      The notes are the card's description when there are any, rather than a
-      paragraph this template styles itself. `fjkit check` catches that either
-      way — it reads the attribute, and it read it out of the comment that used
-      to be here, which is the check working exactly as intended.
-    #}
-    {% call card(selected.title, selected.notes or "opened from the results above",
-                 actions=open_board) %}
+    {% call card(selected.title, selected.notes or "no notes on this one", actions=actions) %}
       {% call stack(4) %}
         {% call row(gap=2) %}
           {{ badge(selected.status.value | capitalize, variant=selected.status_variant) }}
@@ -46,10 +40,10 @@
       {% endcall %}
     {% endcall %}
   {% else %}
-    {% call card(none, none, padded=false) %}
-      {{ empty_state("Nothing open",
-                     "Pick a row above — the chevron swaps this panel on its own.",
-                     icon_name="chevron-right") }}
+    {% call card("Detail", "Listening for an id.", actions=stamp(rendered_label)) %}
+      {{ empty_state("Nothing picked",
+                     "Open a row above — this panel fetches its own data when it hears the event.",
+                     icon_name="radio-tower") }}
     {% endcall %}
   {% endif %}
 </div>

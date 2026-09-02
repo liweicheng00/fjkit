@@ -1,17 +1,15 @@
-{#
-  Full page. Same three jobs as every other page here: extend the shell, set
-  the title, drop in the partial the htmx endpoints return.
-#}
+{# The session page: the shell, a title and the session panel. #}
 {% extends "base.html" %}
 {% from "ui/button.html" import button %}
 {% from "ui/data.html" import bullet_list, card, empty_state, kbd, list_item %}
+{% from "ui/form.html" import reveal_scripts %}
 {% from "ui/layout.html" import page_header, split, stack %}
 
 {% block title %}Session{% endblock %}
 
 {% block content %}
   {% set note %}
-    Signing in is an htmx swap like any other. The reply is a fragment; the
+    Signing in is a fragment request like any other. The reply is a fragment; the
     cookie rides out on the same response.
   {% endset %}
 
@@ -23,11 +21,8 @@
         {% include "auth/_panel.html" %}
 
         {#
-          The protected route. The button is shown either way on purpose —
-          pressing it while signed out is the demonstration, not a mistake to
-          prevent. htmx gets 204 + HX-Redirect and moves the whole page to the
-          login screen, which is the behaviour that stops a login form being
-          swapped into a card.
+          Fetches the protected content into `#secret`; signed out, the reply
+          redirects to the login page.
         #}
         {% set fetch %}
           {{ button("Fetch it", variant="outline", size="sm", icon_name="lock",
@@ -35,8 +30,7 @@
                     hx_target="#secret", hx_swap="innerHTML") }}
         {% endset %}
         {% call card("A route behind Depends", "One line on the router. The handler never mentions auth.", actions=fetch) %}
-          {# The empty state lives inside the target, so the fragment replaces
-             it rather than landing underneath a card still saying it is empty. #}
+          {# The empty state sits inside the target so the fragment replaces it. #}
           <div id="secret">
             {{ empty_state("Nothing fetched yet",
                            "Press Fetch it. Then sign out and press it again — the answer changes from a fragment to a redirect.",
@@ -72,3 +66,6 @@
     {% endif %}
   {% endcall %}
 {% endblock %}
+
+{# The password field's Show/Hide toggle. Per page, never in the shell. #}
+{% block scripts %}{{ reveal_scripts() }}{% endblock %}

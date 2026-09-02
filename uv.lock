@@ -243,6 +243,7 @@ source = { editable = "packages/fjkit" }
 dependencies = [
     { name = "fastapi" },
     { name = "jinja2" },
+    { name = "pydantic" },
 ]
 
 [package.optional-dependencies]
@@ -288,6 +289,7 @@ requires-dist = [
     { name = "fjkit-style-sera", marker = "extra == 'sera'", directory = "packages/fjkit-style-sera" },
     { name = "fjkit-style-vega", marker = "extra == 'vega'", directory = "packages/fjkit-style-vega" },
     { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "pydantic", specifier = ">=2.9" },
 ]
 provides-extras = ["vega", "nova", "maia", "lyra", "mira", "luma", "sera", "rhea"]
 

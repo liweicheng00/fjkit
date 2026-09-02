@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% from "_parts.html" import band, defs, prose %}
+{% from "ui/data.html" import badge, card, code_block, item, item_list %}
+{% from "ui/layout.html" import grid, page_header, stack %}
+
+{#
+  The index: every macro in `src/fjkit/templates/ui/`, one row each.
+
+  It used to be section 14 of the Components page — one pre-formatted string,
+  ninety macros aligned with spaces, annotated with a `·` that no legend
+  explained. Two problems, and splitting the page only fixes the first: it was
+  the tail of a page nobody scrolls to the end of, and the one fact a reader
+  most often wants from an index — *does this take a `{% raw %}{% call %}{% endraw %}` block, and
+  what goes inside it* — was encoded rather than stated.
+
+  So the annotation became a badge on the row, and the badge says it in words. The rows
+  come from `cheatsheet.py` already in this language, which is why nothing below
+  chooses a string: a page that assembled the phrases would be the one place the
+  English and Chinese indexes could describe different macros.
+
+  Components stays the page you read; this is the page you look things up in.
+#}
+{% set sections = [{"id": "reading", "title": "How to read this"}]
+                + sheet.rail
+                + [{"id": "shell",   "title": "The shell"},
+                   {"id": "globals", "title": "Globals"},
+                   {"id": "htmx",    "title": "htmx attributes"},
+                   {"id": "missing", "title": "When it is not here"}] %}
+
+{#
+  One row, three parts: the signature, the note under it, and — only when the
+  macro is called with one — the badge naming its block.
+
+  `item_list` rather than `table`, and the reason is worth stating: Basecoat's
+  `.table td` is `white-space: nowrap`, which is right for a data table and
+  wrong for a column of sentences. `item` is the kit's own answer for
+  "definitions" — its signature comment says so — and `clamp=false` is the
+  parameter that grew for exactly this: a description that runs past two lines.
+
+  Absence carries the meaning here. A row with no badge takes no block, which
+  is most of them; a column of em dashes would have been noise on every screen.
+#}
+{% macro macro_list(file) %}
+{% call card(file.name, padded=false) %}
+  {% call item_list() %}
+    {% for macro in file.macros %}
+      {% set signature %}<code>{{ macro.call }}</code>{% endset %}
+      {% set block %}{% if macro.block %}{{ badge(macro.block, variant="outline") }}{% endif %}{% endset %}
+      {{ item(signature, macro.note, actions=block, clamp=false) }}
+    {% endfor %}
+  {% endcall %}
+{% endcall %}
+{% endmacro %}
+
+{#
+  The same row without the badge: a name, and one line on what it is for.
+#}
+{% macro name_list(heading, entries, description=none) %}
+{% call card(heading, description, padded=false) %}
+  {% call item_list() %}
+    {% for entry in entries %}
+      {% set name %}<code>{{ entry.name }}</code>{% endset %}
+      {{ item(name, entry.note, clamp=false) }}
+    {% endfor %}
+  {% endcall %}
+{% endcall %}
+{% endmacro %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    Every macro the kit ships, grouped by what it is for, with the one question an index is asked
+    most often answered on the row itself: does this take a block, and what goes inside it. The
+    <a href="{{ url_for(request, "components") }}">Components</a> page is where you see them
+    running; this is where you look one up.
+  {% endset %}
+  {{ page_header(page.title, intro) }}
+
+  {# ============================================================== reading #}
+  {% set lead_reading %}What is on a row, and two rules that apply to every one of them.{% endset %}
+  {% call band("reading", "How to read this", lead_reading) %}
+    {% call prose() %}
+      <p>
+        A Jinja macro is called in one of two ways, and which one it is, is not something you can
+        guess from the name. A macro with nothing inside it is printed. A macro that wraps
+        something is called with <code>{% raw %}{% call %}{% endraw %}</code>, and whatever sits
+        between that and <code>{% raw %}{% endcall %}{% endraw %}</code> is handed to the macro to
+        place — Jinja calls it the <em>caller block</em>, and every macro below that wants one
+        carries a badge saying what goes in it.
+      </p>
+    {% endcall %}
+
+    {{ code_block(sheet.samples.shapes, label="the two shapes", data_lang="jinja") }}
+
+    {% call grid(cols=2, gap=4) %}
+      {% set c_macro %}the call, with every parameter and its default. The heading above each list is the file you <code>import</code> it from{% endset %}
+      {% set c_block %}on the right of a row, and only on the rows that have one: this macro is called with <code>{% raw %}{% call %}{% endraw %}</code>, and the badge says what goes inside. No badge means print it with <code>{% raw %}{{ }}{% endraw %}</code>{% endset %}
+      {% set c_note %}the thing the signature does not say. Absent when the signature says all of it{% endset %}
+      {{ defs("What is on a row", [
+        ("The signature", c_macro),
+        ("A block badge", c_block),
+        ("One line under it", c_note),
+      ]) }}
+
+      {% set r_attrs %}anything you pass that is not in the signature becomes an attribute, with underscores turned into dashes: <code>hx_post="/tasks"</code> arrives as <code>hx-post="/tasks"</code>. That is every <code>hx-*</code>, <code>aria-*</code> and <code>data-*</code>, on every macro{% endset %}
+      {% set r_variant %}<code>variant</code>, <code>tone</code> and <code>category</code> name a role — <code>success</code>, <code>destructive</code>, <code>muted</code> — never a colour. The colour is the token layer's, so a rebrand moves it once{% endset %}
+      {{ defs("Two rules, everywhere", [
+        ("Extra keywords", r_attrs),
+        ("Roles, not colours", r_variant),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== the macros #}
+  {% for group in sheet.groups %}
+    {% call band(group.id, group.title, group.lead) %}
+      {% for file in group.files %}{{ macro_list(file) }}{% endfor %}
+    {% endcall %}
+  {% endfor %}
+
+  {# ============================================================== shell #}
+  {% set lead_shell %}Blocks, not macros — the one file you extend rather than import.{% endset %}
+  {% call band("shell", "The shell", lead_shell) %}
+    {% call prose() %}
+      <p>
+        <code>ui/shell.html</code> carries the <code>&lt;head&gt;</code>, the theme flash-guard, the
+        asset links and the header/main/footer skeleton. An app extends it once, in its own
+        <code>base.html</code>, and fills the blocks it needs. Fill <code>sidebar</code> or
+        <code>nav</code> — the shell lays the header out differently for each, and filling both
+        gives you two navigations.
+      </p>
+    {% endcall %}
+
+    {{ code_block(sheet.samples.shell, label="app/templates/base.html", data_lang="jinja") }}
+
+    {{ name_list("ui/shell.html", sheet.shell_blocks) }}
+  {% endcall %}
+
+  {# ============================================================== globals #}
+  {% set lead_globals %}In every template already — no import, no context variable.{% endset %}
+  {% call band("globals", "Globals", lead_globals) %}
+    {{ name_list("build_environment()", sheet.globals) }}
+  {% endcall %}
+
+  {# ============================================================== htmx #}
+  {% set lead_htmx %}Not fjkit's, but passed to fjkit macros — so they belong next to the index.{% endset %}
+  {% call band("htmx", "htmx attributes", lead_htmx) %}
+    {% call prose() %}
+      <p>
+        Every one of these reaches the markup as an extra keyword on a macro:
+        <code>{% raw %}{{ button("Refresh", hx_get="/tasks/board", hx_target="#board") }}{% endraw %}</code>.
+        Underscores become dashes on the way through, which is the whole of the integration —
+        there is no htmx-specific parameter on any macro, and there does not need to be.
+        The full reference is <a href="https://htmx.org/reference/">htmx.org/reference</a>;
+        what follows is what a fjkit page actually uses.
+      </p>
+    {% endcall %}
+
+    {% for part in sheet.htmx %}
+      {% call card(part.title, part.lead, padded=false) %}
+        {% call item_list() %}
+          {% for entry in part.rows %}
+            {% set written %}<code>{{ entry.call }}</code>{% endset %}
+            {{ item(written, entry.note, clamp=false) }}
+          {% endfor %}
+        {% endcall %}
+      {% endcall %}
+    {% endfor %}
+  {% endcall %}
+
+  {# ============================================================== missing #}
+  {% set lead_missing %}The answer is a parameter, a keyword, or an issue — in that order.{% endset %}
+  {% call band("missing", "When it is not here", lead_missing) %}
+    {% call grid(cols=2, gap=4) %}
+      {{ defs("When a macro is missing", [
+        ("check the parameters", "most requests are a keyword that already exists — size, tone, padded, align"),
+        ("pass it through", "any extra keyword becomes an attribute, which covers every hx-*, aria-* and data-*"),
+        ("fjkit eject badge", "take that one macro into your app to edit; every other macro in its file is re-exported from the kit and keeps its fixes"),
+        ("open an issue", "a blocked class names the component that does not exist yet; that is the report"),
+      ]) }}
+
+      {% set d_learn %}<a href="{{ url_for(request, "learn") }}">how the pieces fit, and what htmx sends</a>{% endset %}
+      {% set d_components %}<a href="{{ url_for(request, "components") }}">every macro running, with the knobs turned</a>{% endset %}
+      {{ defs("Read next", [
+        ("Learn", d_learn),
+        ("Components", d_components),
+        ("examples/fjkit-demo/", "these macros inside a working app, in the repo"),
+        ("src/fjkit/static/src/fjkit.css", "the token table behind every variant"),
+      ]) }}
+    {% endcall %}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}

@@ -37,8 +37,8 @@ from fjkit.auth.errors import AuthError, CsrfRejected, NotAuthenticated, Refresh
 from fjkit.auth.sources import LocalSource
 from fjkit.auth.stores import MemoryStore
 from fjkit.auth.types import Csrf, Session, SessionStore, TokenSource, decode, encode
+from fjkit.htmx import is_htmx
 from fjkit.plugins import AppSetup, EnvSetup, PluginWarning
-from fjkit.rendering import _is_htmx
 
 if TYPE_CHECKING:
     from fjkit.flash import FlashPlugin
@@ -420,7 +420,7 @@ class AuthPlugin:
         target = f"{self.login_url}?next={quote(_full_path(request), safe='/')}"
         reason = "expired" if isinstance(exc, RefreshFailed) else "required"
 
-        if _is_htmx(request):
+        if is_htmx(request):
             # 401 *and* a redirect, which is not a contradiction: htmx acts on
             # `HX-Redirect` before it looks at the status code at all, and
             # returns there — so the status is free to be honest while the

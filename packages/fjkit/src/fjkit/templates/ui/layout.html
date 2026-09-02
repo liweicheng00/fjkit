@@ -106,6 +106,51 @@
 {%- endmacro %}
 
 {#
+  centered(width, gap) — one column, capped and centred.
+
+      {% call centered("sm") %}
+        {{ brand(…) }}
+        {{ page_header("Sign in", "…") }}
+        {% call card() %}…{% endcall %}
+      {% endcall %}
+
+  The gap this fills is narrower than it looks, and worth stating plainly: until
+  this macro there was no way to cap a width at all. `stack(align="center")`
+  centres a column without capping it, `grid` divides a width it is given, and
+  `split`'s two numbers are grid tracks belonging to the aside. So a sign-in
+  card, a settings form, a page of prose — anything that should not run to
+  1152px because the shell's wrapper does — left an app with one legal move and
+  one illegal one: `max-w-sm`, which `fjkit check` rejects because it is a
+  utility, or an inline `style="width: …"`, which it does not reject and should.
+  Reported from an app that had written the second one and said so in a comment.
+
+  It is a flex column rather than a bare `<div>` because every caller wanted a
+  `stack` inside it anyway. `gap` is the same closed lookup `stack` uses.
+
+  **width is a closed enumeration**, for the reason every lookup in this file
+  is: Tailwind finds classes by scanning source text, so `max-w-{{ width }}`
+  would name a class that is not in the stylesheet, and the column would render
+  at full width with nothing to say it went wrong. The six below cover the
+  cases; a seventh is a one-line change here, not a caller's business.
+
+  It does not centre anything vertically. A sign-in page that wants its card in
+  the middle of the viewport is asking the *shell* for that, not this macro —
+  fill `header` and `footer_wrapper` with nothing and the main element is the
+  page. Two jobs, and merging them would give this one a parameter that does
+  nothing in the common case.
+#}
+{% set _WIDTH = {
+  "xs": "max-w-xs", "sm": "max-w-sm", "md": "max-w-md",
+  "lg": "max-w-lg", "xl": "max-w-xl", "prose": "max-w-prose",
+} %}
+
+{% macro centered(width="sm", gap=6) -%}
+  <div class="mx-auto flex w-full flex-col {{ _GAP.get(gap, "gap-6") }} {{ _WIDTH.get(width, "max-w-sm") }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {{- caller() -}}
+  </div>
+{%- endmacro %}
+
+{#
   page_header(title, description) — the title block every page opens with.
 
   Works plain, or as a call block whose body becomes the right-hand actions:

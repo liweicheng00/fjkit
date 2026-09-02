@@ -1,22 +1,18 @@
-"""The demo app, built on fjkit.
-
-Compare with the pre-fjkit version (`git show 2ef74c9:app/main.py`): the
-Environment, the vendored assets and the whole stylesheet pipeline are gone.
-What is left is two lines of wiring — a config and a mount — and the
-app's own routes.
-"""
+"""The demo app: fjkit config, plugins, and the feature routers."""
 
 from __future__ import annotations
 
+import os
+import sys
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fjkit import FjkitConfig, FlashPlugin, mount_fjkit
+from fastapi import FastAPI, Request
+from fjkit import FjkitConfig, FlashPlugin, Message, mount_fjkit
 from fjkit.apidocs import ApiDocsPlugin, FlowField, SessionFlow
 from fjkit.auth import AuthPlugin, CookieSpec, MemoryStore
+from fjkit.charts import ChartsPlugin
 from fjkit.vendored import STYLE_PACKS
 
 from app.features.auth.router import protected as auth_protected_router
@@ -24,8 +20,10 @@ from app.features.auth.router import router as auth_router
 from app.features.auth.service import DEMO_PASSWORD, DEMO_USERNAME, DemoSource
 from app.features.charts.router import router as charts_router
 from app.features.dashboard.router import router as dashboard_router
+from app.features.failures.router import router as failures_router
 from app.features.jobs.router import router as jobs_router
 from app.features.jobs.service import JobService
+from app.features.panels.router import router as panels_router
 from app.features.search.router import router as search_router
 from app.features.tasks.router import router as tasks_router
 from app.features.tasks.service import TaskService
@@ -33,65 +31,53 @@ from app.features.tasks.service import TaskService
 APP_DIR = Path(__file__).resolve().parent
 ROOT_DIR = APP_DIR.parent
 
-#: This app's own assets: the vendored Plotly bundle and the script that
-#: bridges it to fjkit's colour tokens. Nothing else lives here, and nothing
-#: here is generated — `tests/test_conventions.py` asserts there is no CSS and
-#: no `package.json` anywhere under the demo, which is the invariant that
-#: actually matters. A chart library is the one thing fjkit's budget will not
-#: carry (CHARTER §7), so the demo carries it, vendored and committed, the same
-#: way the kit carries htmx.
-APP_STATIC_URL = "/static"
-
-#: Where the kit's assets are served from. Spelled out rather than left to the
-#: default because the picker below builds URLs under the same prefix, and two
-#: places guessing it separately is how a mount and a link drift apart.
+#: URL prefix the kit's static assets are served from.
 STATIC_URL = "/_fjkit"
 
-#: Every style pack, and the URL its stylesheet is served from.
-#:
-#: fjkit resolves exactly one pack per process (`FjkitConfig.style`), and that
-#: stays true here — the shell links `fjkit-vega.css` like it always did. What
-#: this feeds is the demo's picker: all eight packs ship in the wheel and
-#: `mount_fjkit` serves the whole static directory, so the browser can be pointed
-#: at another one to compare them without a restart. That is an affordance of
-#: this demo, not something the kit does, which is why the map is built here.
-#:
-#: A dict rather than a list because the picker's script looks a pack up in it:
-#: a value that is not one of the eight has no URL, so a stale or hand-edited
-#: `localStorage` entry cannot turn into a 404 and an unstyled page.
+#: Style pack name -> stylesheet URL, used by the shell's style picker.
 STYLE_SHEETS = {pack: f"{STATIC_URL}/dist/fjkit-{pack}.css" for pack in STYLE_PACKS}
 
-#: Where this demo runs. Named rather than derived from the `Host` header,
-#: which a request controls — a CSRF check that trusts a value the request
-#: supplied is not a check. A deployed app lists its real origin here.
-TRUSTED_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
 
-#: Fixed so that `fastapi dev` reloading does not sign you out mid-demo. A real
-#: app reads this from the environment and never commits it; the sessions it
-#: signs are only as private as this file is.
+def _dev_port(default: str = "8000") -> str:
+    """Return the port this process serves on: `PORT`, then `--port` in argv, then `default`."""
+    if (from_env := os.environ.get("PORT")) is not None:
+        return from_env
+    argv = sys.argv
+    for i, arg in enumerate(argv):
+        if arg == "--port" and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--port="):
+            return arg.split("=", 1)[1]
+    return default
+
+
+#: Origins the CSRF check accepts. Both loopback spellings of the dev port.
+TRUSTED_ORIGINS = [f"http://localhost:{_dev_port()}", f"http://127.0.0.1:{_dev_port()}"]
+
+#: Signing secret for the flash and session cookies. Fixed so reloads keep sessions.
 DEMO_SECRET = "fjkit-demo-not-a-secret"
 
-#: The app's templates are searched before fjkit's, so dropping a file at
-#: `templates/ui/button.html` would shadow the kit's — that is `fjkit eject`.
+def exception_handler(request: Request, exc: Exception) -> Message:
+    """Build the `Message` shown for an unexpected exception, from its type and text."""
+    return Message(
+        "Something went wrong",
+        f"{type(exc).__name__}: {exc}" if str(exc) else "The action was not completed. Nothing was saved.",
+        category="error",
+    )
+
+
 config = FjkitConfig(
     template_dir=APP_DIR / "templates",
     bytecode_cache_dir=ROOT_DIR / ".jinja-cache",
     static_url=STATIC_URL,
     globals={"style_sheets": STYLE_SHEETS},
+    catch_unexpected_errors=True,
+    unexpected_error=exception_handler,
 )
 
 
-def build_plugins() -> tuple[FlashPlugin, AuthPlugin, ApiDocsPlugin]:
-    """One set per app, for the same reason the services are.
-
-    The session store is in-memory, so two apps sharing one would share their
-    sessions — which is exactly what the test suite must not have. A deployed
-    app builds these once and gives auth a `RedisStore`.
-
-    `flash` is handed to `auth` rather than imported by it. Neither plugin
-    depends on the other: auth works without a flash, and flash is useful to
-    any route that just finished something. The app is what connects them.
-    """
+def build_plugins() -> tuple[FlashPlugin, AuthPlugin, ApiDocsPlugin, ChartsPlugin]:
+    """Build the flash, auth, API-docs and charts plugins for one app instance."""
     flash = FlashPlugin(secret=DEMO_SECRET, secure=False)
     auth = AuthPlugin(
         flash=flash,
@@ -99,30 +85,13 @@ def build_plugins() -> tuple[FlashPlugin, AuthPlugin, ApiDocsPlugin]:
         store=MemoryStore(),
         source=DemoSource(),
         trusted_origins=TRUSTED_ORIGINS,
-        # Where an unauthenticated request is sent. This demo's login form is
-        # on the session page rather than a page of its own, so that is where
-        # the plugin points; the default is "/login".
         login_url="/session",
-        # The demo is served over plain http. A real app leaves this at its
-        # default of True and serves https, which is the only way the cookie is
-        # protected in transit at all.
         cookie=CookieSpec(secure=False),
     )
 
-    # The API console — this demo's replacement for FastAPI's `/docs`.
-    #
-    # Registering it is the whole of the wiring: it brings its own router, its
-    # own templates, and the sign-in panel below. It would have found `auth` in
-    # `FjkitConfig.plugins` on its own; the flow is named here only to prefill
-    # the demo credentials and to describe the session in this app's terms.
-    #
-    # What it does that Swagger UI cannot: signing in there runs `DemoSource`
-    # — the app's own `TokenSource` — and leaves the browser holding the same
-    # HttpOnly cookie the session page sets. Every call from the console then
-    # travels through this app's middleware as that session, which is why
-    # `/session/secret` answers there and 401s in Swagger.
+    # The API console, with a sign-in flow through `auth`.
     docs = ApiDocsPlugin(
-        title="Board API",
+        title="Fjkit Demo API",
         home_url="/",
         flow=SessionFlow(
             auth,
@@ -133,50 +102,39 @@ def build_plugins() -> tuple[FlashPlugin, AuthPlugin, ApiDocsPlugin]:
             describe=lambda session: (
                 ("username", session.claims.get("username", "—")),
                 ("source", "DemoSource"),
-                # `None` here is a whole configuration rather than a missing
-                # half — see `app/features/auth/service.py`.
                 ("token expiry", "never (this source issues none)"),
             ),
         ),
     )
-    return flash, auth, docs
+
+    charts = ChartsPlugin()
+
+    return flash, auth, docs, charts
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.tasks = TaskService()
-    # Background jobs live here for the same reason tasks do: one store per
-    # process, so a job started by one request is visible to the poll that
-    # follows it. A real app swaps this for a queue; the routes do not change.
     app.state.jobs = JobService()
     yield
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="fjkit demo — task board", lifespan=lifespan)
+    app = FastAPI(title="Fjkit Demo", lifespan=lifespan)
 
-    # The session plugin. Registering it is the whole of the wiring: it brings
-    # its own middleware, its own 401 behaviour and the `session` every template
-    # gets. `app.state.auth` is here because two routes call `issue`/`revoke`
-    # and want the same instance the middleware is using.
-    flash, auth, docs = build_plugins()
+    flash, auth, docs, charts = build_plugins()
     app.state.auth = auth
     app.state.flash = flash
 
-    # Serves fjkit's stylesheet and the vendored htmx/Basecoat JS straight out
-    # of the installed package, and builds the Jinja Environment once.
-    mount_fjkit(app, replace(config, plugins=(flash, auth, docs)))
-
-    # Mounted after the kit, under a separate prefix, so the two static trees
-    # never shadow each other: `/static/...` is this app's, `/_fjkit/...` is the
-    # package's. Only the charts page requests anything from here.
-    app.mount(APP_STATIC_URL, StaticFiles(directory=APP_DIR / "static"), name="static")
+    mount_fjkit(app, replace(config, plugins=(flash, auth, docs, charts)))
 
     app.include_router(dashboard_router)
     app.include_router(charts_router)
     app.include_router(tasks_router)
     app.include_router(search_router)
+    app.include_router(panels_router)
     app.include_router(jobs_router)
+    app.include_router(failures_router)
     app.include_router(auth_router)
     app.include_router(auth_protected_router)
 

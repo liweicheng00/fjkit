@@ -1,72 +1,38 @@
 {#
-  The other half of ui/form.html.
-
-  Every other form in this demo is an htmx form: `form(target="#board")` emits
-  `hx-post`, and the reply is a fragment. This one passes no `target`, so the
-  same macro emits a plain `<form action=… method="post">` and the browser does
-  the navigating. The fields are identical either way — that symmetry is the
-  reason progressive enhancement costs nothing here.
-
-  It is also where the fields a one-line create form has no room for get used:
-  a textarea, a checkbox, a switch, and a radio group over the same options the
-  board's `select_field` takes.
+  The edit page: the shell, the edit form partial, and the json-enc and multiselect
+  scripts.
 #}
 {% extends "base.html" %}
 {% from "ui/button.html" import button %}
-{% from "ui/form.html" import checkbox_field, field_row, fieldset, form,
-                              radio_group, select_field, switch_field,
-                              text_field, textarea_field %}
-{% from "ui/layout.html" import page_header, row, stack %}
+{% from "ui/form.html" import form_scripts %}
+{% from "ui/layout.html" import centered, page_header %}
+{% from "ui/overlay.html" import multiselect_scripts %}
 
 {% block title %}Edit task{% endblock %}
 
 {% block content %}
-  {% call page_header("Edit task",
-                      "No target= on this form, so it posts and redirects like any other page. Turn JavaScript off and it still works.") %}
-    {{ button("Back to board", variant="outline", size="sm", href=url_for(request, "tasks_page")) }}
-  {% endcall %}
+  {#
+    The one page in this app that is a single form and nothing else, so it is
+    the one that wants a measure: four fieldsets of short controls stretched to
+    the shell's full 1152px are four lines the eye has to track back across.
+    The header is inside the column so it lines up with the form rather than
+    hanging over it.
 
-  {% call form(action=url_for(request, "tasks_update", task_id=task.id)) %}
-    {% call stack(6) %}
-
-      {#
-        Three fieldsets because this form has three subjects. One wrapping the
-        whole thing would say nothing the <form> did not already say.
-      #}
-      {% call fieldset("Task") %}
-        {{ text_field("title", label="Title", value=task.title, required=true) }}
-        {% call field_row("two") %}
-          {#
-            Radios rather than the board's select, over the identical
-            `priority_options` list: three choices are cheap to show all at
-            once. `owner` stays a select because the list grows with the board.
-          #}
-          {{ radio_group("priority", label="Priority", options=priority_options,
-                         selected=task.priority) }}
-          {{ select_field("owner", label="Owner", options=owner_options,
-                          selected=task.owner, hint="Anyone already on the board.") }}
-        {% endcall %}
-      {% endcall %}
-
-      {% call fieldset("Detail") %}
-        {{ textarea_field("notes", label="Notes", value=task.notes,
-                          placeholder="What is this actually waiting on?",
-                          hint="Grows with what you type — no rows to guess at.") }}
-        {{ checkbox_field("blocked", label="Blocked on something else",
-                          checked=task.blocked,
-                          hint="An unticked box posts nothing, so the route reads absence as false.") }}
-      {% endcall %}
-
-      {% call fieldset("Notifications", hint="Stored on the task. This demo sends no mail.") %}
-        {{ switch_field("watching", label="Email me when this task moves",
-                        checked=task.watching) }}
-      {% endcall %}
-
-      {% call row(justify="end") %}
-        {{ button("Cancel", variant="ghost", href=url_for(request, "tasks_page")) }}
-        {{ button("Save changes", variant="primary", type="submit", icon_name="check") }}
-      {% endcall %}
-
+    `gap=0` because `page_header` carries its own bottom margin — the same
+    reason every other page in this app puts it beside its content rather than
+    inside a stack.
+  #}
+  {% call centered("xl", gap=0) %}
+    {% call page_header("Edit task",
+                        "PUT with a JSON body, so the route's signature is one model and its OpenAPI schema.") %}
+      {{ button("Back to board", variant="outline", size="sm", href=url_for(request, "tasks_page")) }}
     {% endcall %}
+
+    {% include "tasks/_edit_form.html" %}
   {% endcall %}
+{% endblock %}
+
+{% block scripts %}
+  {{ form_scripts() }}
+  {{ multiselect_scripts() }}
 {% endblock %}

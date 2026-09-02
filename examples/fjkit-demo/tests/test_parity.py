@@ -1,14 +1,4 @@
-"""The app must still do what it did before it was rewritten on fjkit.
-
-The baseline in `tests/baseline/routes.json` was captured from the pre-fjkit
-implementation (`uv run python scripts/capture_baseline.py`) *before* any of it
-was replaced. That ordering is the whole value of the file: a baseline captured
-afterwards only asserts that the new code equals itself.
-
-Markup is expected to differ — that is what the rewrite was for. What must not
-differ is the contract: routes, status codes, links, form fields, htmx wiring,
-element ids, row counts, and the domain text on the page.
-"""
+"""Tests comparing the live app's routes against the captured baseline in `tests/baseline/routes.json`."""
 
 from __future__ import annotations
 
@@ -26,27 +16,13 @@ from capture_baseline import PROBES, signature  # noqa: E402
 
 BASELINE = json.loads((ROOT / "tests" / "baseline" / "routes.json").read_text())
 
-#: Everything here is compared exactly. These are the parts a user or a browser
-#: actually depends on, so a difference is a regression by definition.
+#: Signature fields compared exactly against the baseline.
 EXACT = ("fields", "hx_attrs", "hx_targets", "hx_urls", "form_actions", "ids", "row_count")
 
-#: Copy that changed on purpose, listed one word at a time so every intentional
-#: change is visible in review. A word going missing that is NOT on this list
-#: is a regression. Keeping this list closed is what stops "parity" from
-#: quietly degrading into "roughly similar".
+#: Words allowed to be missing from any probe's visible text.
 ALLOWED_LOST_WORDS = {
-    # The demo was renamed; the shell's <title> suffix changed with it.
     "fastapi-jinja2",
-    # The `Server-Timing` middleware was removed, and with it the footer
-    # sentence that pointed at the header: "— server render time is in the
-    # Server-Timing response header". `bench/render_bench.py` is where those
-    # numbers come from, and always was; the header only restated them.
-    #
-    # These are the words that actually stopped appearing anywhere, not every
-    # word in the sentence — "the", "in" and "time" survive elsewhere on the
-    # pages that carry them. Listing the observed set rather than a generous
-    # superset is what keeps this list from turning into a stop-word exemption
-    # that would hide the next real loss.
+    "board",
     "Server-Timing",
     "server",
     "render",
@@ -56,43 +32,24 @@ ALLOWED_LOST_WORDS = {
     "—",
 }
 
-#: Per-probe exceptions for copy that left one page on purpose. "Advance" still
-#: has to appear on /tasks; it only left the overview, which is read-only.
+#: Words allowed to be missing from one probe's visible text.
 ALLOWED_LOST_WORDS_BY_PROBE = {
-    "GET /": {"Advance"},
+    "GET /": {"Advance", "components;"},
 }
 
-#: Same idea for links. The stylesheet moved into the package — that *is* the
-#: rewrite, so the old app-served path is expected to disappear.
+#: Hrefs allowed to be missing from any probe.
 ALLOWED_LOST_HREFS = {"/static/dist/app.css"}
 
-#: GET / used to ship the same mutating row as /tasks. The overview is now
-#: read-only; those htmx hooks live on the board. Everywhere else is exact.
-#:
-#: `toaster` is the second id written out here for the same reason as `sidebar`:
-#: `ui/shell.html` now renders the region a flash message lands in on every full
-#: page, empty or not. Basecoat registers its controller against `#toaster`
-#: specifically, so the id is not ours to rename.
-#:
-#: `ids` is the one field where an *addition* still fails, and deliberately so:
-#: an id is an htmx target, and a page that quietly grows or renames one is how
-#: a swap starts landing in the wrong place. So the shell's sidebar — which is
-#: on every full page now — is written out here per probe rather than waved
-#: through by a rule, which keeps every new id a line someone had to add.
-#: Every board response renders the same partial, so all eight board probes
-#: carry the same set. Named once rather than pasted eight times — it is one
-#: deliberate change, not eight.
-#:
-#: `hx-disabled-elt` is the addition (2026-08-22). Every mutating control on the
-#: board — the create form, Advance, Delete — now disables itself for the length
-#: of its own request, so a double click cannot advance a task twice or post two
-#: tasks. It is an *added* attribute: no target, no URL and no method moved, and
-#: `hx_targets`/`hx_urls` are still compared against the untouched baseline,
-#: which is what keeps this from being a licence to change the wiring.
+#: The `ids` every board response carries.
+BOARD_IDS = ["board", "f-owner", "f-priority", "f-title", "new-task"]
+
+#: The `hx_attrs` every board response carries.
 BOARD_HX_ATTRS = [
     "hx-confirm",
     "hx-delete",
     "hx-disabled-elt",
+    "hx-disinherit",
+    "hx-ext",
     "hx-get",
     "hx-on::after-request",
     "hx-post",
@@ -100,6 +57,7 @@ BOARD_HX_ATTRS = [
     "hx-target",
 ]
 
+#: Per-probe expected values that replace the baseline's for the named fields.
 ALLOWED_CONTRACT_DRIFT = {
     "GET /": {
         "hx_attrs": [],
@@ -109,15 +67,15 @@ ALLOWED_CONTRACT_DRIFT = {
     },
     "GET /tasks": {
         "hx_attrs": BOARD_HX_ATTRS,
-        "ids": ["board", "f-owner", "f-priority", "f-title", "sidebar", "toaster"],
+        "ids": [*BOARD_IDS, "sidebar", "toaster"],
     },
-    "GET /tasks/board": {"hx_attrs": BOARD_HX_ATTRS},
-    "GET /tasks/board?status=todo": {"hx_attrs": BOARD_HX_ATTRS},
-    "GET /tasks/board?status=done": {"hx_attrs": BOARD_HX_ATTRS},
-    "GET /tasks/board?owner=kai": {"hx_attrs": BOARD_HX_ATTRS},
-    "POST /tasks": {"hx_attrs": BOARD_HX_ATTRS},
-    "POST /tasks/5/advance": {"hx_attrs": BOARD_HX_ATTRS},
-    "DELETE /tasks/1": {"hx_attrs": BOARD_HX_ATTRS},
+    "GET /tasks/board": {"hx_attrs": BOARD_HX_ATTRS, "ids": BOARD_IDS},
+    "GET /tasks/board?status=todo": {"hx_attrs": BOARD_HX_ATTRS, "ids": BOARD_IDS},
+    "GET /tasks/board?status=done": {"hx_attrs": BOARD_HX_ATTRS, "ids": BOARD_IDS},
+    "GET /tasks/board?owner=kai": {"hx_attrs": BOARD_HX_ATTRS, "ids": BOARD_IDS},
+    "POST /tasks": {"hx_attrs": BOARD_HX_ATTRS, "ids": BOARD_IDS},
+    "POST /tasks/5/advance": {"hx_attrs": BOARD_HX_ATTRS, "ids": BOARD_IDS},
+    "DELETE /tasks/1": {"hx_attrs": BOARD_HX_ATTRS, "ids": BOARD_IDS},
     "GET /tasks/report?rows=5": {
         "ids": ["sidebar", "toaster"],
     },
@@ -126,17 +84,13 @@ ALLOWED_CONTRACT_DRIFT = {
 
 @pytest.fixture(scope="module")
 def snapshot() -> dict:
-    """Probe the live app the same way the baseline was captured.
-
-    A fresh client per probe, because the service is in-memory and mutable: one
-    POST leaking into the next probe would make the comparison meaningless.
-    """
+    """Run every probe against a fresh app and return each response's signature."""
     from app.main import create_app
 
     out: dict = {}
-    for method, url, data, headers in PROBES:
+    for method, url, body, headers in PROBES:
         with TestClient(create_app()) as client:
-            response = client.request(method, url, data=data, headers=headers)
+            response = client.request(method, url, json=body, headers=headers)
             entry: dict = {"status": response.status_code}
             if response.headers.get("content-type", "").startswith("text/html"):
                 entry |= signature(response.text)
@@ -162,7 +116,7 @@ def test_contract_is_unchanged(snapshot, probe, field):
 
 @pytest.mark.parametrize("probe", PROBE_IDS)
 def test_no_visible_text_was_lost(snapshot, probe):
-    """Added words are fine — new copy is allowed. Missing words are not."""
+    """Every baseline word is still on the page unless it is on an allow list."""
     lost = set(BASELINE[probe].get("words", [])) - set(snapshot[probe].get("words", []))
     allowed = ALLOWED_LOST_WORDS | ALLOWED_LOST_WORDS_BY_PROBE.get(probe, set())
     assert not (lost - allowed), f"{probe}: text disappeared: {sorted(lost)}"

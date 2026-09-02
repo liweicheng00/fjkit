@@ -1,0 +1,55 @@
+{#
+  The edit form: `PUT /tasks/{id}` with a JSON body. A save answers `HX-Redirect`; a
+  rejection is a 422 drawn under the fields by `js/errors.js`.
+#}
+{% from "ui/button.html" import button %}
+{% from "ui/form.html" import checkbox_field, field_row, fieldset, form,
+                              radio_group, select_field, switch_field,
+                              text_field, textarea_field %}
+{% from "ui/layout.html" import row, stack %}
+{% from "ui/overlay.html" import select_menu %}
+
+{% call form(action=url_for(request, "tasks_update", task_id=task.id),
+             method="put", target="#edit-form", encoding="json",
+             id="edit-form", hx_disabled_elt="find button[type=submit]") %}
+  {% call stack(6) %}
+
+    {% call fieldset("Task") %}
+      {{ text_field("title", label="Title", value=task.title, required=true) }}
+      {% call field_row("two") %}
+        {{ radio_group("priority", label="Priority", options=priority_options,
+                       selected=task.priority) }}
+        {{ select_field("owner", label="Owner", options=owner_options,
+                        selected=task.owner, hint="Anyone already on the board.") }}
+      {% endcall %}
+    {% endcall %}
+
+    {% call fieldset("Labels", hint="Pick as many as apply, or none.") %}
+      {# `row()` keeps `fieldset` from stretching the menu to full width. #}
+      {% call row() %}
+        {{ select_menu("labels", options=label_options, selected=task.labels,
+                       multiple=true, width="xl", label="Labels") }}
+      {% endcall %}
+    {% endcall %}
+
+    {% call fieldset("Detail") %}
+      {{ textarea_field("notes", label="Notes", value=task.notes,
+                        placeholder="What is this actually waiting on?",
+                        hint="Grows with what you type — no rows to guess at.") }}
+      {{ checkbox_field("blocked", label="Blocked on something else",
+                        checked=task.blocked,
+                        hint="An unticked box is absent from the body, so the model reads it as false.") }}
+    {% endcall %}
+
+    {% call fieldset("Notifications", hint="Stored on the task. This demo sends no mail.") %}
+      {{ switch_field("watching", label="Email me when this task moves",
+                      checked=task.watching) }}
+    {% endcall %}
+
+    {% call row(justify="end") %}
+      {{ button("Cancel", variant="ghost", href=url_for(request, "tasks_page")) }}
+      {{ button("Save changes", variant="primary", type="submit", icon_name="check") }}
+    {% endcall %}
+
+  {% endcall %}
+{% endcall %}

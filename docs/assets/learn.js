@@ -508,8 +508,8 @@ def tasks_page(service: ServiceDep) -> BoardResponse:
     } else {
       setCode(codeEl, `@router.post("/tasks", name="tasks_create")
 @render("tasks/_board.html")
-def create_task(service: ServiceDep, title: Annotated[str, Form()]) -> BoardResponse:
-    service.create(TaskCreate(title=title))
+def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
+    service.create(payload)
     # The same partial, bare. hx-swap="outerHTML" drops it back over #board.
     return board(service)`, "python");
       caption.textContent = "No doctype, no shell — just the fragment. An htmx endpoint is an @render naming a _*.html file.";

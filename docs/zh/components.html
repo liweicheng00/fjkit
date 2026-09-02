@@ -11,10 +11,12 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1787416553">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788337205">
   <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
-  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1786876367"></script>
-  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1786876367"></script>
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
+  <script defer src="../assets/js/errors.js?v=1787594535"></script>
   <meta name="description" content="每一個 fjkit macro 都有實際渲染的預覽、產生它的那行 Jinja，以及吐出來的 HTML——全部由 kit 自己渲染，所以這裡的簽名不可能跟套件對不上。">
   <meta property="og:title" content="fjkit 元件">
   <meta property="og:description" content="每一個 fjkit macro 都有實際渲染的預覽、產生它的那行 Jinja，以及吐出來的 HTML——全部由 kit 自己渲染，所以這裡的簽名不可能跟套件對不上。">
@@ -42,50 +44,66 @@ fjkit
     <a href="components.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>元件</span>
     </a>
   </li>
+        <li>
+    <a href="cheatsheet.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>      <span>速查表</span>
+    </a>
+  </li>
 </ul>
   </div>
 <div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
-    <a href="components.html#macros">      <span>每個 macro：呼叫與 HTML</span>
+    <a href="components.html#button">      <span>Button</span>
     </a>
   </li>
         <li>
-    <a href="components.html#layout">      <span>版面：stack、row、grid、split</span>
+    <a href="components.html#data">      <span>Data</span>
     </a>
   </li>
         <li>
-    <a href="components.html#structure">      <span>page_header、section、divider</span>
+    <a href="components.html#disclosure">      <span>Disclosure</span>
     </a>
   </li>
         <li>
-    <a href="components.html#display">      <span>empty_state、metric_group、清單</span>
+    <a href="components.html#feedback">      <span>Feedback</span>
     </a>
   </li>
         <li>
-    <a href="components.html#feedback">      <span>回饋：alert、spinner、skeleton、dialog</span>
+    <a href="components.html#form">      <span>Form</span>
     </a>
   </li>
         <li>
-    <a href="components.html#content">      <span>內容：avatar、item_list、code_block、breadcrumb</span>
+    <a href="components.html#icon">      <span>Icon</span>
     </a>
   </li>
         <li>
-    <a href="components.html#disclosure">      <span>顯示與收合：tabs、collapsible、tooltip</span>
+    <a href="components.html#layout">      <span>Layout</span>
     </a>
   </li>
         <li>
-    <a href="components.html#overlay">      <span>浮層：popover、選單、select、drawer、command</span>
+    <a href="components.html#nav">      <span>Nav</span>
     </a>
   </li>
         <li>
-    <a href="components.html#fields">      <span>剩下的兩個欄位</span>
+    <a href="components.html#overlay">      <span>Overlay</span>
     </a>
   </li>
         <li>
-    <a href="components.html#icons">      <span>icon()：任何 Lucide 名字，直接內嵌</span>
+    <a href="components.html#shell">      <span>Shell</span>
     </a>
   </li>
         <li>
-    <a href="components.html#cheatsheet">      <span>ui/ 裡的每個 macro，按檔案列</span>
+    <a href="components.html#sidebar">      <span>Sidebar</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#table">      <span>Table</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#tabs">      <span>Tabs</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html#next">      <span>接著讀</span>
     </a>
   </li>
 </ul>
@@ -117,140 +135,103 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">每個 macro，以及產生它的那行呼叫</h1>
-<p class="text-muted-foreground text-sm">    每一個 macro，都有實際渲染的預覽與產生它的那行呼叫。
+<p class="text-muted-foreground text-sm">    每一個 macro，都有實際渲染的預覽與產生它的那行呼叫；依照 macro 所在的檔案分節，
+    順序與 <code>src/fjkit/templates/ui/</code> 列出來的一致。
     轉動旋鈕，兩件事會一起變：元件本身，以及你要打出這個結果會寫的那行 Jinja。
     底下每一個預覽都是 build 時由 fjkit 自己的 Environment 渲染出來的。
 </p>    </div>
   </div>
 
-<div id="macros">
+<div id="button">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">每個 macro：呼叫與 HTML</h2><p class="text-muted-foreground text-sm">沒有任何 macro 收 class 字串，所以沒有任何呼叫端能自己發明一個顏色。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Button</h2><p class="text-muted-foreground text-sm">一個元素、七種 variant、七種 size——而且呼叫端一個 class 都不寫。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        底下每一個參數都是<strong>封閉列舉</strong>。沒有 <code>class=</code> 這個逃生口，也沒有色相可以傳。
-        你挑一個 variant，長什麼樣由 token 層決定。多傳給 macro 的東西一律變成 HTML 屬性：
-        <code>hx_post="/tasks"</code> 會渲染成 <code>hx-post="/tasks"</code>。
-        這就是 htmx 從頭到尾不必出現在任何一個 macro 定義裡的原因。
+        這一頁上的每一個參數都是<strong>封閉列舉</strong>。沒有 <code>class=</code> 這個逃生口，
+        也沒有色相可以傳：你挑一個 variant，長什麼樣由 token 層決定。
+        <em>其餘</em>多傳給 macro 的東西一律變成 HTML 屬性——<code>hx_post="/tasks"</code>
+        會渲染成 <code>hx-post="/tasks"</code>。做這件轉換的是 <code>ui/attrs.html</code> 這一個檔案，
+        每一支 macro 都把多出來的關鍵字轉送給它，而 app 永遠不會自己呼叫它。
+        這就是 htmx 從頭到尾不必出現在 kit 任何一個 macro 定義裡的原因，
+        也是「macro 沒聽過的關鍵字」變成屬性而不是報錯的原因。
+      </p>
+      <p>
+        <code>button</code> 是其他每個檔案都會用到的 macro，也是最值得先讀簽名的那一支：
+        <code>variant</code> 與 <code>size</code> 都是封閉查表，<code>href</code> 會把元素換成
+        <code>&lt;a&gt;</code> 並拿掉 <code>type</code>，而 <code>icon_name</code> 收任何 Lucide 名字——
+        所以呼叫端不必為了在按鈕上放一個圖示而去 import <code>icon</code>。
+      </p>
+      <p>
+        <code>button_group</code> 是一個名字底下的兩種元件，旋鈕會告訴你是哪一種：
+        horizontal 就是一個 <code>row</code>，間距歸你管；vertical 是 Basecoat 的
+        <code>.button-group</code>，它把幾個按鈕併成一個控制項並共用邊框，沒有間距可以給。
       </p>
 </div>
-<div class="card">            <div class="tabs" id="macro-picker">
-        <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
-      </div>
+    <div class="card">          <div class="tabs" id="button-picker" data-picker>
+      <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
+    </div>
 
-  </div>
-<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>預覽</h3>      </div>
-    </header>      <section>        <div id="macro-preview"></div>
+    </header>      <section>    <div id="button-preview"></div>
 
 </section>
-  </div>
-<div class="card">      <div class="tabs">
+  </div><div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="Representation"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="macro-jinja"
+        <button type="button" role="tab" aria-controls="button-jinja"
                 aria-selected="true">你寫的</button>
-        <button type="button" role="tab" aria-controls="macro-html"
+        <button type="button" role="tab" aria-controls="button-html"
                 aria-selected="false">它吐出來的</button>
-    </nav><div id="macro-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="macro-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>      <footer id="macro-caption"></footer>
+    </nav><div id="button-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="button-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="button-caption"></footer>
 
   </div>
+
 </section></div></div>
 <hr class="border-border">
 
-<div id="layout">
+<div id="data">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">版面：stack、row、grid、split</h2><p class="text-muted-foreground text-sm">你打下 <code>grid gap-4</code> 的那一刻，零建置這個承諾就結束了。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Data</h2><p class="text-muted-foreground text-sm">負責把一個值顯示出來的那個檔案——數字、狀態、人、定義。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        光有元件到不了封閉詞彙表。你第一次要把兩張 card 並排，手就伸向 utility class，
-        而 fjkit 出貨的那份 stylesheet 根本不知道你想要它。所以間距與欄數也是 macro。
-        每一個值都是查表，表裡的字串<em>原封不動</em>出現在 kit 的原始碼裡，Tailwind 掃得到。
-      </p>
-      <p>
-        虛線方塊代表你的內容。轉旋鈕，看著底下那行原始碼跟著變。
-      </p>
-</div>
-<div class="card">            <div id="layout-controls"></div>
-
-  </div>
-<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>預覽</h3>      </div>
-    </header>      <section>        <div id="layout-preview"></div>
-
-</section>
-  </div>
-<div class="card">            <pre class="code-block scrollbar" tabindex="0" id="layout-code"></pre>
-      <footer id="layout-caption"></footer>
-
-  </div>
-</section></div></div>
-<hr class="border-border">
-
-<div id="structure">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">page_header、section、divider</h2><p class="text-muted-foreground text-sm">標題、分隔線與群組也是元件——不然它們就會是 utility class。</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        這三個是資料還沒進來以前，一頁就已經由它們組成的部分。
-        <code>page_header</code> 收一個 block，那個 block 就是它的動作區。
-        所以標題、說明與一排按鈕在任何寬度下都待在同一行，呼叫端不必量任何東西。
-        這一頁最上面那個 header 就是同一個 macro，平鋪直敘地呼叫，沒有動作要放。
-      </p>
-</div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>page_header(title, description) · block = actions</h3>      </div>
-    </header>      <section>    <div data-showcase="page_header"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="page_header"></pre>
-  <footer data-showcase-caption="page_header"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>section(title, description, gap=4) · block</h3>      </div>
-    </header>      <section>    <div data-showcase="section"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="section"></pre>
-  <footer data-showcase-caption="section"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>divider()</h3>      </div>
-    </header>      <section>    <div data-showcase="divider"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="divider"></pre>
-  <footer data-showcase-caption="divider"></footer>
-
-  </div>
-
-</section></div></div>
-<hr class="border-border">
-
-<div id="display">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">empty_state、metric_group、清單</h2><p class="text-muted-foreground text-sm"><code>data.html</code> 裡剩下的——負責把一個值顯示出來的那些。</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        一張塞滿 row 的表格是簡單的那種情況。這些是另外幾種：後面還沒有任何 row 的那個數字、
-        表格上方那排數值、句子裡夾著一組按鍵的那種說明。
+        <code>ui/</code> 裡最大的一個檔案，也是一般頁面呼叫次數最多的一個。
+        有旋鈕可以轉的四支在下面；其餘各自有一個渲染好的範例。
       </p>
       <p>
         <code>empty_state</code> 值得在你需要它之前就先知道。<code>rows</code> 是空的時候，
         <code>table</code> 會自己把它渲染出來，所以沒有任何呼叫端要寫 if-rows-else 那段分支。
       </p>
+      <p>
+        <code>avatar</code> 是值得先讀簽名的那一個。名字同時是 <code>alt</code> 文字和退回時的縮寫，
+        所以兩者不可能互相矛盾；而且一旦有圖片承載了名字，縮寫就會退出無障礙樹——否則同一個人會被唸兩次，
+        一次是正常的，一次是兩個沒頭沒尾的字母。
+      </p>
 </div>
+    <div class="card">          <div class="tabs" id="data-picker" data-picker>
+      <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
+    </div>
+
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>預覽</h3>      </div>
+    </header>      <section>    <div id="data-preview"></div>
+
+</section>
+  </div><div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="Representation"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="data-jinja"
+                aria-selected="true">你寫的</button>
+        <button type="button" role="tab" aria-controls="data-html"
+                aria-selected="false">它吐出來的</button>
+    </nav><div id="data-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="data-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="data-caption"></footer>
+
+  </div>
+
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>empty_state(title, description, icon_name)</h3>      </div>
@@ -273,7 +254,7 @@ fjkit
   </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>bullet_list(tone) / list_item() · blocks</h3>      </div>
+<h3>bullet_list(tone) / list_item()——兩支都吃區塊</h3>      </div>
     </header>      <section>    <div data-showcase="bullet_list"></div>
 
 </section>
@@ -283,7 +264,17 @@ fjkit
   </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>link(label, href) · kbd(keys)</h3>      </div>
+<h3>caption(text)——也吃區塊，用在說明裡要放連結的時候</h3>      </div>
+    </header>      <section>    <div data-showcase="caption"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="caption"></pre>
+  <footer data-showcase-caption="caption"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>link(label, href) 與 kbd(keys)</h3>      </div>
     </header>      <section>    <div data-showcase="inline"></div>
 
 </section>
@@ -291,19 +282,90 @@ fjkit
   <footer data-showcase-caption="inline"></footer>
 
   </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>item_list() 的區塊裡放 item(title, description, clamp)</h3>      </div>
+    </header>      <section>    <div data-showcase="item_list"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="item_list"></pre>
+  <footer data-showcase-caption="item_list"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>code_block(source, label, wrap)</h3>      </div>
+    </header>      <section>    <div data-showcase="code_block"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="code_block"></pre>
+  <footer data-showcase-caption="code_block"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>avatar(name, src, size, badge_tone) 與 avatar_group(overflow)</h3>      </div>
+    </header>      <section>    <div data-showcase="avatar"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="avatar"></pre>
+  <footer data-showcase-caption="avatar"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="disclosure">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Disclosure</h2><p class="text-muted-foreground text-sm">兩個收合元件，中間沒有一行 fjkit 自己的 JavaScript。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>collapsible</code> 是原生的 <code>&lt;details&gt;</code>：開合狀態、鍵盤操作、disclosure 角色
+        全部來自那個元素，Basecoat 用 CSS 替它加動畫。<code>tooltip</code> 完全畫自一個
+        <code>data-tooltip</code> 屬性——根本不存在第二個元素。
+      </p>
+      <p>
+        tooltip 的機制有一個後果要講白：CSS <code>content()</code> 從來不會進無障礙樹。
+        tooltip 是<em>提示</em>，永遠不能是一個控制項唯一的標籤。當 tooltip 是那個控制項身上唯一的文字時，
+        請另外給它 <code>aria_label</code>。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>accordion(multiple) / collapsible(summary, open)——兩支都吃區塊</h3>      </div>
+    </header>      <section>    <div data-showcase="collapsible"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="collapsible"></pre>
+  <footer data-showcase-caption="collapsible"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>tooltip(text, side, align)——區塊是被它包住的元素</h3>      </div>
+    </header>      <section>    <div data-showcase="tooltip"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tooltip"></pre>
+  <footer data-showcase-caption="tooltip"></footer>
+
+  </div>
 
 </section></div></div>
 <hr class="border-border">
 
 <div id="feedback">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">回饋：alert、spinner、skeleton、dialog</h2><p class="text-muted-foreground text-sm">四種說「等一下」「好了」和「這件事沒成功」的方式。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Feedback</h2><p class="text-muted-foreground text-sm">五種說「等一下」「好了」和「這件事沒成功」的方式。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        這四個的差別在<em>誰在等、等什麼</em>，挑哪一個也是照這條分。<code>alert</code> 是一件留在頁面上的事實。
+        這幾個的差別在<em>誰在等、等什麼</em>，挑哪一個也是照這條分。<code>alert</code> 是一件留在頁面上的事實。
         <code>spinner</code> 和 <code>skeleton</code> 都表示「還沒好」，選哪一個取決於你知不知道等一下會出現什麼形狀：
         skeleton 把那個形狀畫出來，spinner 承認你畫不出來。<code>dialog</code> 則是打斷。
+        <code>toast</code> 是唯一活得比那個回應更久的一個。
       </p>
       <p>
         其中兩個替你做了無障礙的決定。<code>alert(variant="destructive")</code> 會拿到
@@ -314,7 +376,7 @@ fjkit
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>alert(title, body, variant, icon_name) · 區塊 = 動作</h3>      </div>
+<h3>alert(title, body, variant, icon_name)——區塊是動作按鈕</h3>      </div>
     </header>      <section>    <div data-showcase="alert"></div>
 
 </section>
@@ -344,7 +406,7 @@ fjkit
   </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>dialog(id, title, description, size, footer) · 區塊</h3>      </div>
+<h3>dialog(id, title, description, size, footer)——區塊是內容</h3>      </div>
     </header>      <section>    <div data-showcase="dialog"></div>
 
 </section>
@@ -352,220 +414,58 @@ fjkit
   <footer data-showcase-caption="dialog"></footer>
 
   </div>
-
-</section></div></div>
-<hr class="border-border">
-
-<div id="content">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
-</div><section class="flex flex-col gap-6">
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">內容：avatar、item_list、code_block、breadcrumb</h2><p class="text-muted-foreground text-sm">承載一個人、一則定義、一段程式或一條路徑的那幾個。</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        <code>avatar</code> 是值得先讀簽名的那一個。名字同時是 <code>alt</code> 文字和退回時的縮寫，
-        所以兩者不可能互相矛盾；而且一旦有圖片承載了名字，縮寫就會退出無障礙樹——否則同一個人會被唸兩次，
-        一次是正常的，一次是兩個沒頭沒尾的字母。
-      </p>
-      <p>
-        <code>breadcrumb</code> 收的是 <code>(label, href)</code> 成對的清單，其中 href 為 none 的那一項
-        <em>就是</em>當前頁。這是刻意的：這個元件最常見的做錯方式，就是麵包屑最後一項連到你已經在看的這一頁——
-        而參數的形狀讓那件事根本寫不出來。
-      </p>
+<h3>toaster(align) 搭配 toast(title, description, category)</h3>      </div>
+    </header>      <div class="border-t">  <pre class="code-block scrollbar" tabindex="0" data-snippet-code="toaster"></pre>
+  <footer data-snippet-caption="toaster"></footer>
 </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>avatar(name, src, size, badge_tone) · avatar_group(overflow)</h3>      </div>
-    </header>      <section>    <div data-showcase="avatar"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="avatar"></pre>
-  <footer data-showcase-caption="avatar"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>item_list() / item(term, clamp) · 區塊</h3>      </div>
-    </header>      <section>    <div data-showcase="item_list"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="item_list"></pre>
-  <footer data-showcase-caption="item_list"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>code_block(source, label, wrap)</h3>      </div>
-    </header>      <section>    <div data-showcase="code_block"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="code_block"></pre>
-  <footer data-showcase-caption="code_block"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>breadcrumb(trail, separator) · none = 當前頁</h3>      </div>
-    </header>      <section>    <div data-showcase="breadcrumb"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="breadcrumb"></pre>
-  <footer data-showcase-caption="breadcrumb"></footer>
-
   </div>
 
 </section></div></div>
 <hr class="border-border">
 
-<div id="disclosure">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<div id="form">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">顯示與收合：tabs、collapsible、tooltip</h2><p class="text-muted-foreground text-sm">三個收合元件，中間沒有一行 fjkit 自己的 JavaScript。</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        <code>collapsible</code> 是原生的 <code>&lt;details&gt;</code>：開合狀態、鍵盤操作、disclosure 角色
-        全部來自那個元素，Basecoat 用 CSS 替它加動畫。<code>tooltip</code> 完全畫自一個
-        <code>data-tooltip</code> 屬性——根本不存在第二個元素。<code>tabs</code> 是 Basecoat 的，外殼已經載好了。
-      </p>
-      <p>
-        tooltip 的機制有一個後果要講白：CSS <code>content()</code> 從來不會進無障礙樹。
-        tooltip 是<em>提示</em>，永遠不能是一個控制項唯一的標籤。當 tooltip 是那個控制項身上唯一的文字時，
-        請另外給它 <code>aria_label</code>。
-      </p>
-</div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>tabs(items, label) / tab_panel(id) · 區塊</h3>      </div>
-    </header>      <section>    <div data-showcase="tabs"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tabs"></pre>
-  <footer data-showcase-caption="tabs"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>accordion(multiple) / collapsible(summary, open) · 區塊</h3>      </div>
-    </header>      <section>    <div data-showcase="collapsible"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="collapsible"></pre>
-  <footer data-showcase-caption="collapsible"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>tooltip(text, side, align) · 區塊 = 觸發元素</h3>      </div>
-    </header>      <section>    <div data-showcase="tooltip"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tooltip"></pre>
-  <footer data-showcase-caption="tooltip"></footer>
-
-  </div>
-
-</section></div></div>
-<hr class="border-border">
-
-<div id="overlay">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">浮層：popover、選單、select、drawer、command</h2><p class="text-muted-foreground text-sm">一個 id 進去，四個出來——而且對不上時不會出聲。</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        <code>ui/overlay.html</code> 裡的每一個都由 Basecoat 自己的 JavaScript 驅動，外殼已經載了它，
-        而且它會在 <code>htmx:afterSwap</code> 時重新掃描——所以由 swap 送進來的浮層不需要任何額外處理就能用。
-      </p>
-      <p>
-        它們共同的東西是 <strong>id 接線</strong>。一個觸發元素和它的面板靠四個相關的 id 互相找到對方，
-        錯一個就靜靜地失敗：面板打得開但永遠不會被唸出來，或者根本打不開。這裡每個 macro 都只收一個
-        <code>id</code> 再自己推導其餘的。這就是它們是 macro 而不是一段可以複製的標記的全部理由。
-      </p>
-      <p>
-        <code>select_menu</code> 和 <code>combobox</code> 把值放在一個<strong>預先填好</strong>的隱藏欄位裡——
-        上游出貨的是 <code>value=""</code> 再用 JS 寫進去，那會讓任何重繪這個片段的來回弄丟已經選好的值。
-        這兩個都不如 <code>select_field</code>：原生的 <code>&lt;select&gt;</code> 一開始就是正確的，
-        而且只花一個元素而不是三十個。
-      </p>
-</div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>popover(id, label, side, align, width) · 區塊</h3>      </div>
-    </header>      <section>    <div data-showcase="popover"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="popover"></pre>
-  <footer data-showcase-caption="popover"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>dropdown_menu(id, label) · menu_item / menu_group / menu_separator</h3>      </div>
-    </header>      <section>    <div data-showcase="dropdown_menu"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="dropdown_menu"></pre>
-  <footer data-showcase-caption="dropdown_menu"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>select_menu(name, options, selected)</h3>      </div>
-    </header>      <section>    <div data-showcase="select_menu"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="select_menu"></pre>
-  <footer data-showcase-caption="select_menu"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>combobox(name, options, selected, empty)</h3>      </div>
-    </header>      <section>    <div data-showcase="combobox"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="combobox"></pre>
-  <footer data-showcase-caption="combobox"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>drawer(id, title, side) · drawer_trigger(label, target)</h3>      </div>
-    </header>      <section>    <div data-showcase="drawer"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="drawer"></pre>
-  <footer data-showcase-caption="drawer"></footer>
-
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>command(id, dialog) · command_group / command_item</h3>      </div>
-    </header>      <section>    <div data-showcase="command"></div>
-
-</section>
-  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="command"></pre>
-  <footer data-showcase-caption="command"></footer>
-
-  </div>
-
-</section></div></div>
-<hr class="border-border">
-
-<div id="fields">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">剩下的兩個欄位</h2><p class="text-muted-foreground text-sm">再兩個欄位，形狀跟其他欄位一模一樣。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Form</h2><p class="text-muted-foreground text-sm">每一支欄位都收同樣五個參數，而且 error 是取代 hint。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         每一支欄位 macro 都收同樣的 <code>name</code>、<code>label</code>、<code>hint</code>、
         <code>error</code>、<code>id</code>，而且 <code>error</code> 是<strong>取代</strong> hint 而不是疊在它上面，
-        同時把控制項標成 <code>aria-invalid</code>。這兩個也一樣；值得知道的是它們各自針對自己的機制做了什麼。
+        同時把控制項標成 <code>aria-invalid</code>。底下的旋鈕會走過同一份表單的五種樣子：
+        htmx 版、有錯誤的欄位、比較長的控制項、radio 與 select 的取捨，以及放在
+        <code>fieldset</code> 裡的一組 switch。
       </p>
       <p>
-        <code>range_field</code> 會替第一次繪製寫好軌道已填滿的那一段。Basecoat 是從一個自訂屬性去畫它，
-        而且只在拖曳時才用 JavaScript 更新——沒有這一步，長條會停在上游的預設值，跟旁邊那個數字對不上。
+        讓一份表單成為 htmx 表單的是 <code>target=</code>；把它拿掉，同一支 macro 就吐出一份
+        沒有 JavaScript 也能用的普通 POST。
+      </p>
+      <p>
+        底下這兩支是針對自己的機制多做了一件事的欄位。<code>range_field</code> 會替第一次繪製
+        寫好軌道已填滿的那一段——Basecoat 是從一個自訂屬性去畫它，而且只在拖曳時才用 JavaScript 更新，
+        沒有這一步，長條會停在上游的預設值，跟旁邊那個數字對不上。
       </p>
 </div>
+    <div class="card">          <div id="form-controls" data-controls></div>
+
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>預覽</h3>      </div>
+    </header>      <section>    <div id="form-preview"></div>
+
+</section>
+  </div><div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="Representation"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="form-jinja"
+                aria-selected="true">你寫的</button>
+        <button type="button" role="tab" aria-controls="form-html"
+                aria-selected="false">它吐出來的</button>
+    </nav><div id="form-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="form-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="form-caption"></footer>
+
+  </div>
+
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>range_field(name, label, value, min, max, step, output)</h3>      </div>
@@ -586,15 +486,25 @@ fjkit
   <footer data-showcase-caption="input_group_field"></footer>
 
   </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>input_group_field(name, revealable=true)——需要 reveal_scripts()</h3>      </div>
+    </header>      <section>    <div data-showcase="reveal"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="reveal"></pre>
+  <footer data-showcase-caption="reveal"></footer>
+
+  </div>
 
 </section></div></div>
 <hr class="border-border">
 
-<div id="icons">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+<div id="icon">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">icon()：任何 Lucide 名字，直接內嵌</h2><p class="text-muted-foreground text-sm">1,767 個名字，沒有 sprite sheet，沒有 icon font，一個請求都不用發。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Icon</h2><p class="text-muted-foreground text-sm">1,767 個名字，沒有 sprite sheet，沒有 icon font，一個請求都不用發。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         <code>icon("plus")</code> 會把 Lucide 的路徑當成 <code>&lt;svg&gt;</code> 內嵌進去。
         它繼承 <code>currentColor</code>，所以放進 primary 按鈕裡的 icon 顏色本來就是對的，
@@ -624,37 +534,432 @@ fjkit
 </section></div></div>
 <hr class="border-border">
 
-<div id="cheatsheet">
+<div id="layout">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Layout</h2><p class="text-muted-foreground text-sm">你打下 <code>grid gap-4</code> 的那一刻，零建置這個承諾就結束了。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        光有元件到不了封閉詞彙表。你第一次要把兩張 card 並排，手就伸向 utility class，
+        而 fjkit 出貨的那份 stylesheet 根本不知道你想要它。所以間距與欄數也是 macro。
+        每一個值都是查表，表裡的字串<em>原封不動</em>出現在 kit 的原始碼裡，Tailwind 掃得到。
+      </p>
+      <p>
+        虛線方塊代表你的內容。轉旋鈕，看著底下那行原始碼跟著變。
+      </p>
+      <p>
+        這個檔案裡另外三支，是資料還沒進來以前一頁就已經由它們組成的部分。
+        <code>page_header</code> 收一個 block，那個 block 就是它的動作區：
+        標題、說明與一排按鈕在任何寬度下都待在同一行，呼叫端不必量任何東西。
+        這一頁最上面那個 header 就是同一個 macro，平鋪直敘地呼叫，沒有動作要放。
+      </p>
+</div>
+<div class="card">            <div id="layout-controls"></div>
+
+  </div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>預覽</h3>      </div>
+    </header>      <section>        <div id="layout-preview"></div>
+
+</section>
+  </div>
+<div class="card">            <pre class="code-block scrollbar" tabindex="0" id="layout-code"></pre>
+      <footer id="layout-caption"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>centered(width=&#34;sm&#34;, gap=6)——區塊是子元素</h3>      </div>
+    </header>      <section>    <div data-showcase="centered"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="centered"></pre>
+  <footer data-showcase-caption="centered"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>page_header(title, description)——區塊是動作按鈕</h3>      </div>
+    </header>      <section>    <div data-showcase="page_header"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="page_header"></pre>
+  <footer data-showcase-caption="page_header"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>section(title, description, gap=4)——區塊是子元素</h3>      </div>
+    </header>      <section>    <div data-showcase="section"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="section"></pre>
+  <footer data-showcase-caption="section"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>divider()</h3>      </div>
+    </header>      <section>    <div data-showcase="divider"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="divider"></pre>
+  <footer data-showcase-caption="divider"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="nav">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Nav</h2><p class="text-muted-foreground text-sm">頁首的三個零件，以及那條說明你在哪裡的路徑。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        這些是外殼的頁首，單獨拆成一個檔案，好讓 app 可以只 import 它們而不必 import 那份
+        它 extends 的模板。其中兩支就在這一頁上：側欄最上面那個標記是 <code>brand</code>，
+        頁首那個切換鈕是 <code>theme_toggle</code>。
+      </p>
+      <p>
+        <code>nav_links</code> 收的是路由<em>名稱</em>而不是 URL，所以「目前在哪一頁」是比對路由
+        而不是字串比對路徑——URL 多了一段 query string 之後它照樣正確。
+        目的地超過大約六個，一排頁首就不夠寬了；那就是改去填外殼 <code>sidebar</code> block 的時機。
+      </p>
+      <p>
+        <code>breadcrumb</code> 收的是 <code>(label, href)</code> 成對的清單，其中 href 為 none 的那一項
+        <em>就是</em>當前頁。這是刻意的：這個元件最常見的做錯方式，就是麵包屑最後一項連到你已經在看的這一頁——
+        而參數的形狀讓那件事根本寫不出來。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>brand(label, href, icon_name | icon_src)</h3>      </div>
+    </header>      <section>    <div data-showcase="brand"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="brand"></pre>
+  <footer data-showcase-caption="brand"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>nav_links(request, links)——links 是 (route, label) 的序對</h3>      </div>
+    </header>      <section>    <div data-showcase="nav_links"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="nav_links"></pre>
+  <footer data-showcase-caption="nav_links"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>theme_toggle()——這顆是活的，會切換這一頁</h3>      </div>
+    </header>      <section>    <div data-showcase="theme_toggle"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="theme_toggle"></pre>
+  <footer data-showcase-caption="theme_toggle"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>breadcrumb(trail, separator)——href=none 標示當前頁</h3>      </div>
+    </header>      <section>    <div data-showcase="breadcrumb"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="breadcrumb"></pre>
+  <footer data-showcase-caption="breadcrumb"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="overlay">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Overlay</h2><p class="text-muted-foreground text-sm">一個 id 進去，四個出來——而且對不上時不會出聲。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>ui/overlay.html</code> 裡的每一個都由 Basecoat 自己的 JavaScript 驅動，外殼已經載了它，
+        而且它會在 <code>htmx:afterSwap</code> 時重新掃描——所以由 swap 送進來的浮層不需要任何額外處理就能用。
+      </p>
+      <p>
+        它們共同的東西是 <strong>id 接線</strong>。一個觸發元素和它的面板靠四個相關的 id 互相找到對方，
+        錯一個就靜靜地失敗：面板打得開但永遠不會被唸出來，或者根本打不開。這裡每個 macro 都只收一個
+        <code>id</code> 再自己推導其餘的。這就是它們是 macro 而不是一段可以複製的標記的全部理由。
+      </p>
+      <p>
+        <code>select_menu</code> 和 <code>combobox</code> 把值放在一個<strong>預先填好</strong>的隱藏欄位裡——
+        上游出貨的是 <code>value=""</code> 再用 JS 寫進去，那會讓任何重繪這個片段的來回弄丟已經選好的值。
+        這兩個都不如 <code>select_field</code>：原生的 <code>&lt;select&gt;</code> 一開始就是正確的，
+        而且只花一個元素而不是三十個。
+      </p>
+      <p>
+        兩個都收 <code>multiple=true</code>，而且從那一刻起 <code>selected</code> 收的是一個
+        <strong>list</strong>，不再是單一值。隱藏欄位裡放的是 Basecoat 的 JSON 陣列，
+        <code>multiselect_scripts()</code>——一支腳本，由有這種欄位的那一頁自己載入——在送出時
+        把它改寫成 HTML 一直以來的重複欄位寫法：<code>labels=bug&amp;labels=ui</code>。
+        所以路由那邊完全是平常的樣子：<code>labels: list[str] = Form([])</code>，沒有任何地方需要自己解析。
+        忘了載那支腳本的話，欄位會送出一整串 JSON 字串，換來一個 422——而頁面看起來明明填對了。
+      </p>
+      <p>
+        放在 <code>fieldset</code> 裡的一組 checkbox 送出的東西一模一樣，而且完全不需要腳本。
+        選項在十來個以內時它是更好的答案；超過那個數量，才輪到這兩個。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>popover(id, label, side, align, width)——區塊是內容</h3>      </div>
+    </header>      <section>    <div data-showcase="popover"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="popover"></pre>
+  <footer data-showcase-caption="popover"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>dropdown_menu(id, label) 搭配 menu_item / menu_group / menu_separator</h3>      </div>
+    </header>      <section>    <div data-showcase="dropdown_menu"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="dropdown_menu"></pre>
+  <footer data-showcase-caption="dropdown_menu"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>select_menu(name, options, selected)</h3>      </div>
+    </header>      <section>    <div data-showcase="select_menu"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="select_menu"></pre>
+  <footer data-showcase-caption="select_menu"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>combobox(name, options, selected, empty)</h3>      </div>
+    </header>      <section>    <div data-showcase="combobox"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="combobox"></pre>
+  <footer data-showcase-caption="combobox"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>select_menu(name, options, selected, multiple)——需要 multiselect_scripts()</h3>      </div>
+    </header>      <section>    <div data-showcase="select_menu_multiple"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="select_menu_multiple"></pre>
+  <footer data-showcase-caption="select_menu_multiple"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>combobox(name, options, selected, multiple)——chips 由 JS 畫</h3>      </div>
+    </header>      <section>    <div data-showcase="combobox_multiple"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="combobox_multiple"></pre>
+  <footer data-showcase-caption="combobox_multiple"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>visible_label / hint / error——同樣兩支控制項，渲染成 field</h3>      </div>
+    </header>      <section>    <div data-showcase="select_menu_field"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="select_menu_field"></pre>
+  <footer data-showcase-caption="select_menu_field"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>drawer(id, title, side) 搭配 drawer_trigger(label, target)</h3>      </div>
+    </header>      <section>    <div data-showcase="drawer"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="drawer"></pre>
+  <footer data-showcase-caption="drawer"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>command(id, dialog) 搭配 command_group / command_item</h3>      </div>
+    </header>      <section>    <div data-showcase="command"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="command"></pre>
+  <footer data-showcase-caption="command"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="shell">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Shell</h2><p class="text-muted-foreground text-sm">唯一一個你 extends 而不是 import 的檔案——也就是你正在看的這一頁。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>shell.html</code> 沒有 macro，也沒有預覽，因為預覽就是這一頁。
+        它擁有 <code>&lt;head&gt;</code>、深色模式的閃爍防護、資源連結、toaster，
+        以及 header／main／footer 這副骨架。它不擁有的——你的品牌、你的導覽、你的頁尾文字——都是 block。
+      </p>
+      <p>
+        其中一個 block 改變的是頁面的形狀而不是內容。填了 <code>sidebar</code>，
+        骨架就變成側邊欄加一條細的頂列；外殼自己會去測那個 block 是不是空的，
+        並在頁首補上 <code>sidebar_trigger</code>——所以 app 從來不必另外設一個旗標說自己要哪一種版面。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>你的 base.html，完整版</h3>      </div>
+    </header>      <div class="border-t">  <pre class="code-block scrollbar" tabindex="0" data-snippet-code="shell"></pre>
+  <footer data-snippet-caption="shell"></footer>
+</div>
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>外殼開放的每一個 block，依原始碼順序</h3>      </div>
+    </header>      <div class="border-t">  <pre class="code-block scrollbar" tabindex="0" data-snippet-code="shell_blocks"></pre>
+  <footer data-snippet-caption="shell_blocks"></footer>
+</div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="sidebar">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">ui/ 裡的每個 macro，按檔案列</h2><p class="text-muted-foreground text-sm">十二個檔案。如果這裡沒有，那就是你還沒找到的某個參數。</p>      </div>
-      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+<h2 class="text-lg font-semibold tracking-tight">Sidebar</h2><p class="text-muted-foreground text-sm">一個後台大約在六個目的地之後就撐不住一排頁首導覽。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        這一頁左邊那條側欄就是這個檔案。底下沒有放進 card 的預覽，而那才是誠實的呈現：
+        面板是 <code>position: fixed</code>，複製一份放在這裡只會蓋住整頁，而不是待在卡片裡。
+        正在跑的那一個就在左邊，產生它的那段呼叫印在下面。
+      </p>
+      <p>
+        一樣是路由名稱、用名字指定的圖示、封閉列舉，簽名裡沒有任何 class 字串。
+        <code>open</code> 只是<em>桌面</em>的起始狀態：在窄螢幕上側欄一律從關閉開始，
+        因為它在那裡是整頁覆蓋的浮層，而一開啟就被自己的導覽蓋住的頁面是 bug，不是偏好。
+      </p>
+      <p>
+        關掉 JavaScript 時，伺服器端渲染的 <code>aria-hidden="false"</code> 讓寬螢幕照樣可以導覽，
+        並在窄螢幕上把浮層藏起來。兩種情況下連結都留在 HTML 裡，所以爬蟲與閱讀模式仍然看得到。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>packages/fjkit/src/fjkit/templates/ui/</h3>      </div>
-    </header>      <div class="border-t">      <pre class="code-block scrollbar" tabindex="0" id="cheatsheet-code"></pre>
+<h3>sidebar block，就是這個站填的那一份</h3>      </div>
+    </header>      <div class="border-t">  <pre class="code-block scrollbar" tabindex="0" data-snippet-code="sidebar"></pre>
+  <footer data-snippet-caption="sidebar"></footer>
 </div>
   </div>
-<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="table">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
+</div><section class="flex flex-col gap-6">
       <div>
-<h3>接著讀</h3>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Table</h2><p class="text-muted-foreground text-sm">把 rows 傳進去，空狀態就歸 macro 管。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>columns</code> 是一串 dict——<code>label</code>，需要時再加 <code>align</code> 或
+        <code>width</code>——而 <code>rows</code> 是這支 macro 用來決定要渲染你的內容還是空狀態的東西。
+        這就是它收了一份自己並不迭代的 rows 的全部理由：沒有任何呼叫端要重寫 if-rows-else，
+        也沒有任何一頁能出貨一張只剩表頭的表格。
+      </p>
+      <p>
+        重複的 row 是你迴圈裡的一次 macro 呼叫。在那裡用
+        <code>{% include %}</code> 等於每一輪都多一次模板查找與一份新的 context，
+        那正是「上手」那一頁的 benchmark 量到的差距。
+      </p>
+</div>
+    <div class="card">          <div id="table-controls" data-controls></div>
+
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>預覽</h3>      </div>
+    </header>      <section>    <div id="table-preview"></div>
+
+</section>
+  </div><div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="Representation"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="table-jinja"
+                aria-selected="true">你寫的</button>
+        <button type="button" role="tab" aria-controls="table-html"
+                aria-selected="false">它吐出來的</button>
+    </nav><div id="table-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="table-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="table-caption"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="tabs">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">13</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Tabs</h2><p class="text-muted-foreground text-sm">兩個 id，傳一次，鍵盤的事歸 Basecoat。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        哪一個分頁被選取、roving tabindex、方向鍵，全部是 Basecoat 的，而外殼已經載好了它。
+        這支 macro 帶的是那套行為要讀的 aria 契約：一個 <code>[role="tab"]</code>，
+        它的 <code>aria-controls</code> 指到同名 id 的 <code>[role="tabpanel"]</code>。
+        手寫這組配對正好是元件應該替你省掉的那種事。
+      </p>
+      <p>
+        <code>selected</code> 指名一開始就打開的那個分頁，而伺服器知道這次請求是為了哪一個——
+        所以它是一個參數，而不是繪製之後由腳本決定的東西。
+        這一頁每一組旋鈕底下那兩個表示法，用的就是這支 macro。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>tabs(items, label, selected) / tab_panel(id)——兩支都吃區塊</h3>      </div>
+    </header>      <section>    <div data-showcase="tabs"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tabs"></pre>
+  <footer data-showcase-caption="tabs"></footer>
+
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="next">
+<section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">接著讀</h2><p class="text-muted-foreground text-sm">十四個檔案，以及把它們全部列在同一頁的那份索引。</p>      </div>
+    <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>文件的其他部分</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>上手</h4><p><a href="learn.html">各個零件怎麼接，以及 htmx 送出什麼</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>速查表</h4><p><a href="cheatsheet.html">每一支 macro，一個檔案一張表，含它吃不吃區塊，以及搭配的 htmx 屬性</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>上手</h4><p><a href="learn.html">各個零件怎麼接，以及 htmx 送出什麼</a></p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>原始碼</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>examples/fjkit-demo/</h4><p>同一批 macro 放在一支能跑的 app 裡，在 repo 中</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>src/fjkit/templates/ui/</h4><p>macro 原始碼——每一個都以自己的簽名註解開頭</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>src/fjkit/static/src/fjkit.css</h4><p>每個 variant 背後那張 token 表</p>    </section>  </div></div></div>
   </div>
-      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>找不到想要的 macro 時</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>先看參數</h4><p>多數需求其實是一個已經存在的關鍵字——size、tone、padded、align</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>直接傳過去</h4><p>任何多的關鍵字都會變成屬性，這涵蓋了所有 hx-*、aria-* 與 data-*</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fjkit eject</h4><p>把元件複製進你的 app 再改——代價是之後上游的修正你拿不到</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>開一張 issue</h4><p>被擋下來的 class 指名了那個還不存在的元件；那就是最好的回報內容</p>    </section>  </div></div></div>
-  </div>
 </div>
-</section></div></div>
+</section></div>
 <hr class="border-border">
 
 </div>    </main>
@@ -669,8 +974,16 @@ fjkit
   </div>
 
 <div id="toaster" class="toaster" data-align="end"></div>
+  <script>
+    document.body.addEventListener("fjkit:toast", (event) => {
+      const toaster = document.getElementById("toaster");
+      if (!toaster || !toaster.toast) return;
+      for (const message of event.detail?.messages ?? []) toaster.toast(message);
+    });
+  </script>
   <script defer src="../assets/data.js?v=0.1.0.dev0"></script>
   <script defer src="../assets/common.js?v=0.1.0.dev0"></script>
   <script defer src="../assets/components.js?v=0.1.0.dev0"></script>
+  <script defer src="../assets/js/reveal.js?v=1788336837"></script>
 </body>
 </html>

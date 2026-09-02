@@ -1,26 +1,16 @@
-"""HTTP surface for the task board.
-
-Routers do three things and nothing else: read the request, call the service,
-name a template. The template name lives on `@render`, so the body of a handler
-only ever builds and returns its response model — and that model's annotation is
-what FastAPI turns into `response_model`, so one declaration describes both the
-page and the JSON.
-
-Every mutating endpoint answers with the *same* board partial the full page
-embeds, so there is only ever one definition of what a board looks like.
-"""
+"""Task board routes. Every mutation returns the board partial."""
 
 from __future__ import annotations
 
 from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fjkit import render
 
 from app.features.tasks.schemas import (
     BoardResponse,
+    Label,
     Priority,
     ReportResponse,
     Status,
@@ -40,19 +30,16 @@ def get_service(request: Request) -> TaskService:
 ServiceDep = Annotated[TaskService, Depends(get_service)]
 
 
-#: Option lists are built here, not in the template. Templates that reshape
-#: data grow map/select/zip filter chains that are slower than the equivalent
-#: Python and much harder to read; the rule is that a template prints what it
-#: is handed. These are module constants because they never change.
+#: Option lists for the board's controls.
 STATUS_FILTERS: list[tuple[Status | None, str]] = [(None, "All")] + [(s, s.value.capitalize()) for s in Status]
 PRIORITY_OPTIONS: list[tuple[Priority, str]] = [(p, p.value.capitalize()) for p in Priority]
+LABEL_OPTIONS: list[tuple[Label, str]] = [
+    (label, label.value.upper() if len(label.value) <= 2 else label.value.capitalize()) for label in Label
+]
 
 
 def _board(service: TaskService, status: Status | None = None, owner: str | None = None) -> BoardResponse:
-    # The mutating endpoints have to preserve the active filter, so every row
-    # action carries it as a query string. Built here rather than concatenated
-    # in the template: urlencode gets the "?" and the "&" right, and an empty
-    # filter produces an empty string instead of a bare "?".
+    # Query string the row actions carry, so a mutation keeps the active filter.
     active = {k: v for k, v in (("status", status), ("owner", owner)) if v}
     return BoardResponse(
         tasks=service.list(status=status, owner=owner),
@@ -72,7 +59,7 @@ def tasks_page(
     status: Status | None = None,
     owner: str | None = None,
 ) -> BoardResponse:
-    """The full page — and, for an htmx swap, just the board inside it."""
+    """Render the tasks page, or just the board for an htmx request."""
     return _board(service, status, owner)
 
 
@@ -83,25 +70,15 @@ def tasks_board(
     status: Status | None = None,
     owner: str | None = None,
 ) -> BoardResponse:
-    """The htmx target, addressable on its own.
-
-    Same handler body as the page above, and `@render` there would already
-    serve the partial to an htmx request. This route stays because the board is
-    a resource with its own URL: `hx-get` names it explicitly rather than
-    relying on a header to change what `/tasks` means.
-    """
+    """Render the board partial."""
     return _board(service, status, owner)
 
 
 @router.post("/tasks", name="tasks_create")
 @render("tasks/_board.html")
-def create_task(
-    service: ServiceDep,
-    title: Annotated[str, Form()],
-    priority: Annotated[Priority, Form()] = Priority.NORMAL,
-    owner: Annotated[str, Form()] = "unassigned",
-) -> BoardResponse:
-    service.create(TaskCreate(title=title, priority=priority, owner=owner))
+def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
+    """Create a task from the JSON body and return the board."""
+    service.create(payload)
     return _board(service)
 
 
@@ -131,16 +108,8 @@ def delete_task(
     return _board(service, status, owner)
 
 
-@router.get("/tasks/{task_id}/edit", name="tasks_edit")
-@render("tasks/edit.html")
-def edit_task(service: ServiceDep, task_id: int) -> TaskEditResponse:
-    """The edit form, on a page of its own.
-
-    Deliberately not an htmx swap. Everything else on this board is one, so
-    without this route the demo would only ever show half of what `ui/form.html`
-    does — `form()` with no `target=` emits an ordinary POST, and the fields do
-    not know the difference. This page needs no JavaScript at all.
-    """
+def _edit_view(service: TaskService, task_id: int) -> TaskEditResponse:
+    """Build the edit form's context for one task."""
     task = service.get(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="task not found")
@@ -151,42 +120,34 @@ def edit_task(service: ServiceDep, task_id: int) -> TaskEditResponse:
         task=task,
         priority_options=PRIORITY_OPTIONS,
         owner_options=[(o, o.capitalize()) for o in owners],
+        label_options=LABEL_OPTIONS,
     )
 
 
-@router.post("/tasks/{task_id}/edit", name="tasks_update")
+@router.get("/tasks/{task_id}/edit", name="tasks_edit")
+@render("tasks/edit.html", partial="tasks/_edit_form.html")
+def edit_task(service: ServiceDep, task_id: int) -> TaskEditResponse:
+    """Render the edit page, or just the form for an htmx request."""
+    return _edit_view(service, task_id)
+
+
+@router.put("/tasks/{task_id}", name="tasks_update")
 def update_task(
     request: Request,
     service: ServiceDep,
     task_id: int,
-    title: Annotated[str, Form()],
-    priority: Annotated[Priority, Form()] = Priority.NORMAL,
-    owner: Annotated[str, Form()] = "unassigned",
-    notes: Annotated[str, Form()] = "",
-    # An unticked box posts nothing at all, so "absent" is what off looks like
-    # on the wire. A default of False is the whole of reading a checkbox — no
-    # hidden companion field, because this form posts every field it owns.
-    blocked: Annotated[bool, Form()] = False,
-    watching: Annotated[bool, Form()] = False,
-) -> RedirectResponse:
-    """Save, then redirect. No `@render` here — the answer is a Location, not
-    markup, and 303 is what stops a refresh from re-posting the form."""
-    payload = TaskUpdate(title=title, priority=priority, owner=owner, notes=notes, blocked=blocked, watching=watching)
+    payload: TaskUpdate,
+) -> Response:
+    """Update a task from the JSON body, then answer 204 with `HX-Redirect` to the board."""
     if service.update(task_id, payload) is None:
         raise HTTPException(status_code=404, detail="task not found")
-    return RedirectResponse(url=str(request.url_for("tasks_page")), status_code=303)
+    return Response(status_code=204, headers={"HX-Redirect": str(request.url_for("tasks_page"))})
 
 
 @router.get("/tasks/report", name="tasks_report")
 @render("tasks/report.html", stream=True)
 def tasks_report(service: ServiceDep, rows: int = 5000) -> ReportResponse:
-    """A deliberately oversized page, rendered as a stream.
-
-    Buffering the same table into one string costs peak memory proportional to
-    the whole document; streaming it costs one chunk. `stream=True` is the only
-    difference from any other route here — streaming is a property of how the
-    template is rendered, not of the template or of the model.
-    """
+    """Render a report of `rows` rows as a stream."""
     tasks = service.list()
     repeated = [tasks[i % len(tasks)] for i in range(max(rows, 1))]
     return ReportResponse(tasks=repeated)
