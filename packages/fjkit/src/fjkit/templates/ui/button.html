@@ -2,14 +2,15 @@
 {% from "ui/icon.html" import icon %}
 
 {#
-  button(label, variant, size, href, icon_name, …, **html_attrs)
+  button(label, variant, size, href, icon_name, …, **html_attrs) — a button, or
+  an anchor styled as one when `href` is given.
 
   variant: primary | secondary | outline | ghost | link | destructive
   size:    xs | sm | default | lg | icon | icon-sm | icon-xs
 
-  Note what the signature does NOT accept: a class string. Callers pick a
-  variant, never a colour. That is the whole reason components are macros with
-  named parameters — the parameter list *is* the contract, and it can say no.
+  The signature accepts no class string. Callers pick a variant, never a
+  colour: the parameter list is the contract, and a named parameter can refuse
+  what a class attribute cannot.
 
   Variants and sizes are attributes, not classes (`data-variant="primary"`),
   because that is Basecoat's API. Extend it the same way; never invent a
@@ -43,18 +44,17 @@
 
 {% macro button_group(gap=2, orientation="horizontal") -%}
   {#
-    `caller()` is evaluated into a variable *before* the inner {% call %}.
-    Inside a call block Jinja rebinds `caller` to that block's own caller, so a
-    macro that forwards its body into another block macro must capture it first
-    — otherwise it reads the inner (non-existent) caller and raises
-    "No caller defined". Any composite macro here has to do the same.
+    Capture `caller()` before the inner {% call %}. Jinja rebinds `caller`
+    inside a call block to that block's own caller, so a macro that forwards
+    its body into another block macro reads the inner, non-existent caller and
+    raises "No caller defined". Every composite macro here captures first.
   #}
   {%- set body = caller() -%}
   {#
-    Basecoat's `.button-group` already understands `data-orientation="vertical"`
-    — it flips the flex direction and moves the shared borders to the
-    horizontal edges. Exposing it costs one closed lookup and saves every app
-    that needs a column of choices from writing `flex-col` itself.
+    Basecoat's `.button-group` already reads `data-orientation="vertical"`: it
+    flips the flex direction and moves the shared borders to the horizontal
+    edges. Exposing it costs one branch and saves every app that needs a column
+    of choices from writing `flex-col` itself.
   #}
   {%- if orientation == "vertical" -%}
     <div class="button-group" data-orientation="vertical"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ body }}</div>

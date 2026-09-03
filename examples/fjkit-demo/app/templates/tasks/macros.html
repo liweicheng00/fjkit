@@ -32,7 +32,6 @@
                   hx_post=url_for(request, "tasks_advance", task_id=task.id) ~ filter_query,
                   hx_target="#board", hx_swap="outerHTML",
                   hx_disabled_elt="this") }}
-        {# A link to the edit page. #}
         {{ button("", variant="ghost", size="icon-xs", icon_name="pencil",
                   aria_label="Edit " ~ task.title,
                   href=url_for(request, "tasks_edit", task_id=task.id)) }}

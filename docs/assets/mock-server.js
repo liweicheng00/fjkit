@@ -1,9 +1,9 @@
   /* The mock server, installed before htmx loads.
    *
    * htmx sends real XMLHttpRequests. This shim answers the ones addressed to
-   * /demo/* and forwards everything else to the browser's own XHR, so the
-   * demos below are genuine htmx round trips — real headers, real latency, a
-   * real swap — with the FastAPI side played by 60 lines of JavaScript. */
+   * /demo/* and forwards the rest to the browser's own XHR, so the demos below
+   * are genuine htmx round trips — real headers, real latency, a real swap —
+   * with the FastAPI side played by 60 lines of JavaScript. */
   (() => {
     const Native = window.XMLHttpRequest;
     const routes = [];
@@ -21,9 +21,9 @@
         this.readyState = 0;
         this.status = 0;
         this.responseText = "";
-        // htmx attaches progress listeners to both the request and its upload,
-        // so the upload has to be an event target even though a mock never
-        // reports progress.
+        // htmx attaches progress listeners to the request and its upload, so
+        // the upload has to be an event target even though a mock reports no
+        // progress.
         this.upload = { addEventListener() {}, removeEventListener() {} };
         this._listeners = {};
       }
@@ -84,8 +84,8 @@
           this.statusText = status === 200 ? "OK" : "";
           this.responseText = text;
           this.response = text;
-          // Absolute, because htmx compares it against the document's origin
-          // before it will trust a response.
+          // Absolute: htmx compares it against the document's origin before it
+          // trusts a response.
           this.responseURL = new URL(this.url, document.baseURI).href;
           this.readyState = 4;
           listeners.forEach((fn) => fn(request, { status, text }));

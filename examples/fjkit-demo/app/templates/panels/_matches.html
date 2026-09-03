@@ -6,19 +6,18 @@
 
   The hidden input is what makes the lazy panels possible. An `intersect` carries
   no event to read an id out of, and a panel that was hidden when the pick
-  happened never heard one either — so the id has to sit somewhere both paths can
-  reach, and that is the page. Its being *current* by the time anything reads it
-  is the routes' job: they broadcast with `hx_trigger_after_swap`, which fires
-  after this table is in the document rather than before.
+  happened never heard one either, so the id has to sit where both paths can
+  reach it: the page. Keeping it current is the routes' job — they broadcast with
+  `hx_trigger_after_swap`, which fires after this table is in the document rather
+  than before.
 
-  It is written down only when there *is* an id, and that is not tidiness. An
+  The input is rendered only when there is an id, and that is not tidiness. An
   `hx-include` sends whatever it selects, so an input rendered `value=""` on the
   cold page sends `task_id=`, and an empty string is not an integer: the first
-  panel to open on a fresh page answers 422 before anyone has picked anything.
-  A selector that matches nothing sends nothing, which is exactly what "nothing
-  is picked" means, and it is the state every panel route already takes as its
-  default. A value a route cannot parse is never the way to say a value is
-  absent.
+  panel to open on a fresh page answers 422 before anyone has picked anything. A
+  selector that matches nothing sends nothing, which is what "nothing is picked"
+  means, and it is the state every panel route already defaults to. A value a
+  route cannot parse is never the way to say a value is absent.
 #}
 {% from "ui/data.html" import card %}
 {% from "ui/table.html" import table %}

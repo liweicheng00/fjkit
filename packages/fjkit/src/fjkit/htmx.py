@@ -22,10 +22,10 @@ __all__ = [
     "target",
 ]
 
-#: Anything that accepts `headers["HX-Retarget"] = …` — a `Response`, a
+#: Anything that accepts `headers["HX-Retarget"] = …`: a `Response`, a
 #: `MutableHeaders`, or the plain dict `@render` builds a reply from. Typed as
-#: the intersection rather than as `Response`, because the interesting caller is
-#: an exception handler that has not built its response yet.
+#: the intersection rather than as `Response`, because the caller that matters
+#: is an exception handler that has not built its response yet.
 Headers = MutableMapping[str, str]
 
 

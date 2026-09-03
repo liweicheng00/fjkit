@@ -1,4 +1,7 @@
-"""In-memory store and runner for background jobs. `run()` is sync so Starlette runs it in the threadpool."""
+"""In-memory store and runner for background jobs.
+
+`run()` is sync, so Starlette runs it in the threadpool.
+"""
 
 from __future__ import annotations
 
@@ -52,7 +55,7 @@ class JobService:
                 self._jobs[job_id] = job.model_copy(update={"state": JobState.DONE})
 
     def clear_finished(self) -> int:
-        """Remove every job that is not running. Returns how many were removed."""
+        """Remove every job that is not running. Returns the number removed."""
         with self._lock:
             gone = [job_id for job_id, job in self._jobs.items() if not job.running]
             for job_id in gone:
@@ -65,6 +68,6 @@ class JobService:
 
     @staticmethod
     def _fails_at(job: Job, step: int) -> bool:
-        """Whether a failing kind fails at this step (past the halfway point)."""
+        """Report whether a failing kind fails at this step: past the halfway point."""
         _, total, fails = KINDS[job.kind]
         return fails and step > total // 2

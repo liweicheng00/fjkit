@@ -1,22 +1,21 @@
-"""Run one request against the app itself and record what came back.
+"""Run one request against the app itself and record the response.
 
-The obvious implementation is the one Swagger UI uses: `fetch()` from the page.
-It is also the one that cannot work here. The credential this kit issues is an
-HttpOnly cookie — no script can read it, attach it, or refresh it — and the
-whole point of `fjkit.auth` is that this is a feature. A console built on
-`fetch()` would either send no credential at all or force the app to hand one
-to JavaScript, which is the design being replaced.
+Swagger UI calls `fetch()` from the page, which cannot work here. The credential
+this kit issues is an HttpOnly cookie: no script can read it, attach it or
+refresh it, and `fjkit.auth` treats that as a feature. A console built on
+`fetch()` would either send no credential at all or force the app to hand one to
+JavaScript, which is the design being replaced.
 
-So the call is made **server-side, in-process**: a fresh ASGI scope through
-`app` itself. Everything the browser would have contributed is forwarded from
-the console's own request — the session cookie above all — which means the
-call travels the real middleware stack. `AuthPlugin` loads the session, renews
-the token if it is expiring, and refuses the call if it cannot. What you see in
-the result panel is what the endpoint does for *you*, right now.
+So the call runs server-side, in-process: a fresh ASGI scope through `app`
+itself. Everything the browser would have contributed is forwarded from the
+console's own request — the session cookie above all — so the call travels the
+real middleware stack. `AuthPlugin` loads the session, renews an expiring token,
+and refuses the call if it cannot. The result panel shows what the endpoint does
+for this caller, now.
 
-No socket is opened and no server needs to be reachable from itself, so this
-works behind a proxy, in a test client, and on a machine with no route to its
-own public hostname.
+No socket is opened and no server has to be reachable from itself, so this works
+behind a proxy, in a test client, and on a machine with no route to its own
+public hostname.
 """
 
 from __future__ import annotations
@@ -37,11 +36,11 @@ from fjkit.rendering import SCOPE_RENDER_MODE
 
 __all__ = ["Recorded", "RecursionRefused", "call"]
 
-#: Request headers the console never forwards from its own request. Each one
-#: describes the console's POST rather than the call being made: a length and a
-#: content type that belong to the form, and the htmx headers, which name the
-#: element *this page* is swapping. An app that reads `HX-Target` would act on
-#: a target that has nothing to do with the endpoint it is answering.
+#: Request headers the console never forwards. Each describes the console's own
+#: POST rather than the call being made: the length and content type of the
+#: form, and the htmx headers, which name the element this page is swapping. An
+#: app that reads `HX-Target` would act on a target unrelated to the endpoint it
+#: is answering.
 _DROPPED = frozenset(
     {
         "content-length",
@@ -59,19 +58,19 @@ _DROPPED = frozenset(
 )
 
 #: Marks a scope this module created, so a call that reaches the console again
-#: can be refused rather than recursing until the stack runs out.
+#: is refused rather than recursing until the stack runs out.
 _DEPTH_KEY = "fjkit_apidocs_depth"
 
 #: Where an escaping exception is written.
 #:
-#: This is the one thing an in-process replay genuinely takes away. A request
-#: that arrives over a socket has a server above it — uvicorn, gunicorn — whose
-#: job is to log the traceback of anything the app lets through. Here the caller
-#: is this module, `except Exception` is what stops a failing endpoint from
-#: 500-ing the docs page along with it, and without this line the traceback
-#: would exist nowhere: the panel gets `ZeroDivisionError: division by zero` and
-#: no file, no line, no frames. The report is for the person reading the page;
-#: this is for the same person ten seconds later, reading the log.
+#: This is what an in-process replay takes away. A request arriving over a socket
+#: has a server above it — uvicorn, gunicorn — that logs the traceback of
+#: anything the app lets through. Here the caller is this module, and its
+#: `except Exception` is what stops a failing endpoint from 500-ing the docs page
+#: with it. Without this logger the traceback would exist nowhere: the panel gets
+#: `ZeroDivisionError: division by zero` and no file, no line, no frames. The
+#: panel serves the person reading the page; this serves the same person ten
+#: seconds later, reading the log.
 _log = logging.getLogger("fjkit.apidocs.console")
 
 
@@ -91,8 +90,8 @@ class Recorded:
     media_type: str = ""
     elapsed_ms: float = 0.0
     truncated: bool = False
-    #: Set instead of a status when the call never produced a response — a
-    #: timeout, or an exception escaping the app.
+    #: Set instead of a status when the call produced no response: a timeout, or
+    #: an exception escaping the app.
     error: str = ""
     request_headers: tuple[tuple[str, str], ...] = field(default_factory=tuple)
 
@@ -102,14 +101,13 @@ class Recorded:
 
     @property
     def reason(self) -> str:
-        """The status line's phrase — `OK`, `Not Found` — or nothing.
+        """Return the status line's phrase — `OK`, `Not Found` — or nothing.
 
-        Driven by the status and not by `error`, because the two are
+        Driven by the status rather than by `error`, because the two are
         independent: ServerErrorMiddleware sends a 500 and then re-raises, so a
         call can have both a real status and an escaped exception. Answering
-        "no response" here put that phrase *next to the 500* the app had
-        plainly sent, which is a debugging tool contradicting itself in one
-        badge.
+        "no response" here put that phrase next to the 500 the app had sent —
+        one badge contradicting itself.
         """
         if not self.status:
             return ""
@@ -120,7 +118,7 @@ class Recorded:
 
     @property
     def tone(self) -> str:
-        """The badge variant for the status. Closed set — see `ui/data.html`."""
+        """Map the status to a badge variant. Closed set — see `ui/data.html`."""
         if self.error:
             return "destructive"
         if self.status >= 500:
@@ -133,7 +131,7 @@ class Recorded:
 
     @property
     def pretty(self) -> str:
-        """The body, re-indented when it is JSON and left alone when it is not."""
+        """Return the body, re-indented when it is JSON and unchanged otherwise."""
         if "json" not in self.media_type or not self.body:
             return self.body
         try:
@@ -156,9 +154,9 @@ async def call(
 ) -> Recorded:
     """Send `method path` through `request.app` and record the response.
 
-    `request` is the console's own request, and it is the source of everything
-    that makes the call *this caller's* call: the cookie jar, the origin, the
-    client address, the root path a proxy put in front of the app.
+    `request` is the console's own request, and the source of everything that
+    makes this the caller's own call: the cookie jar, the origin, the client
+    address, and the root path a proxy put in front of the app.
     """
     app = request.app
     root_path: str = request.scope.get("root_path", "") or ""
@@ -181,9 +179,9 @@ async def call(
         "http_version": "1.1",
         "method": method.upper(),
         "scheme": request.url.scheme,
-        # `root_path` included in `path`, which is what a server sends and what
-        # Starlette's router expects to strip. Getting this wrong is invisible
-        # until the app is mounted under a prefix, and then every call 404s.
+        # `path` includes `root_path`: that is what a server sends and what
+        # Starlette's router strips. Getting this wrong stays invisible until
+        # the app is mounted under a prefix, and then every call 404s.
         "path": f"{root_path}{target}",
         "raw_path": f"{root_path}{target}".encode(),
         "root_path": root_path,
@@ -191,19 +189,17 @@ async def call(
         "headers": [(k.encode("latin-1"), v.encode("latin-1")) for k, v in sent],
         "client": request.scope.get("client"),
         "server": request.scope.get("server"),
-        # Whatever the server put in lifespan state — a connection pool, a
-        # client — has to survive, or every app that keeps its dependencies
-        # there gets a console that only knows how to raise. It is a shallow
-        # copy: values are shared, but a key this call sets does not leak back
-        # into the console's own request.
+        # Lifespan state — a connection pool, a client — has to survive, or an
+        # app that keeps its dependencies there gets a console that only
+        # raises. Shallow copy: values are shared, but a key this call sets
+        # does not leak back into the console's own request.
         "state": dict(request.scope.get("state") or {}),
-        # Ask for the data, not the page. A console that showed a full HTML
-        # document where the API returns a model is answering a question nobody
-        # asked — and under `render_mode="auto"` that is what a page route hands
-        # back, because `serves_a_page` is decided by the route's shape rather
-        # than by who is calling. This says who is calling. A route that
+        # Ask for the data, not the page. Under `render_mode="auto"` a page
+        # route hands back a full HTML document where the API returns a model,
+        # because `serves_a_page` is decided by the route's shape rather than
+        # by who is calling. This key says who is calling. A route that
         # declared `mode="html"` still wins: it has said it has no data form,
-        # and the console is not the place to overrule that.
+        # and the console does not overrule that.
         SCOPE_RENDER_MODE: "json",
         _DEPTH_KEY: 1,
     }
@@ -213,8 +209,8 @@ async def call(
     async def receive() -> Mapping[str, Any]:
         nonlocal received
         if received:
-            # An app that reads the body twice — or a middleware that does —
-            # must not be left hanging on a message that never arrives.
+            # An app or a middleware that reads the body twice must not hang
+            # waiting for a message that never arrives.
             return {"type": "http.disconnect"}
         received = True
         return {"type": "http.request", "body": body, "more_body": False}
@@ -240,8 +236,8 @@ async def call(
             chunk = message.get("body") or b""
             if size < max_body:
                 chunks.append(chunk[: max_body - size])
-            # Counted before the cap so a stream that never ends still stops
-            # accumulating rather than stopping only once it fits.
+            # Count the whole chunk, not the slice kept, so an endless stream
+            # passes `max_body` and stops accumulating.
             size += len(chunk)
 
     started = time.perf_counter()
@@ -251,15 +247,14 @@ async def call(
         recorded.error = f"the call did not finish within {timeout:g}s"
     except Exception as exc:  # noqa: BLE001 — the console's job is to report it
         # Reporting beats 500-ing the docs page, which would lose the request
-        # the developer just spent a minute filling in. But reporting is not
+        # the developer just spent a minute filling in. Reporting is not
         # swallowing: the traceback goes to the log first, because this module
-        # is standing where a real server would be and nothing else is going to
-        # write it down.
+        # stands where a real server would and nothing else writes it down.
         #
-        # `recorded.status` may well be set by the time this runs. Starlette's
-        # ServerErrorMiddleware sends its 500 and *then* re-raises, so both
-        # halves are true at once — the app answered, and something escaped
-        # afterwards. The result panel shows both.
+        # `recorded.status` may already be set. Starlette's
+        # ServerErrorMiddleware sends its 500 and then re-raises, so both are
+        # true at once: the app answered, and something escaped afterwards. The
+        # result panel shows both.
         _log.exception("fjkit apidocs: %s %s raised", method.upper(), target)
         recorded.error = f"{type(exc).__name__}: {exc}"
     recorded.elapsed_ms = (time.perf_counter() - started) * 1000
@@ -271,23 +266,23 @@ async def call(
 
 
 def _headers(request: Request, extra: Mapping[str, str], body: bytes) -> list[tuple[str, str]]:
-    """The console's own headers, minus its plumbing, plus the flow's.
+    """Build the call's headers: the console's own, minus its plumbing, plus the flow's.
 
-    Forwarding the cookie is the entire mechanism: it is what makes this the
+    Forwarding the cookie is the whole mechanism — it makes the call the
     caller's session rather than an anonymous one. Forwarding `origin` matters
-    almost as much — `fjkit.auth` checks it on every cookie-authenticated
-    write, so a call made without it would be refused as CSRF and the console
-    would look broken on exactly the endpoints it is most useful for.
+    nearly as much: `fjkit.auth` checks it on every cookie-authenticated write,
+    so a call without it is refused as CSRF and the console looks broken on
+    exactly the endpoints it is most useful for.
     """
-    # Lowercased, because ASGI says so and because Starlette's `Headers` takes
-    # it literally: it lowercases the name you *ask* for and compares it to the
-    # raw bytes in the scope. A header spelled `Authorization` there is invisible
-    # to `request.headers["authorization"]` — present on the wire, absent to
-    # every handler, and silent about it.
+    # Lowercased, because ASGI requires it and Starlette's `Headers` takes it
+    # literally: it lowercases the name asked for and compares it to the raw
+    # bytes in the scope. A header spelled `Authorization` there is invisible to
+    # `request.headers["authorization"]` — present on the wire, absent to every
+    # handler, and silent about it.
     out = [(k.lower(), v) for k, v in request.headers.items() if k.lower() not in _DROPPED]
     for key, value in extra.items():
-        # A flow's header replaces rather than joins: two `Authorization`
-        # headers is not a thing an app can act on.
+        # A flow's header replaces rather than joins: an app cannot act on two
+        # `Authorization` headers.
         name = key.lower()
         out = [(k, v) for k, v in out if k != name]
         out.append((name, value))

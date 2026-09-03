@@ -87,7 +87,7 @@ class TaskService:
             return task
 
     def update(self, task_id: int, payload: TaskUpdate) -> Task | None:
-        """Apply an edit. Returns `None` if the task does not exist."""
+        """Apply an edit. Returns `None` when the task does not exist."""
         with self._lock:
             task = self._tasks.get(task_id)
             if task is None:
@@ -123,11 +123,14 @@ class TaskService:
             return self._tasks.pop(task_id, None) is not None
 
     def count(self) -> int:
-        """Number of tasks on the board."""
+        """Count the tasks on the board."""
         return len(self._tasks)
 
     def search(self, query: str) -> list[Task]:
-        """Case-insensitive substring match over title, owner and notes. Empty query matches all."""
+        """Match `query` as a case-insensitive substring of title, owner or notes.
+
+        An empty query matches every task.
+        """
         needle = query.strip().casefold()
         tasks = self.list()
         if not needle:
@@ -135,12 +138,12 @@ class TaskService:
         return [t for t in tasks if needle in f"{t.title} {t.owner} {t.notes}".casefold()]
 
     def owner_facets(self, tasks: list[Task]) -> list[Facet]:
-        """Match counts per owner, alphabetical."""
+        """Count matches per owner, alphabetical."""
         counts = Counter(t.owner for t in tasks)
         return [Facet(label=owner, count=n) for owner, n in sorted(counts.items())]
 
     def priority_facets(self, tasks: list[Task]) -> list[Facet]:
-        """Match counts per priority, highest first, omitting empty levels."""
+        """Count matches per priority, highest first, omitting empty levels."""
         counts = Counter(t.priority for t in tasks)
         return [
             Facet(label=p.value.capitalize(), count=counts[p], variant=PRIORITY_VARIANT[p])
@@ -149,7 +152,7 @@ class TaskService:
         ]
 
     def stats(self, tasks: list[Task] | None = None) -> BoardStats:
-        """Status counts over the whole board, or over `tasks` if given."""
+        """Count statuses over the whole board, or over `tasks` when given."""
         tasks = list(self._tasks.values()) if tasks is None else tasks
         return BoardStats(
             total=len(tasks),

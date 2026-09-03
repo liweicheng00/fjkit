@@ -1,14 +1,14 @@
 {#
   Tabs — roadmap 0.7, pulled forward.
 
-  Basecoat already ships `.tabs` and its behaviour: its vendored script owns the
-  selection, the `hidden` on the other panels, and the ArrowLeft/Right/Home/End
-  keys. What it does not ship in `components/tabs.css` is a skin — that file is
-  flex direction and `outline-none`, nothing else. The *style pack* does ship
-  one, and it is a pill strip; fjkit draws underline tabs, so `fjkit.css` turns
-  the pack's geometry off before painting its own. Read that block before
-  changing anything here: the two skins overlapping is what put a phantom
-  scrollbar on the card's edge once already.
+  Basecoat already ships `.tabs` and its behaviour: its vendored script owns
+  the selection, the `hidden` on the other panels, and the
+  ArrowLeft/Right/Home/End keys. What `components/tabs.css` does not ship is a
+  skin — that file is flex direction and `outline-none`, nothing else. The
+  style pack does ship one, a pill strip; fjkit draws underline tabs, so
+  `fjkit.css` turns the pack's geometry off before painting its own. Read that
+  block before changing anything here: the two skins overlapping already put a
+  phantom scrollbar on the card's edge once.
 
   This macro carries the aria wiring the script needs, and nothing else.
 
@@ -17,8 +17,7 @@
       .tabs > [role="tablist"] > [role="tab"][aria-controls="<panel id>"]
       .tabs > [role="tabpanel"][id="<panel id>"]
 
-  Getting that pairing right by hand is exactly the kind of thing a component
-  should stop you having to think about.
+  Getting that pairing right by hand is what a component should remove.
 
       {% call tabs([{"id": "main", "label": "main.py"},
                     {"id": "router", "label": "router.py"}], label="File") %}
@@ -26,16 +25,16 @@
         {% call tab_panel("router") %}…{% endcall %}
       {% endcall %}
 
-  `items` is a list of dicts, the same shape `table` takes its columns in, and
-  extra keys are ignored — so a caller that already has a list of files can pass
-  it straight through instead of building a parallel one. It is the light half,
-  so it is a parameter while the panels are the body: same trade as `card`'s
+  `items` is a list of dicts, the shape `table` takes its columns in, and extra
+  keys are ignored — so a caller already holding a list of files passes it
+  straight through instead of building a parallel one. It is the light half, so
+  it is a parameter while the panels are the body: the same trade as `card`'s
   `actions`, because a two-slot call block renders its body once per slot and
   the body here is every panel's content.
 
   Ids are page-unique, like any id. A page with two tab groups over the same
-  subject prefixes them ("file-main", "diff-main"), the way it would for any
-  other pair of elements.
+  subject prefixes them ("file-main", "diff-main"), as it would for any other
+  pair of elements.
 #}
 {% from "ui/attrs.html" import attrs %}
 
@@ -68,52 +67,52 @@
 {%- endmacro %}
 
 {#
-  tab_panel(id, lazy, on, include) — the body for one tab. The id is what the
-  tab's `aria-controls` named; Basecoat hides and reveals it from there.
+  tab_panel(id, lazy, on, include) — the body for one tab. The id is the one
+  the tab's `aria-controls` named; Basecoat hides and reveals it from there.
 
-  No `hidden` is rendered here: its script sets that on init, and a panel that
-  arrived pre-hidden would be invisible to a reader with JavaScript off. This
-  way the panels stack and every one is legible.
+  No `hidden` is rendered here: Basecoat's script sets it on init, and a panel
+  that arrived pre-hidden would be invisible to a reader with JavaScript off.
+  This way the panels stack and every one is legible.
 
-  `lazy` is a URL, and it is the whole of what a panel needs to fetch its own
-  body when it is shown instead of when the page loads. The block's body is then
-  what stands in until the answer arrives — a `skeleton`, usually. Without
-  `lazy` the panel is inert markup, exactly as before, and `on` and `include`
-  are read only alongside it because neither means anything on its own.
+  `lazy` is a URL, and it is all a panel needs to fetch its own body when it is
+  shown rather than when the page loads. The block's body then stands in until
+  the answer arrives — usually a `skeleton`. Without `lazy` the panel is inert
+  markup, and `on` and `include` are read only alongside it because neither
+  means anything on its own.
 
   Three decisions are baked in here so that no app template has to remember
-  them, and each of the three is a way this goes silently wrong by hand:
+  them. Each is a way this goes silently wrong when written by hand:
 
-  * **`intersect`, never `revealed`.** htmx tests `revealed` with
+  * `intersect`, never `revealed`. htmx tests `revealed` with
     `getBoundingClientRect`, and an element hidden by `display:none` — which is
     what the `hidden` Basecoat sets means — reports an all-zero rect. `top <
     innerHeight` and `bottom >= 0` both hold for that rect, so every panel on
     the page counts as revealed and fetches at load. There is no error and no
-    empty panel to notice; the page is simply not lazy. `intersect` is an
+    empty panel to notice; the page is simply not lazy. `intersect` uses an
     `IntersectionObserver`, which reports a `display:none` element as not
-    intersecting, and fires when the tab is chosen.
-  * **A filter on every broadcast.** The events in `on` are raised on `<body>`,
-    and a hidden panel hears them exactly as well as the open one does. Four
-    tabs would mean four requests per broadcast, three of them for markup
-    nobody is looking at. `[!this.hidden]` is the whole of the fix, and it is
-    this short only because the trigger sits on the panel — the element that
-    carries the `hidden` — rather than on something inside it.
-  * **`innerHTML` onto the panel.** An element carrying `intersect` has to
-    survive its own reply. A panel replaced by markup that asked for `intersect`
-    again would be processed while on screen, fire immediately, and loop.
+    intersecting and fires when the tab is chosen.
+  * A filter on every broadcast. The events in `on` are raised on `<body>`, and
+    a hidden panel hears them as well as the open one does. Four tabs would
+    mean four requests per broadcast, three of them for markup nobody is
+    looking at. `[!this.hidden]` is the whole fix, and it is this short only
+    because the trigger sits on the panel — the element carrying the `hidden` —
+    rather than on something inside it.
+  * `innerHTML` onto the panel. An element carrying `intersect` has to survive
+    its own reply. A panel replaced by markup that asked for `intersect` again
+    would be processed while on screen, fire immediately, and loop.
 
   `include` is a selector for what the panel has to send: the id it is about,
-  the query it is filtered by. It is a selector rather than a value carried in
-  the event because the two paths into this panel do not agree on what an event
-  is — `intersect` has none. A panel that was hidden when the pick happened
-  never heard `task-selected` and has only the page to read, so the id has to be
-  *on* the page and the route that changes it has to say so **after** its own
-  swap: `@render(..., hx_trigger_after_swap=...)`. See `fjkit.rendering.render`.
+  the query it is filtered by. A selector rather than a value carried in the
+  event, because the two paths into this panel disagree on what an event is —
+  `intersect` has none. A panel hidden when the pick happened never heard
+  `task-selected` and has only the page to read, so the id has to be on the
+  page and the route that changes it has to say so **after** its own swap:
+  `@render(..., hx_trigger_after_swap=...)`. See `fjkit.rendering.render`.
 
   A lazy panel refetches every time it is shown, not only the first time. That
-  is the trade for not tracking which panels went stale while they were hidden,
-  and tracking that would need a listener on `<body>` — a script, for a page
-  that otherwise has none.
+  is the trade for not tracking which panels went stale while hidden; tracking
+  that would need a listener on `<body>` — a script, for a page that otherwise
+  has none.
 
       {% call tab_panel("tab-detail", lazy=url_for(request, "search_detail"),
                         on=["task-selected"], include="[name=task_id]") %}
@@ -128,8 +127,7 @@
     {%- if lazy %} hx-get="{{ lazy }}" hx-trigger="{{ trigger }}"
     {%- if include %} hx-include="{{ include }}"{% endif %} hx-target="this" hx-swap="innerHTML"
     {%- endif %}
-    {#- `attrs` last: a caller adding an attribute of its own must be able to
-        sit beside these, and a caller that needs a different swap is telling
-        you it is not this component. -#}
+    {#- `attrs` last, so a caller's own attribute sits beside these. A caller
+        that needs a different swap is not describing this component. -#}
     {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ caller() }}</div>
 {%- endmacro %}

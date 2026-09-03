@@ -1,4 +1,4 @@
-"""The source for an app with no upstream — which is also the default."""
+"""The source for an app with no upstream, and the default source."""
 
 from __future__ import annotations
 
@@ -11,12 +11,11 @@ __all__ = ["LocalSource"]
 
 
 class LocalSource:
-    """No token exchange: the claims you pass in are the session.
+    """No token exchange: the claims passed in are the session.
 
-    This is what makes "I just want a login" and "I hold an upstream OAuth
-    token" the same code path. Without it, `AuthPlugin` would need a `source is
-    None` branch in `issue`, in the refresh check and in every message about
-    either — one class is cheaper than a special case that spreads.
+    Puts a plain login and an upstream OAuth token on one code path. Without it,
+    `AuthPlugin` would need a `source is None` branch in `issue`, in the refresh
+    check and in every message about either.
 
         await auth.issue(request, response, {"user_id": user.id})
     """

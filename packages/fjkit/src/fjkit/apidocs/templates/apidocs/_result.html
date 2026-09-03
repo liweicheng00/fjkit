@@ -2,9 +2,9 @@
   What came back — the panel the console swaps after a call.
 
   It renders empty when there is no result, because the operation page includes
-  it as the placeholder the reply will replace. An `{% if %}` here rather than
-  two templates: the id has to exist in the document before the first call, and
-  an empty div carrying it is cheaper than a second file that renders one.
+  it as the placeholder the reply replaces. An `{% if %}` here rather than two
+  templates: the id has to exist in the document before the first call, and an
+  empty div carrying it is cheaper than a second file that renders one.
 #}
 {% from "apidocs/macros.html" import facts %}
 {% from "ui/data.html" import badge, card, code_block %}
@@ -14,15 +14,15 @@
 <div id="{{ ids.result }}">
   {% if result %}
     {#
-      The badge follows the *status*, not the error, because the two are not
+      The badge follows the status, not the error, because the two are not
       alternatives. Starlette's ServerErrorMiddleware sends its 500 and then
-      re-raises, so a handler that blew up gives us both a real response and an
-      escaped exception. Reading `result.error` first said "no response" over a
-      reply that was sitting right there — which is the worst thing a debugging
-      tool can do: assert something false about what happened.
+      re-raises, so a handler that blew up leaves both a real response and an
+      escaped exception. Reading `result.error` first printed "no response"
+      over a reply that was sitting right there — the worst thing a debugging
+      tool can do, which is to assert something false about what happened.
 
-      "no response" is now reserved for what it means: a timeout, or an
-      exception that escaped before a single byte was sent.
+      "no response" now means what it says: a timeout, or an exception that
+      escaped before a single byte was sent.
     #}
     {%- set status %}
       {% if result.status %}
@@ -33,10 +33,10 @@
     {%- endset %}
     {#
       `aria-live="polite"` on the wrapper, not on the panel: the panel is what
-      gets replaced, and a live region that is itself swapped out is a live
-      region the screen reader stops watching. Announcing politely rather than
-      assertively because the person pressed the button — they are waiting for
-      this, not being interrupted by it.
+      gets replaced, and a screen reader stops watching a live region that is
+      itself swapped out. Polite rather than assertive because the person
+      pressed the button — they are waiting for this, not being interrupted by
+      it.
     #}
     <div aria-live="polite">
       {% call card("Response", result.method ~ " " ~ result.url, actions=status) %}
@@ -48,10 +48,10 @@
             </p>
             {#
               Where the rest of it is. An in-process replay has no server above
-              it to log what escaped, so the console logs it itself — and
-              saying so here is the difference between a one-line error and
-              knowing there is a stack to go and read. Without this the
-              indirection is exactly the liability it looks like.
+              it to log what escaped, so the console logs it itself, and saying
+              so here is the difference between a one-line error and knowing
+              there is a stack to go and read. Without this line the
+              indirection is the liability it looks like.
             #}
             <p class="text-muted-foreground text-xs">
               The traceback is in this app's log, under <code class="kbd">fjkit.apidocs.console</code>.
@@ -81,9 +81,9 @@
           {% if curl %}
             {#
               The same call as a command. Credentials are placeholders, not
-              values — a snippet built for copying is a snippet that ends up in
-              a bug report, and the whole point of this plugin is that the
-              session cookie is not readable from the page.
+              values: a snippet built for copying ends up in a bug report, and
+              the point of this plugin is that the session cookie is not
+              readable from the page.
             #}
             {{ code_block(curl, label="The same call with curl", wrap=true) }}
           {% endif %}

@@ -1,11 +1,11 @@
-"""Render every example on the learning page with the real fjkit Environment.
+"""Render every preview on the site with the real fjkit Environment.
 
-Nothing on that page is hand-drawn markup: each preview is what fjkit actually
-emits, so the page cannot teach a signature the kit does not have.
+No preview is hand-drawn markup: each one is what fjkit emits, so a page cannot
+teach a signature the kit does not have.
 
 Free-text and numeric parameters are rendered as literal placeholder tokens
-(__LABEL__, __VALUE__ …) and substituted in the browser — Jinja prints whatever
-it is handed, so the surrounding markup is still the genuine article.
+(__LABEL__, __VALUE__ …) and substituted in the browser. Jinja prints whatever
+it is handed, so the markup around a placeholder is still the genuine article.
 
     uv run python <this file>   ->  data.json
 """
@@ -24,19 +24,21 @@ OUT = Path(__file__).parent / "data.json"
 
 
 def _url_for(request, name: str, /, **path_params) -> str:
-    """Stand-in for the kit's global, same as `build.py` installs for the pages.
+    """Return an inert href, standing in for the kit's global.
 
     `nav_links` and `sidebar_link` take route *names*, and a preview rendered at
     build time has no router to resolve one against. Every href in a preview is
-    inert anyway — clicking a component in a gallery should not navigate.
+    inert anyway: clicking a component in a gallery should not navigate.
     """
     return "#"
 
 
 def _is_active(request, name: str) -> bool:
-    """One link in the `nav_links` preview has to be the current one, or the
-    preview shows a state the macro spends most of its code on and never
-    reaches."""
+    """Mark one link active, so the `nav_links` preview shows the current state.
+
+    Without it the preview never reaches the state the macro spends most of its
+    code on.
+    """
     return name == "tasks"
 
 
@@ -183,8 +185,8 @@ structure = {
     ),
     "section": render(f'{LAYOUT}{{% call section("__TITLE__", "__DESC__") %}}__ITEMS__{{% endcall %}}'),
     "divider": render(f"{LAYOUT}{{{{ divider() }}}}"),
-    # Shown at every width it offers, stacked, because the parameter is a cap
-    # and a cap is only legible next to another one.
+    # Every width it offers, stacked: the parameter is a cap, and a cap is only
+    # legible next to another one.
     "centered": render(
         f"{LAYOUT}{{% call stack(3) %}}"
         + "".join(
@@ -252,8 +254,8 @@ forms = {
         f"{{% endcall %}}{{% endcall %}}"
     ),
     #: The three controls a create form runs out of `text_field` for. Stacked
-    #: rather than in a `field_row`, because a textarea and a checkbox want
-    #: different widths and a grid would give them the same one.
+    #: rather than in a `field_row`: a textarea and a checkbox want different
+    #: widths, and a grid would give them the same one.
     "long": render(
         f'{FORM}{LAYOUT}{BUTTON}{{% call form(card=true) %}}{{% call stack(4) %}}'
         f'{{{{ textarea_field("notes", label="Notes", placeholder="What changed, and why?", '
@@ -264,8 +266,8 @@ forms = {
         f'{{{{ button("Save", variant="primary", type="submit") }}}}'
         f"{{% endcall %}}{{% endcall %}}{{% endcall %}}"
     ),
-    #: Radios and a select over the same `options` list, side by side. The point
-    #: of the pair is that swapping one for the other is a one-word edit.
+    #: Radios and a select over the same `options` list, side by side: swapping
+    #: one for the other is a one-word edit.
     "choice": render(
         f'{FORM}{LAYOUT}{{% call form(card=true) %}}{{% call field_row("two") %}}'
         f'{{{{ radio_group("priority", label="Priority", options={PRIORITIES}, '
@@ -275,7 +277,7 @@ forms = {
         f"{{% endcall %}}{{% endcall %}}"
     ),
     #: A settings panel: switches grouped by subject, each group a real
-    #: <fieldset> so the legend belongs to the controls under it.
+    #: <fieldset>, so the legend belongs to the controls under it.
     "settings": render(
         f'{FORM}{LAYOUT}{{% call form(card=true) %}}{{% call stack(6) %}}'
         f'{{% call fieldset("Notifications", hint="Applies to this board only.") %}}'
@@ -292,9 +294,9 @@ forms = {
 
 # ---------------------------------------------------------------- live htmx
 # Fragments the page's in-browser mock server hands back to real htmx requests.
-# Rendered by the same macros a router would use, with placeholders where a
-# server would substitute data — so the bytes htmx swaps in are fjkit's, not a
-# hand-written imitation of them.
+# Rendered by the macros a router would use, with placeholders where a server
+# would substitute data, so the bytes htmx swaps in are fjkit's rather than a
+# hand-written imitation.
 LIVE_COLUMNS = '[{"label": "Task"}, {"label": "Status"}, {"label": "Owner"}, {"width": "min"}]'
 
 ADVANCE = (
@@ -316,8 +318,8 @@ live_row = render(
 )
 
 live = {
-    #: The swap target. Returned whole by every mutating route, exactly like
-    #: `tasks/_board.html` — the wrapper is inside the fragment, so
+    #: The swap target. Every mutating route returns it whole, like
+    #: `tasks/_board.html`: the wrapper is inside the fragment, so
     #: hx-swap="outerHTML" puts the new copy where the old one was.
     "board": render(
         f'{DATA}{TABLE}<div id="__BOARD__">'
@@ -342,8 +344,8 @@ live = {
         f'{{{{ button("Add", variant="primary", type="submit", icon_name="plus") }}}}'
         f"{{% endcall %}}{{% endcall %}}"
     ),
-    #: keyup + delay on the input itself: the field is the trigger, so no
-    #: submit button and no form is involved.
+    #: keyup + delay on the input itself: the field is the trigger, so no submit
+    #: button and no form is involved.
     "search": render(
         f'{FORM}{{{{ text_field("q", label="Search tasks", placeholder="Type a name…", '
         f'type="search", hx_get="/demo/search", hx_trigger="keyup changed delay:400ms", '
@@ -369,7 +371,7 @@ live = {
 # ---------------------------------------------------------------- gallery
 # The macros with nothing to turn: one rendered example each, which is what
 # CHARTER §6 item 8 asks of every component. Rendered here rather than written
-# into components.js for the reason every other preview is — the page must not
+# into components.js, for the reason every other preview is: the page must not
 # be able to show markup the kit does not emit.
 FEEDBACK = '{% from "ui/feedback.html" import spinner, dialog, alert, skeleton %}'
 DISCLOSURE = '{% from "ui/disclosure.html" import collapsible, accordion, tooltip %}'
@@ -429,7 +431,7 @@ gallery = {
     "breadcrumb": render(
         f'{NAV}{{{{ breadcrumb([("Board", "#"), ("Tasks", "#"), ("Ship the vocabulary", none)]) }}}}'
     ),
-    #: The header's three pieces. `brand` is shown with `icon_name` only —
+    #: The header's three pieces. `brand` is shown with `icon_name` only:
     #: `icon_src` wants a URL, and this file is rendered once for two builds
     #: that sit at different depths, so any asset path in it would be wrong for
     #: one of them.
@@ -454,7 +456,7 @@ gallery = {
         'start=glyph, end="12 results") }}'
     ),
     # The reveal is live on the page: the preview carries the button, and the
-    # Components page loads `reveal_scripts()` once for it — so a reader can
+    # Components page loads `reveal_scripts()` once for it, so a reader can
     # click it rather than take the caption's word for what it does.
     "reveal": render(
         f'{RANGE}{{{{ input_group_field("password", "Password", value="correct horse battery", '
@@ -499,11 +501,11 @@ gallery = {
         f'{OVERLAY}{{{{ combobox("framework", [("next", "Next.js"), ("astro", "Astro"), '
         '("remix", "Remix")], placeholder="Select a framework", label="Framework") }}'
     ),
-    # `multiple` on both, because the two differ in what they show rather than
-    # in what they post: the select joins the labels onto its trigger, the
-    # combobox hands them to Basecoat's chips. Rendered as first paint, so the
-    # select preview shows its selection and the combobox preview does not —
-    # which is the difference worth seeing before choosing between them.
+    # `multiple` on both. The two differ in what they show, not in what they
+    # post: the select joins the labels onto its trigger, the combobox hands
+    # them to Basecoat's chips. Rendered as first paint, so the select preview
+    # shows its selection and the combobox preview does not — the difference
+    # worth seeing before choosing between them.
     "select_menu_multiple": render(
         f'{OVERLAY}{{{{ select_menu("labels", [("bug", "Bug"), ("docs", "Docs"), '
         '("infra", "Infra"), ("perf", "Perf"), ("ui", "UI")], selected=["bug", "perf"], '
@@ -515,8 +517,8 @@ gallery = {
         'multiple=true, placeholder="Add a label", label="Labels") }}'
     ),
     # The same control twice, because the pair is the point: `visible_label`
-    # turns one of these into a field that lines up with `text_field`, and the
-    # reserved message line is what a rejected submit writes into.
+    # turns one of these into a field that lines up with `text_field`, and a
+    # rejected submit writes into the reserved message line.
     "select_menu_field": render(
         '{% from "ui/layout.html" import stack %}'
         f'{OVERLAY}{{% call stack(gap=4) %}}'
@@ -546,14 +548,14 @@ gallery = {
 
 # ---------------------------------------------------------------- shell
 # `shell.html` renders no preview: the page you are reading is the preview. What
-# the Components page can show is its seam — the blocks an app fills — and that
-# list is read out of the template rather than typed, so the page cannot offer a
-# block the shell stopped having.
+# the Components page can show is its seam, the blocks an app fills. That list is
+# read out of the template rather than typed, so the page cannot offer a block
+# the shell stopped having.
 _shell_source = env.loader.get_source(env, "ui/shell.html")[0]
 shell = {
     # dict.fromkeys: source order, deduplicated. `brand`, `nav` and `site_title`
-    # each appear twice — once as the definition and once where the shell places
-    # it — and a reader filling them in needs the name once.
+    # each appear twice — once as the definition, once where the shell places it
+    # — and a reader filling them in needs the name once.
     "blocks": list(dict.fromkeys(re.findall(r"{% block (\w+) %}", _shell_source))),
 }
 

@@ -1,4 +1,4 @@
-"""Build the charts page's figures from the task list. No colours are set here."""
+"""Build the charts page's figures from the task list. This module sets no colour."""
 
 from __future__ import annotations
 
@@ -148,7 +148,7 @@ def owner_share(tasks: list[Task]) -> Chart:
 
 
 def intake(tasks: list[Task], days: int = TREND_DAYS, now: datetime | None = None) -> Chart:
-    """Two lines over the same window: tasks created per day, and how many are still open."""
+    """Two lines over one window: tasks created per day, and how many remain open."""
     today = (now or datetime.now(UTC)).date()
     window = [today - timedelta(days=offset) for offset in range(days - 1, -1, -1)]
     created = Counter(task.created_at.date() for task in tasks)
@@ -218,7 +218,7 @@ def oldest_open(tasks: list[Task], limit: int = 5, now: datetime | None = None) 
 
 
 def build(tasks: list[Task], grouping: Grouping) -> list[Chart]:
-    """All charts the page shows, in page order."""
+    """Build every chart the page shows, in page order."""
     return [
         status_mix(tasks),
         workload(tasks, grouping),

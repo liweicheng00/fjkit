@@ -1,4 +1,4 @@
-"""Naming a validation failure the way a form names its fields.
+"""Names a validation failure the way a form names its fields.
 
     errors = field_errors(exc, request_scoped=True)
     errors.title          # "Field required", or None
@@ -21,23 +21,23 @@ __all__ = [
     "label",
 ]
 
-#: Where FastAPI puts a form or JSON body field. Stripped from `loc` so that a
-#: field is named the way the form names it — `title`, not `body.title`. The
-#: others are kept: a failure in the query string or a path segment is not a
-#: field on this form, and flattening it to a bare name would let it light up
-#: an unrelated input.
+#: Where FastAPI puts a form or JSON body field. Stripped from `loc` so a field
+#: is named the way the form names it: `title`, not `body.title`. Other
+#: prefixes stay — a failure in the query string or a path segment is not a
+#: field on this form, and flattening it to a bare name would light up an
+#: unrelated input.
 _BODY = "body"
 
 #: Pydantic's word for "this body was not JSON at all", and the one failure
-#: whose `loc` does not name a field: it reads `("body", <offset>)`, a position
-#: in the text. `field_name` cannot be the one to notice, because `("body", 0)`
-#: is also exactly what a body that *is* a list reports about its first item —
-#: the two shapes are identical and only the type tells them apart. Left to it,
-#: an unreadable body becomes a field called `1` and a toast reading
-#: "2: JSON decode error", which names a byte to a person who typed characters.
+#: whose `loc` names no field: it reads `("body", <offset>)`, a position in the
+#: text. `field_name` cannot detect it, because `("body", 0)` is also what a
+#: body that is a list reports about its first item — the two shapes are
+#: identical and only the type tells them apart. Left to `field_name`, an
+#: unreadable body becomes a field called `1` and a toast reading "2: JSON
+#: decode error", which names a byte to a person who typed characters.
 #:
-#: Only JSON gets here. A urlencoded body has no parse step that can fail this
-#: way: what is not a pair is simply not a field.
+#: Only JSON reaches here. A urlencoded body has no parse step that can fail
+#: this way: what is not a pair is not a field.
 _UNPARSABLE = frozenset({"json_invalid"})
 
 

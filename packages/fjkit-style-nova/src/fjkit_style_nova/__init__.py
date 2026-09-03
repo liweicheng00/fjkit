@@ -1,3 +1,7 @@
-"""Marker for the `nova` style pack. The entry point is the payload; this name only has to exist."""
+"""Marks the `nova` style pack installed; fjkit reads the entry-point name, not this module.
+
+Against the default `vega`: `rounded-lg` buttons and inputs at `h-8`,
+`rounded-xl` cards.
+"""
 
 PACK = "nova"

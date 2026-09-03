@@ -35,10 +35,10 @@ class Task(BaseModel):
     status: Literal["todo", "doing", "done"] = "todo"
 
 
-#: Module level, not inside the test that uses them: Pydantic resolves a
-#: model's forward references against the module namespace, and one declared in
-#: a function body is not in it — the schema build fails with a rebuild error
-#: that says nothing about where the model actually lives.
+#: Module level, not inside the test that uses them. Pydantic resolves a model's
+#: forward references against the module namespace, and one declared in a
+#: function body is not in it: the schema build then fails with a rebuild error
+#: that says nothing about where the model lives.
 class Owner(BaseModel):
     name: str
 
@@ -57,8 +57,8 @@ class Colour(StrEnum):
 
 
 class PasswordSource:
-    """A `TokenSource` of the shape only a Python object can express — which is
-    the whole reason this plugin exists rather than an Authorize dialog."""
+    """A `TokenSource` of the shape only a Python object can express, which is
+    why this plugin exists rather than an Authorize dialog."""
 
     async def exchange(self, credentials):
         if credentials.get("password") != "hunter2":
@@ -67,7 +67,7 @@ class PasswordSource:
 
 
 def build_app(*plugins, **kwargs):
-    """A small but realistic API, with the plugins under test on it."""
+    """Build a small but realistic API with the plugins under test on it."""
     kwargs.setdefault("docs_url", None)
     kwargs.setdefault("redoc_url", None)
     app = FastAPI(title="Board API", version="9.9", **kwargs)
@@ -91,7 +91,7 @@ def build_app(*plugins, **kwargs):
 
     with warnings.catch_warnings():
         # `MemoryStore` under a non-reloading config, and `NoCsrf`. Both are
-        # deliberate here and both are the plugin doing its job.
+        # deliberate here, and both warnings are the plugin doing its job.
         warnings.simplefilter("ignore", PluginWarning)
         mount_fjkit(app, FjkitConfig(plugins=tuple(plugins), auto_reload=False))
     return app
@@ -103,7 +103,7 @@ def auth_plugin(**kwargs):
         source=PasswordSource(),
         csrf=NoCsrf(),
         # TestClient speaks http, and a browser will not send a Secure cookie
-        # over it — so a secure cookie here would test nothing but itself.
+        # over it, so a secure cookie here would test nothing but itself.
         cookie=CookieSpec(secure=False),
         **kwargs,
     )
@@ -145,7 +145,7 @@ def test_parameters_carry_enough_to_render_a_field():
 
 
 def test_a_boolean_parameter_is_a_three_state_select_not_a_checkbox():
-    # Absent, true and false are three different requests; a checkbox has two.
+    # Absent, true and false are three different requests; a checkbox sends two.
     app = FastAPI()
 
     @app.get("/x")
@@ -160,7 +160,7 @@ def test_a_boolean_parameter_is_a_three_state_select_not_a_checkbox():
 def test_a_ref_does_not_swallow_the_keywords_written_beside_it():
     """OpenAPI 3.1 allows `default` next to `$ref`, and FastAPI writes exactly
     that for `priority: Priority = Priority.NORMAL`. Resolving the ref and
-    discarding its siblings loses the default — the select renders with nothing
+    discarding its siblings loses the default: the select renders with nothing
     chosen, and the only symptom is a console that starts one step behind."""
     document = specmod.build(
         {
@@ -189,7 +189,7 @@ def test_a_ref_does_not_swallow_the_keywords_written_beside_it():
 
 
 def test_a_form_body_becomes_fields_rather_than_a_text_box():
-    # The shape every htmx form in a fjkit app posts to.
+    # The body shape every htmx form in a fjkit app posts.
     app = FastAPI()
 
     @app.post("/things")
@@ -218,7 +218,7 @@ def test_a_request_body_becomes_an_editable_example():
 
 
 def test_a_self_referential_schema_terminates():
-    # A tree node, a comment with replies: an ordinary model, and an infinite
+    # A tree node or a comment with replies: an ordinary model, and an infinite
     # example generator if nothing bounds the recursion.
     document = specmod.build(
         {
@@ -279,7 +279,7 @@ def test_the_console_is_never_in_its_own_index():
 
 
 def test_registering_the_plugin_is_the_whole_setup(client: TestClient):
-    # No route written, no template named, no static file mounted.
+    # No route written, no template named, no static file mounted by the app.
     page = client.get("/api-docs")
     assert page.status_code == 200
     assert "Board API" in page.text
@@ -303,7 +303,7 @@ def test_an_operation_answers_a_navigation_with_the_page_and_htmx_with_the_panel
     panel = client.get(url, headers={"HX-Request": "true"})
     assert "<!doctype" not in panel.text.lower()
     assert panel.text.lstrip().startswith(f'<div id="{DETAIL_ID}"')
-    # One URL, two bodies — a shared cache has to be told.
+    # One URL, two bodies: a shared cache has to be told.
     assert "HX-Request" in panel.headers["vary"]
 
 
@@ -314,8 +314,8 @@ def test_a_stale_operation_link_lands_on_the_index_rather_than_an_error(client: 
 
 
 def test_a_taken_url_is_reported_at_startup_not_discovered_by_clicking():
-    # Starlette matches the first route that fits, so a docs page mounted under
-    # a path FastAPI already claimed would never render and never say why.
+    # Starlette matches the first route that fits, so a docs page mounted under a
+    # path FastAPI already claimed would never render and never say why.
     app = FastAPI(docs_url="/docs")
     with pytest.warns(PluginWarning, match="already routed"):
         mount_fjkit(app, FjkitConfig(plugins=(ApiDocsPlugin(url="/docs"),), auto_reload=False))
@@ -351,7 +351,7 @@ def test_a_call_carries_the_caller_s_own_session(client: TestClient):
 
     named = client.post("/api-docs/try/whoami_whoami_get")
     # The cookie the console forwarded went through the session middleware, so
-    # the route saw a real session — which is the thing Swagger UI cannot do.
+    # the route saw a real session, which is what Swagger UI cannot do.
     assert "&#34;sub&#34;: &#34;ada&#34;" in named.text
 
 
@@ -364,7 +364,7 @@ def test_parameters_land_where_the_document_said_they_would(client: TestClient):
 
 
 def test_a_blank_optional_parameter_is_omitted_rather_than_sent_empty(client: TestClient):
-    # `?status=` and no `status` are different requests, and this one 422s.
+    # `?status=` and no `status` are different requests, and `?status=` 422s.
     result = client.post(
         "/api-docs/try/list_tasks_tasks_get",
         data={"p.query.status": "", "p.query.limit": ""},
@@ -392,10 +392,10 @@ def test_the_console_asks_for_the_model_and_a_route_mode_still_overrules_it(tmp_
     """Two halves of one rule, so they cannot drift apart.
 
     Under `"auto"` a page route hands a page to anyone who is not htmx, because
-    `serves_a_page` is decided by the route's shape. The console is a caller,
-    not a shape, and it says so through the ASGI scope — which only something
-    already inside the process can write. A route that declared `mode="html"`
-    has said it has no data form, and keeps saying it.
+    the route's shape decides `serves_a_page`. The console is a caller rather
+    than a shape, and it says so through the ASGI scope, which only something
+    already inside the process can write. A route declaring `mode="html"` has
+    said it has no data form, and keeps saying it.
     """
     (tmp_path / "page.html").write_text("<p>page {{ title }}</p>", encoding="utf-8")
     (tmp_path / "_frag.html").write_text("<p>frag {{ title }}</p>", encoding="utf-8")
@@ -423,10 +423,10 @@ def test_the_console_asks_for_the_model_and_a_route_mode_still_overrules_it(tmp_
     declared = client.post("/api-docs/try/only_html_only_html_get")
     assert "&lt;p&gt;page markup only&lt;/p&gt;" in declared.text
 
-    # And the browser is unaffected: the scope key is not reachable from outside.
+    # The browser is unaffected: the scope key is unreachable from outside.
     assert client.get("/board").text == "<p>page from the model</p>"
-    # Reachable only by hand-posting, but the failure it prevents is a stack
-    # overflow rather than a wrong answer, so it is checked directly.
+    # Reachable only by hand-posting, but it prevents a stack overflow rather
+    # than a wrong answer, so it is checked directly.
     from fjkit.apidocs import console
 
     app = client.app
@@ -471,8 +471,8 @@ def test_an_app_with_no_auth_never_imports_the_auth_module():
 
     An `AuthPlugin` instance cannot be in `config.plugins` unless its class was
     imported, so `_resolve_flow` treats a missing module as proof the search is
-    empty. In a subprocess because this test module imports `fjkit.auth` at the
-    top, which would make the check pass for the wrong reason.
+    empty. Run in a subprocess because this test module imports `fjkit.auth` at
+    the top, which would make the check pass for the wrong reason.
     """
     source = textwrap.dedent(
         """
@@ -536,7 +536,7 @@ def test_a_header_flow_holds_the_token_where_the_page_cannot_read_it():
 
     saved = client.post("/api-docs/auth", data={"token": "s3cr3t-token-value"})
     assert "Token held" in saved.text
-    # Masked on the page, and the cookie is HttpOnly and scoped to the console.
+    # Masked on the page; the cookie is HttpOnly and scoped to the console.
     assert "s3cr3t-token-value" not in saved.text
     assert "s3cr" in saved.text
     cookie = next(h for h in saved.headers.get_list("set-cookie") if "fjkit_apidocs_token" in h)
@@ -546,8 +546,8 @@ def test_a_header_flow_holds_the_token_where_the_page_cannot_read_it():
 
 def test_a_header_flow_puts_the_token_on_every_call():
     """Also the regression test for header casing. ASGI says header names in a
-    scope are lowercase and Starlette takes it literally — it lowercases the
-    name you *ask* for and compares it to the raw bytes — so `Authorization`
+    scope are lowercase, and Starlette takes that literally: it lowercases the
+    name you ask for and compares it to the raw bytes. So `Authorization`
     spelled with a capital A rides on the wire and is invisible to
     `request.headers["authorization"]`, with nothing anywhere saying so."""
     docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, secure=False))
@@ -600,15 +600,15 @@ def test_a_flow_error_is_the_way_to_refuse_without_leaking():
 
 # ------------------------------------------------- what Swagger UI also shows
 #
-# The plugin's reason to exist is the half Swagger cannot do — a sign-in that is
-# the app's own code, and a call that carries an HttpOnly cookie. That is only
-# an argument for using it if the *other* half is all there: the schemas, the
-# filter, the per-status examples, the padlock, the uploads. A console that
-# wins on authentication and loses on everything else is not a replacement.
+# The plugin exists for the half Swagger cannot do: a sign-in that is the app's
+# own code, and a call that carries an HttpOnly cookie. That only argues for
+# using it if the other half is all there — the schemas, the filter, the
+# per-status examples, the padlock, the uploads. A console that wins on
+# authentication and loses on everything else is not a replacement.
 
 
 def build_rich_app(*plugins):
-    """An app that exercises the document features a small one never reaches."""
+    """Build an app exercising the document features a small one never reaches."""
     app = FastAPI(
         title="Rich API",
         version="2.0",
@@ -645,9 +645,9 @@ def rich() -> TestClient:
 
 
 def test_the_types_the_api_exchanges_are_documented_too():
-    """`components.schemas` is half the contract — every generated client is
-    built from it — and an API reference that renders the paths and not the
-    payloads has documented the easy half."""
+    """`components.schemas` is half the contract, and every generated client is
+    built from it. An API reference that renders the paths and not the payloads
+    has documented the easy half."""
     document = specmod.build(build_app().openapi())
 
     task = document.by_name["Task"]
@@ -655,7 +655,7 @@ def test_the_types_the_api_exchanges_are_documented_too():
     assert [f.name for f in task.fields] == ["id", "title", "status"]
     assert next(f for f in task.fields if f.name == "id").required
     assert not next(f for f in task.fields if f.name == "status").required
-    # Read backwards: which endpoints carry this type.
+    # The reverse index: which endpoints carry this type.
     assert set(task.used_by) == {"list_tasks_tasks_get", "create_task_tasks_post", "get_task_tasks__task_id__get"}
     assert document.model_index[task.slug] is task
 
@@ -679,7 +679,7 @@ def test_a_stale_schema_link_lands_on_the_index_rather_than_an_error(client: Tes
 
 
 def test_a_field_that_is_a_model_is_a_link_and_not_a_nested_table():
-    """One level deep, by design: `Task` holding an `owner: User` holding an
+    """One level deep by design: `Task` holding an `owner: User` holding an
     `avatar: Image` is three tables before anyone has scrolled."""
     app = FastAPI()
 
@@ -713,27 +713,27 @@ def test_the_filter_narrows_the_list_and_says_so_when_nothing_matches(rich: Test
     assert "List tasks" not in narrowed.text
 
     assert "Nothing matches" in rich.get("/api-docs/nav?q=zzzz").text
-    # And the same `?q=` on the page itself, so it is bookmarkable.
+    # The same `?q=` works on the page itself, so a filter is bookmarkable.
     assert "List tasks" not in rich.get("/api-docs?q=upload").text
 
 
 def test_the_filter_matches_the_operation_id_and_the_tag_not_only_the_summary(rich: TestClient):
-    # The name in the generated client, and the group — both are things people
-    # type into a filter box and neither is in the visible label.
+    # The name in the generated client, and the group: both are things people
+    # type into a filter box, and neither is in the visible label.
     assert "Upload one" in rich.get("/api-docs/nav?q=upload_upload_post").text
     assert "Upload one" in rich.get("/api-docs/nav?q=files").text
 
 
 def test_a_panel_swap_brings_the_sidebar_with_it_so_the_highlight_is_not_stale(rich: TestClient):
     """Clicking an operation replaces only the detail panel. Without an
-    out-of-band nav the highlight stays on whatever was open three clicks ago —
+    out-of-band nav the highlight stays on whatever was open three clicks ago:
     correct on a cold load and wrong for the rest of the session."""
     swap = rich.get("/api-docs/op/upload_upload_post", headers={"hx-request": "true"})
 
     assert 'hx-swap-oob="true"' in swap.text
     assert 'aria-current="page"' in swap.text
-    # …and never on a full page, where the sidebar renders itself and a second
-    # copy would be a duplicate id.
+    # Never on a full page, where the sidebar renders itself and a second copy
+    # would be a duplicate id.
     assert "hx-swap-oob" not in rich.get("/api-docs/op/upload_upload_post").text
 
 
@@ -744,7 +744,7 @@ def test_the_filter_survives_following_a_result(rich: TestClient):
 
 def test_every_documented_status_gets_its_own_example_not_just_the_first(rich: TestClient):
     """A page that documents four statuses and shows one example leaves the
-    other three as a shape you find out about from a failing call."""
+    other three as shapes you discover from a failing call."""
     page = rich.get("/api-docs/op/list_tasks_tasks_get")
 
     assert "Example 200 response" in page.text
@@ -752,8 +752,8 @@ def test_every_documented_status_gets_its_own_example_not_just_the_first(rich: T
 
 
 def test_a_documented_response_header_is_shown(rich: TestClient):
-    """Usually the only place a `Location` or a `Retry-After` is written down,
-    and a client that has to follow one cannot guess it."""
+    """This is usually the only place a `Location` or a `Retry-After` is written
+    down, and a client that has to follow one cannot guess it."""
     page = rich.get("/api-docs/op/list_tasks_tasks_get")
     assert "X-Trace" in page.text
     assert "trace id" in page.text
@@ -761,8 +761,8 @@ def test_a_documented_response_header_is_shown(rich: TestClient):
 
 def test_the_document_s_masthead_is_rendered_rather_than_dropped(rich: TestClient):
     """Contact, licence, terms and servers are in the document because somebody
-    meant them to be read. A reference that drops them is less informative than
-    the file it was generated from."""
+    meant them to be read. A reference that drops them tells the reader less
+    than the file it was generated from."""
     page = rich.get("/api-docs")
 
     assert "team@example.com" in page.text
@@ -774,7 +774,7 @@ def test_the_document_s_masthead_is_rendered_rather_than_dropped(rich: TestClien
 def test_every_worked_example_the_author_wrote_is_shown_not_only_the_first():
     """`openapi_examples=` is somebody writing out the minimal case, the full
     case and the one that fails. Swagger gives them a dropdown; showing the
-    first and dropping the rest throws away most of what was written."""
+    first and dropping the rest discards most of what was written."""
     app = FastAPI(docs_url=None, redoc_url=None)
 
     @app.post("/notes")
@@ -792,8 +792,8 @@ def test_every_worked_example_the_author_wrote_is_shown_not_only_the_first():
         return note
 
     operation = next(iter(specmod.build(app.openapi()).index.values()))
-    # The first named example prefills the box — a value somebody wrote beats
-    # one this module invented from the schema.
+    # The first named example prefills the box: a value somebody wrote beats one
+    # this module invented from the schema.
     assert '"title": "hi"' in operation.body_example
     assert [label for label, _ in operation.body_examples] == ["With a status"]
 
@@ -804,9 +804,9 @@ def test_every_worked_example_the_author_wrote_is_shown_not_only_the_first():
 
 
 def test_a_tag_s_own_description_and_link_are_rendered():
-    """A `tags=` list is an information architecture and a description on one of
-    its entries is the paragraph saying what that group of endpoints is for —
-    which the sidebar has no room for and a newcomer reads first."""
+    """A `tags=` list is an information architecture, and a description on one of
+    its entries is the paragraph saying what that group of endpoints is for. The
+    sidebar has no room for it, and a newcomer reads it first."""
     app = FastAPI(
         docs_url=None,
         redoc_url=None,
@@ -836,10 +836,10 @@ def test_a_tag_s_own_description_and_link_are_rendered():
 def test_the_docs_need_no_render_decorator_anywhere_in_the_app():
     """`@render` is not a prerequisite for being documented.
 
-    The plugin reads `app.openapi()` — the same document `/openapi.json` serves
-    — and knows nothing about `fjkit.rendering`. A plain FastAPI app, or one
-    that mixes decorated and undecorated routes, gets the whole page: the
-    operations, the console, and the schemas.
+    The plugin reads `app.openapi()`, the same document `/openapi.json` serves,
+    and knows nothing about `fjkit.rendering`. A plain FastAPI app, or one that
+    mixes decorated and undecorated routes, gets the whole page: the operations,
+    the console, and the schemas.
     """
     app = FastAPI(title="Plain", version="1", docs_url=None, redoc_url=None)
 
@@ -860,20 +860,20 @@ def test_the_docs_need_no_render_decorator_anywhere_in_the_app():
     document = specmod.build(app.openapi())
     assert document.by_name["Task"].fields  # the type is documented, not just named
 
-    # …and the console calls it and gets the model, because a route with no
-    # `@render` was already returning JSON. `SCOPE_RENDER_MODE` never enters
-    # into it — nothing reads that key unless `@render` is on the route.
+    # The console calls it and gets the model, because a route with no `@render`
+    # was already returning JSON. `SCOPE_RENDER_MODE` never enters into it:
+    # nothing reads that key unless `@render` is on the route.
     assert "&#34;title&#34;: &#34;plain&#34;" in client.post("/api-docs/try/tasks_tasks_get").text
 
 
 def test_a_decorated_route_documents_exactly_as_an_undecorated_one(tmp_path):
     """`@render` contributes nothing to the document and must cost nothing.
 
-    It has to eval the return annotation itself — under
+    It has to eval the return annotation itself: under
     `from __future__ import annotations` that annotation is a string, and a
     wrapper that drops it leaves FastAPI unable to derive `response_model`. The
-    symptom would be a *thinner* docs page for the decorated half of an app,
-    which is the opposite of what the decorator is for and hard to attribute.
+    symptom is a thinner docs page for the decorated half of an app, which is
+    the opposite of what the decorator is for and hard to attribute.
     """
     (tmp_path / "page.html").write_text("<p>{{ title }}</p>", encoding="utf-8")
 
@@ -900,12 +900,12 @@ def test_a_decorated_route_documents_exactly_as_an_undecorated_one(tmp_path):
 
 
 def test_the_plugin_adds_routes_and_nothing_else():
-    """It must not be able to reach the app's own rendering.
+    """The plugin must not be able to reach the app's own rendering.
 
-    A plugin *may* add middleware — `AppSetup` offers it — and middleware is
+    A plugin may add middleware — `AppSetup` offers it — and middleware is
     exactly how a docs page would end up changing what every other route
-    returns. This one adds a router and stops there, so an app's own `@render`
-    decisions are untouched by installing it.
+    returns. This one adds a router and stops there, so installing it leaves an
+    app's own `@render` decisions untouched.
     """
     before = FastAPI(docs_url=None, redoc_url=None)
     after = FastAPI(docs_url=None, redoc_url=None)
@@ -926,8 +926,8 @@ def test_the_plugin_adds_routes_and_nothing_else():
 
     assert [type(m) for m in after.user_middleware] == [type(m) for m in before.user_middleware]
     assert set(after.exception_handlers) == set(before.exception_handlers)
-    # The app-wide default is configuration the app owns; the plugin reads it
-    # and never writes it.
+    # The app-wide default is configuration the app owns. The plugin reads it and
+    # never writes it.
     assert config.render_mode == FjkitConfig().render_mode
 
     # The route itself answers a browser exactly as it did without the plugin.
@@ -935,13 +935,13 @@ def test_the_plugin_adds_routes_and_nothing_else():
 
 
 def test_a_handler_that_raises_is_reported_on_the_page_and_logged_in_full(caplog):
-    """The one thing an in-process replay genuinely takes away.
+    """The one thing an in-process replay takes away.
 
     A request over a socket has a server above it whose job is to log the
     traceback of anything the app lets through. Here the caller is the console,
-    and `except Exception` is what stops a failing endpoint from taking the docs
-    page down with it — which would also make the traceback exist nowhere at
-    all. So the panel gets the one-line report and the log gets the frames.
+    and `except Exception` stops a failing endpoint taking the docs page down
+    with it — which would also leave the traceback recorded nowhere. So the
+    panel gets the one-line report and the log gets the frames.
     """
     app = FastAPI(docs_url=None, redoc_url=None)
 
@@ -963,14 +963,14 @@ def test_a_handler_that_raises_is_reported_on_the_page_and_logged_in_full(caplog
     record = next(r for r in caplog.records if r.name == "fjkit.apidocs.console")
     assert record.exc_info is not None
     assert "ZeroDivisionError" in caplog.text
-    # The frames, not just the summary — that is the whole point of logging it.
+    # The frames, not just the summary: that is the point of logging it.
     assert "boom" in caplog.text
 
 
 def test_a_call_that_answered_and_then_raised_shows_both():
-    """Starlette's ServerErrorMiddleware sends its 500 and *then* re-raises, so
-    both are true at once. Reading the error first said "no response" over a
-    reply that was sitting right there — a debugging tool asserting something
+    """Starlette's `ServerErrorMiddleware` sends its 500 and then re-raises, so
+    both are true at once. Reading the error first reported "no response" over a
+    reply that was sitting right there: a debugging tool asserting something
     false about what happened, which is worse than showing less."""
     app = FastAPI(docs_url=None, redoc_url=None)
 
@@ -1011,11 +1011,10 @@ def test_no_response_still_means_no_response():
 
 def test_the_schemas_branch_is_split_by_kind():
     """An object is a shape you are about to send; an enum is a vocabulary you
-    check a spelling against. In one alphabetical run the handful of enums are
-    scattered through thirty names, which is exactly when a split earns its
-    heading.
+    check a spelling against. In one alphabetical run a handful of enums are
+    scattered through thirty names, which is when a split earns its heading.
 
-    A real `Enum` and not a `Literal`: FastAPI inlines a Literal into the
+    A real `Enum` and not a `Literal`: FastAPI inlines a `Literal` into the
     property that uses it, so it never reaches `components.schemas` and there
     would be nothing here to group.
     """
@@ -1055,7 +1054,7 @@ def test_a_kind_with_no_members_gets_no_heading():
 
 def test_an_operation_that_needs_authentication_says_so():
     """The padlock. Every API browser marks a secured operation, because the
-    alternative is finding out from a 401."""
+    alternative is learning about it from a 401."""
     document = specmod.build(
         {
             "info": {"title": "T", "version": "1"},
@@ -1066,8 +1065,8 @@ def test_an_operation_that_needs_authentication_says_so():
 
 
 def test_an_array_parameter_goes_on_the_wire_as_its_name_repeated(rich: TestClient):
-    """`?tag=a&tag=b` is what FastAPI parses `list[str]` back out of. One box
-    holding "a,b" would send that string whole and the endpoint would receive a
+    """FastAPI parses `list[str]` back out of `?tag=a&tag=b`. One box holding
+    "a,b" would send that string whole, and the endpoint would receive a
     single-element list."""
     document = specmod.build(rich.app.openapi())
     tag = document.index["list_tasks_tasks_get"].params[0]
@@ -1078,9 +1077,9 @@ def test_an_array_parameter_goes_on_the_wire_as_its_name_repeated(rich: TestClie
 
 
 def test_an_upload_endpoint_gets_a_file_control_and_the_bytes_arrive(rich: TestClient):
-    """The console re-encodes what the browser posted into the multipart body
-    the endpoint declared, so `UploadFile` is testable here rather than being
-    the one shape you have to leave for curl."""
+    """The console re-encodes what the browser posted into the multipart body the
+    endpoint declared, so `UploadFile` is testable here rather than being the one
+    shape you have to leave for curl."""
     document = specmod.build(rich.app.openapi())
     operation = document.index["upload_upload_post"]
     assert operation.multipart
@@ -1099,29 +1098,29 @@ def test_an_upload_endpoint_gets_a_file_control_and_the_bytes_arrive(rich: TestC
     assert "cat.txt" in reply.text
     assert "9" in reply.text  # the endpoint read nine bytes back out
     # curl gets `-F`, not `--data`: the body is bytes from a file the snippet
-    # does not contain, and `@name` is how curl is told to read it.
+    # does not contain, and `@name` tells curl to read it.
     assert "attachment=@cat.txt;type=text/plain" in reply.text
 
 
 def test_an_untouched_file_input_does_not_post_an_empty_file(rich: TestClient):
     """A file input still sends a part when nothing was picked. Forwarding it
-    would put a zero-byte file in the body of every call where the upload was
+    would put a zero-byte file in the body of every call whose upload was
     optional and left alone."""
     reply = rich.post(
         "/api-docs/try/upload_upload_post",
         data={"p.form.note": "hello"},
         files={"p.form.attachment": ("", b"", "application/octet-stream")},
     )
-    # No file part means FastAPI refuses it — which is the endpoint's answer,
-    # not the console inventing an upload.
+    # No file part means FastAPI refuses it: the endpoint's answer, not the
+    # console inventing an upload.
     assert "422" in reply.text
 
 
 def test_a_file_is_recognised_in_both_of_openapi_s_two_spellings():
     """3.0 said `format: binary`; 3.1 dropped it for `contentMediaType`, and
-    FastAPI emits 3.1. Reading only `format` renders every upload as a text box
-    — which posts the filename as a string and fails inside the endpoint, a
-    long way from the cause."""
+    FastAPI emits 3.1. Reading only `format` renders every upload as a text box,
+    which posts the filename as a string and fails inside the endpoint, a long
+    way from the cause."""
     for schema in ({"type": "string", "format": "binary"}, {"type": "string", "contentMediaType": "image/png"}):
         document = specmod.build(
             {
@@ -1151,10 +1150,10 @@ def test_a_file_is_recognised_in_both_of_openapi_s_two_spellings():
 
 
 def test_the_response_example_says_on_screen_which_status_it_is(client: TestClient):
-    """Every example is captioned with the status it belongs to, visibly.
+    """Every example is captioned visibly with the status it belongs to.
 
-    An `aria-label` alone told a screen reader and nobody else, and a page that
-    shows two examples with nothing naming either is worse than one that shows
+    An `aria-label` alone told a screen reader and nobody else, and a page
+    showing two examples with nothing naming either is worse than one showing
     none. The caption is a tab label when there is a schema to switch to and a
     heading when there is not; both are text on the screen."""
     page = client.get("/api-docs/op/list_tasks_tasks_get")
@@ -1162,24 +1161,24 @@ def test_the_response_example_says_on_screen_which_status_it_is(client: TestClie
     statuses = [entry.status for entry in specmod.build(client.app.openapi()).index["list_tasks_tasks_get"].responses]
     assert statuses[-1] == "422"
     assert "Example 200 response" in page.text
-    assert page.text.count("Example 200 response") == 2  # the caption and the region's name
+    assert page.text.count("Example 200 response") == 2  # the caption and the region name
 
 
 def test_every_class_in_the_console_s_templates_exists_in_the_stylesheet():
-    """A class that is not in the built CSS has no effect and nothing says so.
+    """A class that is not in the built CSS has no effect, and nothing says so.
 
-    These templates ship inside the wheel, so they are allowed the utilities an
-    app is not — but only the ones `fjkit build-css` actually emitted. Getting
-    this wrong produces a page that renders and looks broken, which is the
-    hardest kind of failure to attribute.
+    These templates ship inside the wheel, so they may use the utilities an app
+    may not — but only the ones `fjkit build-css` emitted. Getting this wrong
+    produces a page that renders and looks broken, which is the hardest kind of
+    failure to attribute.
     """
     known = component_classes() | emitted_classes() | {"htmx-indicator"}
     attribute = re.compile(r'class\s*=\s*"([^"]*)"', re.DOTALL)
     expression = re.compile(r"\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}", re.DOTALL)
 
     templates = sorted((TEMPLATE_DIR / "apidocs").glob("*.html"))
-    # Not decoration: these files live in the plugin's own directory, and the
-    # scan below passes trivially if they are moved again and this test is not.
+    # These files live in the plugin's own directory, and the scan below passes
+    # trivially if they are moved again and this test is not.
     assert templates, f"no console templates under {TEMPLATE_DIR / 'apidocs'}"
     source = (STATIC_DIR / "src" / "fjkit.css").read_text(encoding="utf-8")
     assert '@source "../../apidocs/templates";' in source, (

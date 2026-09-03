@@ -1,11 +1,11 @@
 /*
-  Draws a 422 under the fields of the form that sent it.
+  Renders a 422 under the fields of the form that sent it.
 
   Reads FastAPI's `{"detail": [{"loc": ["body", "title"], "msg": …}]}`, finds
-  each control by `name`, and writes the message into the `<p>` its
-  `aria-describedby` names (creating one if the field had no hint). Anything
-  with no control to land on is raised as a `fjkit:toast`. The next request
-  from the same form clears it all and restores the hints.
+  each control by `name`, and writes the message into the `<p>` named by its
+  `aria-describedby`, creating that `<p>` when the field has no hint. A message
+  with no control to land on is raised as a `fjkit:toast`. The next request from
+  the same form clears every message and restores the hints.
 
   Loaded by the shell on every page.
 */
@@ -15,7 +15,7 @@
 
   const form = (elt) => (elt instanceof Element ? elt.closest("form") : null)
 
-  /* `("body", "items", 0, "title")` -> `items.0.title`; same rule as
+  /* `("body", "items", 0, "title")` -> `items.0.title`, the same rule as
      `field_name` in `fjkit.forms`. Anything not under `body` is not a field. */
   const fieldName = (loc) =>
     Array.isArray(loc) && loc.length > 1 && loc[0] === "body" ? loc.slice(1).map(String).join(".") : null
@@ -24,7 +24,8 @@
      radio, the control itself otherwise. */
   const holder = (control) => control.closest('[role="radiogroup"]') || control
 
-  /* The `<p>` under the control, or one shaped like `_message()` writes. */
+  /* The `<p>` under the control; when there is none, a new one shaped like
+     `_message()` writes. */
   const message = (control) => {
     const owner = holder(control)
     let p = document.getElementById(owner.getAttribute("aria-describedby") || "")
@@ -67,8 +68,8 @@
     document.body.dispatchEvent(new CustomEvent(TOAST, { detail: { messages } }))
   }
 
-  /* Only a 422 carrying JSON is handled; anything else swaps as usual.
-     `isError` is left alone: `reset_on_success` reads `detail.successful`,
+  /* Handles only a 422 carrying JSON; anything else swaps as usual. `isError`
+     stays untouched, because `reset_on_success` reads `detail.successful`,
      which derives from it. */
   document.addEventListener("htmx:beforeSwap", (event) => {
     const { xhr, requestConfig } = event.detail
@@ -108,7 +109,7 @@
     if (first && typeof first.focus === "function") first.focus({ preventScroll: false })
   })
 
-  /* A new request from the form clears the last rejection. */
+  /* A new request from the form clears the previous rejection. */
   document.addEventListener("htmx:beforeRequest", (event) => {
     const scope = form(event.detail && event.detail.elt)
     if (scope) clear(scope)

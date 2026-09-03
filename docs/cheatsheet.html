@@ -16,7 +16,7 @@
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
   <script defer src="assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
-  <script defer src="assets/js/errors.js?v=1787594535"></script>
+  <script defer src="assets/js/errors.js?v=1788369088"></script>
   <meta name="description" content="Every fjkit macro in one table per file, with its full signature, whether it is called with a block and what goes inside it — plus the shell&#39;s blocks, the template globals and the htmx attributes a fjkit page actually uses.">
   <meta property="og:title" content="fjkit cheatsheet">
   <meta property="og:description" content="Every fjkit macro in one table per file, with its full signature, whether it is called with a block and what goes inside it — plus the shell&#39;s blocks, the template globals and the htmx attributes a fjkit page actually uses.">
@@ -139,12 +139,12 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">How to read this</h2><p class="text-muted-foreground text-sm">What is on a row, and two rules that apply to every one of them.</p>      </div>
     <div class="flex flex-col gap-3">      <p>
-        A Jinja macro is called in one of two ways, and which one it is, is not something you can
-        guess from the name. A macro with nothing inside it is printed. A macro that wraps
-        something is called with <code>{% call %}</code>, and whatever sits
-        between that and <code>{% endcall %}</code> is handed to the macro to
-        place — Jinja calls it the <em>caller block</em>, and every macro below that wants one
-        carries a badge saying what goes in it.
+        A Jinja macro is called in one of two ways, and the name does not tell you which. A macro
+        with nothing inside it is printed. A macro that wraps something is called with
+        <code>{% call %}</code>, and whatever sits between that and
+        <code>{% endcall %}</code> is handed to the macro to place. Jinja calls
+        that the caller block, and every macro below that wants one carries a badge saying what goes
+        in it.
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the two shapes" data-lang="jinja">{% from &#34;ui/data.html&#34; import badge, card %}
@@ -163,7 +163,7 @@ fjkit
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>The signature</h4><p>the call, with every parameter and its default. The heading above each list is the file you <code>import</code> it from</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>A block badge</h4><p>on the right of a row, and only on the rows that have one: this macro is called with <code>{% call %}</code>, and the badge says what goes inside. No badge means print it with <code>{{ }}</code></p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>One line under it</h4><p>the thing the signature does not say. Absent when the signature says all of it</p>    </section>  </div></div></div>
+      <h4>One line under it</h4><p>what the signature does not say. Absent when the signature says all of it</p>    </section>  </div></div></div>
   </div>
 
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -475,8 +475,8 @@ fjkit
         <code>ui/shell.html</code> carries the <code>&lt;head&gt;</code>, the theme flash-guard, the
         asset links and the header/main/footer skeleton. An app extends it once, in its own
         <code>base.html</code>, and fills the blocks it needs. Fill <code>sidebar</code> or
-        <code>nav</code> — the shell lays the header out differently for each, and filling both
-        gives you two navigations.
+        <code>nav</code>, never both: the shell lays the header out differently for each, and filling
+        both gives you two navigations.
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/base.html" data-lang="jinja">{% extends &#34;ui/shell.html&#34; %}
@@ -556,10 +556,10 @@ fjkit
     <div class="flex flex-col gap-3">      <p>
         Every one of these reaches the markup as an extra keyword on a macro:
         <code>{{ button("Refresh", hx_get="/tasks/board", hx_target="#board") }}</code>.
-        Underscores become dashes on the way through, which is the whole of the integration —
-        there is no htmx-specific parameter on any macro, and there does not need to be.
-        The full reference is <a href="https://htmx.org/reference/">htmx.org/reference</a>;
-        what follows is what a fjkit page actually uses.
+        Underscores become dashes on the way through, and that is the whole integration: no macro has
+        an htmx-specific parameter, and none needs one. The full reference is
+        <a href="https://htmx.org/reference/">htmx.org/reference</a>; what follows is what a fjkit
+        page uses.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">

@@ -15,19 +15,19 @@
   cheatsheet 仍然列著它，因為那份清單是按檔案列而不是按章節列。
 #}
 {% set sections = [
-  {"id": "button",     "title": "Button"},
-  {"id": "data",       "title": "Data"},
-  {"id": "disclosure", "title": "Disclosure"},
-  {"id": "feedback",   "title": "Feedback"},
-  {"id": "form",       "title": "Form"},
-  {"id": "icon",       "title": "Icon"},
-  {"id": "layout",     "title": "Layout"},
-  {"id": "nav",        "title": "Nav"},
-  {"id": "overlay",    "title": "Overlay"},
-  {"id": "shell",      "title": "Shell"},
-  {"id": "sidebar",    "title": "Sidebar"},
-  {"id": "table",      "title": "Table"},
-  {"id": "tabs",       "title": "Tabs"},
+  {"id": "button",     "num": "01", "title": "Button"},
+  {"id": "data",       "num": "02", "title": "Data"},
+  {"id": "disclosure", "num": "03", "title": "Disclosure"},
+  {"id": "feedback",   "num": "04", "title": "Feedback"},
+  {"id": "form",       "num": "05", "title": "Form"},
+  {"id": "icon",       "num": "06", "title": "Icon"},
+  {"id": "layout",     "num": "07", "title": "Layout"},
+  {"id": "nav",        "num": "08", "title": "Nav"},
+  {"id": "overlay",    "num": "09", "title": "Overlay"},
+  {"id": "shell",      "num": "10", "title": "Shell"},
+  {"id": "sidebar",    "num": "11", "title": "Sidebar"},
+  {"id": "table",      "num": "12", "title": "Table"},
+  {"id": "tabs",       "num": "13", "title": "Tabs"},
   {"id": "next",       "title": "接著讀"},
 ] %}
 
@@ -36,7 +36,7 @@
 #}
 {% set t_preview = "預覽" %}
 {% set t_write = "你寫的" %}
-{% set t_emit = "它吐出來的" %}
+{% set t_emit = "它產生的" %}
 {% set t_jinja = "那行 Jinja 呼叫" %}
 {% set t_html = "產生的 HTML" %}
 
@@ -105,36 +105,36 @@
 {% call stack(8) %}
 
   {% set intro %}
-    每一個 macro，都有實際渲染的預覽與產生它的那行呼叫；依照 macro 所在的檔案分節，
+    每一支 macro 都有實際渲染的預覽與產生它的那行呼叫，依 macro 所在的檔案分節，
     順序與 <code>src/fjkit/templates/ui/</code> 列出來的一致。
-    轉動旋鈕，兩件事會一起變：元件本身，以及你要打出這個結果會寫的那行 Jinja。
-    底下每一個預覽都是 build 時由 fjkit 自己的 Environment 渲染出來的。
+    調整控制項時，元件與產生它的那行 Jinja 會一起變。
+    底下每一個預覽都是 build 時由 fjkit 的 Environment 渲染出來的。
   {% endset %}
   {{ page_header("每個 macro，以及產生它的那行呼叫", intro) }}
 
   {# ============================================================== 01 #}
-  {% set c02 %}一個元素、七種 variant、七種 size——而且呼叫端一個 class 都不寫。{% endset %}
+  {% set c02 %}一個元素、七種 variant、七種 size，而且呼叫端一個 class 都不寫。{% endset %}
   {% call lesson("button", "01", "Button", c02) %}
     {% call prose() %}
       <p>
         這一頁上的每一個參數都是<strong>封閉列舉</strong>。沒有 <code>class=</code> 這個逃生口，
-        也沒有色相可以傳：你挑一個 variant，長什麼樣由 token 層決定。
-        <em>其餘</em>多傳給 macro 的東西一律變成 HTML 屬性——<code>hx_post="/tasks"</code>
-        會渲染成 <code>hx-post="/tasks"</code>。做這件轉換的是 <code>ui/attrs.html</code> 這一個檔案，
-        每一支 macro 都把多出來的關鍵字轉送給它，而 app 永遠不會自己呼叫它。
-        這就是 htmx 從頭到尾不必出現在 kit 任何一個 macro 定義裡的原因，
-        也是「macro 沒聽過的關鍵字」變成屬性而不是報錯的原因。
+        也不能傳色相：挑一個 variant，外觀由 token 層決定。
+        其餘多傳給 macro 的關鍵字一律變成 HTML 屬性，<code>hx_post="/tasks"</code>
+        會渲染成 <code>hx-post="/tasks"</code>。做這件轉換的是 <code>ui/attrs.html</code>，
+        每一支 macro 都把多出來的關鍵字轉送給它，而 app 不會自己呼叫它。
+        所以 htmx 不必出現在 kit 的任何一個 macro 定義裡，
+        macro 沒聽過的關鍵字也變成屬性而不是報錯。
       </p>
       <p>
-        <code>button</code> 是其他每個檔案都會用到的 macro，也是最值得先讀簽名的那一支：
+        <code>button</code> 是其他每個檔案都會用到的 macro，也最值得先讀簽名：
         <code>variant</code> 與 <code>size</code> 都是封閉查表，<code>href</code> 會把元素換成
-        <code>&lt;a&gt;</code> 並拿掉 <code>type</code>，而 <code>icon_name</code> 收任何 Lucide 名字——
-        所以呼叫端不必為了在按鈕上放一個圖示而去 import <code>icon</code>。
+        <code>&lt;a&gt;</code> 並拿掉 <code>type</code>，<code>icon_name</code> 收任何 Lucide 名字，
+        所以呼叫端不必為了在按鈕上放圖示而 import <code>icon</code>。
       </p>
       <p>
-        <code>button_group</code> 是一個名字底下的兩種元件，旋鈕會告訴你是哪一種：
-        horizontal 就是一個 <code>row</code>，間距歸你管；vertical 是 Basecoat 的
-        <code>.button-group</code>，它把幾個按鈕併成一個控制項並共用邊框，沒有間距可以給。
+        <code>button_group</code> 是一個名字底下的兩種元件，控制項會顯示是哪一種：
+        horizontal 是一個 <code>row</code>，間距由呼叫端決定；vertical 是 Basecoat 的
+        <code>.button-group</code>，它把幾個按鈕併成一個控制項並共用邊框，不能設間距。
       </p>
     {% endcall %}
 
@@ -142,21 +142,21 @@
   {% endcall %}
 
   {# ============================================================== 02 #}
-  {% set c03 %}負責把一個值顯示出來的那個檔案——數字、狀態、人、定義。{% endset %}
+  {% set c03 %}負責顯示一個值的檔案：數字、狀態、人、定義。{% endset %}
   {% call lesson("data", "02", "Data", c03) %}
     {% call prose() %}
       <p>
-        <code>ui/</code> 裡最大的一個檔案，也是一般頁面呼叫次數最多的一個。
-        有旋鈕可以轉的四支在下面；其餘各自有一個渲染好的範例。
+        <code>ui/</code> 裡最大的檔案，也是一般頁面呼叫次數最多的一個。
+        有控制項可調的四支在下面，其餘各自有一個渲染好的範例。
       </p>
       <p>
-        <code>empty_state</code> 值得在你需要它之前就先知道。<code>rows</code> 是空的時候，
-        <code>table</code> 會自己把它渲染出來，所以沒有任何呼叫端要寫 if-rows-else 那段分支。
+        <code>empty_state</code> 值得先知道。<code>rows</code> 是空的時候，
+        <code>table</code> 會自己渲染它，所以呼叫端不必寫 if-rows-else 那段分支。
       </p>
       <p>
-        <code>avatar</code> 是值得先讀簽名的那一個。名字同時是 <code>alt</code> 文字和退回時的縮寫，
-        所以兩者不可能互相矛盾；而且一旦有圖片承載了名字，縮寫就會退出無障礙樹——否則同一個人會被唸兩次，
-        一次是正常的，一次是兩個沒頭沒尾的字母。
+        <code>avatar</code> 值得先讀簽名。名字同時是 <code>alt</code> 文字與退回時的縮寫，
+        兩者不會互相矛盾。一旦有圖片承載了名字，縮寫就退出無障礙樹，
+        否則同一個人會被唸兩次：一次是正常的名字，一次是兩個沒有上下文的字母。
       </p>
     {% endcall %}
 
@@ -164,8 +164,8 @@
 
     {{ showcase("empty_state", "empty_state(title, description, icon_name)") }}
     {{ showcase("metric_group", "metric_group(items, cols=3)") }}
-    {{ showcase("bullet_list", "bullet_list(tone) / list_item()——兩支都吃區塊") }}
-    {{ showcase("caption", "caption(text)——也吃區塊，用在說明裡要放連結的時候") }}
+    {{ showcase("bullet_list", "bullet_list(tone) / list_item()——兩支都收區塊") }}
+    {{ showcase("caption", "caption(text)——也收區塊，用在說明裡要放連結的時候") }}
     {{ showcase("inline", "link(label, href) 與 kbd(keys)") }}
     {{ showcase("item_list", "item_list() 的區塊裡放 item(title, description, clamp)") }}
     {{ showcase("code_block", "code_block(source, label, wrap)") }}
@@ -173,40 +173,41 @@
   {% endcall %}
 
   {# ============================================================== 03 #}
-  {% set c04 %}兩個收合元件，中間沒有一行 fjkit 自己的 JavaScript。{% endset %}
+  {% set c04 %}兩個收合元件，沒有一行 fjkit 自己的 JavaScript。{% endset %}
   {% call lesson("disclosure", "03", "Disclosure", c04) %}
     {% call prose() %}
       <p>
-        <code>collapsible</code> 是原生的 <code>&lt;details&gt;</code>：開合狀態、鍵盤操作、disclosure 角色
+        <code>collapsible</code> 是原生的 <code>&lt;details&gt;</code>：開合狀態、鍵盤操作與 disclosure 角色
         全部來自那個元素，Basecoat 用 CSS 替它加動畫。<code>tooltip</code> 完全畫自一個
-        <code>data-tooltip</code> 屬性——根本不存在第二個元素。
+        <code>data-tooltip</code> 屬性，不存在第二個元素。
       </p>
       <p>
-        tooltip 的機制有一個後果要講白：CSS <code>content()</code> 從來不會進無障礙樹。
-        tooltip 是<em>提示</em>，永遠不能是一個控制項唯一的標籤。當 tooltip 是那個控制項身上唯一的文字時，
-        請另外給它 <code>aria_label</code>。
+        這個機制有一個後果：CSS <code>content()</code> 不會進無障礙樹。
+        tooltip 是提示，不能作為一個控制項唯一的標籤。
+        <strong>tooltip 是控制項身上唯一的文字時，另外給它 <code>aria_label</code></strong>，
+        否則螢幕閱讀器唸不出這個控制項是什麼。
       </p>
     {% endcall %}
 
-    {{ showcase("collapsible", "accordion(multiple) / collapsible(summary, open)——兩支都吃區塊") }}
+    {{ showcase("collapsible", "accordion(multiple) / collapsible(summary, open)——兩支都收區塊") }}
     {{ showcase("tooltip", "tooltip(text, side, align)——區塊是被它包住的元素") }}
   {% endcall %}
 
   {# ============================================================== 04 #}
-  {% set c05 %}五種說「等一下」「好了」和「這件事沒成功」的方式。{% endset %}
+  {% set c05 %}五種表達「等一下」「完成」與「這件事失敗」的元件。{% endset %}
   {% call lesson("feedback", "04", "Feedback", c05) %}
     {% call prose() %}
       <p>
-        這幾個的差別在<em>誰在等、等什麼</em>，挑哪一個也是照這條分。<code>alert</code> 是一件留在頁面上的事實。
-        <code>spinner</code> 和 <code>skeleton</code> 都表示「還沒好」，選哪一個取決於你知不知道等一下會出現什麼形狀：
-        skeleton 把那個形狀畫出來，spinner 承認你畫不出來。<code>dialog</code> 則是打斷。
+        這幾個的差別在誰在等、等什麼，挑選也照這條分。<code>alert</code> 是一件留在頁面上的事實。
+        <code>spinner</code> 與 <code>skeleton</code> 都表示還沒好，差別在知不知道等一下會出現什麼形狀：
+        skeleton 畫得出那個形狀，spinner 畫不出來。<code>dialog</code> 是打斷。
         <code>toast</code> 是唯一活得比那個回應更久的一個。
       </p>
       <p>
-        其中兩個替你做了無障礙的決定。<code>alert(variant="destructive")</code> 會拿到
+        其中兩個已經做好無障礙的決定。<code>alert(variant="destructive")</code> 會拿到
         <code>role="alert"</code>，那會打斷螢幕閱讀器正在唸的句子；其餘每個 variant 都是
-        <code>role="status"</code>，會等到一個停頓。而多行的 <code>skeleton</code> 是<strong>一個</strong>
-        即時區域而不是六個——六根長條是一件事在載入，不是六件。
+        <code>role="status"</code>，會等到一個停頓。多行的 <code>skeleton</code> 是<strong>一個</strong>
+        即時區域而不是六個，因為六根長條是一件事在載入，不是六件。
       </p>
     {% endcall %}
 
@@ -223,19 +224,19 @@
     {% call prose() %}
       <p>
         每一支欄位 macro 都收同樣的 <code>name</code>、<code>label</code>、<code>hint</code>、
-        <code>error</code>、<code>id</code>，而且 <code>error</code> 是<strong>取代</strong> hint 而不是疊在它上面，
-        同時把控制項標成 <code>aria-invalid</code>。底下的旋鈕會走過同一份表單的五種樣子：
+        <code>error</code>、<code>id</code>。<code>error</code> <strong>取代</strong> hint 而不是疊加，
+        同時把控制項標成 <code>aria-invalid</code>。底下的控制項會走過同一份表單的五種樣子：
         htmx 版、有錯誤的欄位、比較長的控制項、radio 與 select 的取捨，以及放在
         <code>fieldset</code> 裡的一組 switch。
       </p>
       <p>
-        讓一份表單成為 htmx 表單的是 <code>target=</code>；把它拿掉，同一支 macro 就吐出一份
+        <code>target=</code> 決定一份表單是不是 htmx 表單。拿掉它，同一支 macro 就吐出一份
         沒有 JavaScript 也能用的普通 POST。
       </p>
       <p>
-        底下這兩支是針對自己的機制多做了一件事的欄位。<code>range_field</code> 會替第一次繪製
-        寫好軌道已填滿的那一段——Basecoat 是從一個自訂屬性去畫它，而且只在拖曳時才用 JavaScript 更新，
-        沒有這一步，長條會停在上游的預設值，跟旁邊那個數字對不上。
+        底下這兩支欄位針對自己的機制多做了一件事。<code>range_field</code> 會替第一次繪製
+        寫好軌道已填滿的那一段：Basecoat 從一個自訂屬性畫它，而且只在拖曳時用 JavaScript 更新，
+        少了這一步，長條會停在上游的預設值，與旁邊的數字對不上。
       </p>
     {% endcall %}
 
@@ -251,15 +252,15 @@
   {% call lesson("icon", "06", "Icon", c07) %}
     {% call prose() %}
       <p>
-        <code>icon("plus")</code> 會把 Lucide 的路徑當成 <code>&lt;svg&gt;</code> 內嵌進去。
-        它繼承 <code>currentColor</code>，所以放進 primary 按鈕裡的 icon 顏色本來就是對的，
-        而且不管多大都不用付一個網路請求。
+        <code>icon("plus")</code> 把 Lucide 的路徑當成 <code>&lt;svg&gt;</code> 內嵌進去。
+        它繼承 <code>currentColor</code>，所以放進 primary 按鈕裡的 icon 顏色直接就是對的，
+        而且不論尺寸都不需要一個網路請求。
       </p>
       <p>
         大部分 macro 直接收 <code>icon_name=</code>：<code>button</code>、<code>stat</code>、
-        <code>empty_state</code>、<code>brand</code>、<code>sidebar_link</code>。
-        所以你很少會自己呼叫這一個。這個站側欄裡的圖示全部是那樣來的。
-        底下是其中一小撮，任何 Lucide 名字都可以。
+        <code>empty_state</code>、<code>brand</code>、<code>sidebar_link</code>，
+        所以很少需要自己呼叫 <code>icon</code>。這個站側欄裡的圖示全部由那個參數產生。
+        底下列出其中一部分，任何 Lucide 名字都可以。
       </p>
     {% endcall %}
 
@@ -270,29 +271,29 @@
     {% call card(padded=false) %}
       {{ code_block("", id="icon-code") }}
       <footer>
-        名字打錯會在渲染時直接丟例外，而不是印出一個空格子——所以錯字是讓那一頁掛掉，
-        而不是讓介面上出現一個洞就這樣出貨。
+        名字打錯會在渲染時丟例外，而不是印出一個空格子：錯字讓那一頁失敗，
+        不會帶著一個空洞出貨。
       </footer>
     {% endcall %}
   {% endcall %}
 
   {# ============================================================== 07 #}
-  {% set c08 %}你打下 <code>grid gap-4</code> 的那一刻，零建置這個承諾就結束了。{% endset %}
+  {% set c08 %}寫下 <code>grid gap-4</code> 的那一刻，零建置這個承諾就結束了。{% endset %}
   {% call lesson("layout", "07", "Layout", c08) %}
     {% call prose() %}
       <p>
-        光有元件到不了封閉詞彙表。你第一次要把兩張 card 並排，手就伸向 utility class，
-        而 fjkit 出貨的那份 stylesheet 根本不知道你想要它。所以間距與欄數也是 macro。
-        每一個值都是查表，表裡的字串<em>原封不動</em>出現在 kit 的原始碼裡，Tailwind 掃得到。
+        只有元件到不了封閉詞彙表。第一次要把兩張 card 並排就會伸手拿 utility class，
+        而 fjkit 出貨的那份 stylesheet 裡沒有它。所以間距與欄數也是 macro。
+        每一個值都是查表，表裡的字串原封不動出現在 kit 的原始碼裡，Tailwind 掃得到。
       </p>
       <p>
-        虛線方塊代表你的內容。轉旋鈕，看著底下那行原始碼跟著變。
+        虛線方塊代表你的內容。調整控制項，底下那行原始碼會跟著變。
       </p>
       <p>
-        這個檔案裡另外三支，是資料還沒進來以前一頁就已經由它們組成的部分。
+        這個檔案裡另外三支負責資料進來之前的頁面組成。
         <code>page_header</code> 收一個 block，那個 block 就是它的動作區：
-        標題、說明與一排按鈕在任何寬度下都待在同一行，呼叫端不必量任何東西。
-        這一頁最上面那個 header 就是同一個 macro，平鋪直敘地呼叫，沒有動作要放。
+        標題、說明與一排按鈕在任何寬度下都在同一行，呼叫端不必量任何尺寸。
+        這一頁最上面那個 header 就是同一支 macro，只是沒有動作要放。
       </p>
     {% endcall %}
 
@@ -316,23 +317,23 @@
   {% endcall %}
 
   {# ============================================================== 08 #}
-  {% set c09 %}頁首的三個零件，以及那條說明你在哪裡的路徑。{% endset %}
+  {% set c09 %}頁首的三個零件，以及標示目前位置的路徑。{% endset %}
   {% call lesson("nav", "08", "Nav", c09) %}
     {% call prose() %}
       <p>
-        這些是外殼的頁首，單獨拆成一個檔案，好讓 app 可以只 import 它們而不必 import 那份
+        這些是外殼的頁首，單獨拆成一個檔案，讓 app 可以只 import 它們而不必 import 那份
         它 extends 的模板。其中兩支就在這一頁上：側欄最上面那個標記是 <code>brand</code>，
         頁首那個切換鈕是 <code>theme_toggle</code>。
       </p>
       <p>
-        <code>nav_links</code> 收的是路由<em>名稱</em>而不是 URL，所以「目前在哪一頁」是比對路由
-        而不是字串比對路徑——URL 多了一段 query string 之後它照樣正確。
-        目的地超過大約六個，一排頁首就不夠寬了；那就是改去填外殼 <code>sidebar</code> block 的時機。
+        <code>nav_links</code> 收的是路由名稱而不是 URL，所以判斷目前在哪一頁是比對路由，
+        不是字串比對路徑，URL 多一段 query string 之後仍然正確。
+        目的地超過大約六個，一排頁首就不夠寬，那時改填外殼的 <code>sidebar</code> block。
       </p>
       <p>
         <code>breadcrumb</code> 收的是 <code>(label, href)</code> 成對的清單，其中 href 為 none 的那一項
-        <em>就是</em>當前頁。這是刻意的：這個元件最常見的做錯方式，就是麵包屑最後一項連到你已經在看的這一頁——
-        而參數的形狀讓那件事根本寫不出來。
+        就是當前頁。這個形狀是刻意的：這個元件最常見的錯誤是最後一項連到讀者已經在看的頁面，
+        而這樣的參數寫不出那個錯誤。
       </p>
     {% endcall %}
 
@@ -343,35 +344,35 @@
   {% endcall %}
 
   {# ============================================================== 09 #}
-  {% set c10 %}一個 id 進去，四個出來——而且對不上時不會出聲。{% endset %}
+  {% set c10 %}一個 id 進去，四個出來，而且對不上時不會出聲。{% endset %}
   {% call lesson("overlay", "09", "Overlay", c10) %}
     {% call prose() %}
       <p>
         <code>ui/overlay.html</code> 裡的每一個都由 Basecoat 自己的 JavaScript 驅動，外殼已經載了它，
-        而且它會在 <code>htmx:afterSwap</code> 時重新掃描——所以由 swap 送進來的浮層不需要任何額外處理就能用。
+        而且它會在 <code>htmx:afterSwap</code> 時重新掃描，所以由 swap 送進來的浮層不需要額外處理就能用。
       </p>
       <p>
-        它們共同的東西是 <strong>id 接線</strong>。一個觸發元素和它的面板靠四個相關的 id 互相找到對方，
-        錯一個就靜靜地失敗：面板打得開但永遠不會被唸出來，或者根本打不開。這裡每個 macro 都只收一個
-        <code>id</code> 再自己推導其餘的。這就是它們是 macro 而不是一段可以複製的標記的全部理由。
+        它們的共同點是 <strong>id 接線</strong>。一個觸發元素與它的面板靠四個相關的 id 互相找到對方，
+        錯一個就靜靜失敗：面板打得開但不會被唸出來，或者根本打不開。這裡每支 macro 都只收一個
+        <code>id</code> 再自己推導其餘的，這就是它們是 macro 而不是一段可複製標記的理由。
       </p>
       <p>
-        <code>select_menu</code> 和 <code>combobox</code> 把值放在一個<strong>預先填好</strong>的隱藏欄位裡——
+        <code>select_menu</code> 與 <code>combobox</code> 把值放在一個<strong>預先填好</strong>的隱藏欄位裡。
         上游出貨的是 <code>value=""</code> 再用 JS 寫進去，那會讓任何重繪這個片段的來回弄丟已經選好的值。
         這兩個都不如 <code>select_field</code>：原生的 <code>&lt;select&gt;</code> 一開始就是正確的，
-        而且只花一個元素而不是三十個。
+        而且只用一個元素而不是三十個。
       </p>
       <p>
-        兩個都收 <code>multiple=true</code>，而且從那一刻起 <code>selected</code> 收的是一個
+        兩個都收 <code>multiple=true</code>，此時 <code>selected</code> 收的是一個
         <strong>list</strong>，不再是單一值。隱藏欄位裡放的是 Basecoat 的 JSON 陣列，
-        <code>multiselect_scripts()</code>——一支腳本，由有這種欄位的那一頁自己載入——在送出時
-        把它改寫成 HTML 一直以來的重複欄位寫法：<code>labels=bug&amp;labels=ui</code>。
-        所以路由那邊完全是平常的樣子：<code>labels: list[str] = Form([])</code>，沒有任何地方需要自己解析。
-        忘了載那支腳本的話，欄位會送出一整串 JSON 字串，換來一個 422——而頁面看起來明明填對了。
+        <code>multiselect_scripts()</code>（一支腳本，由用到這種欄位的頁面自己載入）在送出時
+        把它改寫成 HTML 既有的重複欄位寫法：<code>labels=bug&amp;labels=ui</code>。
+        所以路由那邊維持一般寫法：<code>labels: list[str] = Form([])</code>，不需要自己解析。
+        <strong>忘了載那支腳本時，欄位會送出一整串 JSON 字串並換來一個 422</strong>，而頁面看起來填得正確。
       </p>
       <p>
-        放在 <code>fieldset</code> 裡的一組 checkbox 送出的東西一模一樣，而且完全不需要腳本。
-        選項在十來個以內時它是更好的答案；超過那個數量，才輪到這兩個。
+        放在 <code>fieldset</code> 裡的一組 checkbox 送出的內容完全相同，而且不需要腳本。
+        選項在十來個以內時它是更好的答案，超過那個數量才輪到這兩個。
       </p>
     {% endcall %}
 
@@ -387,18 +388,18 @@
   {% endcall %}
 
   {# ============================================================== 10 #}
-  {% set c11 %}唯一一個你 extends 而不是 import 的檔案——也就是你正在看的這一頁。{% endset %}
+  {% set c11 %}唯一一個用 extends 而不是 import 的檔案，也就是你正在看的這一頁。{% endset %}
   {% call lesson("shell", "10", "Shell", c11) %}
     {% call prose() %}
       <p>
         <code>shell.html</code> 沒有 macro，也沒有預覽，因為預覽就是這一頁。
         它擁有 <code>&lt;head&gt;</code>、深色模式的閃爍防護、資源連結、toaster，
-        以及 header／main／footer 這副骨架。它不擁有的——你的品牌、你的導覽、你的頁尾文字——都是 block。
+        以及 header／main／footer 骨架。它不擁有的部分——品牌、導覽、頁尾文字——都是 block。
       </p>
       <p>
-        其中一個 block 改變的是頁面的形狀而不是內容。填了 <code>sidebar</code>，
-        骨架就變成側邊欄加一條細的頂列；外殼自己會去測那個 block 是不是空的，
-        並在頁首補上 <code>sidebar_trigger</code>——所以 app 從來不必另外設一個旗標說自己要哪一種版面。
+        其中一個 block 改變的是頁面形狀而不是內容。填了 <code>sidebar</code>，
+        骨架就變成側邊欄加一條細的頂列。外殼自己會判斷那個 block 是不是空的，
+        並在頁首補上 <code>sidebar_trigger</code>，所以 app 不必另外設旗標宣告要哪一種版面。
       </p>
     {% endcall %}
 
@@ -411,18 +412,18 @@
   {% call lesson("sidebar", "11", "Sidebar", c12) %}
     {% call prose() %}
       <p>
-        這一頁左邊那條側欄就是這個檔案。底下沒有放進 card 的預覽，而那才是誠實的呈現：
-        面板是 <code>position: fixed</code>，複製一份放在這裡只會蓋住整頁，而不是待在卡片裡。
-        正在跑的那一個就在左邊，產生它的那段呼叫印在下面。
+        這一頁左邊那條側欄就是這個檔案。底下沒有放進 card 的預覽：
+        面板是 <code>position: fixed</code>，複製一份放在這裡會蓋住整頁，不會待在卡片裡。
+        正在執行的那一個就在左邊，產生它的那段呼叫印在下面。
       </p>
       <p>
-        一樣是路由名稱、用名字指定的圖示、封閉列舉，簽名裡沒有任何 class 字串。
-        <code>open</code> 只是<em>桌面</em>的起始狀態：在窄螢幕上側欄一律從關閉開始，
+        一樣是路由名稱、用名字指定的圖示、封閉列舉，簽名裡沒有 class 字串。
+        <code>open</code> 只是桌面的起始狀態：窄螢幕上側欄一律從關閉開始，
         因為它在那裡是整頁覆蓋的浮層，而一開啟就被自己的導覽蓋住的頁面是 bug，不是偏好。
       </p>
       <p>
         關掉 JavaScript 時，伺服器端渲染的 <code>aria-hidden="false"</code> 讓寬螢幕照樣可以導覽，
-        並在窄螢幕上把浮層藏起來。兩種情況下連結都留在 HTML 裡，所以爬蟲與閱讀模式仍然看得到。
+        並在窄螢幕上把浮層藏起來。兩種情況下連結都留在 HTML 裡，爬蟲與閱讀模式仍然看得到。
       </p>
     {% endcall %}
 
@@ -430,18 +431,18 @@
   {% endcall %}
 
   {# ============================================================== 12 #}
-  {% set c13 %}把 rows 傳進去，空狀態就歸 macro 管。{% endset %}
+  {% set c13 %}把 rows 傳進去，空狀態由 macro 處理。{% endset %}
   {% call lesson("table", "12", "Table", c13) %}
     {% call prose() %}
       <p>
-        <code>columns</code> 是一串 dict——<code>label</code>，需要時再加 <code>align</code> 或
-        <code>width</code>——而 <code>rows</code> 是這支 macro 用來決定要渲染你的內容還是空狀態的東西。
-        這就是它收了一份自己並不迭代的 rows 的全部理由：沒有任何呼叫端要重寫 if-rows-else，
-        也沒有任何一頁能出貨一張只剩表頭的表格。
+        <code>columns</code> 是一串 dict：<code>label</code>，需要時再加 <code>align</code> 或
+        <code>width</code>。<code>rows</code> 則決定這支 macro 要渲染你的內容還是空狀態。
+        它收下一份自己並不迭代的 rows 就是為了這件事：呼叫端不必重寫 if-rows-else，
+        也不會有頁面出貨一張只剩表頭的表格。
       </p>
       <p>
         重複的 row 是你迴圈裡的一次 macro 呼叫。在那裡用
-        <code>{% raw %}{% include %}{% endraw %}</code> 等於每一輪都多一次模板查找與一份新的 context，
+        <code>{% raw %}{% include %}{% endraw %}</code> 等於每一輪多一次模板查找與一份新的 context，
         那正是「上手」那一頁的 benchmark 量到的差距。
       </p>
     {% endcall %}
@@ -450,30 +451,30 @@
   {% endcall %}
 
   {# ============================================================== 13 #}
-  {% set c14 %}兩個 id，傳一次，鍵盤的事歸 Basecoat。{% endset %}
+  {% set c14 %}兩個 id，傳一次，鍵盤操作由 Basecoat 負責。{% endset %}
   {% call lesson("tabs", "13", "Tabs", c14) %}
     {% call prose() %}
       <p>
-        哪一個分頁被選取、roving tabindex、方向鍵，全部是 Basecoat 的，而外殼已經載好了它。
-        這支 macro 帶的是那套行為要讀的 aria 契約：一個 <code>[role="tab"]</code>，
+        哪一個分頁被選取、roving tabindex 與方向鍵全部屬於 Basecoat，外殼已經載好了它。
+        這支 macro 提供那套行為要讀的 aria 契約：一個 <code>[role="tab"]</code>，
         它的 <code>aria-controls</code> 指到同名 id 的 <code>[role="tabpanel"]</code>。
-        手寫這組配對正好是元件應該替你省掉的那種事。
+        手寫這組配對正是元件該省掉的工作。
       </p>
       <p>
-        <code>selected</code> 指名一開始就打開的那個分頁，而伺服器知道這次請求是為了哪一個——
-        所以它是一個參數，而不是繪製之後由腳本決定的東西。
-        這一頁每一組旋鈕底下那兩個表示法，用的就是這支 macro。
+        <code>selected</code> 指名一開始就打開的分頁。伺服器知道這次請求是為了哪一個，
+        所以它是一個參數，而不是繪製之後由腳本決定。
+        這一頁每一組控制項底下那兩個表示法，用的就是這支 macro。
       </p>
     {% endcall %}
 
-    {{ showcase("tabs", "tabs(items, label, selected) / tab_panel(id)——兩支都吃區塊") }}
+    {{ showcase("tabs", "tabs(items, label, selected) / tab_panel(id)——兩支都收區塊") }}
   {% endcall %}
 
   {# ============================================================== next #}
   {% set lead_next %}十四個檔案，以及把它們全部列在同一頁的那份索引。{% endset %}
   {% call band("next", "接著讀", lead_next) %}
     {% call grid(cols=2, gap=4) %}
-      {% set d_sheet %}<a href="{{ url_for(request, "cheatsheet") }}">每一支 macro，一個檔案一張表，含它吃不吃區塊，以及搭配的 htmx 屬性</a>{% endset %}
+      {% set d_sheet %}<a href="{{ url_for(request, "cheatsheet") }}">每一支 macro，一個檔案一張表，含它收不收區塊，以及搭配的 htmx 屬性</a>{% endset %}
       {% set d_learn %}<a href="{{ url_for(request, "learn") }}">各個零件怎麼接，以及 htmx 送出什麼</a>{% endset %}
       {{ defs("文件的其他部分", [
         ("速查表", d_sheet),

@@ -24,7 +24,7 @@ protected = APIRouter(prefix="/session", tags=["session"], dependencies=[Depends
 
 
 def _panel(request: Request, error: str | None = None) -> SessionResponse:
-    """Build the panel's context from the current session."""
+    """Build the panel's context from the current session, plus an optional error."""
     session = getattr(request.state, "auth", None)
     return SessionResponse(
         signed_in=session is not None,

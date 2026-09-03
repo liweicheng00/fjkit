@@ -2,9 +2,9 @@
   The siblings panel: everything else assigned to the picked task's owner.
 
   It hears the same event as the detail panel and asks a different endpoint a
-  different question — which is the reason the two are separate fragments rather
-  than one bigger one. It also hears `task-changed`, because a sibling's status
-  is on the row.
+  different question, which is why the two are separate fragments rather than one
+  bigger one. It also hears `task-changed`, because a sibling's status is on the
+  row.
 #}
 {% set oob = oob | default(false) %}
 {% set selected = selected | default(none) %}

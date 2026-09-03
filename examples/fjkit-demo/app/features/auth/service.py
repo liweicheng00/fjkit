@@ -1,4 +1,4 @@
-"""The demo's `TokenSource`: one fixed account, no token refresh."""
+"""The demo's `TokenSource`: one fixed account, and no token to refresh."""
 
 from __future__ import annotations
 

@@ -1,10 +1,10 @@
-/* Shared by all three pages. Loaded by base.html, after Basecoat's own script.
+/* Shared by every page. Loaded by base.html, after Basecoat's own script.
  *
- * Deliberately small. Everything this file used to do that a component can do
- * is now done by one: the tab strips are Basecoat's `.tabs` (its JS owns
- * selection and the arrow keys), the navigation is `sidebar_link`, and the
- * in-page rail is rendered by Jinja from each page's `sections` list. What is
- * left is a highlighter, a scroll-spy, and three helpers. */
+ * Small on purpose. Everything this file used to do that a component can do is
+ * now done by one: the tab strips are Basecoat's `.tabs` (its JS owns selection
+ * and the arrow keys), the navigation is `sidebar_link`, and Jinja renders the
+ * in-page rail from each page's `sections` list. What is left is a highlighter,
+ * a scroll-spy, and three helpers. */
 
 /* ------------------------------------------------------------------ utils */
 const $ = (sel) => document.querySelector(sel);
@@ -12,13 +12,13 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const fill = (html, map) => html.replace(/__[A-Z0-9]+__/g, (key) => (key in map ? map[key] : ""));
 
 /* Highlighter for the source panes. Escape first, then colour in a single pass:
-   one alternation per language, so a span this function inserts can never be
-   rescanned by a later rule (`class` is a Python keyword, which is exactly how
-   a multi-pass version eats its own markup).
+   one alternation per language, so a later rule can never rescan a span this
+   function inserted. (`class` is a Python keyword, which is how a multi-pass
+   version eats its own markup.)
 
-   Tokens are marked with `data-t`, not a class. Nothing this file injects
-   should be mistakable for a class an app is allowed to write — the page that
-   teaches the closed vocabulary should not be sprinkling `.k` through itself. */
+   Tokens are marked with `data-t`, not a class. Nothing this file injects should
+   be mistakable for a class an app may write: the page that teaches the closed
+   vocabulary should not sprinkle `.k` through itself. */
 const RULES = {
   jinja: [
     /(\{#[\s\S]*?#\})|(\{%[\s\S]*?%\}|\{\{[\s\S]*?\}\})|(&quot;[^&\n]*?&quot;)/g,
@@ -53,20 +53,20 @@ const setCode = (el, source, lang) => { el.innerHTML = highlight(source, lang); 
 
 /* --------------------------------------------------------- static code panes
  * Any <pre data-lang> printed by a template is highlighted here, reading the
- * source back out of textContent. Two reasons it works this way rather than at
- * build time: the code is legible with scripting off, and there is one
+ * source back out of textContent. Two reasons for doing it here rather than at
+ * build time: the code stays legible with scripting off, and there is one
  * highlighter instead of a server-side copy that has to agree with it. */
 document.querySelectorAll("pre[data-lang]").forEach((el) => {
   if (el.textContent.trim()) setCode(el, el.textContent, el.dataset.lang);
 });
 
 /* ------------------------------------------------------------- scroll-spy
- * The rail itself is server-rendered: base.html loops over the page's
- * `sections` and calls `sidebar_link` for each, so the navigation and the
- * headings are one list. All that is left for the browser is which of them you
- * are looking at, which a static file cannot know. `aria-current` is what
- * Basecoat's sidebar styles, and it is what a screen reader announces — so
- * marking the active link is the whole job, not a class toggle beside it. */
+ * The rail itself is server-rendered: base.html loops over the page's `sections`
+ * and calls `sidebar_link` for each, so the navigation and the headings are one
+ * list. All that is left for the browser is which section you are looking at,
+ * which a static file cannot know. `aria-current` is what Basecoat's sidebar
+ * styles and what a screen reader announces, so marking the active link is the
+ * whole job — no class toggle beside it. */
 (function scrollSpy() {
   const links = new Map();
   document.querySelectorAll(".sidebar a[href*='#']").forEach((a) => {

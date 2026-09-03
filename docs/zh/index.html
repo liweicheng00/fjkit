@@ -16,7 +16,7 @@
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
   <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
-  <script defer src="../assets/js/errors.js?v=1787594535"></script>
+  <script defer src="../assets/js/errors.js?v=1788369088"></script>
   <meta name="description" content="fjkit 把 Jinja、Tailwind CSS 與 shadcn 風格元件整合給 FastAPI 用：頁面、表格、表單、導覽與 htmx 局部更新全部是 Jinja macro，而且你這端零建置。">
   <meta property="og:title" content="fjkit — 給 FastAPI 的快速 UI">
   <meta property="og:description" content="fjkit 把 Jinja、Tailwind CSS 與 shadcn 風格元件整合給 FastAPI 用：頁面、表格、表單、導覽與 htmx 局部更新全部是 Jinja macro，而且你這端零建置。">
@@ -51,15 +51,15 @@ fjkit
 </ul>
   </div>
 <div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
-    <a href="index.html#who">      <span>給誰用</span>
+    <a href="index.html#who">      <span>01 · 給誰用</span>
     </a>
   </li>
         <li>
-    <a href="index.html#box">      <span>wheel 裡裝了什麼</span>
+    <a href="index.html#box">      <span>02 · wheel 裡裝了什麼</span>
     </a>
   </li>
         <li>
-    <a href="index.html#next">      <span>接下來去哪</span>
+    <a href="index.html#next">      <span>03 · 接下來去哪</span>
     </a>
   </li>
 </ul>
@@ -99,8 +99,8 @@ fjkit
       <div>
 <h3>主要特色</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>零建置</h4><p>沒有 package.json、沒有 node_modules、沒有 watcher。stylesheet 在 fjkit 發佈時就編譯好了，不是在你的 app 執行時。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>一個顏色旋鈕</h4><p>每個顏色都是 token。換品牌是改一個檔案，而且改完綠色仍然代表完成。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>零建置</h4><p>沒有 package.json、沒有 node_modules、沒有 watcher。stylesheet 在 fjkit 發佈時編譯，不在你的 app 執行時編譯。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>顏色只有一個開關</h4><p>每個顏色都是 token。換品牌是改一個檔案，而且改完綠色仍然代表完成。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>掛在你現有的 API 上</h4><p>每一個 htmx 端點都會用 JSON 回應 curl。同一條路由、同一個 handler、同一個回傳標註。</p>    </section>  </div></div></div>
   </div>
 
@@ -108,22 +108,22 @@ fjkit
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">給誰用</h2><p class="text-muted-foreground text-sm">會寫後端、需要一個像樣的介面、又不想碰前端工具鏈的人。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">給誰用</h2><p class="text-muted-foreground text-sm">會寫後端、需要一套介面、不想碰前端工具鏈的人。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        你已經會寫 FastAPI。你需要導覽、深色模式、一張可篩選的表格，以及一個會驗證的表單。
-        這是給你的。
+        適用對象：已經在寫 FastAPI，需要導覽、深色模式、一張可篩選的表格，
+        以及一個會驗證的表單。
       </p>
       <p>
-        如果你要帶 React、Vue 或 Svelte 進來，那這一層就選錯了。這是一個決定，不是一個缺口。
+        要引入 React、Vue 或 Svelte 的專案不適用。這是設計決定，不是缺口。
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>它應該花你多少</h3>      </div>
+<h3>預期成本</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>第一頁</h4><p>大約二十行 Python 就有導覽與深色模式，而且沒有建置步驟</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>第一頁</h4><p>約二十行 Python，含導覽與深色模式，沒有建置步驟</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>一個後台畫面</h4><p>列表、篩選、新增表單與 htmx 更新，一個下午。不寫 CSS，也不寫 JavaScript。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>換品牌</h4><p>一份覆寫 token 的 stylesheet，掛在 kit 的後面</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>換品牌</h4><p>一份覆寫 token 的 stylesheet，掛在 kit 後面</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>升級</h4><p>改一個版本號。stylesheet 在 wheel 裡，不在你的 repo 裡。</p>    </section>  </div></div></div>
   </div>
 
@@ -134,19 +134,19 @@ fjkit
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">wheel 裡裝了什麼</h2><p class="text-muted-foreground text-sm">一個 wheel、兩個執行期依賴，沒有任何東西要你自己編譯。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">wheel 裡裝了什麼</h2><p class="text-muted-foreground text-sm">一個 wheel、兩個執行期依賴，不需要自行編譯任何東西。</p>      </div>
       <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>套件裡帶的</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>templates/ui/</h4><p>那些 macro：版面、按鈕、資料、表單、表格、分頁、導覽、側欄、回饋、圖示，以及文件外殼</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>templates/ui/</h4><p>macro：版面、按鈕、資料、表單、表格、分頁、導覽、側欄、回饋、圖示與文件外殼</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>編譯好的 stylesheet，每個風格包一份。234 KB 原始、23.9 KB gzip，在 build 自己守著的 28 KB 預算內。一頁只載一份。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>static/vendor/</h4><p>htmx 與 Basecoat 的 JavaScript，版本釘死，直接從套件裡供應</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>1,767 個圖示</h4><p>Lucide，按名字內嵌。沒有 icon font、沒有 sprite 請求、執行期沒有 JS。</p>    </section>  </div></div></div>
   </div>
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>你會碰到的全部表面</h3>      </div>
+<h3>你會用到的全部介面</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>FjkitConfig、mount_fjkit</h4><p>接線，每支 app 一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>@render</h4><p>在裝飾器上指名模板；handler 只回資料</p>    </section>  </div><div class="item" data-clamp="false">    <section>
@@ -155,8 +155,8 @@ fjkit
   </div>
 </div>
 <div class="flex flex-col gap-3">      <p>
-        需求：Python 3.13 以上，以及兩個執行期依賴——FastAPI 與 Jinja2。要加第三個，需要一個到
-        目前為止還沒有人提得出來的理由。
+        需求：Python 3.13 以上，加上 FastAPI 與 Jinja2 兩個執行期依賴。
+        目前沒有加入第三個依賴的理由。
       </p>
 </div>
 </section></div></div>
@@ -166,13 +166,13 @@ fjkit
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">接下來去哪</h2><p class="text-muted-foreground text-sm">兩頁。一頁給你看接線，一頁給你看每一個 macro。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">接下來去哪</h2><p class="text-muted-foreground text-sm">兩頁：一頁是接線，一頁是每一支 macro。</p>      </div>
           <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>這個站上</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>上手</h4><p><a href="learn.html">kit 怎麼接、htmx 送出什麼，以及那個會讓 build 掛掉的關卡</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>元件</h4><p><a href="components.html">每個 macro，實際渲染，附上產生它的那行呼叫</a></p>    </section>  </div></div></div>
+      <h4>上手</h4><p><a href="learn.html">kit 怎麼接、htmx 送出什麼，以及那個會讓 build 失敗的關卡</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>元件</h4><p><a href="components.html">每支 macro 的實際渲染，附上產生它的那行呼叫</a></p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>

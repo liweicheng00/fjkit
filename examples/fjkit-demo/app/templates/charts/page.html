@@ -22,7 +22,6 @@
   {{ page_header("Charts", note) }}
 
   {% call stack(4) %}
-    {# The grouping select sends `group` via `hx-get` and pushes the URL. #}
     {{ select_field("group", label="Break the workload down",
                     options=grouping_options, selected=active_grouping,
                     hx_get=url_for(request, "charts_page"),

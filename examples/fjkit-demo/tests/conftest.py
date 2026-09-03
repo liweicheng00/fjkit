@@ -7,7 +7,8 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def client():
-    # A fresh app per test.
+    # A fresh app per test: the services hold their rows in memory, and writes
+    # from one test would otherwise be visible to the next.
     with TestClient(create_app()) as client:
         yield client
 

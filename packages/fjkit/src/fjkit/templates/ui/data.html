@@ -7,7 +7,8 @@
 {%- endmacro %}
 
 {#
-  card(title, description, size, actions, padded) — a {% call %} block macro.
+  card(title, description, size, actions, padded) — a bordered panel, called as
+  a block macro.
 
       {% call card("Throughput", "last 7 days") %}
         <p>…</p>
@@ -18,14 +19,12 @@
       {% set filters %}{% call button_group() %}…{% endcall %}{% endset %}
       {% call card("5 tasks", actions=filters) %}…{% endcall %}
 
-  A parameter rather than a second slot on purpose — a two-slot call block runs
-  its body once per slot, which is the wrong shape for the common case where a
-  card has a heavy body and no actions at all.
+  A parameter rather than a second slot: a two-slot call block runs its body
+  once per slot, and the common case is a heavy body with no actions at all.
 
-  `padded=false` drops the inner <section>, so a table can sit flush against
-  the card's edges instead of inside its padding. When there is also a header,
-  the body gets a rule above it — a flush body butting straight into header
-  text reads as one block.
+  `padded=false` drops the inner <section> so a table sits flush against the
+  card's edges. With a header as well, the body gets a rule above it; a flush
+  body butting into header text reads as one block.
 #}
 {% macro card(title=none, description=none, size="", actions=none, padded=true) -%}
   {%- set has_header = title or description or actions -%}
@@ -50,10 +49,10 @@
 {%- endmacro %}
 
 {#
-  Never build a class by string interpolation (`text-{{ tone }}`): Tailwind
-  finds classes by scanning source text, so an interpolated one is simply
-  absent from the stylesheet. Tones are a closed lookup whose values appear
-  verbatim in this file — which is exactly what makes them findable.
+  Never build a class by interpolation (`text-{{ tone }}`): Tailwind finds
+  classes by scanning source text, so an interpolated one is absent from the
+  stylesheet. A closed lookup keeps every value in this file verbatim, where
+  the scan finds it.
 #}
 {% set _TONES = {
   "success": "text-success",
@@ -141,17 +140,14 @@
 {#
   caption(text) — a standalone line of secondary prose.
 
-  `card`, `section` and `page_header` all render a description already, but
-  each of those is bound to a heading: the description is the second line of a
-  title block and cannot be moved away from it. This is the line that stands on
-  its own — under a table, beneath a control, at the foot of a form — and there
-  was no way to write one, because the colour it needs
-  (`text-muted-foreground`) is a utility an app template may not write. Without
-  a macro the only options are a bare `<p>`, which renders at body weight and
-  says the wrong thing, or a colour literal the checker rejects.
+  `card`, `section` and `page_header` each render a description, but each of
+  those is the second line of a title block and cannot move away from its
+  heading. This is the line that stands alone: under a table, beneath a
+  control, at the foot of a form. An app template cannot write one by hand —
+  the colour it needs (`text-muted-foreground`) is a utility the checker
+  rejects, and a bare `<p>` renders at body weight.
 
-  Takes the text as an argument, or a body when the caption has to hold a
-  `link()`:
+  Takes the text as an argument, or a body when the caption holds a `link()`:
 
       {{ caption("Counts refresh every five minutes.") }}
 
@@ -168,8 +164,8 @@
 {#
   link(label, href) — an inline link in body copy.
 
-  Underlined by default: a link that is only distinguished by colour fails for
-  anyone who cannot see the colour.
+  Always underlined: a link distinguished by colour alone fails for a reader
+  who cannot see the colour.
 #}
 {% macro link(label, href) -%}
   <a class="text-foreground underline underline-offset-4" href="{{ href }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ label }}</a>
@@ -183,26 +179,23 @@
 {#
   code_block(source, label, wrap) — source, a log, a config, a payload.
 
-  Roadmap 0.9, pulled forward. There is no Basecoat component for this and no
-  amount of `card` gets you there: a code region has three problems a <pre> on
-  its own does not solve.
+  Roadmap 0.9, pulled forward. Basecoat has no component for this and `card`
+  does not reach it: a code region has three problems a bare <pre> leaves open.
 
-  1. **It scrolls, so it has to be reachable.** A scroll container that nothing
-     can focus is unreachable by keyboard entirely — the mouse can wheel it, a
-     keyboard user cannot. `tabindex="0"` is the fix, and it is why this clears
-     CHARTER §8's "just wrapping a native element" bar rather than falling foul
-     of it.
-  2. **A focusable region needs a name**, or a screen reader announces an
-     unlabelled stop in the tab order. `role="region"` is only applied when
-     there is a label to give it, because a region without one is worse than no
-     region at all.
-  3. **Long lines.** `wrap=true` for emitted markup — one line of HTML with an
-     inline SVG in it is not something anyone should scroll sideways through.
+  1. It scrolls, so it has to be reachable. A mouse can wheel a scroll
+     container that nothing can focus; a keyboard cannot reach it at all.
+     `tabindex="0"` fixes that, and it is why this clears CHARTER §8's bar on
+     wrapping a native element.
+  2. A focusable region needs a name, or a screen reader announces an
+     unlabelled stop in the tab order. `role="region"` is applied only when
+     there is a label for it, because an unnamed region is worse than none.
+  3. Long lines. Pass `wrap=true` for emitted markup: one line of HTML holding
+     an inline SVG is not something to scroll sideways through.
 
-  The content is printed as text, and stays text: highlighting is a client-side
-  concern, and a page that wants it reads `textContent` back out and marks up
-  the tokens. That keeps the source legible with scripting off and keeps this
-  macro out of the business of knowing any language.
+  The content is printed as text and stays text. Highlighting is client-side —
+  a page that wants it reads `textContent` back and marks up the tokens — which
+  keeps the source legible with scripting off and keeps this macro from having
+  to know any language.
 #}
 {% macro code_block(source, label=none, wrap=false) -%}
   <pre class="code-block scrollbar" tabindex="0"
@@ -215,10 +208,10 @@
   item_list() / item(title, description, …) — a list of rows that are not a
   table: settings, results, definitions, a feed.
 
-  Roadmap 0.9. Basecoat ships `.item-group` / `.item` and its markup contract is
-  load-bearing — `.item > section` is the text column, `.item > figure` the
-  leading icon, `.item > aside` the trailing actions — which is precisely the
-  kind of thing an app should not be re-deriving from a stylesheet.
+  Roadmap 0.9. Basecoat ships `.item-group` / `.item`, and its markup contract
+  is load-bearing: `.item > section` is the text column, `.item > figure` the
+  leading icon, `.item > aside` the trailing actions. An app should not have to
+  re-derive that from a stylesheet.
 
       {% call item_list() %}
         {{ item("router.py", "reads the request, calls the service") }}
@@ -228,11 +221,10 @@
   `description` may be markup, so a row can hold a badge or a link without the
   caller reaching for |safe.
 
-  **clamp** is the one thing worth knowing. Basecoat clamps `.item p` to two
-  lines, which is right for a feed and wrong for a definition list — so
-  `clamp=false` releases it. It is an attribute rather than a class because the
-  rule lives in `fjkit.css`, next to the other `data-*` extensions of Basecoat's
-  own API.
+  Basecoat clamps `.item p` to two lines, which suits a feed and not a
+  definition list; `clamp=false` releases it. It is an attribute rather than a
+  class because the rule lives in `fjkit.css`, beside the other `data-*`
+  extensions of Basecoat's API.
 #}
 {% macro item_list() -%}
   <div class="item-group"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ caller() }}</div>
@@ -255,18 +247,18 @@
 {#
   avatar(name, src, size, badge_tone, badge_icon)
 
-  `name` is required and `src` is not, which is the right way round: the
-  initials are the fallback the image falls back *to*, and an avatar with no
-  name has nothing to show when the URL 404s. Basecoat stacks both and lets
-  the absolutely-positioned `<img>` cover the initials when it loads, so the
-  fallback costs nothing and needs no JavaScript.
+  `name` is required and `src` is not: the initials are what the image falls
+  back to, and an avatar with no name has nothing to show when the URL 404s.
+  Basecoat stacks both and lets the absolutely positioned `<img>` cover the
+  initials once it loads, so the fallback costs nothing and needs no
+  JavaScript.
 
-  `name` also becomes the `alt` text — one parameter, so the accessible name
-  and the visible initials cannot disagree.
+  `name` also becomes the `alt` text, so the accessible name and the visible
+  initials cannot disagree.
 
   The badge is a status dot. Upstream's example writes `bg-green-600` on it;
-  here the colour is a role (A3), because a dot that means "online" has to
-  survive a rebrand exactly like a badge that means "done".
+  here the colour is a role (A3), because a dot meaning "online" has to survive
+  a rebrand exactly like a badge meaning "done".
 #}
 {% set _AVATAR_BADGE_TONES = {
   "success": "bg-success",
@@ -278,16 +270,16 @@
 
 {% macro avatar(name, src=none, size="", initials=none, badge_tone=none, badge_icon=none) -%}
   {#
-    Two words at most: "Ada Lovelace" is AL, "Ada" is A, and a name with five
-    words is not five letters. The caller can override for the cases initials
-    do not survive — a handle, a non-Latin script.
+    Two letters at most: "Ada Lovelace" is AL, "Ada" is A, and a five-word name
+    is not five letters. Pass `initials` where the default does not survive —
+    a handle, a non-Latin script.
   #}
   {%- set letters = initials if initials is not none else (name.split() | map("first") | join)[:2] | upper -%}
   <span class="avatar"{% if size %} data-size="{{ size }}"{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     {%- if src %}<img src="{{ src }}" alt="{{ name }}">{% endif %}
     {#
       The initials carry the accessible name when there is no image, and are
-      hidden from the tree when there is — otherwise the avatar is announced
+      hidden from the tree when there is: otherwise the avatar is announced
       twice, once as the alt text and once as two stray letters.
     #}
     <span{% if src %} aria-hidden="true"{% endif %}>{{ letters }}</span>
@@ -302,10 +294,9 @@
 {#
   avatar_group(overflow)
 
-  Overlapping avatars, with an optional "+3" at the end. `overflow` is a
-  number rather than a rendered label so the macro can say "+" itself — a
-  caller passing "3 more" would break the ring geometry the CSS gives
-  `[data-count]`.
+  Overlapping avatars, with an optional "+3" at the end. `overflow` is a number
+  rather than a rendered label so the macro writes the "+" itself: a caller
+  passing "3 more" breaks the ring geometry the CSS gives `[data-count]`.
 #}
 {% macro avatar_group(overflow=none, label=none) -%}
   <div class="avatar-group"{% if label %} role="group" aria-label="{{ label }}"{% endif %}

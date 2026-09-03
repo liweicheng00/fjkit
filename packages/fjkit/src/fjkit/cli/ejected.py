@@ -1,10 +1,10 @@
 """The stamp `fjkit eject` writes, and how a stale copy is found again later.
 
 An ejected component is a copy: the loader finds the app's file first, so the
-copy shadows the kit's own and no call site changes (CHARTER.md A5). The cost
-is that the copy stops receiving upstream fixes — silently, which is the part
-worth solving. A year later nobody remembers which version a file was ejected
-from, or whether the kit has changed it since.
+copy shadows the kit's and no call site changes (CHARTER.md A5). The cost is
+that the copy stops receiving upstream fixes, silently. A year later nobody
+remembers which version a file was ejected from, or whether the kit has changed
+it since.
 
 So the copy carries its provenance in a Jinja comment on the first line, in one
 of two shapes:
@@ -14,22 +14,22 @@ of two shapes:
 
 The first is a copy of the whole file; the second owns the macros it names and
 re-exports the rest from the kit (see `fjkit.cli.eject`). `name` is the
-component, the version is when, and each digest is *the kit's source at that
-moment*. The digest is what makes staleness detectable: compare it against the
-installed kit and an inequality means upstream moved. Comparing versions instead
-would false-positive on every release, since most releases touch no component
-the app happens to have ejected.
+component, the version records when, and each digest is the kit's source at that
+moment. The digest makes staleness detectable: compare it against the installed
+kit, and a difference means upstream moved. Comparing versions instead would
+report a false positive on every release, since most releases touch no component
+the app has ejected.
 
-Per macro, not per file, and that is the whole point of the second shape. A
-file-wide digest marks your copy of `badge` stale because the kit changed
-`avatar` — which is noise you learn to ignore, and an alert you ignore is not an
-alert. The report can now say *`badge` moved*, about a macro you actually own.
+Per macro, not per file, which is the point of the second shape. A file-wide
+digest marks a copy of `badge` stale because the kit changed `avatar` — noise
+that trains the reader to ignore the alert. The report can instead name `badge`,
+a macro the app owns.
 
 A macro's digest covers its `{% macro %}` block and not the signature comment
-above it: rewording a paragraph should not tell you your copy has fallen behind.
+above it: rewording a paragraph should not report the copy as behind.
 
-Not an error, ever. Ejecting is a supported escape hatch and diverging is what
-it is for. `fjkit check` reports these as a note beside the violation list and
+Never an error. Ejecting is a supported escape hatch and diverging is its
+purpose. `fjkit check` reports these as a note beside the violation list and
 leaves the exit code alone.
 """
 
@@ -50,34 +50,34 @@ STAMP = re.compile(
     r"|macros:(?P<macros>[\w-]+=[0-9a-f]+(?:,[\w-]+=[0-9a-f]+)*))"
 )
 
-#: Enough to identify a revision, short enough to read in a diff. Collisions
-#: need 2^24 component revisions before they are worth thinking about.
+#: Long enough to identify a revision, short enough to read in a diff.
+#: Collisions need 2^24 component revisions before they matter.
 DIGEST_LENGTH = 12
 
 
 def digest(source: str) -> str:
-    """The stamped fingerprint of a component's source.
+    """Fingerprint a component's source for the stamp.
 
-    Newlines are normalised because the stamp travels through git, and a
-    checkout with `core.autocrlf` on would otherwise report every component as
-    changed.
+    Newlines are normalised because the stamp travels through git: without it, a
+    checkout with `core.autocrlf` on reports every component as changed.
     """
     return hashlib.sha256(source.replace("\r\n", "\n").encode("utf-8")).hexdigest()[:DIGEST_LENGTH]
 
 
 def kit_source(name: str) -> str | None:
-    """The kit's own version of a component, or None if it ships no such name."""
+    """Read the kit's own version of a component, or None if it ships no such
+    name."""
     path = TEMPLATE_DIR / "ui" / f"{name}.html"
     return path.read_text(encoding="utf-8") if path.exists() else None
 
 
 def stamp_line(name: str, version: str, source: str) -> str:
-    """The stamp for a copy of the whole file."""
+    """Build the stamp for a copy of the whole file."""
     return f"{{# fjkit:eject {name} {version} sha256:{digest(source)} #}}\n"
 
 
 def macro_stamp(name: str, version: str, digests: dict[str, str]) -> str:
-    """The stamp for an override that owns some of a component's macros."""
+    """Build the stamp for an override that owns some of a component's macros."""
     listing = ",".join(f"{macro}={value}" for macro, value in digests.items())
     return f"{{# fjkit:eject {name} {version} macros:{listing} #}}\n"
 
@@ -90,29 +90,29 @@ class Ejected:
     name: str
     version: str
     #: What this copy owns: macro name → the kit's digest when it was taken. A
-    #: whole-file copy owns one pseudo-entry named after the component, because
-    #: it took the imports and the lookup tables too, not only the macros.
+    #: whole-file copy holds one pseudo-entry named after the component, because
+    #: it took the imports and the lookup tables as well as the macros.
     owned: tuple[tuple[str, str], ...]
-    #: The same names' digests in the installed kit now. A name missing from
-    #: here is one the kit no longer ships.
+    #: The same names' digests in the installed kit now. A name missing here is
+    #: one the kit no longer ships.
     current: tuple[tuple[str, str], ...]
     #: False when the copy owns named macros rather than the file.
     whole_file: bool
 
     @property
     def digest(self) -> str:
-        """The stamped digest of a whole-file copy. Kept for the file case."""
+        """The stamped digest of a whole-file copy."""
         return self.owned[0][1]
 
     @property
     def moved(self) -> tuple[str, ...]:
-        """The macros you own that the kit has changed since."""
+        """The owned macros the kit has changed since the eject."""
         now = dict(self.current)
         return tuple(name for name, was in self.owned if name in now and now[name] != was)
 
     @property
     def missing(self) -> tuple[str, ...]:
-        """The macros you own that the kit no longer ships at all."""
+        """The owned macros the kit no longer ships."""
         now = dict(self.current)
         return tuple(name for name, _ in self.owned if name not in now)
 
@@ -157,11 +157,11 @@ def _names(names: tuple[str, ...]) -> str:
 
 
 def find_ejected(template_dir: Path) -> list[Ejected]:
-    """Every stamped copy under `template_dir`, in file order.
+    """Collect every stamped copy under `template_dir`, in file order.
 
     Only the first line is read. A stamp anywhere else is not a stamp: `eject`
-    writes it at the top, and scanning the whole file would match a stamp
-    quoted inside documentation about this very feature.
+    writes it at the top, and scanning the whole file would match a stamp quoted
+    inside documentation about this feature.
     """
     from fjkit.cli.eject import kit_macro_digests
 
@@ -198,5 +198,5 @@ def find_ejected(template_dir: Path) -> list[Ejected]:
 
 
 def stale_ejects(template_dir: Path) -> list[Ejected]:
-    """The ones worth telling the app author about."""
+    """The ejects worth telling the app author about."""
     return [e for e in find_ejected(template_dir) if e.is_stale or e.is_orphaned]

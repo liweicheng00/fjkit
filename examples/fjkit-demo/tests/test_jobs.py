@@ -15,7 +15,7 @@ def jobs(client):
 
 
 def test_the_reply_comes_back_before_the_work_starts(htmx, jobs):
-    """The POST reply shows the job as Queued; the service has it Done once the background task ran."""
+    """The reply is rendered before the background task runs, so it shows the job queued, not done."""
     response = htmx.post("/jobs", json={"kind": "export"})
 
     assert response.status_code == 200
@@ -32,7 +32,6 @@ def test_render_does_not_swallow_the_background_task(htmx, jobs):
 
 
 def test_a_running_job_asks_to_be_polled(htmx, jobs):
-    """The card for an unfinished job carries a load-delay trigger, an outerHTML swap and a spinner."""
     job = jobs.create(JobKind.EXPORT)
 
     response = htmx.get(f"/jobs/{job.id}")
@@ -46,7 +45,7 @@ def test_a_running_job_asks_to_be_polled(htmx, jobs):
 
 
 def test_a_finished_job_stops_asking(htmx, jobs):
-    """The card for a finished job carries no poll trigger, no self `hx-get` and no spinner."""
+    """The card is what schedules the next poll, so a finished job has to stop asking for itself."""
     htmx.post("/jobs", json={"kind": "export"})
 
     response = htmx.get("/jobs/1")
@@ -60,7 +59,6 @@ def test_a_finished_job_stops_asking(htmx, jobs):
 
 
 def test_a_failing_job_stops_asking_too(htmx, jobs):
-    """The card for a failed job shows the error and carries no poll trigger."""
     htmx.post("/jobs", json={"kind": "sync"})
 
     response = htmx.get("/jobs/1")
@@ -94,7 +92,7 @@ def test_the_empty_list_says_so(client, jobs):
 
 
 def test_the_start_form_names_an_indicator_that_exists(client, jobs):
-    """The start form's `hx-indicator` id is rendered on the page."""
+    """An `hx-indicator` naming an id that is not on the page shows no spinner and raises nothing."""
     html = client.get("/jobs").text
     assert 'hx-indicator="#job-busy"' in html
     assert 'id="job-busy"' in html
@@ -102,14 +100,12 @@ def test_the_start_form_names_an_indicator_that_exists(client, jobs):
 
 
 def test_starting_a_job_answers_with_the_container_the_form_targets(htmx, jobs):
-    """POST /jobs answers with a `#job-list` element."""
     response = htmx.post("/jobs", json={"kind": "export"})
     assert 'id="job-list"' in response.text
     assert "No jobs yet" not in response.text
 
 
 def test_starting_a_second_job_still_works(htmx, jobs):
-    """The second POST /jobs lists both jobs, newest first."""
     htmx.post("/jobs", json={"kind": "export"})
     response = htmx.post("/jobs", json={"kind": "reindex"})
 
@@ -147,7 +143,7 @@ def test_unknown_job_is_a_404(htmx, jobs):
 
 
 def test_every_details_button_points_at_a_dialog_that_exists(client, jobs):
-    """Each Details button's `popovertarget` id is rendered on the page."""
+    """A `popovertarget` naming an id that is not on the page opens nothing and reports nothing."""
     jobs.create(JobKind.EXPORT)
     html = client.get("/jobs").text
 
@@ -157,7 +153,7 @@ def test_every_details_button_points_at_a_dialog_that_exists(client, jobs):
 
 
 def test_the_details_button_targets_the_body_the_dialog_published(client, jobs):
-    """The Details button's `hx-target` id matches the dialog body's id."""
+    """The button and the dialog agree on the id, so the fetched detail lands inside the open dialog."""
     jobs.create(JobKind.EXPORT)
     html = client.get("/jobs").text
 
@@ -177,7 +173,7 @@ def test_the_details_button_names_its_own_swap(htmx, jobs):
 
 
 def test_the_dialog_is_not_inside_the_card_that_replaces_itself(htmx, jobs):
-    """The polled card carries the Details trigger but not the dialog."""
+    """The card replaces itself on every poll, so a dialog inside it would close while it is open."""
     job = jobs.create(JobKind.EXPORT)
 
     poll = htmx.get(f"/jobs/{job.id}").text
@@ -188,7 +184,7 @@ def test_the_dialog_is_not_inside_the_card_that_replaces_itself(htmx, jobs):
 
 
 def test_the_detail_is_fetched_only_when_the_dialog_opens(client, jobs):
-    """The listing renders the dialog's loading text, not its detail body."""
+    """One listing draws one dialog per job, so the bodies are fetched on open rather than up front."""
     jobs.create(JobKind.EXPORT)
     listing = client.get("/jobs").text
 
@@ -218,7 +214,6 @@ def test_a_failed_job_says_where_it_stopped(htmx, jobs):
 
 
 def test_the_detail_of_a_job_that_is_gone_is_a_404(htmx, jobs):
-    """GET /jobs/{id}/detail for an unknown id returns 404."""
     assert htmx.get("/jobs/999/detail").status_code == 404
 
 

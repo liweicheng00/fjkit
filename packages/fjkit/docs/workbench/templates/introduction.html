@@ -7,26 +7,25 @@
 
   Nothing is explained here for the only time. Every claim on this page is
   demonstrated on one of the other two — the wiring on Learn, the signatures on
-  Components — so this page's job is to be short and to hand over.
+  Components — so this page stays short and hands over.
 
-  House style, and it is the whole reason this page reads the way it does: one
-  idea per sentence, the takeaway first, and no aside that a full stop could
-  have been. A reader who stops after the feature list should still know what
-  this is.
+  House style, and the reason this page reads the way it does: one idea per
+  sentence, the takeaway first, and no aside a full stop could have replaced. A
+  reader who stops after the feature list still knows what this is.
 #}
 {% set sections = [
-  {"id": "who",       "title": "Who it is for"},
-  {"id": "box",       "title": "What ships in the wheel"},
-  {"id": "next",      "title": "Where to go next"},
+  {"id": "who",       "num": "01", "title": "Who it is for"},
+  {"id": "box",       "num": "02", "title": "What ships in the wheel"},
+  {"id": "next",      "num": "03", "title": "Where to go next"},
 ] %}
 
 {#
-  Three, and they are the three that decide whether someone keeps reading.
-  Every other promise this project makes is on Learn, where it is demonstrated
-  instead of asserted, and in CHARTER.md §2, where the reasoning is.
+  Three, and they are the three that decide whether someone keeps reading. Every
+  other promise this project makes is on Learn, where it is demonstrated rather
+  than asserted, and in CHARTER.md §2, where the reasoning is.
 
-  Plain strings, not Markup: a feature that needs a <code> in it is a feature
-  that has not been written plainly enough for a landing page.
+  Plain strings, not Markup: a feature that needs a <code> in it has not been
+  written plainly enough for a landing page.
 #}
 {% set features = [
   ("No build step",
@@ -89,8 +88,8 @@
 
     {% call prose() %}
       <p>
-        Requirements: Python 3.13 or newer, and two runtime dependencies — FastAPI and Jinja2. A third
-        one needs an argument nobody has made yet.
+        Requirements: Python 3.13 or newer, and two runtime dependencies — FastAPI and Jinja2. Adding
+        a third needs an argument nobody has made yet.
       </p>
     {% endcall %}
   {% endcall %}

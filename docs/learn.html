@@ -16,7 +16,7 @@
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
   <script defer src="assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
-  <script defer src="assets/js/errors.js?v=1787594535"></script>
+  <script defer src="assets/js/errors.js?v=1788369088"></script>
   <meta name="description" content="Build a FastAPI interface without a front-end toolchain: how the kit is wired, what htmx actually sends, a brand knob that repaints the page, and the vocabulary checker.">
   <meta property="og:title" content="Learn fjkit">
   <meta property="og:description" content="Build a FastAPI interface without a front-end toolchain: how the kit is wired, what htmx actually sends, a brand knob that repaints the page, and the vocabulary checker.">
@@ -51,51 +51,47 @@ fjkit
 </ul>
   </div>
 <div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
-    <a href="learn.html#wiring">      <span>Wiring: config, mount, templates</span>
+    <a href="learn.html#wiring">      <span>01 · Wiring: config, mount, templates</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#exchange">      <span>The htmx request and response</span>
+    <a href="learn.html#exchange">      <span>02 · The htmx request and response</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#targets">      <span>hx-target and hx-swap</span>
+    <a href="learn.html#targets">      <span>03 · hx-target and hx-swap</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#triggers">      <span>hx-trigger: typing, scrolling, polling</span>
+    <a href="learn.html#triggers">      <span>04 · hx-trigger: typing, scrolling, polling</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#partials">      <span>Partials: one file, page and swap</span>
+    <a href="learn.html#partials">      <span>05 · Partials: one file, page and swap</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#oob">      <span>One reply, many regions: hx-swap-oob</span>
+    <a href="learn.html#oob">      <span>06 · One reply, many regions: hx-swap-oob</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#broadcast">      <span>One id, many fragments: HX-Trigger</span>
+    <a href="learn.html#broadcast">      <span>07 · One id, many fragments: HX-Trigger</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#pending">      <span>While the request is in flight</span>
+    <a href="learn.html#pending">      <span>08 · While the request is in flight</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#json">      <span>No HX-Request: the same route answers JSON</span>
+    <a href="learn.html#patterns">      <span>09 · Nine htmx patterns, and their handlers</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#patterns">      <span>Nine htmx patterns, and their handlers</span>
+    <a href="learn.html#knob">      <span>10 · Rebranding: brand and status tokens</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#knob">      <span>Rebranding: brand and status tokens</span>
-    </a>
-  </li>
-        <li>
-    <a href="learn.html#gate">      <span>fjkit check: the closed vocabulary</span>
+    <a href="learn.html#gate">      <span>11 · fjkit check: the closed vocabulary</span>
     </a>
   </li>
 </ul>
@@ -127,22 +123,11 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Build the interface where you build the routes</h1>
-<p class="text-muted-foreground text-sm">    Twelve lessons: how a fjkit app is wired, what htmx actually sends, how a rebrand works, and the
-    command that fails a build. Every demo below is live.
+<p class="text-muted-foreground text-sm">    Eleven lessons: how a fjkit app is wired, what htmx sends, how a rebrand works, and the command
+    that fails a build. Every demo below is live.
 </p>    </div>
   </div>
 
-<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>This page is the thing it documents</h3><p>Not a screenshot of it.</p>      </div>
-    </header>      <section><div class="flex flex-col gap-3">      <p>
-        Every preview below is real macro output, rendered by fjkit's own Jinja environment at build
-        time. So is the page around them. The sidebar, these cards, the tables and the tab strips
-        are the same macros the demo app calls, and <code>fjkit check</code> runs over this site's
-        templates in CI. Nothing here can show you a component the package does not ship.
-      </p>
-</div></section>
-  </div>
 <div id="wiring">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
 </div><section class="flex flex-col gap-6">
@@ -169,6 +154,75 @@ fjkit
       </div>
 
   </div>
+<div class="flex flex-col gap-3">      <p>
+        The second tab is the one worth a picture. <code>base.html</code> is four blocks long because
+        <code>ui/shell.html</code> — the template it extends — already holds everything else: the
+        <code>&lt;head&gt;</code>, the script that applies dark mode before the first paint, the links
+        to the stylesheet and the three vendored scripts, and the header/main/footer skeleton. Below is
+        that file, drawn. The regions in the brand colour are the blocks you fill; everything else the
+        shell owns, and you never see it unless you go looking.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/shell.html, drawn</h3><p>Override a block by naming it in your base.html. Every block is listed on the Cheatsheet.</p>      </div>
+    </header>      <section>  <svg viewBox="0 0 720 440" role="img" fill="none"
+     font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+     aria-label="The skeleton ui/shell.html renders: a &lt;head&gt; carrying the title, the theme flash-guard and the package&#39;s own stylesheet and scripts; a &lt;body&gt; holding the optional sidebar block, a wrapper with header, main and footer, and the toaster. The highlighted regions are the blocks an app fills.">
+  <g data-lit="true">
+    <text x="8" y="18" font-size="10" fill="var(--muted-foreground)">ui/shell.html — every page extends this</text>
+    <rect x="8" y="28" width="704" height="400" rx="8" fill="var(--card)" stroke="currentColor"></rect>
+
+    <rect x="24" y="44" width="672" height="110" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="36" y="64" font-size="12" fill="currentColor">&lt;head&gt;</text>
+    <text x="36" y="84" font-size="10" fill="var(--muted-foreground)">&lt;title&gt;{% block title %} · {% block site_title %}</text>
+    <text x="36" y="102" font-size="10" fill="var(--muted-foreground)">theme flash-guard — sets .dark before the first paint</text>
+    <text x="36" y="120" font-size="10" fill="var(--muted-foreground)">dist/fjkit-&lt;style&gt;.css · vendor/htmx · vendor/basecoat · js/errors.js</text>
+    <text data-accent x="36" y="141" font-size="10" fill="currentColor">{% block stylesheets %}  {% block head %} — your own stylesheet and meta tags</text>
+
+    <rect x="24" y="160" width="672" height="252" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="36" y="180" font-size="12" fill="currentColor">&lt;body&gt;</text>
+
+    <rect data-accent x="36" y="192" width="176" height="170" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text data-accent x="46" y="212" font-size="11" fill="currentColor">{% block sidebar %}</text>
+    <text x="46" y="232" font-size="9" fill="var(--muted-foreground)">empty by default.</text>
+    <text x="46" y="246" font-size="9" fill="var(--muted-foreground)">fill it and the shell</text>
+    <text x="46" y="260" font-size="9" fill="var(--muted-foreground)">grows a side column.</text>
+
+    <rect x="222" y="192" width="462" height="170" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="232" y="209" font-size="9" fill="var(--muted-foreground)">&lt;div&gt; — the content column</text>
+
+    <rect x="234" y="218" width="438" height="46" rx="4" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="244" y="235" font-size="11" fill="currentColor">&lt;header&gt;</text>
+    <text data-accent x="244" y="253" font-size="9" fill="currentColor">{% block brand %}  {% block nav %}  {% block header_actions %}</text>
+
+    <rect data-accent x="234" y="274" width="438" height="48" rx="4" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text data-accent x="244" y="294" font-size="12" fill="currentColor">&lt;main&gt; — {% block content %}</text>
+    <text x="244" y="311" font-size="9" fill="var(--muted-foreground)">your page — the only block most pages fill</text>
+
+    <rect x="234" y="332" width="438" height="20" rx="4" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text data-accent x="244" y="346" font-size="9" fill="currentColor">&lt;footer&gt; — {% block footer %}</text>
+
+    <rect x="36" y="372" width="648" height="28" rx="4" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="46" y="390" font-size="10" fill="var(--muted-foreground)">{% block toasts %} — always rendered, so a swap can still raise a message</text>
+  </g>
+</svg>
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        Four words below carry a specific meaning on this page, and every later lesson leans on them.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The four words this page uses precisely</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>markup</h4><p>HTML text — what a template produces before a browser parses it, like <code>&lt;div id="board"&gt;…&lt;/div&gt;</code>. When a later lesson says a route "has markup waiting", it means a template is ready to turn the handler's return value into HTML rather than into JSON</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the shell</h4><p><code>ui/shell.html</code>, the figure above: the document around your page — <code>&lt;head&gt;</code>, header, <code>&lt;main&gt;</code>, footer, toaster</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a fragment</h4><p>a piece of HTML that is not a whole document: no <code>&lt;!doctype&gt;</code>, no <code>&lt;head&gt;</code>, just the elements. It is what an htmx response carries</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a partial</h4><p>the template that renders a fragment. Its file name starts with an underscore, it never extends the shell, and the page and the htmx endpoints both use it — lesson 05</p>    </section>  </div></div></div>
+  </div>
+
 </section></div></div>
 <hr class="border-border">
 
@@ -178,17 +232,14 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">The htmx request and response</h2><p class="text-muted-foreground text-sm">The server answers a swap with HTML. Nothing is serialised for it, and no client-side state is kept in sync.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        This is the whole idea, and it is smaller than it looks. An element says <em>which</em>
-        request to make, and <em>where to put the answer</em>. The server answers with a piece of
-        HTML, the same markup it would have put in the page. htmx drops that piece into the element
-        you named.
+        This is the whole idea, and it is smaller than it looks. An element names the request to make
+        and where to put the answer. The server answers with a piece of HTML — the same markup it
+        would have put in the page — and htmx drops that piece into the element you named.
       </p>
       <p>
-        Nothing is serialised for the swap. Nothing is re-rendered on the client. No state lives in two
-        places. The same route will happily answer a script in JSON — that is <a href="#json">lesson 09</a>
-        — but that is a second door, not a step in this exchange. Press the button:
-        <strong>the request below is real</strong>. htmx is loaded on this page, and a mock server in the
-        browser plays the FastAPI side.
+        Nothing is serialised for the swap, nothing is re-rendered on the client, and no state lives
+        in two places. Press the button: <strong>the request below is real</strong>. htmx is loaded on
+        this page, and a mock server in the browser plays the FastAPI side.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -281,14 +332,14 @@ fjkit
 <h2 class="text-lg font-semibold tracking-tight">hx-target and hx-swap</h2><p class="text-muted-foreground text-sm">Two attributes decide everything: which element, and how it is replaced.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-target/">hx-target</a> picks the element.
-        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-swap/">hx-swap</a> says what to do with it. This pair is
-        where most htmx confusion lives, so try them against a live board. Every combination below runs a
-        real request and swaps the real response.
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-swap/">hx-swap</a> says what to do with it. This pair
+        is where most htmx confusion lives, so try it against a live board. Every combination below
+        runs a real request and swaps the real response.
       </p>
       <p>
-        <code>outerHTML</code> replaces the target itself, so the response has to include the
-        wrapper. <code>innerHTML</code> (the default) replaces what is inside it, so the response
-        must <em>not</em>. Mixing those two up is the classic bug: you get a board inside a board.
+        <code>outerHTML</code> replaces the target itself, so the response has to include the wrapper.
+        <code>innerHTML</code>, the default, replaces what is inside it, so the response must not
+        include the wrapper. Mixing the two up gives you a board inside a board.
       </p>
 </div>
 <div class="card">            <div id="swap-controls"></div>
@@ -321,9 +372,9 @@ fjkit
       <div class="flex flex-col gap-3">      <p>
         You usually write no trigger at all. A <code>button</code> fires on click, a <code>form</code> on
         submit, an <code>input</code> or <code>select</code> on change.
-        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-trigger/">hx-trigger</a> is for the other cases. It is
-        the attribute that buys you search-as-you-type, lazy loading and polling, with no JavaScript. All
-        three below are live.
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-trigger/">hx-trigger</a> is for the other cases: it is
+        what gives you search-as-you-type, lazy loading and polling with no JavaScript. All three below
+        are live.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -382,6 +433,109 @@ fjkit
 </div>
 </section>
   </div>
+<div class="flex flex-col gap-3">      <p>
+        Those two handlers name the same file, and the name is the part that misleads.
+        <strong><code>_board.html</code> is not one task.</strong> It is the entire board — the create
+        form, the filter bar, the stats card and every row in the table, wrapped in the one
+        <code>&lt;div id="board"&gt;</code> that every control on the page targets. The leading
+        underscore means "not a page", not "small".
+      </p>
+      <p>
+        So a click on <em>Advance</em> in row three sends one POST, and what comes back is the board
+        with all eight rows re-rendered, one of them now saying Doing. That is the trade fjkit makes:
+        you render more HTML than strictly changed, and in exchange there is exactly one definition of
+        what a board looks like. Below are the three files, and every htmx attribute in them.
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="part-page"
+                aria-selected="true">tasks/page.html</button>
+        <button type="button" role="tab" aria-controls="part-board"
+                aria-selected="false">tasks/_board.html</button>
+        <button type="button" role="tab" aria-controls="part-row"
+                aria-selected="false">tasks/macros.html</button>
+    </nav><div id="part-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/page.html" data-lang="jinja">{# tasks/page.html — answers the full GET #}
+{% extends &#34;base.html&#34; %}
+{% from &#34;ui/layout.html&#34; import page_header %}
+
+{% block content %}
+  {{ page_header(&#34;Tasks&#34;, &#34;Every control here swaps #board.&#34;) }}
+
+  {# The first paint. This is the same file POST /tasks answers with. #}
+  {% include &#34;tasks/_board.html&#34; %}
+{% endblock %}</pre>
+
+<footer>Extends the shell, writes a heading, and includes the partial. Nothing about the board is described twice.</footer></div><div id="part-board" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/_board.html" data-lang="jinja">{# tasks/_board.html — the whole board: create form, filters, stats, every row #}
+{% from &#34;ui/button.html&#34; import button, button_group %}
+{% from &#34;ui/table.html&#34; import table %}
+{% from &#34;tasks/macros.html&#34; import task_row, TASK_COLUMNS %}
+
+{# The wrapper is inside the file, because hx-swap=&#34;outerHTML&#34; replaces it. #}
+&lt;div id=&#34;board&#34;&gt;
+
+  {% include &#34;tasks/_new_task.html&#34; %}
+
+  {# The filter bar. Each button re-fetches the board with a query string. #}
+  {% call button_group() %}
+    {% for value, label in status_filters %}
+      {{ button(label, size=&#34;xs&#34;,
+                hx_get=url_for(request, &#34;tasks_board&#34;) ~ (&#34;?status=&#34; ~ value if value else &#34;&#34;),
+                hx_target=&#34;#board&#34;, hx_swap=&#34;outerHTML&#34;) }}
+    {% endfor %}
+  {% endcall %}
+
+  {% call table(TASK_COLUMNS, rows=tasks) %}
+    {# A repeated element is a macro, not an include in a loop. #}
+    {% for task in tasks %}{{ task_row(request, task, filter_query) }}{% endfor %}
+  {% endcall %}
+
+&lt;/div&gt;</pre>
+
+<footer>No extends and no doctype, so this renders standalone — which is what lets an htmx endpoint return it bare.</footer></div><div id="part-row" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/macros.html" data-lang="jinja">{# tasks/macros.html — one row, and the htmx that fires from it #}
+{% macro task_row(request, task, filter_query=&#34;&#34;) %}
+  &lt;tr&gt;
+    {{ cell(task.title, tone=&#34;strong&#34;) }}
+    {{ cell(badge(task.status.value | capitalize, variant=task.status_variant)) }}
+    {% call row_actions() %}
+      {# Advance one task — and get the whole board back. #}
+      {{ button(&#34;Advance&#34;, variant=&#34;ghost&#34;, size=&#34;xs&#34;,
+                hx_post=url_for(request, &#34;tasks_advance&#34;, task_id=task.id) ~ filter_query,
+                hx_target=&#34;#board&#34;, hx_swap=&#34;outerHTML&#34;,
+                hx_disabled_elt=&#34;this&#34;) }}
+      {{ button(&#34;&#34;, variant=&#34;ghost&#34;, size=&#34;icon-xs&#34;, icon_name=&#34;trash&#34;,
+                aria_label=&#34;Delete &#34; ~ task.title,
+                hx_delete=url_for(request, &#34;tasks_delete&#34;, task_id=task.id) ~ filter_query,
+                hx_target=&#34;#board&#34;, hx_swap=&#34;outerHTML&#34;,
+                hx_confirm=&#34;Delete this task?&#34;) }}
+    {% endcall %}
+  &lt;/tr&gt;
+{% endmacro %}</pre>
+
+<footer>The row is a macro, and it is where the htmx lives: every action points at #board and swaps outerHTML, so the reply is always the whole partial.</footer></div></div>
+  </div>
+
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Why one file covers both</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>it is the board, not a row</h4><p><code>_board.html</code> renders the form, the filters, the stats and all the rows. A single task is <code>task_row()</code> in <code>macros.html</code> — a macro, because a repeated element is a macro and a partial is what a <em>request</em> answers with</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the wrapper is in the file</h4><p>the first line of the partial is <code>&lt;div id="board"&gt;</code>. It has to be, because every control says <code>hx-swap="outerHTML"</code>: the element being replaced is the wrapper, so the reply has to bring one back</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>one context, built once</h4><p>both callers need the identical names in the context — <code>tasks</code>, <code>stats</code>, <code>status_filters</code>. The router builds them once, in <code>board()</code>, and both handlers return it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the filter travels</h4><p><code>filter_query</code> rides along on every row action, so advancing a task while the board is filtered to Doing answers with the board still filtered to Doing</p>    </section>  </div></div></div>
+  </div>
+
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What it costs</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>bytes on the wire</h4><p>the whole board, every time. That is a few kilobytes of HTML the browser parses instead of a diff it does not have to compute — and no client-side model to keep in step</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>when it stops paying</h4><p>when a board grows past what you want to re-render, the answer is a smaller partial with its own id, not a smarter client. <a href="#oob">Lesson 06</a> and <a href="#broadcast">lesson 07</a> are both that answer</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>focus</h4><p>an <code>outerHTML</code> swap replaces the element the focused input is inside. htmx restores focus by id, so give an input that survives a swap a stable <code>id</code></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>big boards</h4><p><code>templates.page()</code> renders this. Reach for <code>templates.stream()</code> only when the row count is the user's to choose</p>    </section>  </div></div></div>
+  </div>
+</div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>The board, live — add, advance, delete</h3><p>Every control targets #demo-board, and every response is the whole board partial.</p>      </div>
@@ -435,6 +589,42 @@ fjkit
         going to.
       </p>
 </div>
+<div class="flex flex-col gap-3">      <p>
+        Nothing about the trigger is special, and that is the point worth seeing before the reply. One
+        input, one <code>hx-get</code>, one <code>hx-target</code> — the same shape as lesson 03. It
+        names <code>#search-matches</code> and knows about no other region on the page.
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="oob-call"
+                aria-selected="true">the macro call</button>
+        <button type="button" role="tab" aria-controls="oob-html"
+                aria-selected="false">the HTML it emits</button>
+    </nav><div id="oob-call" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the macro call" data-lang="jinja">{# search/page.html — the one control that starts all of this #}
+{% call form(action=url_for(request, &#34;search_page&#34;), method=&#34;get&#34;) %}
+  {% call field_row(&#34;field-and-button&#34;) %}
+    {{ text_field(&#34;q&#34;, label=&#34;Search tasks&#34;, value=query, type=&#34;search&#34;,
+                  hx_get=url_for(request, &#34;search_page&#34;),
+                  hx_trigger=&#34;input changed delay:250ms, search&#34;,
+                  hx_target=&#34;#search-matches&#34;, hx_swap=&#34;outerHTML&#34;,
+                  hx_push_url=&#34;true&#34;, hx_indicator=&#34;#search-busy&#34;) }}
+    {{ button(&#34;Search&#34;, variant=&#34;primary&#34;, type=&#34;submit&#34;, icon_name=&#34;search&#34;) }}
+  {% endcall %}
+{% endcall %}</pre>
+
+<footer>hx_* keywords on any fjkit macro become hx-* attributes on the element it emits. The form around it carries action and method, so the same query still works with scripting off.</footer></div><div id="oob-html" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the HTML it emits" data-lang="html">&lt;input class=&#34;input&#34; type=&#34;search&#34; name=&#34;q&#34; id=&#34;q&#34;
+       hx-get=&#34;/search&#34;
+       hx-trigger=&#34;input changed delay:250ms, search&#34;
+       hx-target=&#34;#search-matches&#34;
+       hx-swap=&#34;outerHTML&#34;
+       hx-push-url=&#34;true&#34;
+       hx-indicator=&#34;#search-busy&#34;&gt;</pre>
+
+<footer>One target. htmx will replace #search-matches with whatever comes back — and it does not know the reply is about to move five other elements.</footer></div></div>
+  </div>
+
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>What comes back from one keystroke</h3><p>GET /search?q=cache, answered by one handler and one response model.</p>      </div>
@@ -453,7 +643,7 @@ fjkit
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>1 — lift</h4><p>every <strong>top-level</strong> element carrying <code>hx-swap-oob</code> is lifted out of the response</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>2 — place</h4><p>each one is matched to the element on the page with the same <code>id</code> and replaces it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>3 — then the target</h4><p>whatever is <em>left</em> is swapped into <code>hx-target</code> as usual</p>    </section>  </div></div></div>
+      <h4>3 — then the target</h4><p>whatever is left is swapped into <code>hx-target</code> as usual</p>    </section>  </div></div></div>
   </div>
 
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -495,9 +685,9 @@ fjkit
 </div>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        The payoff is that <em>where</em> a fragment lives is decided by the page, once. Move the facet
-        card from the aside into the main column and the router, the response model and the swap are
-        all unchanged. The working files are
+        The payoff is that the page decides where a fragment lives, once. Move the facet card from the
+        aside into the main column and the router, the response model and the swap are all unchanged.
+        The working files are
         <code>examples/fjkit-demo/app/templates/search/</code> in the repository — and the next
         lesson is the other half of that same page, because a real screen needs both.
       </p>
@@ -509,21 +699,21 @@ fjkit
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">One id, many fragments: HX-Trigger</h2><p class="text-muted-foreground text-sm">The opposite problem to lesson 06: the trigger produces an <em>id</em>, and each region has a different question to ask with it.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">One id, many fragments: HX-Trigger</h2><p class="text-muted-foreground text-sm">The opposite problem to lesson 06: the trigger produces an id, and each region has a different question to ask with it.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        The last lesson worked because one handler could answer every region at once — one query, six
-        fragments, one response model holding all of them. Opening a row on that same page is not that
-        shape. What the click produces is an <code>id</code>, and the panels that care about it each
-        need a <em>different</em> query: the detail of that task, the other tasks its owner has. A
-        handler that answered all of them would have to import every service on the page, and adding a
-        third panel would mean editing it.
+        The last lesson worked because one handler could answer every region at once: one query, six
+        fragments, one response model holding all of them. Opening a row on that same page is a
+        different shape. The click produces an <code>id</code>, and the panels that care about it each
+        need their own query — the detail of that task, the other tasks its owner has. A handler
+        answering all of them would have to import every service on the page, and a third panel would
+        mean editing it.
       </p>
       <p>
-        So the pick answers with <em>its own</em> region — the table, with the row now marked — and
-        sends the id out in <code>HX-Trigger</code>. htmx raises that header as a DOM event, and the
-        fragments that care listen for it and go and fetch their own data. The route does not know how
-        many of them there are, or that any of them exist. Adding a panel is one more subscriber and no
-        change to any route.
+        So the pick answers with its own region — the table, with the row now marked — and sends the id
+        out in <code>HX-Trigger</code>. htmx raises that header as a DOM event, and the fragments that
+        care listen for it and fetch their own data. The route does not know how many of them there
+        are, or that any of them exist. Adding a panel is one more subscriber and no change to any
+        route.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -540,21 +730,20 @@ def select_task(service: ServiceDep, task_id: int, q: str = &#34;&#34;) -&gt; Ma
 </div>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        <code>hx_trigger</code> is where the event is declared, and it is a parameter of
-        <code>@render</code> rather than a header the handler writes, for one reason: then it works
-        the same on a route that <em>does</em> render. A callable is resolved per request out of the
-        handler's own parameters by name — <code>task_id</code> here — plus <code>result</code>, what
-        the handler returned. Returning <code>None</code> from it raises nothing, so a route can
-        broadcast only sometimes.
+        <code>hx_trigger</code> declares the event. It is a parameter of <code>@render</code> rather
+        than a header the handler writes, so it works the same on a route that also renders. A
+        callable is resolved per request from the handler's own parameters by name —
+        <code>task_id</code> here — plus <code>result</code>, what the handler returned. Returning
+        <code>None</code> from it is not an error, so a route can broadcast only sometimes.
       </p>
       <p>
-        Nothing about that route is special otherwise. It is an ordinary partial route — one template,
-        one response model — with an event attached, which is what makes the pattern cheap: the swap
+        Nothing else about that route is special. It is an ordinary partial route — one template, one
+        response model — with an event attached, and that is what makes the pattern cheap: the swap
         and the broadcast are one round trip, declared in one place.
       </p>
       <p>
-        A second action on the same page shows the other half of it. Advance changes a status, so it
-        raises a <em>different</em> event, and a different set of fragments cares.
+        A second action on the same page shows the other half. Advance changes a status, so it raises
+        a different event, and a different set of fragments cares.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -573,7 +762,7 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 </div>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        Two events, and each fragment picks the ones it has a reason to hear. The counters listen for
+        Two events, and each fragment hears the ones it has a reason to. The counters listen for
         <code>task-changed</code> and not <code>task-selected</code>, because picking a task changes no
         count. The facets listen for neither, because advancing one changes no owner and no priority.
         Which broadcasts a fragment hears is the fragment's own decision, and no route knows it
@@ -632,11 +821,11 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 <div class="flex flex-col gap-3">      <p>
         One rule holds this together: <strong>the fragment a route answers with must not subscribe to
         the event that route raises</strong>. It is already being replaced in band, so hearing the
-        event too fetches it a second time for the same click — and on a fragment that is its own
-        target, it never stops. htmx will not save you, because a subscriber asking for its own URL is
-        exactly what the attribute says to do. That is why the table hears only
-        <code>task-changed</code> and the detail panel only <code>task-selected</code>: each is a
-        route's target for one event and a subscriber for the other, never both for the same one.
+        event fetches it a second time for the same click. On a fragment that is its own target, that
+        never stops. htmx does not catch it, because a subscriber asking for its own URL is what the
+        attribute says to do. So the table hears only <code>task-changed</code> and the detail panel
+        only <code>task-selected</code>: each is a route's target for one event and a subscriber for
+        the other, never both for the same one.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -663,8 +852,8 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 <h3>The attributes that matter</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>who is listening</h4><p><code>from:body</code> — htmx raises the event on the element that made the request, and it bubbles. The panels are nowhere near that element, so they listen where it arrives</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>how the id arrives</h4><p><code>hx-vals="js:…"</code> is the one place the id turns back into a query parameter. Reading it out of the event, rather than remembering the selection on the server, is what keeps the endpoints stateless and two open tabs independent</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>what else it needs</h4><p><code>hx-include</code> — for what the event does <em>not</em> carry. The counters are counts over the <em>matches</em>, so they need the search box as well as the id, and a selector fetches it off the page instead of every event having to carry it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>how the id arrives</h4><p><code>hx-vals="js:…"</code> is the one place the id turns back into a query parameter. Reading it out of the event, rather than remembering the selection on the server, keeps the endpoints stateless and two open tabs independent</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>what else it needs</h4><p><code>hx-include</code> — for what the event does not carry. The counters count the matches, so they need the search box as well as the id, and a selector fetches it off the page instead of every event carrying it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>what gets replaced</h4><p><code>hx-target="this"</code> — every subscriber replaces itself, so a reply is always one region and the sender never has to know how many regions exist</p>    </section>  </div></div></div>
   </div>
 
@@ -673,16 +862,16 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 <h3>Four things to know</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>send an object</h4><p>the trigger value must be a JSON <strong>object</strong>. htmx passes an object through as <code>event.detail</code> and wraps anything else — an array included — as <code>{value: …}</code>, so a listener reading <code>event.detail.task_id</code> finds nothing</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>it fires before the swap</h4><p><code>HX-Trigger</code> fires <strong>before</strong> the swap. That is exactly why the id travels in the event: a hidden input holding the selection would still hold the old one when the subscribers read it. <code>HX-Trigger-After-Swap</code> is the header for the other order</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>it fires before the swap</h4><p><code>HX-Trigger</code> fires <strong>before</strong> the swap, which is why the id travels in the event: a hidden input holding the selection would still hold the old one when the subscribers read it. <code>HX-Trigger-After-Swap</code> is the header for the other order</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>inheritance leaks in</h4><p><code>hx-vals</code> is inherited, and htmx <strong>merges</strong> it up the tree on a path that does not consult <code>hx-disinherit</code>. An htmx element inside a subscriber — the row's own title, which is the button that opens it — has to say <code>hx-vals="unset"</code>, which is the only value that stops the walk</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>N panels, N requests</h4><p>N subscribers is N requests. That is the trade: the page fans out instead of the handler fanning in, and <code>hx-sync</code> or a cache is where you pay it back if the queries are expensive</p>    </section>  </div></div></div>
   </div>
 </div>
 <div class="flex flex-col gap-3">      <p>
-        The two lessons are not competing, and the demo does not put them on separate pages. They
-        answer different questions, and <code>/search</code> asks both: a query is one question the
-        server can answer completely, and a pick is an id that three regions each have a different
-        question about.
+        The two lessons do not compete, and the demo does not put them on separate pages. They answer
+        different questions, and <code>/search</code> asks both: a query is one question the server
+        can answer completely, and a pick is an id that three regions each have a different question
+        about.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -726,11 +915,11 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 <div class="flex flex-col gap-3">      <p>
         The working files are <code>examples/fjkit-demo/app/features/search/</code> and
         <code>app/templates/search/</code> — the same page as the last lesson. Every region there
-        carries a render stamp, so which ones each action reached is readable on the page itself,
-        without opening the network tab. A query is one request and six new stamps. A pick is three
-        requests and three stamps — the table, the detail panel, the siblings panel — while the
-        counters, the progress card and the facets sit still. An advance is five, and this time the
-        facets are the only card that does not move.
+        carries a render stamp, so the page itself shows which regions an action reached, with no
+        network tab. A query is one request and six new stamps. A pick is three requests and three
+        stamps — the table, the detail panel, the siblings panel — while the counters, the progress
+        card and the facets sit still. An advance is five, and the facets are then the only card that
+        does not move.
       </p>
 </div>
 </section></div></div>
@@ -759,11 +948,11 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 </div>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        The first selector covers an indicator <em>inside</em> the marked element — a spinner in the
-        button that was clicked. The second covers an indicator that <em>is</em> the marked element,
-        which is the shape fjkit uses: <code>spinner(indicator=true)</code> adds
-        <code>htmx-indicator</code> and nothing else, so a loading state costs no CSS and no JavaScript
-        of yours, and no round trip to reveal it.
+        The first selector covers an indicator inside the marked element — a spinner in the button
+        that was clicked. The second covers an indicator that is itself the marked element, which is
+        the shape fjkit uses: <code>spinner(indicator=true)</code> adds <code>htmx-indicator</code> and
+        nothing else, so a loading state costs you no CSS, no JavaScript and no round trip to reveal
+        it.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -785,9 +974,9 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
   </div>
 <div class="flex flex-col gap-3">      <p>
         <code>hx-disabled-elt</code> is the same machinery aimed at a different problem. It sets
-        <code>disabled</code> on whatever the selector names for the length of the request and clears it
-        after, which is the whole of what stops a double click from advancing a task twice or posting
-        two of the same form. The selector takes <code>this</code>, a
+        <code>disabled</code> on whatever the selector names for the length of the request and clears
+        it after, which is what stops a double click from advancing a task twice or posting two of the
+        same form. The selector takes <code>this</code>, a
         <code>find …</code>/<code>closest …</code> relative form, or an ordinary CSS selector.
       </p>
 </div>
@@ -814,178 +1003,15 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 </section></div></div>
 <hr class="border-border">
 
-<div id="json">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
-<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">No HX-Request: the same route answers JSON</h2><p class="text-muted-foreground text-sm">A handler returns a model, not markup. One question decides what goes on the wire: does this caller have markup waiting?</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        Lesson 02 said the exchange carries no JSON, and of the swap itself that is true. But look
-        at what the handler actually returned: a <code>BoardResponse</code>, not a string of HTML.
-        <code>@render</code> is what turns one into the other. When the caller is not a browser
-        waiting for markup, there is nothing to render <em>into</em>, so the model goes out as JSON.
-      </p>
-      <p>
-        That is <code>render_mode="auto"</code>, the default on <code>FjkitConfig</code>. Two things
-        decide it, and neither of them is an <code>Accept</code> header: <strong>what the route
-        is</strong>, and <strong>whether the request carries <code>HX-Request: true</code></strong>.
-        A page route always has markup waiting, because a cold navigation is the request it exists
-        for, and answering that with JSON would be a blank browser window. A fragment route only has
-        markup waiting when htmx asked for it.
-      </p>
-</div>
-<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>What auto answers</h3><p>The route decides the first column; the header decides the second.</p>      </div>
-    </header>      <section>      <div class="table-container">
-      <table class="table">
-        <thead>
-          <tr>
-              <th class=" ">The route</th>
-              <th class=" ">HX-Request</th>
-              <th class=" ">Content-Type</th>
-              <th class=" ">Body</th>
-          </tr>
-        </thead>
-        <tbody>        <tr>
-          <td class="font-medium">@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)</td>
-          <td class=""><span class="badge" data-variant="outline">absent</span></td>
-          <td class="text-muted-foreground">text/html</td>
-          <td class="">the whole page, shell and all</td>
-        </tr>
-        <tr>
-          <td class="font-medium">the same route</td>
-          <td class=""><span class="badge" data-variant="info">true</span></td>
-          <td class="text-muted-foreground">text/html</td>
-          <td class="">_board.html on its own — the swap</td>
-        </tr>
-        <tr>
-          <td class="font-medium">@render(&#34;tasks/_board.html&#34;)</td>
-          <td class=""><span class="badge" data-variant="outline">absent</span></td>
-          <td class="text-muted-foreground">application/json</td>
-          <td class="">BoardResponse, serialised — the route&#39;s response_model</td>
-        </tr>
-        <tr>
-          <td class="font-medium">the same route</td>
-          <td class=""><span class="badge" data-variant="info">true</span></td>
-          <td class="text-muted-foreground">text/html</td>
-          <td class="">_board.html on its own — the swap</td>
-        </tr>
-</tbody>
-      </table>
-    </div>
-
-</section>
-  </div>
-<div class="flex flex-col gap-3">      <p>
-        Read the third row again, because it is the one worth having: <strong>every htmx endpoint in
-        the app is already a JSON endpoint.</strong> <code>GET /tasks/board</code> answers htmx with
-        a board, and answers <code>curl</code> with the model behind it. No second route, no
-        serialiser, no DTO that drifts from the template. The return annotation is the only
-        description of either, so FastAPI has already put <code>BoardResponse</code> in
-        <code>/docs</code>.
-      </p>
-</div>
-    <div class="card">      <div class="tabs">
-    <nav role="tablist" aria-label="File"
-         aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="json-route"
-                aria-selected="true">router.py</button>
-        <button type="button" role="tab" aria-controls="json-curl"
-                aria-selected="false">no HX-Request → JSON</button>
-        <button type="button" role="tab" aria-controls="json-htmx"
-                aria-selected="false">HX-Request: true → HTML</button>
-    </nav><div id="json-route" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.get(&#34;/tasks&#34;, name=&#34;tasks_page&#34;)
-@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)
-def tasks_page(service: ServiceDep, status: Status | None = None) -&gt; BoardResponse:
-    # A page route: it names a page and a partial, so it always has markup
-    # waiting. A navigation gets the page; htmx gets the board.
-    return _board(service, status)
-
-
-@router.get(&#34;/tasks/board&#34;, name=&#34;tasks_board&#34;)
-@render(&#34;tasks/_board.html&#34;)
-def tasks_board(service: ServiceDep, status: Status | None = None) -&gt; BoardResponse:
-    # A fragment route: it names only a partial. htmx gets the board, and
-    # anyone else gets BoardResponse as JSON — the API, at no extra cost.
-    return _board(service, status)</pre>
-
-<footer>Two routes over one handler body. The first names a page and a partial, so it always has markup for a navigation. The second names only a fragment — which is what puts it in auto’s JSON half.</footer></div><div id="json-curl" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="no HX-Request → JSON" data-lang="text">$ curl -s localhost:8000/tasks/board?status=doing
-
-content-type: application/json
-vary: HX-Request
-
-{
-  &#34;tasks&#34;: [
-    {
-      &#34;id&#34;: 4,
-      &#34;title&#34;: &#34;Turn off auto_reload in the prod image&#34;,
-      &#34;status&#34;: &#34;doing&#34;,
-      &#34;priority&#34;: &#34;normal&#34;,
-      &#34;owner&#34;: &#34;kai&#34;,
-      &#34;created_at&#34;: &#34;2026-08-18T19:38:42.562805Z&#34;,
-      &#34;status_variant&#34;: &#34;info&#34;,
-      &#34;priority_variant&#34;: &#34;secondary&#34;
-    }
-  ],
-  &#34;stats&#34;: {&#34;total&#34;: 8, &#34;todo&#34;: 4, &#34;doing&#34;: 2, &#34;done&#34;: 2, &#34;done_pct&#34;: 25},
-  &#34;owners&#34;: [&#34;kai&#34;, &#34;mei&#34;],
-  &#34;active_status&#34;: &#34;doing&#34;,
-  &#34;filter_query&#34;: &#34;?status=doing&#34;
-}</pre>
-
-<footer>status_variant and priority_variant are @computed_field on the model, so a view decision the template needs reaches the JSON too instead of existing only in Jinja.</footer></div><div id="json-htmx" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="HX-Request: true → HTML" data-lang="text">$ curl -s -H &#39;HX-Request: true&#39; localhost:8000/tasks/board?status=doing
-
-content-type: text/html; charset=utf-8
-vary: HX-Request
-
-&lt;div id=&#34;board&#34;&gt;
-  &lt;div class=&#34;grid gap-6 lg:grid-cols-[1fr_19rem]&#34;&gt;
-    &lt;form class=&#34;card&#34; hx-post=&#34;/tasks&#34; hx-target=&#34;#board&#34; hx-swap=&#34;outerHTML&#34;&gt;
-      ...
-    &lt;/form&gt;
-    &lt;table class=&#34;table&#34;&gt;
-      &lt;tr&gt;&lt;td&gt;Turn off auto_reload in the prod image&lt;/td&gt;
-          &lt;td&gt;&lt;span class=&#34;badge&#34; data-variant=&#34;info&#34;&gt;Doing&lt;/span&gt;&lt;/td&gt;
-      ...
-    &lt;/table&gt;
-  &lt;/div&gt;
-&lt;/div&gt;</pre>
-
-<footer>Same URL, same handler, same model — rendered instead of serialised.</footer></div></div>
-  </div>
-
-<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>Overriding it</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>force HTML</h4><p><code>mode="html"</code> on the decorator — a fragment that must never serialise</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>force JSON</h4><p><code>mode="json"</code> — a route that is an API and nothing else, even to htmx</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>app-wide</h4><p><code>FjkitConfig(render_mode="html")</code> turns the whole behaviour off</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>no request wins</h4><p>a route that said html or json is not negotiable — only auto reads the header</p>    </section>  </div></div></div>
-  </div>
-      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>Two things to know</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>caching</h4><p>fjkit sets <code>Vary: HX-Request</code> on every reply whose shape depended on the header</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>why it matters</h4><p>without it a CDN serves a cached fragment into a navigation — a page with no shell, and no error anywhere</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>hx-boosted</h4><p>a boosted link is htmx doing a navigation: it counts as a browser for this question, so it gets the page, not the partial</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>the naming rule</h4><p>a template whose name starts with _ is a fragment — the same convention test_conventions.py already enforces</p>    </section>  </div></div></div>
-  </div>
-</div>
-</section></div></div>
-<hr class="border-border">
-
 <div id="patterns">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Nine htmx patterns, and their handlers</h2><p class="text-muted-foreground text-sm">Screens differ; the shapes do not. Each one is a trigger, a target and a partial.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         The whole attribute vocabulary fits on one screen, and
-        <a href="components.html#cheatsheet">the Components page prints it</a>. What
-        takes longer to learn is the handful of arrangements it keeps forming. Here they are with the fjkit
+        <a href="cheatsheet.html#htmx">the Cheatsheet page prints it</a>. What
+        takes longer to learn is the handful of arrangements it keeps forming. Here they are in the fjkit
         spelling: the macro call on one tab, the handler that answers it on the other.
       </p>
       <p>
@@ -993,7 +1019,7 @@ vary: HX-Request
         threadpool. Each pattern links out to the htmx page it comes from. The upstream
         <a class="text-foreground underline underline-offset-4" href="https://htmx.org/docs/">docs</a> and
         <a class="text-foreground underline underline-offset-4" href="https://htmx.org/reference/">attribute reference</a> are short enough to read whole,
-        and worth it.
+        and worth reading whole.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -1036,7 +1062,7 @@ vary: HX-Request
 <hr class="border-border">
 
 <div id="knob">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
 <span class="badge" data-variant="secondary">theming</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Rebranding: brand and status tokens</h2><p class="text-muted-foreground text-sm">Rebranding is a CSS variable. "Green means done" is not on the dial.</p>      </div>
@@ -1047,8 +1073,8 @@ vary: HX-Request
         same tokens.
       </p>
       <p>
-        Watch the status badges. They do not move. Status colour is deliberately <em>not</em> wired
-        to the brand, because "green means done" has to survive a rebrand.
+        Watch the status badges. They do not move. Status colour is deliberately not wired to the
+        brand, because "green means done" has to survive a rebrand.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -1112,20 +1138,20 @@ vary: HX-Request
 <hr class="border-border">
 
 <div id="gate">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">fjkit check: the closed vocabulary</h2><p class="text-muted-foreground text-sm">A convention nobody can violate by accident is worth more than one written down.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         <code>fjkit check</code> reads your templates and rejects two things: colour literals, and
         any class outside the component vocabulary. Utilities are rejected <strong>even when they
-        work today</strong>. If your app leans on a spacing utility because fjkit's shell happens to
-        emit it, your app breaks silently the day the shell stops.
+        work today</strong>. An app leaning on a spacing utility because fjkit's shell happens to emit
+        it breaks silently the day the shell stops.
       </p>
       <p>
         Edit the markup. The checker below runs fjkit's own rules against its real class list —
-        <span id="vocab-count">…</span> — and it is the same code that runs in CI, and the same code
-        that runs over this site's templates.
+        <span id="vocab-count">…</span> — and it is the code that runs in CI and over this site's
+        templates.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -1139,7 +1165,7 @@ vary: HX-Request
 </section>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        A blocked class is information. It names the component or the parameter that does not exist
+        A blocked class is information: it names the component or the parameter that does not exist
         yet. When 0.1 landed, the pre-fjkit templates scored 258 violations; the rewrite scores 0.
       </p>
 </div>

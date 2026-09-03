@@ -1,23 +1,22 @@
 {#
   The components that float above the page.
 
-  All four here are driven by Basecoat's own JavaScript, which is already
-  vendored and mounted — it scans for `.popover`, `.dropdown-menu`, `.select`
-  and `.combobox` on load and again on `htmx:afterSwap`, so a swapped-in
-  overlay works with nothing extra. No macro below registers a handler.
+  Basecoat's own JavaScript drives all four, and it is already vendored and
+  mounted: it scans for `.popover`, `.dropdown-menu`, `.select` and `.combobox`
+  on load and again on `htmx:afterSwap`, so a swapped-in overlay works with
+  nothing extra. No macro below registers a handler.
 
-  What they have in common is *id wiring*: a trigger and its panel find each
-  other through four related ids, and getting one wrong fails silently — the
-  panel opens but is never announced, or never opens at all. Every macro here
-  takes one `id` and derives the rest, which is the whole reason they are
-  macros and not snippets to copy.
+  What they share is id wiring: a trigger and its panel find each other through
+  four related ids, and one wrong id fails silently — the panel opens but is
+  never announced, or never opens at all. Every macro here takes one `id` and
+  derives the rest, which is why they are macros and not snippets to copy.
 
-  `drawer` is the exception: it is a native `<dialog>` and needs no JS from
+  `drawer` is the exception: a native `<dialog>` that needs no JS from
   Basecoat, only `showModal()`.
 
   `multiselect_scripts()` is the one macro here that adds a file to the page,
-  and only a page using `multiple=true` calls it. What it fixes is the wire
-  format rather than the widget — see its own comment.
+  and only a page using `multiple=true` calls it. It fixes the wire format
+  rather than the widget — see its own comment.
 #}
 {% from "ui/attrs.html" import attrs %}
 {% from "ui/icon.html" import icon %}
@@ -28,17 +27,17 @@
   A second copy of the macro `ui/form.html` calls under every field, written
   out here rather than imported. Jinja refuses to import a name beginning with
   an underscore, and renaming that one to make it importable would publish a
-  helper no app template should ever call — and would change what `fjkit
-  eject` does with it, because a private helper is copied into the file you
-  own while a public one is re-exported and keeps moving under you. `_GAP` is
-  written out twice for the same reason.
+  helper no app template should call. It would also change what `fjkit eject`
+  does with it: a private helper is copied into the file you own, while a
+  public one is re-exported and keeps moving under you. `_GAP` is written out
+  twice for the same reason.
 
   It differs from that copy in one way, and the difference is the point: it
   always renders the paragraph, empty and hidden when there is nothing to say.
   `js/errors.js` reuses the `<p>` a control names in `aria-describedby` and
-  *creates* one where it finds none, inserting it directly after the control.
-  For the two macros below the control carrying `name` is a hidden input at
-  the end of a wrapper div, so "after" is inside that wrapper — the 422 would
+  creates one where it finds none, inserting it directly after the control. For
+  the two macros below, the control carrying `name` is a hidden input at the
+  end of a wrapper div, so "after" is inside that wrapper and the 422 would
   draw its red text inside the select box. Reserving the paragraph gives it a
   target in the right place.
 #}
@@ -52,9 +51,9 @@
 {#
   Panel widths. A popover has to be told how wide to be — its content is out
   of flow, so it has no column to fill — and upstream does that with a utility
-  at the call site. Closed lookup instead, for the usual two reasons: an app
-  template may not write `w-72` (A2), and an interpolated width would be
-  absent from the stylesheet while still rendering.
+  at the call site. A closed lookup instead, for the usual two reasons: an app
+  template may not write `w-72` (A2), and an interpolated width renders while
+  missing from the stylesheet.
 #}
 {% set _PANEL_WIDTHS = {
   "auto": "",
@@ -67,12 +66,12 @@
 {#
   popover(id, label, …) — a panel of arbitrary content, anchored to a button.
 
-  Content arrives through `{% call %}`; the trigger is a `button` macro's worth
+  Content arrives through `{% call %}`. The trigger is a `button` macro's worth
   of parameters rather than a second slot, because a popover whose trigger is
-  not a button is nearly always a `dropdown_menu` or a `tooltip` instead.
+  not a button is nearly always a `dropdown_menu` or a `tooltip`.
 
-  `aria-expanded` starts false and Basecoat's JS flips it. `aria-hidden` on the
-  panel does the same. Both are stated here rather than left off: the first
+  `aria-expanded` starts false and Basecoat's JS flips it; `aria-hidden` on the
+  panel works the same way. Both are written here rather than left off: first
   paint is the state before any JS has run, and a trigger with no
   `aria-expanded` is announced as a plain button.
 #}
@@ -176,14 +175,14 @@
   - the hidden input carries a JSON array and is marked `data-fjkit-multi`,
     which is what `multiselect_scripts()` looks for.
   - the panel stops closing on each pick. `data-close-on-select` is Basecoat's
-    knob, absent means "stay open", and staying open is the only sane default
-    for a control whose point is picking more than one thing. `close_on_select`
-    is there for the list short enough that one pick is the usual case.
+    knob and its absence means "stay open", the right default for a control
+    whose point is picking more than one thing. `close_on_select` covers the
+    list short enough that one pick is the usual case.
 
   The page must load `multiselect_scripts()`. Without it the field posts
   `labels=["bug","ui"]` — one string, JSON-shaped — instead of `labels=bug&
   labels=ui`, and a route declaring `list[str]` answers 422 while the page
-  looks perfectly filled in. That is the failure this pair of parameters is
+  looks correctly filled in. That is the failure this pair of parameters is
   most likely to produce, so it is stated twice: here and on the script macro.
 
   An empty selection posts the field zero times, exactly as an untouched
@@ -194,11 +193,11 @@
   select_menu(name, options, …) — the scripted listbox.
 
   Prefer `select_field`. A native `<select>` is keyboard- and screen-reader-
-  correct for free and costs one element; this one is ~30 and depends on JS
-  being present. Reach for it only when the rows need markup a native option
-  cannot hold — an icon, two lines, a swatch — or when you need `multiple`,
-  which a native `<select multiple>` renders as a scrolling box nobody has ever
-  found by accident.
+  correct for free and costs one element; this one costs ~30 and depends on JS
+  being present. Use it only when the rows need markup a native option cannot
+  hold — an icon, two lines, a swatch — or when you need `multiple`, which a
+  native `<select multiple>` renders as a scrolling box nobody has ever found
+  by accident.
 
   The value reaches the server through the hidden input, which carries `name`;
   the visible trigger is a button and submits nothing. That is why `name` is
@@ -209,12 +208,12 @@
                      selected=task.labels, multiple=true) }}
 
   `label` is an `aria-label` on the trigger and draws nothing. Pass
-  `visible_label` instead when the control sits in a form beside `text_field`
-  and has to look like one: it renders the `.field` wrapper, a real `<label
-  for>` and the message paragraph, so the field lines up with its neighbours
-  and a rejected submit has somewhere to put red text. `hint` and `error` work
-  as they do on every other field, and either one alone is enough to make this
-  a field — a hint with no label is still a field.
+  `visible_label` where the control sits in a form beside `text_field` and has
+  to look like one: it renders the `.field` wrapper, a real `<label for>` and
+  the message paragraph, so the field lines up with its neighbours and a
+  rejected submit has somewhere to put red text. `hint` and `error` work as
+  they do on every other field, and any one of the three alone is enough to
+  make this a field — a hint with no label is still a field.
 
       {{ select_menu("phase", options=phases, multiple=true,
                      visible_label="Trial phase", hint="Post-filter") }}
@@ -230,9 +229,8 @@
   {%- set as_field = visible_label is not none or hint is not none or error is not none -%}
   {#
     A list either way, so one expression marks the options. `selectattr("0",
-    "in", …)` rather
-    than `equalto`: one expression then covers both, and for a single select it
-    is the same test it always was, over a one-element list.
+    "in", …)` rather than `equalto`: the same test covers both, and for a
+    single select it runs over a one-element list.
   #}
   {%- set values = (selected or []) | list if multiple else ([selected] if selected is not none else []) -%}
   {%- set chosen = options | selectattr("0", "in", values) | map(attribute=1) | list -%}
@@ -306,27 +304,27 @@
 {#
   combobox(name, options, …) — a select you can type into.
 
-  Same contract as `select_menu` — hidden input carries the value — with a
+  Same contract as `select_menu` — the hidden input carries the value — with a
   text input in place of the button. `empty` is the message the listbox shows
-  when the filter matches nothing; it lives in a `data-empty` attribute
-  because Basecoat's JS renders it, and a blank one leaves a filtered-to-
-  nothing list looking broken.
+  when the filter matches nothing. It rides in a `data-empty` attribute because
+  Basecoat's JS renders it, and a blank one leaves a filtered-to-nothing list
+  looking broken.
 
   Filtering is client-side over the options rendered here. Server-side search
   is a different component: an `input` with `hx-get` and a listbox swapped by
   the response.
 
-  `multiple` works here too, and reads better than it does on `select_menu` —
-  Basecoat wraps the text input in a `.combobox-chips` div and renders one chip
-  per pick, so a long selection stays legible instead of becoming a comma-joined
-  line that truncates. The one thing to know is that the chips are drawn by that
-  JS: at first paint a pre-filled multiple combobox shows an empty box. Use
-  `select_menu(multiple=true)` where the selection has to be visible with
-  JavaScript off — and read the note on `multiselect_scripts()` either way.
+  `multiple` works here too, and reads better than on `select_menu`: Basecoat
+  wraps the text input in a `.combobox-chips` div and renders one chip per
+  pick, so a long selection stays legible instead of becoming a comma-joined
+  line that truncates. That JS draws the chips, so at first paint a pre-filled
+  multiple combobox shows an empty box. Use `select_menu(multiple=true)` where
+  the selection has to be visible with JavaScript off, and read the note on
+  `multiselect_scripts()` either way.
 
-  `visible_label`, `hint` and `error` behave as they do on `select_menu`: any
-  one of them wraps the control in a `.field` and gives it the label and the
-  message paragraph an ordinary field has.
+  `visible_label`, `hint` and `error` behave as on `select_menu`: any one of
+  them wraps the control in a `.field` and gives it the label and the message
+  paragraph an ordinary field has.
 #}
 {% macro combobox(name, options=(), selected=none, id=none, placeholder="Select…", empty="No results found.", label=none,
                   multiple=false, close_on_select=false, visible_label=none, hint=none, error=none) -%}
@@ -392,13 +390,13 @@
 
       {% block scripts %}{{ multiselect_scripts() }}{% endblock %}
 
-  Per page, and never from the shell, for the same reason `form_scripts()` is:
-  CHARTER §7 budgets what a page downloads *by default*, and the answer has to
-  stay "htmx and Basecoat".
+  Per page, never from the shell, for the reason `form_scripts()` is: CHARTER
+  §7 budgets what a page downloads by default, and the answer has to stay
+  "htmx and Basecoat".
 
-  What it buys is one line of wire format. Basecoat serialises a multiple
-  selection as `JSON.stringify(values)` in a single hidden input, so without
-  this script the route is handed one string:
+  It buys one line of wire format. Basecoat serialises a multiple selection as
+  `JSON.stringify(values)` in a single hidden input, so without this script the
+  route is handed one string:
 
       labels=%5B%22bug%22%2C%22ui%22%5D        ->  labels: str  == '["bug","ui"]'
 
@@ -409,10 +407,10 @@
 
   It covers both halves of `form()`: htmx submits are rewritten in
   `htmx:configRequest`, browser submits in a capture-phase `submit` handler,
-  and a form is only ever handled by one of the two.
+  and one form is only ever handled by one of the two.
 
   `encoding="json"` composes, in one direction: this runs first and json-enc
-  collects the repeats into an array. One caveat — json-enc collects *repeats*,
+  collects the repeats into an array. One caveat — json-enc collects repeats,
   so a one-item selection arrives as `"bug"`, not `["bug"]`. Give the model a
   `mode="before"` validator that wraps a bare string in a list; `TaskUpdate` in
   `examples/fjkit-demo` is the worked example.
@@ -429,9 +427,9 @@
   drawer(id, …) — a panel that slides in from an edge.
 
   A native `<dialog>` opened with `showModal()`, not a popover: a drawer is
-  modal, and `showModal()` is what gives it the top layer, the backdrop, the
-  focus trap and Esc-to-close without a line of script. `dialog` in this kit
-  is the non-modal one, which is why the two do not share a macro.
+  modal, and `showModal()` gives it the top layer, the backdrop, the focus trap
+  and Esc-to-close without a line of script. `dialog` in this kit is the
+  non-modal one, which is why the two do not share a macro.
 
   Opening one needs `showModal()`, so the trigger carries the only inline
   handler in the kit besides the theme toggle. `drawer_trigger` writes it.
@@ -478,8 +476,8 @@
 
   Separate from `drawer` because the two live in different places on the page:
   the drawer is usually at the end of the document, the button wherever it
-  belongs. Passing the id twice is the price of that, and it is why both
-  macros take it as their first positional argument.
+  belongs. Passing the id twice is the price of that — `drawer` takes it as
+  `id`, this macro as `target`.
 #}
 {% macro drawer_trigger(label, target, variant="outline", size="", icon_name=none) -%}
   <button type="button" class="btn" data-variant="{{ variant }}"
@@ -495,20 +493,19 @@
 {#
   command(id, …) — a filterable command list, and its ⌘K dialog form.
 
-  `dialog=true` swaps the root for a `<dialog class="command-dialog">`, which
-  is upstream's own variant rather than a second component. Everything else —
-  the header input, the `role="menu"`, the ids that tie them together — is
-  identical, which is the reason it is one macro with a flag and not two that
-  would drift.
+  `dialog=true` swaps the root for a `<dialog class="command-dialog">`,
+  upstream's own variant rather than a second component. Everything else — the
+  header input, the `role="menu"`, the ids that tie them together — is
+  identical, so this is one macro with a flag rather than two that would drift.
 
-  Two things this does not do, both deliberate:
+  Two things it deliberately does not do:
 
   * It does not bind ⌘K. A keystroke is application policy — which key, on
     which pages, and whether it beats the browser's own — and a UI kit that
-    quietly claims a global shortcut is a kit that fights the app. Open it
-    with `showModal()` from your own listener.
+    claims a global shortcut fights the app. Open it with `showModal()` from
+    your own listener.
   * It does not search the server. The filter is Basecoat's, over the items
-    rendered here. For server-side search, this is the wrong component: use an
+    rendered here. For server-side search this is the wrong component: use an
     `input` with `hx-get` and swap the listbox from the response.
 #}
 {% macro command(id, placeholder="Type a command or search…", empty="No results found.", label="Command menu", dialog=false, bordered=true) -%}

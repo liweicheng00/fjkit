@@ -1,6 +1,6 @@
 """Tests for the search page, where both htmx mechanisms are in use at once.
 
-A query is one question the server answers completely: one reply, four
+A query is one question the server answers completely: one reply, five
 `hx-swap-oob` passengers. A pick is not: one region in band, an event, and the
 subscribers fetch themselves. The two halves share a page and a rule — a
 fragment a route answers with must not subscribe to the event that route raises.
@@ -287,11 +287,11 @@ def test_the_detail_panel_reacts_to_the_id(htmx):
 
 @pytest.mark.parametrize("selector", ["/search/select/", "/search/advance/"])
 def test_a_button_inside_a_subscriber_refuses_the_inherited_vals(open_page, selector):
-    """htmx merges inherited `hx-vals`, so an empty object here would be merged, not obeyed.
+    """htmx merges inherited `hx-vals`, so an empty object here is merged, not obeyed.
 
-    `unset` is the only value that stops the walk — htmx collects `hx-vals` on a
-    path that does not consult `hx-disinherit`. Without it every click goes out
-    as `?task_id=undefined`, the `js:` expression having been evaluated against a
+    `unset` is the only value that stops the walk: htmx collects `hx-vals` on a
+    path that never consults `hx-disinherit`. Without it every click goes out as
+    `?task_id=undefined`, the `js:` expression having been evaluated against a
     click event whose `detail` is `0`.
     """
     for button in buttons_for(open_page, selector):
@@ -315,11 +315,11 @@ def test_the_row_control_sends_the_query(client):
 
 
 def test_the_title_is_the_control(client):
-    """No Open button: the row's own name is what opens it.
+    """No Open button: the row's own name opens it.
 
-    A `link` variant, so it reads as the name of the row rather than as a control
-    parked beside it — and still a `<button>`, which is what keeps Tab, Enter and
-    Space working now that nothing else in the row is focusable.
+    A `link` variant, so it reads as the row's name rather than as a control
+    parked beside it, and still a `<button>`, which keeps Tab, Enter and Space
+    working now that nothing else in the row is focusable.
     """
     page = client.get("/search").text
     for button in buttons_for(page, "/search/select/"):
@@ -328,11 +328,8 @@ def test_the_title_is_the_control(client):
 
 
 def test_a_row_has_exactly_one_control(client):
-    """The whole row is a hit target, so a second control in it would be unreachable.
-
-    Anywhere in the row opens the task; a button beside the title would be
-    covered by that same trigger and could never be clicked on its own.
-    """
+    """The whole row is the hit target, so a button beside the title would be
+    covered by that trigger and could never be clicked on its own."""
     page = client.get("/search").text
     body = page[page.index("<tbody>") : page.index("</tbody>")]
     assert body.count("<button") == body.count("<tr>"), "one control per row, and it is the title"
@@ -341,10 +338,10 @@ def test_a_row_has_exactly_one_control(client):
 def test_the_whole_row_is_the_hit_target(client):
     """`from:closest tr` listens on the row, so anywhere in it opens the task.
 
-    On the button rather than on the `<tr>` deliberately: a `<tr>` takes no
-    focus and announces nothing, so `hx-get` there would be mouse-only. A real
-    button keeps Tab, Enter and Space, and the click those fire bubbles to the
-    row the trigger is watching.
+    The attribute sits on the button, not the `<tr>`: a `<tr>` takes no focus and
+    announces nothing, so `hx-get` there would be mouse-only. The button keeps
+    Tab, Enter and Space, and the click those fire bubbles to the row the trigger
+    watches.
     """
     page = client.get("/search").text
     buttons = buttons_for(page, "/search/select/")

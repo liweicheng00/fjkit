@@ -1,4 +1,6 @@
-{# Module-level constants, like ui/icon.html's path table. #}
+{# Module-level constants, like ui/icon.html's path table. Importing this file
+   `with context` re-runs this block on every render; that is what section 4
+   measures. #}
 {% set PATHS = {
   "check": '<path d="M20 6 9 17l-5-5"/>',
   "plus": '<path d="M5 12h14"/><path d="M12 5v14"/>',

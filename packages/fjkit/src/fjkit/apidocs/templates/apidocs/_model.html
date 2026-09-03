@@ -2,14 +2,14 @@
   One entry from `components.schemas` — a type the API exchanges.
 
   Half of an API's contract is its endpoints and the other half is its types:
-  every generated client is built from these, and a reference that documents
-  the paths but not the payloads has documented the easy half. Swagger calls
-  this section "Schemas"; it lands in the same panel an operation does, so the
+  every generated client is built from these, and a reference documenting the
+  paths but not the payloads has documented the easy half. Swagger calls this
+  section "Schemas"; it lands in the same panel an operation does, so the
   sidebar stays the one index for both.
 
   A partial, carrying the detail panel's id and swapped `outerHTML` — the same
-  contract `_operation.html` follows, which is what lets one sidebar swap
-  either kind of thing into the same place.
+  contract `_operation.html` follows, which lets one sidebar swap either kind
+  of thing into the same place.
 #}
 {% from "apidocs/macros.html" import field_table, op_line %}
 {% from "ui/data.html" import badge, card, code_block, empty_state %}
@@ -52,10 +52,10 @@
 
     {% if model.used_by %}
       {#
-        The document knows which endpoints carry this type and no viewer of it
-        usually says so — which leaves "who returns a Task?" as a question you
-        answer by reading every operation. Directly exchanged only: a type
-        nested inside another is one link away, under the type that holds it.
+        The document knows which endpoints carry this type and most viewers
+        never say so, which leaves "who returns a Task?" to be answered by
+        reading every operation. Directly exchanged only: a type nested inside
+        another is one link away, under the type that holds it.
       #}
       {% call section("Exchanged by") %}
         {% call stack(gap=2) %}

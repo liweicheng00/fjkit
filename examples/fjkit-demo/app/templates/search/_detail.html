@@ -2,7 +2,7 @@
   The detail panel. A query carries it out of band, empty; a pick makes it
   subscribe its way to a task; an advance replaces it in band.
 
-  It must not hear `task-changed` — it is that route's own target, and a fragment
+  It must not hear `task-changed`: it is that route's own target, and a fragment
   that is both spins until the tab is closed.
 #}
 {% set oob = oob | default(false) %}

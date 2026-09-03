@@ -25,7 +25,7 @@ from jinja2 import DictLoader
 ORIGIN = "http://testserver"
 
 #: What a browser navigating to a page sends. `TestClient` sends `Accept: */*`,
-#: which is the programmatic caller — so a test about browser behaviour has to
+#: which is the programmatic caller, so a test about browser behaviour has to
 #: say so rather than rely on "not htmx".
 BROWSER = {"accept": "text/html,application/xhtml+xml"}
 
@@ -135,7 +135,7 @@ def test_logout_clears_both_sides():
 
 
 def test_logging_in_again_replaces_the_session_id():
-    """A session id that survives a login is a fixation hole."""
+    """A session id that survives a login is a session-fixation hole."""
     auth = make_auth(store=MemoryStore())
     client = make_app(auth)
     client.post("/login", headers={"origin": ORIGIN})
@@ -152,7 +152,7 @@ def test_logging_in_again_replaces_the_session_id():
 
 
 def test_a_navigation_without_a_session_is_redirected():
-    """A browser gets sent to the login form. A 401 here is a blank page."""
+    """A browser is sent to the login form. A 401 here renders a blank page."""
     client = make_app(make_auth())
 
     response = client.get("/private/thing", headers=BROWSER, follow_redirects=False)
@@ -163,9 +163,9 @@ def test_a_navigation_without_a_session_is_redirected():
 
 
 def test_the_next_parameter_keeps_the_query_string():
-    """Come back from the login form to the view you were looking at, filter
-    and all. `request.url.path` alone drops it, and the user lands on an
-    unfiltered list wondering where their search went."""
+    """The login form returns the user to the view they were on, filter and all.
+    `request.url.path` alone drops the query, landing them on an unfiltered list
+    with no sign of where their search went."""
     client = make_app(make_auth())
 
     response = client.get("/private/thing?status=doing&page=2", headers=BROWSER, follow_redirects=False)
@@ -174,7 +174,7 @@ def test_the_next_parameter_keeps_the_query_string():
 
 
 def test_a_navigation_is_recognised_by_sec_fetch_mode_too():
-    """The purpose-built signal, for the callers that send it."""
+    """`Sec-Fetch-Mode` is the purpose-built signal, for callers that send it."""
     client = make_app(make_auth())
 
     response = client.get(
@@ -198,22 +198,21 @@ def test_a_navigation_is_recognised_by_sec_fetch_mode_too():
     ],
 )
 def test_safe_next_only_returns_to_this_site(value, expected):
-    """A login page that redirects to whatever it is handed is an open
-    redirect — your domain, your login form, and a hop to the attacker's site
-    at the moment someone has just typed their password.
+    """A login page that redirects to whatever it is handed is an open redirect:
+    your domain, your login form, then a hop to the attacker's site the moment
+    someone has typed their password.
 
-    `//evil.example.com` is the case a naive `startswith("/")` waves through:
-    a browser reads it as a protocol-relative URL, so it is a different site.
+    `//evil.example.com` is the case a naive `startswith("/")` waves through. A
+    browser reads it as a protocol-relative URL, so it is a different site.
     """
     assert safe_next(value) == expected
 
 
 def test_a_caller_with_no_markup_waiting_gets_401():
-    """The one caller 401 is right for.
+    """The one caller a 401 is right for.
 
-    Under `render_mode="auto"` this is the request a route answers in JSON, so
-    refusing it with a redirect to an HTML login form would be answering a
-    question it did not ask.
+    Under `render_mode="auto"` a route answers this request in JSON, so refusing
+    it with a redirect to an HTML login form answers a question it did not ask.
     """
     client = make_app(make_auth())
 
@@ -225,10 +224,10 @@ def test_a_caller_with_no_markup_waiting_gets_401():
 
 
 def test_the_401_carries_no_www_authenticate():
-    """RFC 9110 asks for the field; every registered scheme is wrong here.
+    """RFC 9110 asks for the field, and every registered scheme is wrong here.
 
-    `Basic` would make the browser open its own credential dialog — precisely
-    the login form this plugin exists to replace.
+    `Basic` would make the browser open its own credential dialog, which is
+    precisely the login form this plugin exists to replace.
     """
     client = make_app(make_auth())
 
@@ -236,12 +235,12 @@ def test_the_401_carries_no_www_authenticate():
 
 
 def test_an_htmx_swap_without_a_session_gets_hx_redirect():
-    """401 *and* a redirect, which is not a contradiction.
+    """401 and a redirect together, which is not a contradiction.
 
-    htmx acts on `HX-Redirect` before it looks at the status code, so the
-    status can be honest while the browser still moves the whole page. A 303
-    would be followed and the login page swapped into a card; a bare 401 would
-    swap nothing at all, because htmx ignores a 4xx body.
+    htmx acts on `HX-Redirect` before it reads the status code, so the status
+    stays honest while the browser still moves the whole page. A 303 would be
+    followed and the login page swapped into a card; a bare 401 would swap
+    nothing, because htmx ignores a 4xx body.
     """
     client = make_app(make_auth())
 
@@ -303,7 +302,7 @@ def test_no_csrf_lets_everything_through_and_says_so():
 
 
 class CountingSource:
-    """An upstream whose token expires, and that counts how often it renews."""
+    """An upstream whose token expires, counting how often it renews."""
 
     def __init__(self, *, ttl: timedelta = timedelta(hours=1), delay: float = 0.0) -> None:
         self.ttl = ttl
@@ -364,9 +363,9 @@ def test_an_expiring_token_is_renewed_and_written_back():
 async def test_concurrent_requests_refresh_exactly_once():
     """The failure this lock exists for.
 
-    Four htmx swaps fire at once, all see an expiring token. Without the lock
+    Four htmx swaps fire at once and all see an expiring token. Without the lock
     all four call refresh, and an upstream that rotates refresh tokens revokes
-    the family when the second arrives — logging the user out mid-click.
+    the family when the second arrives, logging the user out mid-click.
     """
     source = CountingSource(delay=0.1)
     auth = make_auth(source=source, store=MemoryStore())
@@ -384,9 +383,9 @@ async def test_concurrent_requests_refresh_exactly_once():
 async def test_a_request_holding_a_spent_token_does_not_spend_it_again():
     """The race the lock alone does not close.
 
-    A refresh finishes and releases the lock. A request that read the store
-    just before that write now finds the lock free — and would renew again,
-    using a refresh token the upstream has already retired.
+    A refresh finishes and releases the lock. A request that read the store just
+    before that write finds the lock free, and would renew again with a refresh
+    token the upstream has already retired.
     """
     source = CountingSource()
     auth = make_auth(source=source, store=MemoryStore())
@@ -454,7 +453,7 @@ async def test_a_source_that_cannot_refresh_keeps_the_session_it_has():
     stale = Session(access="a", expires_at=datetime.now(UTC) + timedelta(seconds=5))
 
     with warnings.catch_warnings():
-        # The warning itself is the subject of its own test, below.
+        # The warning has its own test below.
         warnings.simplefilter("ignore", PluginWarning)
         assert await auth._refresh("sid", stale) is stale
 
@@ -480,7 +479,7 @@ async def test_an_expiring_token_with_no_way_to_renew_warns_once():
     A source with neither `refresh()` nor `expires_at` is an ordinary
     configuration — `LocalSource` is exactly that — so warning about the
     combination at startup would fire on apps that have no problem, and teach
-    people to ignore the warning that matters.
+    people to ignore the warning that does matter.
     """
 
     class NoRefresh:

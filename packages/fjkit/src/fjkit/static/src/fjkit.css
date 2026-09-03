@@ -1,50 +1,50 @@
 /* ============================================================================
- * fjkit — the one knob.
+ * fjkit — the one place a colour is defined.
  *
  * Every colour the kit renders is defined here or inherited from Basecoat's
- * token set. Templates only ever name a *role* (bg-primary, text-muted-
- * foreground, data-variant="destructive") — never a hue.
+ * token set. Templates name a role (bg-primary, text-muted-foreground,
+ * data-variant="destructive"), never a hue.
  *
- * Apps rebrand by redefining the tokens in section 1 in their own stylesheet,
+ * Apps rebrand by redefining the section 1 tokens in their own stylesheet,
  * loaded after this one. That is plain CSS: no build step, no Tailwind, no
  * config file. See CHARTER.md A3.
  *
- * This file is compiled when *fjkit* is released, not when an app runs:
+ * This file is compiled when fjkit is released, not when an app runs:
  *     uv run fjkit build-css
  * ========================================================================= */
 
-/* `source(none)` turns off Tailwind's directory auto-detection so the class
+/* `source(none)` turns off Tailwind's directory auto-detection, so the class
  * scan is an explicit, reviewable list. Without it Tailwind walks the repo and
- * would happily scan .venv/ and the bench fixtures.
+ * scans .venv/ and the bench fixtures.
  *
- * Only the kit's own templates are scanned. An app's templates are NOT — they
- * are not supposed to contain any class the kit did not already emit, and
- * `fjkit check` is what enforces that. */
+ * Only the kit's own templates are scanned. An app's templates are NOT: they
+ * must contain no class the kit did not already emit, and `fjkit check`
+ * enforces that. */
 @import "tailwindcss" source(none);
 @source "../../templates";
 /* A plugin that ships templates keeps them beside its own code, so each one
- * adds a line here. Missing it is not a build error: the templates render and
- * every utility class in them is absent from the stylesheet, which looks like a
- * broken page and says nothing. `tests/test_apidocs.py` holds this one. */
+ * adds a line here. Omitting a line is not a build error: the templates render
+ * with every utility class in them absent from the stylesheet, which looks like
+ * a broken page and reports nothing. `tests/test_apidocs.py` holds this one. */
 @source "../../apidocs/templates";
 @source "../../charts/templates";
 @source "../vendor/basecoat/js";
 
-/* Basecoat ships Tailwind *source* CSS: @apply rules plus the shadcn token
+/* Basecoat ships Tailwind source CSS: @apply rules plus the shadcn token
  * vocabulary (--primary, --card, --muted-foreground, …) and the dark variant
  * `html.dark`. Loaded after Tailwind's preflight, as upstream requires.
- * Building from source rather than shipping the 220 KB prebuilt CDN file is
- * what keeps the kit's stylesheet an order of magnitude smaller. */
+ * Building from source rather than shipping the 220 KB prebuilt CDN file keeps
+ * the kit's stylesheet an order of magnitude smaller. */
 @import "../vendor/basecoat/basecoat-vega.css"; /* fjkit:style-pack */
 
 /* That last line is the style pack, and it is the one line `fjkit build-css`
- * rewrites. Upstream ships eight of them side by side — vega, nova, maia, lyra,
+ * rewrites. Upstream ships eight packs side by side — vega, nova, maia, lyra,
  * mira, luma, sera, rhea — over one shared base and one shared selector set;
  * they differ in geometry (control heights, radii, borders, shadows), never in
  * the class names or tokens a template writes. The builder emits one stylesheet
- * per pack, so the marker comment has to survive: it is what the substitution
- * finds. Everything below this point is pack-neutral and is compiled into all
- * eight unchanged. */
+ * per pack, so the marker comment has to survive: the substitution finds it.
+ * Everything below this point is pack-neutral and compiles into all eight
+ * unchanged. */
 
 /* ---------------------------------------------------------------------------
  * 1. Brand — the only tokens tied to identity. Override these in your app.
@@ -54,8 +54,8 @@
   --primary-foreground: oklch(0.985 0.005 275);
   --ring: oklch(0.52 0.19 275);
 
-  /* Neutrals carry a hint of the brand hue so surfaces don't read as dead
-   * grey next to it. Still surface tokens, still not brand. */
+  /* Neutrals carry a trace of the brand hue so surfaces do not read as flat
+   * grey beside it. They stay surface tokens, not brand tokens. */
   --background: oklch(0.995 0.002 275);
   --card: oklch(1 0 0);
   --muted: oklch(0.968 0.004 275);
@@ -65,9 +65,9 @@
 
   --radius: 0.625rem;
 
-  /* The sidebar is a surface, not a brand: it borrows the same neutrals
-   * everything else does, so one knob still repaints the whole app. Basecoat
-   * defines these as pure greys, which is visible the moment a tinted page
+  /* The sidebar is a surface, not a brand: it borrows the same neutrals as
+   * everything else, so redefining section 1 still repaints the whole app.
+   * Basecoat defines these as pure greys, which shows the moment a tinted page
    * body sits next to them — most of all in dark mode. Redefined rather than
    * deleted because Basecoat's own component CSS reads these names. */
   --sidebar: var(--card);
@@ -82,9 +82,9 @@
   /* -------------------------------------------------------------------------
    * 2. Semantic status — deliberately NOT derived from --primary.
    *
-   * "Green means done" has to survive a rebrand, so status colours do not hang
-   * off the knob. They still get exactly one definition station: here.
-   * Basecoat ships --destructive; success/warning/info are ours.
+   * "Green means done" has to survive a rebrand, so status colours do not
+   * follow the brand tokens. They still have exactly one definition: here.
+   * Basecoat ships --destructive; success, warning and info are fjkit's.
    * ---------------------------------------------------------------------- */
   --success: oklch(0.62 0.15 152);
   --success-foreground: oklch(0.99 0 0);
@@ -108,8 +108,8 @@
   --input: oklch(1 0 0 / 15%);
 
   /* Repeated, not inherited: Basecoat redefines every --sidebar-* token inside
-   * its own `.dark` block, so a single definition in :root would be overridden
-   * there and the dark sidebar would fall back to grey. */
+   * its own `.dark` block, which overrides a single definition in :root and
+   * drops the dark sidebar back to grey. */
   --sidebar: var(--card);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -127,8 +127,8 @@
   --info-foreground: oklch(0.16 0.03 235);
 }
 
-/* Register the status tokens as Tailwind colours so `bg-success` /
- * `text-warning` exist as utilities, the same way Basecoat registers its own. */
+/* Registers the status tokens as Tailwind colours, so `bg-success` and
+ * `text-warning` exist as utilities the way Basecoat's own do. */
 @theme inline {
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
@@ -142,7 +142,7 @@
  * 3. Status variants, extending Basecoat's own `data-variant` API rather than
  *    inventing a second one. Templates write
  *        <span class="badge" data-variant="success">
- *    exactly like they write data-variant="destructive", and never assemble
+ *    exactly as they write data-variant="destructive", and never assemble
  *    `bg-success/12 text-success border-…` at the call site.
  * ------------------------------------------------------------------------ */
 @layer components {
@@ -164,8 +164,8 @@
 
   /* Dialog widths. Basecoat caps `.dialog > *` at one size and ships a
    * `data-size` only for `.alert-dialog`, so the two extra widths extend that
-   * attribute rather than inventing a `dialog-lg` class. `default` has no rule
-   * because it is Basecoat's own. */
+   * attribute rather than inventing a `dialog-lg` class. `default` needs no
+   * rule: it is Basecoat's own. */
   .dialog[data-size="sm"] > * {
     @apply sm:max-w-sm;
   }
@@ -173,27 +173,27 @@
     @apply sm:max-w-2xl;
   }
 
-  /* The panel is already capped at `max-h-[calc(100%-2rem)]`; without this the
-   * body of a long one overflows past the viewport, where a mouse can still
-   * reach it by scrolling the page but a keyboard cannot reach it at all.
+  /* The panel is already capped at `max-h-[calc(100%-2rem)]`; without this rule
+   * the body of a long dialog overflows past the viewport, where a mouse still
+   * reaches it by scrolling the page but a keyboard cannot reach it at all.
    *
-   * The margin/padding swap makes the section carry the panel's 24px inline
-   * padding itself (the panel is `p-6`, so the two cancel exactly and nothing
-   * moves). Scrolling has to happen inside the section, and everything a
-   * scroll container puts at its own edges was landing on the content:
+   * The margin/padding swap moves the panel's 24px inline padding into the
+   * section (the panel is `p-6`, so the two cancel exactly and nothing moves).
+   * Scrolling has to happen inside the section, and everything a scroll
+   * container puts at its own edges was landing on the content:
    *
-   *   - a classic scrollbar track sat on the right edge of a full-bleed
-   *     child, drawing over its border;
-   *   - a macOS overlay scrollbar takes no layout width, so no gutter can
-   *     help it — the thumb floats over whatever is at the right edge;
+   *   - a classic scrollbar track sat on the right edge of a full-bleed child,
+   *     drawing over its border;
+   *   - a macOS overlay scrollbar takes no layout width, so no gutter helps it
+   *     — the thumb floats over whatever is at the right edge;
    *   - a focus ring is painted outside the border box, so on a child at the
-   *     section's edge it was clipped by the overflow itself.
+   *     section's edge the overflow clipped it.
    *
-   * With the padding inside the scroll container all three now happen in the
+   * With the padding inside the scroll container, all three now happen in the
    * section's own 24px band instead of on the content. `scrollbar-gutter:
-   * stable` still matters, but for one thing only: without it a classic
-   * scrollbar appears by taking layout width, and the body reflows at the
-   * moment it grows long enough to scroll. */
+   * stable` still matters, for one thing only: without it a classic scrollbar
+   * appears by taking layout width, and the body reflows the moment it grows
+   * long enough to scroll. */
   .dialog > * > section {
     @apply -mx-6 overflow-y-auto px-6;
     scrollbar-gutter: stable;
@@ -201,7 +201,7 @@
 
   /* A button group inside a field. Basecoat's field-group rule —
    * `.field > :is(fieldset, [role="group"], [role="radiogroup"]):not(.field)` —
-   * reads any grouped child of a `.field` as a *stack of fields*: `flex-col`,
+   * reads any grouped child of a `.field` as a stack of fields: `flex-col`,
    * `w-full`, and 1.75rem between the items. A `.button-group` is a row of
    * joined buttons, so labelling one with the role its ARIA pattern asks for
    * turned it into a column of detached buttons a gap apart. The role is not
@@ -214,26 +214,26 @@
   .fieldset > .button-group:not(.field) {
     @apply w-fit gap-0;
     /* The same rule also makes the group an `inline-size` query container, and
-     * sizing containment means the box is laid out as if it had no contents —
-     * so `w-fit` resolved to 0 and the buttons hung out of a zero-width box. */
+     * sizing containment lays the box out as if it had no contents — so `w-fit`
+     * resolved to 0 and the buttons hung out of a zero-width box. */
     container-type: normal;
   }
 
   /* Direction is a separate rule because a `data-orientation="vertical"` group
-   * *is* a column — it only needs the width and the gap reset above. */
+   * is already a column: it needs only the width and gap reset above. */
   .field > .button-group:not([data-orientation="vertical"]),
   .fieldset > .button-group:not([data-orientation="vertical"]) {
     @apply flex-row;
   }
 
   /* Tabs. `components/tabs.css` is structure only — flex direction, the tablist
-   * axis, `outline-none` on the panels — but the *style pack* (vega) does ship a
+   * axis, `outline-none` on the panels — but the style pack (vega) does ship a
    * skin, and it is a pill strip: `h-9 p-[3px] rounded-lg bg-muted`, with the
    * selected tab as a raised white pill. fjkit draws underline tabs instead, so
    * every one of those has to be turned back off here. Leaving any of them
    * standing is not cosmetic: `h-9` is 6px shorter than the tabs this file sizes,
    * and `overflow-x-auto` below makes overflow-y compute to `auto` too, so the
-   * strip grew a phantom vertical scrollbar that sat on the card's edge. */
+   * strip grew a phantom vertical scrollbar on the card's edge. */
   /* The second selector is dead weight on its own — the pack paints the strip
    * from `[role="tablist"]:not([data-variant="line"])`, one attribute more
    * specific than the plain selector, so `bg-transparent` written here alone
@@ -248,9 +248,9 @@
   /* `after:hidden` drops the pack's underline pseudo-element. It is positioned
    * `bottom-[-5px]`, which in a strip sized by its content is 5px of overflow
    * rather than a mark under the tab. */
-  /* `rounded-none` undoes the pack's `rounded-md`. A rounded corner is what
-   * makes a tab read as a button rather than as a label on a strip, and the
-   * radius survived the first pass because only the tablist was reset. */
+  /* `rounded-none` undoes the pack's `rounded-md`. A rounded corner makes a tab
+   * read as a button rather than as a label on a strip, and the radius survived
+   * the first pass because only the tablist was reset. */
   .tabs > [role="tablist"] > [role="tab"] {
     @apply text-muted-foreground shrink-0 grow-0 cursor-pointer rounded-none border-e px-3.5 py-2 text-sm after:hidden;
   }
@@ -271,14 +271,14 @@
   }
 
   /* The pack fills and outlines the selected tab again under `html.dark`, which
-   * is one class and one type more specific than the rule above. This matches
-   * that and lands later, so the underline is the only selection mark in both
-   * themes.
+   * is one class and one type more specific than the rule above. This rule
+   * matches that specificity and lands later, so the underline is the only
+   * selection mark in both themes.
    *
    * Written as its own rule with a single selector, not a `dark:` utility added
-   * to the pair above: Tailwind splices the variant onto the *last* selector of
-   * a comma-separated list and emits `…[aria-selected="true"]):is(html.dark *)`
-   * — one bracket too many, which drops the whole rule. */
+   * to the pair above: Tailwind splices the variant onto the last selector of a
+   * comma-separated list and emits `…[aria-selected="true"]):is(html.dark *)` —
+   * one bracket too many, which drops the whole rule. */
   .tabs > [role="tablist"]:not([data-variant="line"]) > [role="tab"][aria-selected="true"] {
     @apply dark:border-transparent dark:bg-transparent;
   }
@@ -296,7 +296,7 @@
   }
 
   /* A code region. `tabindex="0"` in the macro makes it reachable; this makes
-   * the focus visible, which is the other half of the same requirement. */
+   * the focus visible, the other half of the same requirement. */
   .code-block {
     @apply bg-muted text-foreground max-h-[34rem] overflow-x-auto p-4 font-mono text-xs leading-relaxed;
     tab-size: 2;
@@ -311,8 +311,8 @@
   }
 
   /* Basecoat clamps `.item p` to two lines, which is right for a feed and wrong
-   * for a definition list. Same `data-*` extension pattern as the badge and
-   * dialog rules above rather than a second class. */
+   * for a definition list. Extends `data-*` like the badge and dialog rules
+   * above rather than adding a second class. */
   .item[data-clamp="false"] p {
     @apply line-clamp-none;
   }
@@ -321,14 +321,14 @@
 /* ---------------------------------------------------------------------------
  * 4. Motion.
  *
- * A spinner is the one thing on the page that never stops moving, which makes
- * it exactly what `prefers-reduced-motion` is asking about. Slowed rather than
- * frozen: a still "loading" glyph reads as a page that has hung, so removing
- * the animation would replace a comfort problem with a correctness one.
+ * A spinner is the one thing on the page that never stops moving, which is what
+ * `prefers-reduced-motion` asks about. Slowed rather than frozen: a still
+ * "loading" glyph reads as a hung page, so removing the animation would trade a
+ * comfort problem for a correctness one.
  *
  * Unlayered on purpose. Tailwind's `animate-spin` lives in `@layer utilities`,
- * and unlayered rules beat every layer regardless of source order — so this
- * wins without a specificity fight or an `!important`.
+ * and unlayered rules beat every layer regardless of source order, so this wins
+ * without a specificity fight or an `!important`.
  * ------------------------------------------------------------------------ */
 @media (prefers-reduced-motion: reduce) {
   .animate-spin {

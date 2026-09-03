@@ -1,13 +1,13 @@
 {#
-  Showing and hiding, by the two mechanisms the browser already has.
+  Showing and hiding, through the two mechanisms the browser already has.
 
   `collapsible` and `accordion` are both `<details>`/`<summary>`: open state,
-  keyboard operation, the disclosure role and the announcement all come from
-  the element. Basecoat styles the element directly — `collapsible.css` has no
-  class at all — so what these macros contribute is the structure and the
-  closed vocabulary, not the behaviour.
+  keyboard operation, the disclosure role and the announcement come from the
+  element. Basecoat styles the element directly — `collapsible.css` declares no
+  class — so these macros contribute structure and the closed vocabulary, not
+  behaviour.
 
-  `tooltip` is the same idea one level down: upstream draws it entirely from a
+  `tooltip` is the same idea one level down: upstream draws it from a
   `[data-tooltip]` attribute and CSS `content()`, so there is no JavaScript and
   no second element to keep in sync.
 #}
@@ -17,14 +17,14 @@
 {#
   collapsible(summary, open) — one disclosure.
 
-  A `<details>`, so the open state survives with no JS and no state on the
-  server, and the browser gives the summary a button role and Enter/Space for
-  free. Basecoat animates `::details-content`, which needs nothing from here.
+  A `<details>`: the open state needs no JS and no server state, and the
+  browser gives the summary a button role plus Enter/Space. Basecoat animates
+  `::details-content` and needs nothing from here.
 
-  The chevron is inside the summary and rotates from the parent's `[open]`, so
-  the marker and the state cannot disagree — there is only one source for both.
-  `list-none` and the `::-webkit-details-marker` rule in Basecoat remove the
-  browser's own triangle; without it a summary shows two markers.
+  The chevron sits inside the summary and rotates from the parent's `[open]`,
+  so marker and state have one source and cannot disagree. `list-none` and
+  Basecoat's `::-webkit-details-marker` rule remove the browser's own triangle;
+  without them a summary shows two markers.
 #}
 {% macro collapsible(summary, open=false, icon_name=none) -%}
   <details class="group border-b"{% if open %} open{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
@@ -49,14 +49,14 @@
 {#
   accordion(multiple) — a stack of collapsibles, at most one open by default.
 
-  Basecoat's JS is what closes the siblings: it looks for `.accordion` and
-  reads `:scope > details[open]`. `multiple` simply withholds that class, so a
-  group that allows several open panels ships no JS behaviour at all rather
-  than shipping JS that is asked to do nothing.
+  Basecoat's JS closes the siblings: it finds `.accordion` and reads
+  `:scope > details[open]`. `multiple` withholds that class, so a group that
+  allows several open panels ships no JS behaviour rather than JS asked to do
+  nothing.
 
-  The children are `collapsible` calls. There is no `accordion_item`, because
-  a second macro that rendered the same `<details>` would be a second place for
-  the summary markup to drift.
+  The children are `collapsible` calls. There is no `accordion_item`: a second
+  macro rendering the same `<details>` would be a second place for the summary
+  markup to drift.
 #}
 {% macro accordion(multiple=false, label=none) -%}
   <div {% if not multiple %}class="accordion"{% endif %}
@@ -74,13 +74,12 @@
   and nothing to position. `side` and `align` are Basecoat's own closed
   attribute vocabulary.
 
-  Two things this cannot do, both inherited from the mechanism:
+  Two limits, both inherited from that mechanism:
 
-  * The text is not in the accessibility tree — `content()` never is. A tooltip
-    is therefore a *hint*, never the only label. Give the control an
-    `aria-label` when the tooltip is the only text it has.
-  * It cannot contain markup. That is a feature at this size; a tooltip that
-    needs a heading is a popover.
+  * The text is not in the accessibility tree; `content()` never is. A tooltip
+    is a hint, never the only label. Give the control an `aria-label` when the
+    tooltip is the only text it has.
+  * It holds no markup. A tooltip that needs a heading is a popover.
 #}
 {% macro tooltip(text, side="top", align="center") -%}
   <span data-tooltip="{{ text }}" data-side="{{ side }}" data-align="{{ align }}"

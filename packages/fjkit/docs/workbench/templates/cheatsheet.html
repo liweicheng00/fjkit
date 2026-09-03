@@ -7,16 +7,17 @@
   The index: every macro in `src/fjkit/templates/ui/`, one row each.
 
   It used to be section 14 of the Components page — one pre-formatted string,
-  ninety macros aligned with spaces, annotated with a `·` that no legend
-  explained. Two problems, and splitting the page only fixes the first: it was
-  the tail of a page nobody scrolls to the end of, and the one fact a reader
-  most often wants from an index — *does this take a `{% raw %}{% call %}{% endraw %}` block, and
-  what goes inside it* — was encoded rather than stated.
+  ninety macros aligned with spaces, annotated with a `·` no legend explained.
+  Two problems, and splitting the page fixes only the first: it sat at the tail
+  of a page nobody scrolls to the end of, and the fact a reader most often wants
+  from an index — does this take a
+  `{% raw %}{% call %}{% endraw %}` block, and what goes inside it — was encoded
+  rather than stated.
 
-  So the annotation became a badge on the row, and the badge says it in words. The rows
-  come from `cheatsheet.py` already in this language, which is why nothing below
-  chooses a string: a page that assembled the phrases would be the one place the
-  English and Chinese indexes could describe different macros.
+  So the annotation became a badge on the row, in words. The rows come from
+  `cheatsheet.py` already in this language, which is why nothing below chooses a
+  string: a page that assembled the phrases would be the one place the English
+  and Chinese indexes could describe different macros.
 
   Components stays the page you read; this is the page you look things up in.
 #}
@@ -31,14 +32,14 @@
   One row, three parts: the signature, the note under it, and — only when the
   macro is called with one — the badge naming its block.
 
-  `item_list` rather than `table`, and the reason is worth stating: Basecoat's
-  `.table td` is `white-space: nowrap`, which is right for a data table and
-  wrong for a column of sentences. `item` is the kit's own answer for
-  "definitions" — its signature comment says so — and `clamp=false` is the
-  parameter that grew for exactly this: a description that runs past two lines.
+  `item_list` rather than `table`, because Basecoat's `.table td` is
+  `white-space: nowrap`, which is right for a data table and wrong for a column
+  of sentences. `item` is the kit's answer for definitions, as its signature
+  comment says, and `clamp=false` grew for exactly this: a description that runs
+  past two lines.
 
-  Absence carries the meaning here. A row with no badge takes no block, which
-  is most of them; a column of em dashes would have been noise on every screen.
+  Absence carries meaning here. A row with no badge takes no block, which is most
+  of them, and a column of em dashes would be noise on every screen.
 #}
 {% macro macro_list(file) %}
 {% call card(file.name, padded=false) %}
@@ -82,12 +83,12 @@
   {% call band("reading", "How to read this", lead_reading) %}
     {% call prose() %}
       <p>
-        A Jinja macro is called in one of two ways, and which one it is, is not something you can
-        guess from the name. A macro with nothing inside it is printed. A macro that wraps
-        something is called with <code>{% raw %}{% call %}{% endraw %}</code>, and whatever sits
-        between that and <code>{% raw %}{% endcall %}{% endraw %}</code> is handed to the macro to
-        place — Jinja calls it the <em>caller block</em>, and every macro below that wants one
-        carries a badge saying what goes in it.
+        A Jinja macro is called in one of two ways, and the name does not tell you which. A macro
+        with nothing inside it is printed. A macro that wraps something is called with
+        <code>{% raw %}{% call %}{% endraw %}</code>, and whatever sits between that and
+        <code>{% raw %}{% endcall %}{% endraw %}</code> is handed to the macro to place. Jinja calls
+        that the caller block, and every macro below that wants one carries a badge saying what goes
+        in it.
       </p>
     {% endcall %}
 
@@ -96,7 +97,7 @@
     {% call grid(cols=2, gap=4) %}
       {% set c_macro %}the call, with every parameter and its default. The heading above each list is the file you <code>import</code> it from{% endset %}
       {% set c_block %}on the right of a row, and only on the rows that have one: this macro is called with <code>{% raw %}{% call %}{% endraw %}</code>, and the badge says what goes inside. No badge means print it with <code>{% raw %}{{ }}{% endraw %}</code>{% endset %}
-      {% set c_note %}the thing the signature does not say. Absent when the signature says all of it{% endset %}
+      {% set c_note %}what the signature does not say. Absent when the signature says all of it{% endset %}
       {{ defs("What is on a row", [
         ("The signature", c_macro),
         ("A block badge", c_block),
@@ -127,8 +128,8 @@
         <code>ui/shell.html</code> carries the <code>&lt;head&gt;</code>, the theme flash-guard, the
         asset links and the header/main/footer skeleton. An app extends it once, in its own
         <code>base.html</code>, and fills the blocks it needs. Fill <code>sidebar</code> or
-        <code>nav</code> — the shell lays the header out differently for each, and filling both
-        gives you two navigations.
+        <code>nav</code>, never both: the shell lays the header out differently for each, and filling
+        both gives you two navigations.
       </p>
     {% endcall %}
 
@@ -150,10 +151,10 @@
       <p>
         Every one of these reaches the markup as an extra keyword on a macro:
         <code>{% raw %}{{ button("Refresh", hx_get="/tasks/board", hx_target="#board") }}{% endraw %}</code>.
-        Underscores become dashes on the way through, which is the whole of the integration —
-        there is no htmx-specific parameter on any macro, and there does not need to be.
-        The full reference is <a href="https://htmx.org/reference/">htmx.org/reference</a>;
-        what follows is what a fjkit page actually uses.
+        Underscores become dashes on the way through, and that is the whole integration: no macro has
+        an htmx-specific parameter, and none needs one. The full reference is
+        <a href="https://htmx.org/reference/">htmx.org/reference</a>; what follows is what a fjkit
+        page uses.
       </p>
     {% endcall %}
 

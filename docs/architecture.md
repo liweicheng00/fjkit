@@ -1,12 +1,12 @@
 # fjkit 架構
 
-五張圖，對應這個專案不可動搖的架構決定。顏色慣例：**fjkit 提供** / **你提供**。
+五張圖，對應五個不再變動的架構決定。顏色慣例：**fjkit 提供** / **你提供**。
 
 ---
 
 ## 一 · 套件邊界
 
-使用者與 fjkit 只在四個地方接觸，其餘全部封在套件裡。
+app 與 fjkit 只在四個地方接觸，其餘封在套件裡。
 
 ```mermaid
 flowchart LR
@@ -32,17 +32,17 @@ flowchart LR
   B -->|覆寫 token| K4
 ```
 
-**不再需要**：`pytailwindcss`、`build_css.py --watch`、`vendor_ui.py`、「改 class 就重 build」。
+四條路徑都是單向的：app 依賴 fjkit，fjkit 不反向引用 app。`brand.css` 是唯一的設定
+介面，內容是純 CSS 變數，不經過任何建置。
 
-四條路徑都是單向的：app 依賴 fjkit，fjkit 從不回頭引用 app。`brand.css` 是唯一的設定
-介面——一顆旋鈕，純 CSS 變數，不經過任何建置。
+**不再需要**：`pytailwindcss`、`build_css.py --watch`、`vendor_ui.py`、「改 class 就重 build」。
 
 ---
 
 ## 二 · 模板解析與 eject
 
-`ChoiceLoader` 讓 app 的模板目錄排在套件前面。同一行 `{% from %}`，eject 前後拿到不同
-檔案，呼叫端一個字都不用改。
+`ChoiceLoader` 把 app 的模板目錄排在套件前面，所以同一行 `{% from %}` 在 eject 前後
+解析到不同檔案，呼叫端不必改。
 
 ```mermaid
 flowchart LR
@@ -55,14 +55,14 @@ flowchart LR
   C2 -.->|未到達| K2["fjkit/templates/ui/button.html"]
 ```
 
-遮蔽是功能，不是意外。代價：eject 出去的檔案不再跟隨版本升級——所以文件不主推它。
+遮蔽是功能，不是意外。代價是 eject 出去的檔案不再跟隨版本升級，所以文件不主推它。
 測試：`packages/fjkit/tests/test_vocabulary.py::TestLoaderOverride`。
 
 ---
 
 ## 三 · 建置時機
 
-同樣的管線，換了執行的人與時機。差別在右邊消失的那個迴圈。
+管線相同，執行的人與時機不同。差別是右邊少掉的那個 `--watch` 迴圈。
 
 ```mermaid
 flowchart TB
@@ -83,14 +83,14 @@ flowchart TB
   end
 ```
 
-管線本身一模一樣，只是執行者換了。實測見 `docs/BACKLOG.md`：225 KB raw / 23.2 KB gzip，
-其中 217 KB 是 Basecoat 自己的元件層，與 fjkit 寫了幾個 macro 無關。
+實測見 `docs/BACKLOG.md`：225 KB raw / 23.2 KB gzip，其中 217 KB 是 Basecoat 自己的
+元件層，與 fjkit 寫了幾個 macro 無關。
 
 ---
 
 ## 四 · 渲染路徑：一份 partial，兩個入口
 
-完整頁面與 htmx swap 走不同的路，但落在同一個模板節點上。
+完整頁面與 htmx swap 走不同的路，落在同一個模板節點上。
 
 ```mermaid
 flowchart LR
@@ -104,14 +104,14 @@ flowchart LR
   BD --> F["片段 → swap 進 #board"]
 ```
 
-`_board.html` 有兩條進、兩條出——所以完整頁面與 htmx 換上去的內容永遠是同一份原始碼
-渲染出來的，不可能漂移。
+`_board.html` 有兩條進、兩條出。完整頁面與 htmx 換上去的內容因此渲染自同一份原始碼，
+兩者不會漂移。
 
 ---
 
 ## 五 · 詞彙表守門迴圈
 
-封閉詞彙表只有在「違反會被擋下」時才是真的。而每一次被擋下，都精準指出詞彙表缺了什麼。
+封閉詞彙表要成立，違反就必須被擋下。每一次被擋下，都指出詞彙表缺了什麼。
 
 ```mermaid
 flowchart LR
@@ -121,8 +121,8 @@ flowchart LR
   M -->|補進詞彙表| C
 ```
 
-這條回饋邊是 fjkit 唯一的擴張機制：拿示範 app 當測試案例，被擋下的每一個 class 都是一個
-還沒做的元件。
+這條回饋邊是 fjkit 唯一的擴張機制：以示範 app 當測試案例，被擋下的每一個 class 都是
+一個還沒做的元件。
 
 實測（0.1 完成時）：
 
@@ -131,6 +131,6 @@ flowchart LR
 | 舊 `app/templates`（fjkit 之前） | 258 violations |
 | `examples/fjkit-demo/app/templates`（fjkit 重寫） | 0 violations |
 
-白名單不是手維護的——它從 Basecoat 的元件 CSS 自動推導，所以不可能跟實際出貨的東西脫節。
-而且連「目前碰巧存在的 utility」也擋：app 若因為 shell 剛好吐出 `gap-4` 就拿來用，哪天
+白名單從 Basecoat 的元件 CSS 自動推導，不是手維護的，所以不會與實際出貨的內容脫節。
+它也擋「目前碰巧存在的 utility」：app 若因為 shell 剛好吐出 `gap-4` 就拿來用，哪天
 shell 不吐了就會無聲壞掉。

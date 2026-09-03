@@ -40,7 +40,6 @@ def test_status_mix_counts_every_task_once(tasks):
 
 
 def test_a_status_nobody_is_in_gets_no_slice():
-    """status_mix omits statuses with a zero count."""
     now = datetime.now(UTC)
     only_done = [Task(id=1, title="a", status=Status.DONE, owner="livy", created_at=now)]
     (trace,) = charts.status_mix(only_done).figure.data
@@ -57,7 +56,6 @@ def test_workload_stacks_one_trace_per_status(tasks):
 
 
 def test_workload_switches_its_x_axis_without_changing_shape(tasks):
-    """Grouping by priority keeps the chart id and trace names, changing only x."""
     by_owner = charts.workload(tasks, Grouping.OWNER)
     by_priority = charts.workload(tasks, Grouping.PRIORITY)
     assert by_priority.id == by_owner.id
@@ -74,7 +72,7 @@ def test_the_trend_window_is_pinned_by_its_caller(tasks):
 
 
 def test_every_summary_describes_the_data_it_was_built_from(tasks):
-    """Every chart summary contains a digit and ends with a full stop."""
+    """The summary is the chart's text alternative, so it states the numbers, as a sentence."""
     for chart in charts.build(tasks, Grouping.OWNER):
         assert any(character.isdigit() for character in chart.summary), chart.id
         assert chart.summary.endswith("."), chart.id
@@ -99,14 +97,12 @@ def test_the_page_is_the_only_one_that_loads_plotly(client):
 
 
 def test_the_vendored_bundle_is_actually_served(client):
-    """The kit's static mount serves plotly-basic.min.js as JavaScript."""
     response = client.get("/_fjkit/vendor/plotly/plotly-basic.min.js")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith(("text/javascript", "application/javascript"))
 
 
 def test_an_htmx_swap_returns_the_cards_and_nothing_else(htmx):
-    """An htmx GET of /charts returns only the chart cards."""
     response = htmx.get("/charts?group=priority")
     assert response.status_code == 200
     assert "<html" not in response.text
@@ -123,7 +119,7 @@ def test_the_grouping_control_drives_the_swap(client):
 
 
 def test_the_figure_is_typed_with_an_explicit_tail(client):
-    """The OpenAPI schema types the trace fields and allows additional properties."""
+    """`PlotlyTrace` types the fields the app sets and stays open: Plotly reads keys the model never names."""
     schemas = client.get("/openapi.json").json()["components"]["schemas"]
 
     assert set(schemas["PlotlyTrace"]["properties"]) >= {"type", "name", "x", "y", "labels", "values"}
@@ -148,7 +144,7 @@ HUES = re.compile(r"#(?:[0-9a-fA-F]{3,8})\b|\b(?:rgba?|hsla?|oklch|oklab)\(")
 
 
 def test_no_figure_on_the_page_contains_a_colour(client):
-    """No data-figure attribute on the page contains a colour literal."""
+    """Colour lives in the token layer, so a rebrand never has to reach into figure JSON."""
     page = client.get("/charts").text
     figures = re.findall(r'data-figure="([^"]*)"', page)
     assert len(figures) == len(charts.build([], Grouping.OWNER))
@@ -157,7 +153,6 @@ def test_no_figure_on_the_page_contains_a_colour(client):
 
 
 def test_no_trace_carries_a_colour_field(tasks):
-    """No trace marker has a color or colors field."""
     from html import unescape
 
     for chart in charts.build(tasks, Grouping.OWNER):
@@ -169,7 +164,7 @@ def test_no_trace_carries_a_colour_field(tasks):
 
 
 def test_the_default_plotly_template_never_reaches_the_page(client):
-    """No figure layout carries a template key and every figure is under 2000 bytes."""
+    """Plotly's default template carries its own colours and inflates every figure; neither may reach the page."""
     from html import unescape
 
     for figure in re.findall(r'data-figure="([^"]*)"', client.get("/charts").text):
@@ -179,7 +174,7 @@ def test_the_default_plotly_template_never_reaches_the_page(client):
 
 
 def test_the_charts_page_carries_a_text_alternative(client):
-    """Every chart has a figcaption and an aria-hidden plot area."""
+    """The plot area is a canvas no screen reader can read, so the caption has to carry the chart."""
     page = client.get("/charts").text
     expected = len(charts.build([], Grouping.OWNER))
     assert page.count("<figcaption>") == expected
@@ -187,7 +182,7 @@ def test_the_charts_page_carries_a_text_alternative(client):
 
 
 def test_the_figure_attribute_is_valid_json(client):
-    """Every data-figure attribute unescapes to JSON with a data array."""
+    """An escaping bug in the attribute shows up as a blank chart in the browser and nowhere else."""
     from html import unescape
 
     page = client.get("/charts").text

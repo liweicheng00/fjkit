@@ -1,16 +1,16 @@
 {#
   Layout primitives.
 
-  These exist because of one promise: an app that uses fjkit never writes a raw
-  utility class. Components alone don't get you there — the moment you need two
-  cards side by side you reach for `grid gap-4`, and the closed vocabulary is
-  broken on page one. So arrangement is a component too.
+  These exist to keep one promise: an app using fjkit never writes a raw
+  utility class. Components alone do not reach it — two cards side by side
+  means `grid gap-4`, and the closed vocabulary is broken on page one. So
+  arrangement is a component too.
 
-  Every spacing and column value is a *closed lookup* whose entries appear
+  Every spacing and column value is a closed lookup whose entries appear
   verbatim below. Never build a class by interpolation (`gap-{{ n }}`):
   Tailwind finds classes by scanning source text, so an interpolated one is
-  simply absent from the stylesheet. An unknown key falls back to the default
-  rather than emitting a class that does not exist.
+  absent from the stylesheet. An unknown key falls back to the default rather
+  than emitting a class that does not exist.
 #}
 {% from "ui/attrs.html" import attrs %}
 
@@ -62,9 +62,9 @@
 {#
   grid(cols, gap) — an even grid that collapses on small screens.
 
-  cols is what you want on a wide screen; the breakpoints below are fixed on
-  purpose. Letting callers choose breakpoints is how a layout vocabulary turns
-  back into Tailwind with extra steps.
+  `cols` is the wide-screen count; the breakpoints below are fixed. Letting
+  callers choose breakpoints turns a layout vocabulary back into Tailwind with
+  extra steps.
 #}
 {% set _COLS = {
   2: "sm:grid-cols-2",
@@ -114,30 +114,28 @@
         {% call card() %}…{% endcall %}
       {% endcall %}
 
-  The gap this fills is narrower than it looks, and worth stating plainly: until
-  this macro there was no way to cap a width at all. `stack(align="center")`
+  Until this macro there was no way to cap a width. `stack(align="center")`
   centres a column without capping it, `grid` divides a width it is given, and
   `split`'s two numbers are grid tracks belonging to the aside. So a sign-in
-  card, a settings form, a page of prose — anything that should not run to
-  1152px because the shell's wrapper does — left an app with one legal move and
-  one illegal one: `max-w-sm`, which `fjkit check` rejects because it is a
-  utility, or an inline `style="width: …"`, which it does not reject and should.
-  Reported from an app that had written the second one and said so in a comment.
+  card, a settings form or a page of prose — anything that should not run to
+  the 1152px the shell's wrapper does — left an app two moves: `max-w-sm`,
+  which `fjkit check` rejects as a utility, or an inline `style="width: …"`,
+  which it does not reject and should. Reported by an app that wrote the second
+  one and said so in a comment.
 
-  It is a flex column rather than a bare `<div>` because every caller wanted a
-  `stack` inside it anyway. `gap` is the same closed lookup `stack` uses.
+  A flex column rather than a bare `<div>`, because every caller wanted a
+  `stack` inside it. `gap` is the closed lookup `stack` uses.
 
-  **width is a closed enumeration**, for the reason every lookup in this file
-  is: Tailwind finds classes by scanning source text, so `max-w-{{ width }}`
-  would name a class that is not in the stylesheet, and the column would render
-  at full width with nothing to say it went wrong. The six below cover the
-  cases; a seventh is a one-line change here, not a caller's business.
+  `width` is a closed enumeration, for the reason every lookup in this file is:
+  Tailwind finds classes by scanning source text, so `max-w-{{ width }}` names
+  a class absent from the stylesheet, and the column renders at full width with
+  nothing to say it went wrong. The six below cover the cases; a seventh is a
+  one-line change here, not a caller's business.
 
-  It does not centre anything vertically. A sign-in page that wants its card in
-  the middle of the viewport is asking the *shell* for that, not this macro —
-  fill `header` and `footer_wrapper` with nothing and the main element is the
-  page. Two jobs, and merging them would give this one a parameter that does
-  nothing in the common case.
+  It centres nothing vertically. A sign-in page that wants its card in the
+  middle of the viewport asks the shell for that: leave `header` and
+  `footer_wrapper` empty and the main element is the page. Merging the two jobs
+  would give this macro a parameter that does nothing in the common case.
 #}
 {% set _WIDTH = {
   "xs": "max-w-xs", "sm": "max-w-sm", "md": "max-w-md",

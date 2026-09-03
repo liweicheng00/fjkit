@@ -1,4 +1,4 @@
-"""`mount_fjkit()` — the one call that wires the kit into an app."""
+"""Contracts of `mount_fjkit()`, the single call that wires the kit into an app."""
 
 from __future__ import annotations
 
@@ -32,11 +32,11 @@ def test_mount_serves_the_stylesheet_at_the_configured_url():
 
 
 def test_render_works_without_running_lifespan():
-    """The reason the Environment moved out of lifespan.
+    """Regression: building the `Environment` in lifespan broke `TestClient`.
 
     A `TestClient` used without its context manager never runs startup, so an
-    app that built its Environment there had no templates and 500'd. Building
-    at construction removes that failure entirely.
+    app that built its `Environment` there had no templates and returned 500.
+    The `Environment` is now built at construction time.
     """
     router = APIRouter()
 
@@ -58,12 +58,11 @@ def test_render_works_without_running_lifespan():
 
 def test_a_rebuilt_asset_gets_a_new_url_so_a_browser_cannot_keep_the_old_one():
     """`StaticFiles` sends `ETag` and `Last-Modified` but no `Cache-Control`, so
-    a browser may cache a stylesheet it was never told the lifetime of.
+    a browser may cache a stylesheet whose lifetime it was never told.
 
-    The failure that produces is the worst kind there is: the page renders, the
-    markup is current, and the rules for half of it are missing — so a layout
-    silently degrades and nothing anywhere says why. `fjkit_static` stamps every
-    URL with the file's mtime, which moves when `fjkit build-css` rewrites it
+    That failure is silent: the page renders, the markup is current, half the
+    rules are missing, and nothing reports why. `fjkit_static` stamps every URL
+    with the file's mtime, which moves when `fjkit build-css` rewrites the file
     and when a wheel is upgraded, and does not move otherwise.
     """
     static = build_environment(FjkitConfig(auto_reload=True)).globals["fjkit_static"]
@@ -80,14 +79,14 @@ def test_a_rebuilt_asset_gets_a_new_url_so_a_browser_cannot_keep_the_old_one():
     finally:
         os.utime(path, (was, was))
 
-    # And it is stable while nothing changes — a stamp that moved every render
-    # would defeat caching entirely rather than fixing it.
+    # Stable while the file does not move: a stamp that changed on every render
+    # would defeat caching rather than fix it.
     assert static(asset) == before
 
 
 def test_the_stamp_is_read_once_when_the_app_is_not_reloading():
-    """A `stat` per asset per render is the price of catching a rebuild, and in
-    production there is no rebuild to catch."""
+    """A `stat` per asset per render is the price of catching a rebuild, and
+    production has no rebuild to catch."""
     static = build_environment(FjkitConfig(auto_reload=False)).globals["fjkit_static"]
     asset = "dist/fjkit-vega.css"
 

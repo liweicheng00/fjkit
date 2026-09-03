@@ -27,11 +27,11 @@ uv run python bench/render_bench.py --json     # 給 CI 吃
 | `import ... without context` | **量不到** | ⚠️ 為了正確性而做，不是為了速度 |
 | `StrictUndefined` → `Undefined` | **量不到** | ❌ 不要為了效能拿掉 |
 
-一句話：**Jinja 的成本幾乎不在「渲染」，而在「編譯」「峰值記憶體」和「誰在跑它」。**
+**Jinja 的成本幾乎不在「渲染」，而在「編譯」「峰值記憶體」和「誰在跑它」。**
 
 ---
 
-## 1. Environment 設定：多數旋鈕根本不重要
+## 1. Environment 設定：多數旋鈕量不出差別
 
 50 列的頁面（含 template inheritance）：
 
@@ -42,17 +42,18 @@ get_template + render, auto_reload=False      391.7 us   1.03x
   ... 再把 StrictUndefined 換成 Undefined      371.5 us   0.98x
 ```
 
-**注意 `auto_reload=False` 這次比 True 還「慢」。** 這不是真的變慢——
-是這三個設定的差異小到落在 run-to-run 噪音裡（±3%），連跑幾次正負號會換邊。
-這就是結論本身：**這三個旋鈕在暖機後的 process 上量不出來。** 原因：
+**這次 `auto_reload=False` 比 True 慢。** 這不是真的變慢：三個設定的差異落在 run-to-run
+噪音裡（±3%），連跑幾次正負號會換邊。這件事就是結論本身——**這三個旋鈕在暖機後的
+process 上量不出來。** 原因：
 
-- `auto_reload` 的成本記在 **`get_template()`**，不是 `render()`——它對繼承鏈上每個檔案做一次 `stat()`。
-  在 SSD 上那是幾微秒，被 370 µs 的渲染整個淹掉。
-  **該關掉是因為 production 的檔案不會變（改了也不該熱生效），不是因為它慢。**
-- `get_template()` 本身只是 `cache_size=400` 的 LRU 查表，沒必要為了它做全域變數。
-- `StrictUndefined` 量不出差別。**不要為了效能拿掉它**——它把「變數打錯字」從「安靜輸出空字串」變成錯誤。
+- `auto_reload` 的成本記在 **`get_template()`** 而不是 `render()`：它對繼承鏈上每個檔案
+  做一次 `stat()`。在 SSD 上是幾微秒，被 370 µs 的渲染蓋過。
+  **關掉它的理由是 production 的檔案不會變（改了也不該熱生效），不是它慢。**
+- `get_template()` 只是 `cache_size=400` 的 LRU 查表，不必為它做一個全域變數。
+- `StrictUndefined` 量不出差別。**不要為了效能拿掉它**——它把「變數打錯字」從安靜輸出
+  空字串變成錯誤。
 
-真正決定這 370 µs 的是 **要輸出多少節點**。想快，就是輸出少一點（見 §3、§5）。
+決定這 370 µs 的是**輸出的節點數**。要更快就輸出更少（見 §3、§5）。
 
 ---
 
@@ -65,26 +66,26 @@ compile from source      101.8 ms      21 templates
 warm bytecode cache        4.3 ms      21 templates   0.04x
 ```
 
-**24 倍。** 而且這 100 ms 是純 CPU，發生在 process 能服務第一個 request 之前。
+**24 倍。** 這 100 ms 是純 CPU，發生在 process 能服務第一個 request 之前。
 
 長時間跑的 server 看不到它。看得到的是：`--reload` 每次存檔、rolling deploy 的每個新 pod、
 autoscaling 起的每個新 replica、serverless 的每次 cold start。
 
-`FjkitConfig` 的 `bytecode_cache_dir` 一設就開 `FileSystemBytecodeCache`。**production 的正解是把 cache 目錄
-烤進 image**，讓第一個 request 就吃到熱的：
+`FjkitConfig` 的 `bytecode_cache_dir` 一設就開 `FileSystemBytecodeCache`。**production 的
+正解是把 cache 目錄建進 image**，讓第一個 request 就命中熱 cache：
 
 ```dockerfile
 RUN uv run python -c "\
-from app.config import Settings; from app.templating import build_environment; \
-env = build_environment(Settings(template_auto_reload=False)); \
+from fjkit.config import FjkitConfig; from fjkit.templating import build_environment; \
+env = build_environment(FjkitConfig(auto_reload=False)); \
 [env.get_template(n) for n in env.list_templates()]"
 ```
 
 > cache 檔以 template 的 mtime + 內容雜湊為 key，改了 template 會自動失效，不用手動清。
 
-記憶體那邊：21 個 template 編完常駐約 1–2 MB（一個 template ≈ 一個 Python module 的
-code object）。`cache_size=400` 的預設值遠大於多數 app 的 template 數，等於「永不淘汰」，
-這正是你要的——不必調小。
+記憶體：21 個 template 編完常駐約 1–2 MB（一個 template ≈ 一個 Python module 的
+code object）。預設的 `cache_size=400` 遠大於多數 app 的 template 數，等於永不淘汰，
+這正是要的行為，不必調小。
 
 ---
 
@@ -101,12 +102,12 @@ code object）。`cache_size=400` 的預設值遠大於多數 app 的 template �
 
 兩個結論，方向相反，都要記住：
 
-**(a) `{% include %}` 放進迴圈裡比 macro 慢 20–30%**，而且差距隨列數線性長。
+**(a) `{% include %}` 放進迴圈裡比 macro 慢 20–30%**，差距隨列數線性長。
 include 每一圈都要重新解析 template 名稱、走 loader、建一個新的 Context 物件；
-macro 只是對一個「已經建好的 module」做函式呼叫。
+macro 只是對一個已經建好的 module 做函式呼叫。
 → **重複的元件一律 macro。** 這也是 `packages/fjkit/src/fjkit/templates/ui/` 全部是 macro 的原因。
 
-**(b) macro 不是免費的——它比 inline 貴一倍。**
+**(b) macro 比 inline 貴一倍。**
 每列多約 1.4 µs（1000 列多 1.4 ms）。這是抽象的價格，多數頁面付得起：
 一個 50 列的表格差 70 µs，不值得為它放棄可維護性。
 
@@ -126,11 +127,11 @@ with context                  10.2 us      64.6 us   0.97x
 跟 §1 一樣：**差異落在噪音裡，重跑正負號會換邊。**
 
 `{% from "x.html" import y %}`（預設 = without context）拿到的是 Jinja 在 Template 物件上
-**快取過一次**的 module；加了 `with context` 每次 render 都會重建那個 module，
+**快取過一次**的 module。加了 `with context`，每次 render 都會重建那個 module，
 重跑被 import 檔案裡所有 top-level 語句。
 
 **因為 module 通常很小**，重建一次不到 1 µs，量不出來。真正的理由是設計面的：
-`with context` 讓 macro 偷偷讀到呼叫端的變數，參數列就不再是契約了。
+`with context` 讓 macro 讀得到呼叫端的變數，參數列就不再是契約。
 `ui/*.html` 的 macro 一律顯式收 `request`，就是為了留在便宜且明確的那一邊。
 
 （但如果哪天某個 macro 檔案的 top-level 長出昂貴的東西——大 dict、`{% set %}` 迴圈——
@@ -148,17 +149,16 @@ trim_blocks off      68,463 bytes      1,393.6 us
 trim_blocks on       66,172 bytes      1,392.4 us   （bytes 0.97x，時間持平）
 ```
 
-`trim_blocks` + `lstrip_blocks` 讓 template 可以照人類習慣縮排，
-而不用把縮排送給瀏覽器。**省的是 bytes，不是 CPU**——渲染時間沒動，
-因為要輸出的節點數量一樣，只是每個節點短一點。
+`trim_blocks` + `lstrip_blocks` 讓 template 可以照人類習慣縮排，而不用把縮排送給瀏覽器。
+**省的是 bytes，不是 CPU**：渲染時間沒動，因為輸出的節點數量一樣，只是每個節點短一點。
 （3.3% 的 bytes 過 gzip 之後會再縮水，所以這是「順手做」等級的收益，不是優化手段。）
 
-已經在 `app/templating.py` 開好。**不要**為了再擠幾個 byte 去手寫 `{%-` `-%}`——
+已經在 `packages/fjkit/src/fjkit/templating.py` 開好。**不要**為了再擠幾個 byte 去手寫 `{%-` `-%}`——
 那個回報遠小於它對可讀性的破壞。
 
 ---
 
-## 6. 記憶體：這才是 Jinja 真正會傷到你的地方
+## 6. 記憶體：Jinja 最容易出事的一項
 
 `template.render()` 會把每個片段都做成字串、放進 list、最後 join 成一個大字串。
 峰值 ≈ **HTML 大小的 3.6 倍**：
@@ -174,11 +174,11 @@ trim_blocks on       66,172 bytes      1,392.4 us   （bytes 0.97x，時間持�
 1. **`render()` 是線性的**：6 MiB 的頁面吃 22 MB。20 個併發請求 = 440 MB，
    而這是「容器被 OOM kill」的典型長相。
 2. **stream 是常數的**：頁面多大都是 ~16 KB，因為同時只有一個 buffer 活著。
-3. 多數頁面根本不在這個尺度。一般的 HTMX 片段是幾 KB，`render()` 完全正確。
+3. 多數頁面不在這個尺度。一般的 HTMX 片段是幾 KB，`render()` 完全正確。
 
 → **判準不是「大不大」而是「有沒有上限」**：
 資料列數由使用者輸入決定（匯出、報表、搜尋結果、`?limit=`）就 stream；
-形狀固定的頁面就 `render()`。`app/templating.py` 兩個方法都提供，
+形狀固定的頁面就 `render()`。`packages/fjkit/src/fjkit/templating.py` 兩個方法都提供，
 `/tasks/report` 是 stream 的例子。
 
 ---
@@ -201,7 +201,7 @@ buffer=512           36           15.1             18.9
 沒 buffering 的話，一頁 = 18042 個 message → **比 buffered 慢 65 倍，而且比直接
 `render()` 還慢**。
 
-`app/templating.py` 的 `stream()` 預設 `buffer_size=64`；很大的頁面調到 512。
+`packages/fjkit/src/fjkit/templating.py` 的 `stream()` 預設 `buffer_size=64`；很大的頁面調到 512。
 `TemplateStream.enable_buffering(n)` 的 `n` 是**節點數不是 bytes**，而且必須 > 1。
 
 ---
@@ -223,14 +223,14 @@ async def + StreamingResponse             359.8           1,297               1.
 
 逐行讀：
 
-- **`async def` 直接 render**：loop 被鎖 140 ms，剛好是 4 個 render 的總和。
+- **`async def` 直接 render**：loop 被鎖 140 ms，等於 4 個 render 的總和。
   期間這個 worker **什麼都不能做**——不能收新連線、不能回 health check。
 - **改成 `def`（Starlette 丟 threadpool）**：最糟停頓掉到 23 ms，好很多，但**不是零**。
   原因是 GIL：render 是純 Python bytecode，只在 `sys.setswitchinterval()`（預設 5 ms）
   的邊界才換手。**把 CPU-bound 工作丟到 thread 不會給你一個空閒的 loop，
   只會給你 5 ms 粒度的交錯。**
 - **`run_in_threadpool`** 跟上一行是同一件事，差別只在寫法。
-- **stream**：最糟停頓 **1.0 ms**——因為每個 chunk 之間都會回到 loop。
+- **stream**：最糟停頓 **1.0 ms**，因為每個 chunk 之間都會回到 loop。
   代價是總時間 2.6 倍（每個 chunk 一次 threadpool 往返）。
 
 實務規則：

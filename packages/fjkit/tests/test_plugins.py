@@ -28,7 +28,7 @@ class Recording:
 
 
 class Greeter:
-    """A plugin that only touches Jinja — no `mount` at all."""
+    """A plugin that touches only Jinja, with no `mount` hook."""
 
     name = "greeter"
 
@@ -75,7 +75,7 @@ def test_context_processor_runs_once_per_render():
 
 
 def test_the_route_wins_over_a_processor():
-    """A handler knows something the app-wide rule does not."""
+    """A handler knows something the app-wide rule does not, so it wins."""
     router = APIRouter()
 
     @router.get("/hi")

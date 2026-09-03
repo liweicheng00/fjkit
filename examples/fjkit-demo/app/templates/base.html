@@ -36,10 +36,7 @@
   · Basecoat {{ fjkit_version.basecoat }} · htmx {{ fjkit_version.htmx }}
 {% endblock %}
 
-{#
-  The style picker script: applies the pack saved in `localStorage` before first
-  paint.
-#}
+{# Applies the style pack saved in `localStorage` before first paint. #}
 {% block head %}
   <script>
     (() => {
@@ -60,7 +57,6 @@
   </script>
 {% endblock %}
 
-{# The style picker control; option values are the `FjkitConfig(style=...)` names. #}
 {# The GitHub mark, inlined as a filled SVG inside a ghost icon button. #}
 {% set github_mark %}
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
@@ -69,6 +65,7 @@
 
 {% block header_actions %}
   {% call row(gap=2) %}
+    {# Option values are the `FjkitConfig(style=...)` names. #}
     <select class="select" data-size="sm" data-style-picker aria-label="Style pack">
       {% for pack in style_sheets %}
         <option value="{{ pack }}"{% if pack == fjkit_style %} selected{% endif %}>{{ pack }}</option>

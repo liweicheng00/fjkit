@@ -1,15 +1,14 @@
 """`fjkit build-css` — compile the kit's stylesheets, one per style pack.
 
-Runs when *fjkit* is released, not when an app runs. Consumers get the built
-files in the wheel and never install Tailwind. That asymmetry is the whole
-point of CHARTER.md A1, so this command deliberately lives in the `build`
-dependency group.
+Runs when fjkit is released, not when an app runs. Consumers get the built files
+in the wheel and never install Tailwind. That asymmetry is the point of
+CHARTER.md A1, so this command lives in the `build` dependency group.
 
-Eight packs, eight stylesheets, one served. The browser downloads exactly the
-one `FjkitConfig.style` names; the other seven are bytes in the wheel that no
-request ever touches. Compressed they are ~24 KB each, so shipping all of them
-costs the *installer* around 190 KB and costs the *page* nothing — which is
-what makes the choice a config value rather than a reinstall.
+Eight packs, eight stylesheets, one served. The browser downloads only the one
+`FjkitConfig.style` names; the other seven are bytes in the wheel no request
+touches. Compressed they are ~24 KB each, so shipping all eight costs the
+installer around 190 KB and costs the page nothing, which is what makes the
+choice a config value rather than a reinstall.
 """
 
 from __future__ import annotations
@@ -28,14 +27,15 @@ SRC = STATIC_DIR / "src" / "fjkit.css"
 DIST = STATIC_DIR / "dist"
 
 #: The one line in `src/fjkit.css` that names a pack. Anchored on the marker
-#: comment rather than on the filename so that a reformat of the import breaks
-#: the build loudly instead of silently compiling eight identical stylesheets.
+#: comment rather than the filename, so a reformatted import breaks the build
+#: loudly instead of silently compiling eight identical stylesheets.
 _PACK_IMPORT = re.compile(r'^@import\s+"[^"]*basecoat-\w+\.css";\s*/\*\s*fjkit:style-pack\s*\*/\s*$', re.MULTILINE)
 
 
 def output_for(style: str) -> Path:
-    """Where a pack's stylesheet lands. Also read by `mount_fjkit` and the shell,
-    so the URL a page requests and the file the build wrote cannot drift."""
+    """Give the path a pack's stylesheet lands at. `mount_fjkit` and the shell
+    read it too, so the URL a page requests and the file the build wrote cannot
+    drift apart."""
     return DIST / f"fjkit-{style}.css"
 
 
@@ -43,7 +43,7 @@ def _entry_for(style: str) -> Path:
     """Write the per-pack Tailwind entry point.
 
     `src/fjkit.css` is the real source and stays readable and buildable on its
-    own; this is that file with one import swapped. It is written *next to* the
+    own; this is that file with one import swapped. It is written next to the
     original because every other path in it — the `@source` globs, the vendor
     imports — is relative to the file's own directory.
     """
@@ -91,7 +91,7 @@ def main(watch: bool = False, style: str | None = None) -> int:
 
     if watch:
         # One pack at a time: Tailwind's watcher owns the terminal, and a
-        # rebuild loop over eight of them would report nothing useful anyway.
+        # rebuild loop over eight of them would report nothing useful.
         return _compile(style or DEFAULT_STYLE, watch=True)
 
     targets: tuple[StylePack, ...] = (style,) if style else STYLE_PACKS  # type: ignore[assignment]
@@ -103,20 +103,20 @@ def main(watch: bool = False, style: str | None = None) -> int:
     return failed
 
 
-#: CHARTER.md §7. gzip is what the budget is written in — it is what a browser
-#: actually downloads, and stdlib gzip needs no extra dependency to measure.
-#: The raw ceiling is only there to catch a runaway.
+#: CHARTER.md §7. The budget is written in gzip because that is what a browser
+#: downloads, and stdlib gzip measures it with no extra dependency. The raw
+#: ceiling only catches a runaway.
 #:
 #: Per stylesheet, not per wheel: a page loads one pack, so one pack is what the
-#: budget is about. Eight of them in the wheel is an install-size question, and
-#: an install is not a page load.
+#: budget covers. Eight in the wheel is an install-size question, and an install
+#: is not a page load.
 GZIP_BUDGET = 28 * 1024
 RAW_BUDGET = 260 * 1024
 
 
 def report(path: Path, default: bool = False) -> int:
-    """Print the size and fail if it is over budget. A budget nobody measures
-    is a wish."""
+    """Print the size and return 1 if it is over budget. A budget nobody
+    measures is a wish."""
     raw = path.stat().st_size
     compressed = len(gzip.compress(path.read_bytes(), 9))
 

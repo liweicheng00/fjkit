@@ -1,8 +1,8 @@
 """The two events the search page broadcasts.
 
 The response models live in `features/tasks/schemas.py` with the rest of the task
-wire contracts. What belongs here is what is specific to this page: the names on
-the wire between a route's `hx_trigger` and a fragment's `hx-trigger`.
+wire contracts. What belongs here is specific to this page: the names on the wire
+between a route's `hx_trigger` and a fragment's `hx-trigger`.
 
 They are separate events because their audiences are. Picking a row concerns the
 panels that describe one task; changing its status concerns anything that counts.

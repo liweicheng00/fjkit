@@ -1,4 +1,4 @@
-"""Sessions for a fjkit app — a cookie for the browser, a token for the server.
+"""Sessions for a fjkit app: a cookie in the browser, the token on the server.
 
     from fjkit import FjkitConfig, mount_fjkit
     from fjkit.auth import AuthPlugin, RedisStore
@@ -10,13 +10,12 @@
     )
     mount_fjkit(app, FjkitConfig(template_dir=..., plugins=(auth,)))
 
-Three seams, replaceable independently: where sessions live (`SessionStore`),
-how credentials become tokens (`TokenSource`), and how a write proves it came
-from this site (`Csrf`). Swapping any one of them touches no route and no
-template.
+Three independent seams: where sessions live (`SessionStore`), how credentials
+become tokens (`TokenSource`), and how a write proves it came from this site
+(`Csrf`). Replacing one touches no route and no template.
 
-See `fjkit.auth.plugin` for what the cookie holds and why, and
-`fjkit.auth.csrf` for the CSRF trade a cookie brings back.
+`fjkit.auth.plugin` documents what the cookie holds and why; `fjkit.auth.csrf`
+documents the CSRF cost a cookie brings back.
 """
 
 from __future__ import annotations

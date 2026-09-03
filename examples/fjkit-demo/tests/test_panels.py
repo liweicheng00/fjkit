@@ -1,16 +1,16 @@
 """Tests for the panels page — lesson 07's fragments moved into tabs.
 
-The page inverts the broadcast trade. On `/search` every region is on screen, so
-an event reaching all of them is the point; here three of the four are `hidden`,
-so a panel fetches when it is *shown* and hears an event only while it is
-showing. Two things carry that, and both are asserted below: the attributes
+The page inverts the trade `/search` makes. There every region is on screen, so
+a broadcast reaching all of them is the point. Here three of the four panels are
+`hidden`, so a panel fetches when it is shown and hears an event only while it
+is showing. Two things carry that, and both are asserted below: the attributes
 `tab_panel(lazy=…)` emits, and the header the pick broadcasts on.
 
-What no test here can see is the browser. `hidden` is `display:none`, and the
-reason `revealed` is wrong is that a display:none element reports an all-zero
-rect that passes htmx's visibility check — a page built with it fetches every
-panel at load and looks, on the wire, exactly like this one. `test_no_panel_is
-_lazy_by_revealed` is the guard that the wrong attribute never comes back.
+No test here sees the browser. `hidden` is `display:none`, and a `display:none`
+element reports an all-zero rect that passes htmx's visibility check, so
+`revealed` fetches every panel at page load — with no error, and a wire trace
+identical to this page's. `test_no_panel_is_lazy_by_revealed` is the guard that
+the wrong attribute never comes back.
 """
 
 from __future__ import annotations
@@ -66,14 +66,13 @@ def test_the_page_declares_every_panel(page):
 
 
 def test_no_panel_is_lazy_by_revealed(page):
-    """The trap this whole page is built around.
+    """htmx tests `revealed` with `getBoundingClientRect`, which a hidden panel passes.
 
-    htmx tests `revealed` with getBoundingClientRect, and a panel hidden by
-    `display:none` reports an all-zero rect: `top < innerHeight` and
-    `bottom >= 0` both hold. Every panel would fetch at page load, with no
-    error and nothing empty to notice — and a response body identical to this
-    one, which is why the assertion is on the attribute rather than on any
-    behaviour.
+    A panel hidden by `display:none` reports an all-zero rect, where
+    `top < innerHeight` and `bottom >= 0` both hold. Every panel would fetch at
+    page load, with no error and nothing empty to notice, and a response body
+    identical to this one. Hence an assertion on the attribute rather than on
+    any behaviour.
     """
     assert "revealed" not in page
 
@@ -119,12 +118,12 @@ def test_only_the_panels_that_need_an_id_send_one(page, panel):
 
 def test_the_table_writes_the_open_id_down_only_when_there_is_one(client):
     """`intersect` carries no event, and a panel hidden at the time of the pick
-    never heard one. The page is the only thing both paths can read.
+    never heard one, so the page is the only thing both paths can read.
 
-    Nothing picked is an *absent* input, not an empty one. `hx-include` sends
-    whatever it selects, so `value=""` would send `task_id=`, and an empty
-    string is not an integer — the first panel to open on a fresh page would
-    answer 422 before anyone had picked anything.
+    Nothing picked is an absent input, not an empty one. `hx-include` sends
+    whatever it selects, so `value=""` would send `task_id=`; an empty string is
+    not an integer, and the first panel to open on a fresh page would answer 422
+    before anyone had picked anything.
     """
     assert HIDDEN_INPUT.search(client.get("/panels").text) is None
     picked = client.get("/panels/select/1", headers={"HX-Request": "true"})
@@ -133,12 +132,12 @@ def test_the_table_writes_the_open_id_down_only_when_there_is_one(client):
 
 @pytest.mark.parametrize("panel", PANELS)
 def test_the_request_the_page_actually_makes_is_answered(client, htmx, panel):
-    """Issue what the browser will issue, rather than what the route can take.
+    """Issue what the browser issues, not what the route accepts.
 
-    A panel is opened by `intersect`, which fires on the visible tab as the page
-    settles — before any pick. So the request under test is the page's own
-    markup resolved against the page's own inputs, and the failure this catches
-    is a value the page can produce and the route cannot parse.
+    `intersect` opens the visible tab as the page settles, before any pick. The
+    request under test is therefore the page's own markup resolved against the
+    page's own inputs, and the failure it catches is a value the page produces
+    and the route cannot parse.
     """
     page = client.get("/panels").text
     attrs = _attrs(page)[panel]
@@ -158,8 +157,8 @@ def test_the_request_the_page_actually_makes_is_answered(client, htmx, panel):
     [("GET", "/panels/select/1", SELECTED_EVENT), ("POST", "/panels/advance/1", CHANGED_EVENT)],
 )
 def test_an_action_broadcasts_after_its_own_swap(htmx, method, url, event):
-    """`HX-Trigger` fires *before* the reply is swapped in, so a panel reading
-    the page would read the id this very reply is about to replace.
+    """`HX-Trigger` fires before the reply is swapped in, so a panel reading the
+    page would read the id this reply is about to replace.
     `HX-Trigger-After-Swap` is the header that makes `hx-include` correct."""
     got = htmx.request(method, url)
     assert got.status_code == 200
@@ -186,10 +185,10 @@ def test_a_panel_reads_the_id_off_the_query_string(htmx, url):
 
 
 def test_the_advance_button_refuses_the_panels_swap(htmx):
-    """`hx-target` and `hx-swap` are inherited, and this button sits inside a
-    panel that sets them to `this` and `innerHTML`. Inheriting them would make
-    it replace the panel it is drawn in — taking the panel's id with it, so
-    every later show of that tab would find no target and do nothing."""
+    """`hx-target` and `hx-swap` are inherited, and this button sits in a panel
+    that sets them to `this` and `innerHTML`. Inheriting them would replace the
+    panel the button is drawn in, taking the panel's id with it, and every later
+    show of that tab would find no target and do nothing."""
     body = htmx.get("/panels/detail", params={"task_id": 1}).text
     button = re.search(r"<button[^>]*/panels/advance/1[^>]*>", body)
     assert button is not None, "the detail panel draws the advance button"

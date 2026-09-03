@@ -12,15 +12,15 @@
 
 {% block content %}
   {#
-    The one page in this app that is a single form and nothing else, so it is
-    the one that wants a measure: four fieldsets of short controls stretched to
-    the shell's full 1152px are four lines the eye has to track back across.
-    The header is inside the column so it lines up with the form rather than
+    The only page in this app that is a single form and nothing else, so the only
+    one that wants a measure: four fieldsets of short controls stretched to the
+    shell's full 1152px are four lines the eye has to track back across. The
+    header sits inside the column so it lines up with the form rather than
     hanging over it.
 
-    `gap=0` because `page_header` carries its own bottom margin — the same
-    reason every other page in this app puts it beside its content rather than
-    inside a stack.
+    `gap=0` because `page_header` carries its own bottom margin — the same reason
+    every other page in this app puts it beside its content rather than inside a
+    stack.
   #}
   {% call centered("xl", gap=0) %}
     {% call page_header("Edit task",

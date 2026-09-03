@@ -2,10 +2,9 @@
   The sign-in panel — the part Swagger UI cannot have.
 
   Everything on it comes from `AuthFlow.state()`, which is the app's own code:
-  what the headline says, which fields there are, which facts are worth showing.
-  This template knows none of it, which is the point — a flow that signs in with
-  one API key and a flow that runs an OIDC password grant render through the
-  same file.
+  the headline, the fields, the facts worth showing. This template knows none
+  of it, which is the point — a flow signing in with one API key and a flow
+  running an OIDC password grant render through the same file.
 
   A partial, so it renders standalone: the page embeds it, and the POST that
   signs in or out swaps it in place. Nothing else on the page moves.
@@ -21,10 +20,10 @@
   {#
     The badge and the way out, both in the header.
 
-    This panel sits above the operation on every load, so every row it spends is
-    a row the thing you came to read loses. Sign-out is one button whose whole
-    job is to be findable — next to the badge that says there is a session to
-    end is where it is findable, and it costs the body nothing.
+    This panel sits above the operation on every load, so every row it spends
+    is a row the thing you came to read loses. Sign-out is one button whose job
+    is to be findable, and beside the badge saying there is a session to end is
+    where it is findable — at no cost to the body.
   #}
   {%- set status %}
     <div class="flex flex-wrap items-center gap-2">
@@ -47,10 +46,10 @@
 
       {% if flow_state.error %}
         {#
-          Beside the fields rather than replacing them: whatever was typed is
-          gone (the panel was re-rendered), but the form has to still be there
-          to try again. `role="alert"` so a screen reader hears the refusal —
-          the swap is silent otherwise, and the visible change is off-screen.
+          Beside the fields rather than replacing them: re-rendering the panel
+          lost whatever was typed, and the form still has to be there to try
+          again. `role="alert"` so a screen reader hears the refusal — the swap
+          is otherwise silent, and the visible change is off-screen.
         #}
         <p class="text-destructive flex items-center gap-2 text-sm" role="alert">
           {{ icon("circle-alert", 16) }}<span>{{ flow_state.error }}</span>
@@ -62,7 +61,7 @@
       {% if not flow_state.signed_in and flow_state.fields %}
         {% call form(action=url_for(request, routes.auth), target="#" ~ ids.session, card=false) %}
           {#
-            Fields and the submit button on one line — a wrapping flex row, and
+            Fields and the submit button on one line — a wrapping flex row,
             deliberately not `grid` or `field_row`.
 
             A username and a password are short values: a fixed `sm:w-64` is
@@ -72,13 +71,12 @@
             for four — which matters, because the flow decides how many there
             are, not this template.
 
-            `items-end` aligns the *bottoms*, which is what puts the button on
-            the inputs' line. The hints are why the fields carry no `hint=`: one
-            field with a hint and one without have different heights, and
+            `items-end` aligns the bottoms, which puts the button on the
+            inputs' line. That alignment is why the fields carry no `hint=`:
+            one field with a hint and one without have different heights, and
             bottom-aligning those two would leave their inputs on different
-            lines. So the hints are collected under the row instead — one line
-            however many fields carry one, in the reading order they were
-            declared in.
+            lines. The hints are collected under the row instead — one line
+            however many fields carry one, in the order they were declared.
 
             Each stays wired to its own input: `aria-describedby` names the id
             `text_field` would itself have given the hint, so a screen reader

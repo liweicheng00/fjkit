@@ -1,3 +1,7 @@
-"""Marker for the `mira` style pack. The entry point is the payload; this name only has to exist."""
+"""Marks the `mira` style pack installed; fjkit reads the entry-point name, not this module.
+
+Against the default `vega`: `h-7` controls and `text-xs` labels,
+`rounded-md` buttons and inputs, `rounded-lg` cards.
+"""
 
 PACK = "mira"

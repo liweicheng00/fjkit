@@ -1,9 +1,9 @@
 """`fjkit.charts` — the plugin, the figure models, and the colour rule.
 
-What these lock down is the part an app cannot check for itself: that the
-1.1 MB is in the wheel and served, that only the page which asks for it loads
-it, and that a colour written on the server is caught before it reaches a
-browser where it is wrong in exactly one of the two themes.
+These lock down what an app cannot check for itself: the 1.1 MB bundle is in
+the wheel and served, only the page that asks for it loads it, and a colour
+written on the server is caught before it reaches a browser, where it is wrong
+in exactly one of the two themes.
 """
 
 from __future__ import annotations
@@ -39,8 +39,8 @@ def a_chart(**over) -> Chart:
 class FakeFigure:
     """What `plotly.graph_objects.Figure` looks like from `figure_of`'s side.
 
-    A class rather than the real thing on purpose: plotly is not a dependency
-    of fjkit, and a test that imports it would quietly make it one.
+    A stand-in rather than the real class: plotly is not a dependency of fjkit,
+    and a test that imported it would quietly make it one.
     """
 
     def __init__(self, payload: dict) -> None:
@@ -60,8 +60,8 @@ class TestFigureOf:
         assert figure_of(BAR).layout.barmode == "group"
 
     def test_the_default_template_is_stripped(self):
-        """plotly.py writes a template even when it is set to None, and the
-        default one carries 111 colour literals."""
+        """plotly.py writes a template even when it is set to `None`, and the
+        default template carries 111 colour literals."""
         payload = {**BAR, "layout": {"barmode": "group", "template": {"layout": {"font": {"color": "#444"}}}}}
         figure = figure_of(FakeFigure(payload))
         assert "template" not in figure.layout.model_dump(exclude_none=True)
@@ -71,15 +71,15 @@ class TestFigureOf:
             figure_of({"data": [{"type": "surface", "z": [[1]]}], "layout": {}})
 
     def test_the_plotly_tail_survives(self):
-        """`extra="allow"` is what makes the rest of the library reachable."""
+        """`extra="allow"` keeps the rest of the library reachable."""
         figure = figure_of({"data": [{"type": "pie", "labels": ["a"], "values": [1], "hole": 0.4}], "layout": {}})
         assert figure.data[0].model_dump(exclude_none=True)["hole"] == 0.4
 
 
 class TestChart:
     def test_figure_json_drops_the_nulls_of_the_other_trace_kinds(self):
-        """A bar has no `labels`, a pie has no `x`. Emitting them as nulls
-        sends Plotly keys it has to ignore, on every trace."""
+        """A bar has no `labels`, a pie has no `x`. Emitting them as nulls sends
+        Plotly keys it has to ignore, on every trace."""
         blob = a_chart().figure_json
         assert "labels" not in blob and "null" not in blob
 
@@ -98,14 +98,14 @@ class TestColourRule:
         ["#1F77B4", "rgb(31, 119, 180)", "oklch(0.72 0.15 275)", "hsl(210 50% 40%)"],
     )
     def test_a_colour_anywhere_in_the_tail_is_caught(self, colour):
-        """It arrives through `extra="allow"`, which is the only way it can —
-        so scanning the rendered JSON is the only check that works."""
+        """A colour can only arrive through `extra="allow"`, so scanning the
+        rendered JSON is the only check that works."""
         chart = a_chart(figure={"data": [{"type": "bar", "marker": {"color": colour}}], "layout": {}})
         with pytest.raises(AssertionError, match="carries the colour literal"):
             assert_no_colour_in(chart)
 
     def test_a_token_name_is_caught_too(self):
-        """The failure that looks like it works: plotly.py accepts the string,
+        """A failure that looks like success: plotly.py accepts the string and
         serialises it, and the browser's parser discards it silently."""
         chart = a_chart(figure={"data": [{"type": "bar", "marker": {"color": "var(--primary)"}}], "layout": {}})
         with pytest.raises(AssertionError, match="carries the colour literal"):
@@ -131,13 +131,13 @@ class TestPlugin:
         html = env.from_string('{% from "charts/macros.html" import chart %}{{ chart(item) }}').render(item=a_chart())
         assert "data-chart" in html and 'id="c1"' in html
         assert "<figcaption>Ana has 5 of 12 open tasks.</figcaption>" in html
-        # The accessible half: the SVG is a thousand unlabelled paths, the
-        # sentence beside it is the description.
+        # The SVG is a thousand unlabelled paths; the sentence beside it is the
+        # description a screen reader gets.
         assert 'aria-hidden="true"' in html
 
     def test_the_markup_carries_no_colour_and_no_class(self, tmp_path):
-        """There is no chart class in fjkit's vocabulary, and inventing one is
-        how a closed vocabulary stops being closed."""
+        """fjkit's vocabulary has no chart class, and inventing one is how a
+        closed vocabulary stops being closed."""
         env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), auto_reload=False))
         html = env.from_string('{% from "charts/macros.html" import chart %}{{ chart(item, boxed=false) }}').render(
             item=a_chart()
@@ -154,9 +154,9 @@ class TestPlugin:
         env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), auto_reload=False))
         html = env.from_string('{% from "charts/macros.html" import chart_scripts %}{{ chart_scripts() }}').render()
         assert f"/_fjkit/vendor/plotly/{PLOTLY_FILENAME}" in html
-        # Both stamped, for the reason every kit asset is: StaticFiles sends no
-        # Cache-Control, so a browser may keep a script it was never told the
-        # lifetime of.
+        # Both stamped, for the reason every kit asset is: `StaticFiles` sends
+        # no `Cache-Control`, so a browser may keep a script whose lifetime it
+        # was never told.
         assert html.count("?v=") == 2
         assert html.index(PLOTLY_FILENAME) < html.index("charts.js"), "deferred scripts run in document order"
 
@@ -192,9 +192,9 @@ class TestPlugin:
 
 
 def test_the_kit_ships_exactly_the_whitelisted_plotly():
-    """CHARTER §7 is a whitelist of the JavaScript the wheel may carry, and
-    Plotly's basic bundle is on it — one copy, at the pinned version, under
-    the kit's own `static/vendor/` where `scripts/vendor_ui.py` writes it."""
+    """CHARTER §7 whitelists the JavaScript the wheel may carry, and Plotly's
+    basic bundle is on it: one copy, at the pinned version, under the kit's own
+    `static/vendor/` where `scripts/vendor_ui.py` writes it."""
     import fjkit
 
     root = Path(fjkit.__file__).parent

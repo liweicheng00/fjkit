@@ -14,30 +14,29 @@
 
       <div id="search-detail" {{ subscribe(request, "search_detail", ["task-selected"]) }}>
 
-  Why each of them:
+  Why each one:
 
   - `hx-trigger="<event> from:body"` — the server fires the event through
     `HX-Trigger`, and htmx raises it on the element that made the request. The
     panels are nowhere near that element, so they listen where it bubbles to.
-    Each event needs its own `from:body`; a bare second name would be read as an
-    event on this element.
-  - `hx-vals="js:…"` — the id rides in `event.detail`, and this is the single
-    place it turns back into a query parameter. Doing it here, rather than
-    remembering the selection on the server, is what keeps the endpoints
-    stateless and two open tabs independent.
-  - `hx-include` — the region also depends on the search box, and that value is
-    on the page rather than in the event. A selector, so no fragment has to be
+    Each event needs its own `from:body`; a bare second name reads as an event on
+    this element.
+  - `hx-vals="js:…"` — the id rides in `event.detail`, and this is the one place
+    it turns back into a query parameter. Doing it here, rather than remembering
+    the selection on the server, keeps the endpoints stateless and two open tabs
+    independent.
+  - `hx-include` — the region also depends on the search box, whose value is on
+    the page rather than in the event. A selector, so no fragment has to be
     handed the query it is already displayed next to.
   - `hx-target="this"` with `hx-swap="outerHTML"` — every subscriber replaces
     itself, so the reply is one region and the sender never has to know how many
     regions exist.
 
   `events` is the list this fragment has a reason to hear. The facets hear
-  nothing at all: advancing a task changes neither an owner nor a priority.
+  nothing: advancing a task changes neither an owner nor a priority.
 
   `hx-vals`, `hx-target` and `hx-swap` are inherited — `hx-trigger` is not — so
-  an htmx element *inside* a subscriber has to refuse them. See the Open button
-  below.
+  an htmx element inside a subscriber has to refuse them. See `match_row` below.
 #}
 {% macro subscribe(request, endpoint, events, with_id=true, with_query=false) -%}
 hx-get="{{ url_for(request, endpoint) }}"
@@ -51,7 +50,7 @@ hx-get="{{ url_for(request, endpoint) }}"
   stamp(rendered_label) — the moment the router built this fragment.
 
   It is the page's evidence. Two mechanisms move regions here, and without a
-  timestamp per region there is no reading which regions a given click reached.
+  timestamp per region there is no reading which regions a click reached.
 #}
 {% macro stamp(rendered_label) -%}
   {{ badge("rendered " ~ rendered_label, variant="outline") }}
@@ -60,14 +59,14 @@ hx-get="{{ url_for(request, endpoint) }}"
 {#
   match_row(request, task, selected_id) — one result row.
 
-  There is no Open button. The **title** is the button: a `link` variant, so it
-  reads as the name of the row rather than as a control parked beside it, and a
-  real `<button>`, so Tab reaches it and Enter and Space fire a click on it.
+  There is no Open button: the title is the button. A `link` variant, so it reads
+  as the name of the row rather than as a control parked beside it, and a real
+  `<button>`, so Tab reaches it and Enter and Space fire a click on it.
 
   `hx-trigger="click from:closest tr"` then listens on the row rather than on the
   title, which makes the whole row a hit target while the keyboard path stays on
   a focusable element. Putting `hx-get` on the `<tr>` instead would give the same
-  mouse behaviour and no keyboard path at all — a `<tr>` takes no focus and
+  mouse behaviour and no keyboard path at all: a `<tr>` takes no focus and
   announces nothing.
 
   Basecoat already styles `.table tr:hover`, so the row reads as interactive
@@ -78,7 +77,7 @@ hx-get="{{ url_for(request, endpoint) }}"
   — otherwise it merges the table's `js:` expression, evaluated against a click
   event whose `detail` is `0`, and every pick goes out as `?task_id=undefined`.
   `unset` is the only value that stops it: htmx walks up the tree for `hx-vals`
-  *merging* what it finds, on a path that does not consult `hx-disinherit`.
+  merging what it finds, on a path that does not consult `hx-disinherit`.
 #}
 {% macro match_row(request, task, selected_id=none) -%}
   <tr>

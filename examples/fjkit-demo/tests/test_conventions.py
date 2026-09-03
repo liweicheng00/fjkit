@@ -1,4 +1,8 @@
-"""Tests for the template naming, vocabulary and asset conventions."""
+"""Enforces the template rules in CLAUDE.md, "Layer boundaries in the demo".
+
+The demo is the kit's acceptance test, so a convention broken here has to fail
+in this suite rather than in an app built on the kit.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +20,7 @@ FEATURE_TEMPLATES = [p for p in TEMPLATE_DIR.rglob("*.html") if p.parent != TEMP
 
 @pytest.mark.parametrize("path", [p for p in FEATURE_TEMPLATES if p.name == "page.html"], ids=lambda p: p.parent.name)
 def test_pages_extend_the_shell(path):
+    """A `page.html` answers a full GET, and only the shell carries the `<head>` and the nav."""
     assert '{% extends "base.html" %}' in path.read_text(), f"{path.name} is a page, so it must extend base.html"
 
 
@@ -23,28 +28,29 @@ def test_pages_extend_the_shell(path):
     "path", [p for p in FEATURE_TEMPLATES if p.name.startswith("_")], ids=lambda p: f"{p.parent.name}/{p.name}"
 )
 def test_partials_never_extend_the_shell(path):
+    """A partial is swapped into a page that already has a shell; extending one nests a second document."""
     assert "{% extends" not in path.read_text(), f"{path.name} starts with _, so it must render standalone"
 
 
 def test_base_extends_the_kit_shell():
-    """base.html extends ui/shell.html."""
+    """`ui/shell.html` owns the `<head>` and every asset link, so the app's shell has to inherit it."""
     assert '{% extends "ui/shell.html" %}' in (TEMPLATE_DIR / "base.html").read_text()
 
 
 def test_every_template_compiles():
-    """Every template under the template dir compiles."""
+    """A template no test renders still has to compile; otherwise its syntax error is a 500 in production."""
     env = build_environment(FjkitConfig(template_dir=TEMPLATE_DIR, auto_reload=False))
     for name in env.list_templates(extensions=("html", "jinja")):
         env.get_template(name)
 
 
 def test_templates_stay_inside_the_fjkit_vocabulary():
-    """fjkit check passes on the app templates."""
+    """No colour literal and no class outside the component vocabulary: both survive a rebrand, hues do not."""
     assert_templates_clean(TEMPLATE_DIR)
 
 
 def test_the_app_ships_no_static_assets_of_its_own():
-    """The demo has no app/static, no .css file, no package.json and no node_modules."""
+    """No front-end build step in the app: the kit serves every asset, so an app owns none of them."""
     assert not (ROOT / "app" / "static").exists(), "the kit serves every asset; the demo mounts none"
     assert not list((ROOT / "app").rglob("*.css")), "the kit's stylesheet is the app's stylesheet"
     assert not list(ROOT.rglob("package.json")), "no npm in the demo, not even a manifest"
@@ -55,7 +61,7 @@ def test_the_app_ships_no_static_assets_of_its_own():
     "path", [p for p in FEATURE_TEMPLATES if p.name.startswith("_")], ids=lambda p: f"{p.parent.name}/{p.name}"
 )
 def test_partials_import_every_macro_they_call(path):
-    """Every name called in a partial is imported, defined locally or an environment global."""
+    """A partial renders standalone, so every name it calls is imported, local, or an environment global."""
     from jinja2 import nodes
 
     env = build_environment(FjkitConfig(template_dir=TEMPLATE_DIR, auto_reload=False))

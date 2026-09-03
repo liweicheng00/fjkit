@@ -2,8 +2,8 @@
 
 The decorator sits between FastAPI and the handler, so most of what can go
 wrong is invisible in a normal request: a signature FastAPI cannot solve, a
-sync handler quietly promoted to async, a header set by the handler and then
-dropped. Each of those is a test here.
+sync handler promoted to async, a header the handler set and the wrapper
+dropped. Each of those has a test here.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ class Payload(BaseModel):
 
 @pytest.fixture
 def make_app():
-    """An app whose Environment serves the templates above and nothing else."""
+    """Build an app whose `Environment` serves `TEMPLATES` and nothing else."""
 
     def _make(router: APIRouter, config: FjkitConfig | None = None) -> TestClient:
         config = config or FjkitConfig()
@@ -83,9 +83,9 @@ def test_json_mode_returns_the_model_through_response_model(make_app):
 
 
 def test_the_return_annotation_reaches_openapi(make_app):
-    """The point of the annotation: it documents the JSON without a second
-    declaration. If FastAPI cannot see through the wrapper, the schema is a
-    bare `{}` and nobody notices until a client reads it."""
+    """The annotation documents the JSON without a second declaration. If
+    FastAPI cannot see through the wrapper the schema is a bare `{}`, and nobody
+    notices until a client reads it."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -119,13 +119,13 @@ def test_global_mode_applies_and_the_decorator_wins(make_app):
 
 
 def test_auto_is_the_default(make_app):
-    """The whole point of the rule below is that an app states it nowhere."""
+    """The rule below only pays off if an app never has to state it."""
     assert FjkitConfig().render_mode == "auto"
 
 
 def test_auto_gives_a_fragment_route_to_htmx_and_the_model_to_everyone_else(make_app):
-    """The fragment endpoint is the app's API. htmx already announces itself on
-    every request it makes, so nothing is configured on either side."""
+    """The fragment endpoint is the app's API. htmx announces itself on every
+    request it makes, so neither side is configured."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -144,10 +144,10 @@ def test_auto_gives_a_fragment_route_to_htmx_and_the_model_to_everyone_else(make
 
 
 def test_auto_gives_a_page_route_html_to_a_cold_navigation(make_app):
-    """The request a page exists for — someone typing the URL, a reload, a
-    bookmark, a crawler — carries no htmx header at all. If that answered with
-    JSON the default would be unusable, so `auto` asks whether the route has a
-    page rather than whether the caller is htmx."""
+    """The request a page exists for (a typed URL, a reload, a bookmark, a
+    crawler) carries no htmx header. Answering it with JSON would make the
+    default unusable, so `auto` asks whether the route has a page rather than
+    whether the caller is htmx."""
     router = APIRouter()
 
     @router.get("/named-page")
@@ -162,18 +162,18 @@ def test_auto_gives_a_page_route_html_to_a_cold_navigation(make_app):
 
     client = make_app(router)
     # Recognised by the filename: a fragment is `_*.html`, everything else is a
-    # page. It is the convention every template already follows.
+    # page — the convention every template already follows.
     assert client.get("/named-page").text.startswith("<!doctype html>")
-    # And `partial=` settles it outright — it exists because `template` is the
-    # page a navigation gets.
+    # `partial=` settles it outright: it exists because `template` is the page a
+    # navigation gets.
     assert client.get("/with-partial").text.startswith("<!doctype html>")
     assert client.get("/with-partial", headers={"HX-Request": "true"}).text == "<div id=fragment>World</div>"
 
 
 def test_auto_answers_a_boosted_request_in_html(make_app):
-    """A boosted link is htmx doing an ordinary navigation. It is excluded from
-    the page-or-fragment decision on purpose — but it is still a browser waiting
-    for markup, so excluding it here too would hand JSON to a link click."""
+    """A boosted link is htmx doing an ordinary navigation, so it is excluded
+    from the page-or-fragment decision. It is still a browser waiting for
+    markup, so excluding it here too would hand JSON to a link click."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -187,7 +187,7 @@ def test_auto_answers_a_boosted_request_in_html(make_app):
 
 def test_a_route_can_still_pin_either_representation(make_app):
     """`auto` is a default, not a rule. A fragment that must never be published
-    says `html`; a page that is only ever read by a client says `json`."""
+    says `html`; a page only ever read by a client says `json`."""
     router = APIRouter()
 
     @router.get("/private")
@@ -206,8 +206,8 @@ def test_a_route_can_still_pin_either_representation(make_app):
 
 
 def test_two_representations_on_one_url_vary_on_the_header(make_app):
-    """Without this a cache is free to answer a navigation with the fragment it
-    kept from a swap — a page with no shell, and no error anywhere."""
+    """Without `Vary` a cache may answer a navigation with the fragment it kept
+    from a swap: a page with no shell, and no error anywhere."""
     router = APIRouter()
 
     @router.get("/page")
@@ -230,8 +230,8 @@ def test_two_representations_on_one_url_vary_on_the_header(make_app):
     assert client.get("/page", headers={"HX-Request": "true"}).headers["vary"] == "HX-Request"
     assert client.get("/fragment").headers["vary"] == "HX-Request"
     assert client.get("/fragment", headers={"HX-Request": "true"}).headers["vary"] == "HX-Request"
-    # One representation for every caller — the header changes nothing, so the
-    # reply does not have to tell a cache it might.
+    # One representation for every caller: the header changes nothing, so the
+    # reply need not tell a cache it might.
     assert "vary" not in client.get("/plain").headers
 
 
@@ -269,8 +269,8 @@ def test_a_dataclass_is_spread_field_by_field(make_app):
 
 def test_nested_models_stay_objects_in_the_template(make_app):
     """Spread field by field, not dumped. A template calling a method on a
-    nested model is the normal case, and `model_dump()` would have flattened it
-    to a dict two levels down."""
+    nested model is the normal case, and `model_dump()` would flatten it to a
+    dict two levels down."""
 
     class Inner(BaseModel):
         n: int
@@ -351,7 +351,7 @@ def test_partial_replaces_the_page_for_an_htmx_swap(make_app):
 
 
 def test_a_boosted_request_still_gets_the_whole_page(make_app):
-    """hx-boost is htmx doing an ordinary navigation. Swapping a fragment into
+    """`hx-boost` is htmx doing an ordinary navigation. Swapping a fragment into
     it would leave the browser on a document with no shell."""
     router = APIRouter()
 
@@ -381,8 +381,8 @@ def test_without_partial_the_header_changes_nothing(make_app):
 
 
 def test_dependencies_and_query_params_survive_the_wrapper(make_app):
-    """The wrapper's __globals__ is fjkit's, so a string annotation left for
-    FastAPI to evaluate would raise NameError on names defined here."""
+    """The wrapper's `__globals__` is fjkit's, so a string annotation left for
+    FastAPI to evaluate raises `NameError` on names defined here."""
 
     def dependency() -> str:
         return "injected"
@@ -416,8 +416,8 @@ def test_a_handler_may_still_declare_request_and_response(make_app):
 
 
 def test_the_injected_parameters_are_not_query_parameters(make_app):
-    """They are appended to the signature, so they are visible to FastAPI —
-    but as `Request`/`Response`, never as something a client could send."""
+    """They are appended to the signature and so visible to FastAPI, but as
+    `Request` and `Response`, never as something a client could send."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -430,7 +430,7 @@ def test_the_injected_parameters_are_not_query_parameters(make_app):
 
 
 def test_a_sync_handler_keeps_a_sync_wrapper():
-    """Starlette only sends `def` endpoints to the threadpool. An async wrapper
+    """Starlette sends only `def` endpoints to the threadpool. An async wrapper
     around a sync handler would move every render onto the event loop."""
 
     @render("page.html")
@@ -469,7 +469,7 @@ def test_an_unresolvable_annotation_names_the_handler():
 
 def test_the_route_status_code_is_applied(make_app):
     """FastAPI applies `status_code=` only to replies it builds itself. The
-    decorator builds this one, so it has to carry it across."""
+    decorator builds this one, so it carries the code across."""
     router = APIRouter()
 
     @router.post("/thing", status_code=201)
@@ -514,7 +514,8 @@ def test_httpexception_is_untouched(make_app):
 
 
 def test_a_callable_trigger_reads_what_the_handler_returned(make_app):
-    """The point of the callable: the detail is per-request, the decorator is not."""
+    """Why the trigger takes a callable: the detail is per-request, the
+    decorator is not."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -542,7 +543,8 @@ def test_a_trigger_returning_none_raises_nothing(make_app):
 
 
 def test_a_bare_name_stays_a_bare_name(make_app):
-    """htmx accepts `HX-Trigger: refresh`; a detail-free event should not pay for JSON."""
+    """htmx accepts `HX-Trigger: refresh`, so a detail-free event need not pay
+    for JSON."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -554,7 +556,8 @@ def test_a_bare_name_stays_a_bare_name(make_app):
 
 
 def test_the_trigger_joins_a_header_the_handler_set(make_app):
-    """Neither may drop the other — the failure only shows when both are in play."""
+    """Neither may drop the other; the failure only shows when both are in
+    play."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -568,7 +571,8 @@ def test_the_trigger_joins_a_header_the_handler_set(make_app):
 
 
 def test_the_trigger_joins_a_queued_toast(make_app):
-    """`messages` merges into whatever is already there, and this is now one of them."""
+    """`messages` merges into whatever is already on the header, and a declared
+    trigger is now one of those things."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -583,11 +587,11 @@ def test_the_trigger_joins_a_queued_toast(make_app):
 
 
 def test_a_json_reply_raises_nothing(make_app):
-    """`HX-Trigger` is htmx's protocol, and there is no htmx on this path.
+    """`HX-Trigger` is htmx's protocol, and no htmx is on this path.
 
     The same rule a toast follows. A route serving both representations declares
-    the trigger once and only the markup one carries it, which is better than
-    the alternative — a JSON client receiving a header it will never read.
+    the trigger once, and only the markup representation carries it; otherwise a
+    JSON client receives a header it will never read.
     """
     router = APIRouter()
 
@@ -602,7 +606,7 @@ def test_a_json_reply_raises_nothing(make_app):
 
 
 def test_a_response_returned_by_the_handler_is_still_untouched(make_app):
-    """The escape hatch stays an escape hatch: `@render` does not decorate it."""
+    """The escape hatch stays one: `@render` does not decorate a `Response`."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -616,11 +620,11 @@ def test_a_response_returned_by_the_handler_is_still_untouched(make_app):
 
 
 def test_a_trigger_reads_the_handler_s_own_parameters(make_app):
-    """The reason a callable and not a literal: the detail is a path parameter.
+    """Why a callable and not a literal: the detail is a path parameter.
 
-    Resolved by name out of what FastAPI handed the handler, so the event can be
-    written where the route is declared — the decorator body cannot close over
-    `task_id`, which does not exist until the request does.
+    Parameters are resolved by name out of what FastAPI handed the handler, so
+    the event can be written where the route is declared. The decorator body
+    cannot close over `task_id`, which does not exist until the request does.
     """
     router = APIRouter()
 
@@ -659,7 +663,7 @@ def test_a_trigger_declaring_kwargs_gets_everything(make_app):
 
 
 def test_a_route_with_no_template_answers_with_headers_alone(make_app):
-    """`template=None`: a route that broadcasts and renders nothing."""
+    """`template=None` is a route that broadcasts and renders nothing."""
     router = APIRouter()
 
     @router.get("/thing/{task_id}", status_code=204)
@@ -674,7 +678,7 @@ def test_a_route_with_no_template_answers_with_headers_alone(make_app):
 
 
 def test_a_route_with_no_template_ignores_the_htmx_header(make_app):
-    """There is no second representation to negotiate, so nothing varies on it."""
+    """No second representation exists to negotiate, so nothing varies on it."""
     router = APIRouter()
 
     @router.get("/thing", status_code=204)
@@ -696,8 +700,8 @@ def test_a_route_with_no_template_ignores_the_htmx_header(make_app):
 
 
 def test_after_swap_uses_its_own_header(make_app):
-    """The two headers are two moments. Writing one into the other would change
-    when a subscriber hears the event, silently."""
+    """The two headers are two moments. Writing one into the other silently
+    changes when a subscriber hears the event."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -711,7 +715,7 @@ def test_after_swap_uses_its_own_header(make_app):
 
 
 def test_after_swap_takes_a_callable_like_the_other_one(make_app):
-    """Same resolution, so a route does not have to learn a second convention."""
+    """Same resolution rule, so a route learns no second convention."""
     router = APIRouter()
 
     @router.get("/thing/{task_id}")
@@ -737,9 +741,9 @@ def test_after_swap_returning_none_raises_nothing(make_app):
 
 
 def test_one_route_may_raise_both_and_they_stay_apart(make_app):
-    """The reason both exist on one route: an event whose listeners read
-    `event.detail` and one whose listeners read the page are different events,
-    and a page can need both at the same moment."""
+    """Why both exist on one route: an event whose listeners read `event.detail`
+    and one whose listeners read the page are different events, and a page can
+    need both at the same moment."""
     router = APIRouter()
 
     @router.get("/thing/{task_id}")
@@ -757,9 +761,9 @@ def test_one_route_may_raise_both_and_they_stay_apart(make_app):
 
 
 def test_a_queued_message_joins_hx_trigger_and_not_the_after_swap_one(make_app):
-    """A toast is for the page it arrives on, so it goes in the header the
-    shell's listener reads. Merging it into the after-swap header would move
-    every toast on a route that happens to use one."""
+    """A toast is for the page it arrives on, so it rides the header the shell's
+    listener reads. Merging it into the after-swap header would move every toast
+    on a route that happens to use one."""
     router = APIRouter()
 
     @router.get("/thing")
@@ -790,8 +794,8 @@ def test_stream_produces_a_streaming_response(make_app):
         return Rows(rows=list(range(50)))
 
     with make_app(router).stream("GET", "/rows") as response:
-        # A streamed reply cannot know its length up front; the missing header
-        # is the observable proof that nothing was buffered server-side.
+        # A streamed reply cannot know its length up front, so the missing
+        # header is the observable proof that nothing was buffered server-side.
         assert "content-length" not in response.headers
         body = response.read().decode()
     assert body.count("<p>") == 50
@@ -817,27 +821,27 @@ def test_stream_in_json_mode_still_returns_json(make_app):
 
 
 def test_the_kit_imports_nothing_outside_its_declared_dependencies():
-    """CHARTER §7 budgets fjkit's runtime dependencies, and §11.2 makes each one
-    a human decision. This is the test that makes the budget real: an import
-    nobody signed off on fails here rather than turning up in a wheel."""
+    """CHARTER §7 budgets fjkit's runtime dependencies and §11.2 makes each one
+    a human decision. This test makes the budget real: an import nobody signed
+    off on fails here rather than turning up in a wheel."""
     from pathlib import Path
 
     import fjkit
 
     #: `starlette` and `markupsafe` are `fastapi` and `jinja2` seen from the
-    #: inside: FastAPI *is* Starlette's routing, and `markupsafe.Markup` is the
-    #: type Jinja2's autoescaping is built on — Jinja 3 stopped re-exporting it,
+    #: inside: FastAPI is Starlette's routing, and `markupsafe.Markup` is the
+    #: type Jinja2's autoescaping is built on. Jinja 3 stopped re-exporting it,
     #: so `ui/icon` has nowhere else to get it.
     #:
-    #: **`pydantic` was added in 0.3, deliberately** (2026-08-23). It used to be
-    #: the one that looked like it belonged here and did not, and `fjkit/charts/`
-    #: held a path exemption to keep it out. Both are gone. `fastapi` requires
+    #: `pydantic` was added in 0.3, deliberately (2026-08-23). It used to look
+    #: like it belonged here and did not, and `fjkit/charts/` held a path
+    #: exemption to keep it out; both are gone. `fastapi` requires
     #: `pydantic>=2.9.0` unconditionally — no extra marker, first line of
     #: `importlib.metadata.requires("fastapi")` after starlette — so it is
-    #: already installed and already imported by the time `import fjkit` returns.
-    #: The install cost is zero and the import cost is zero, and an exemption
-    #: that says "this directory is excused" is worth less than a list that says
-    #: what the kit actually depends on.
+    #: already installed and already imported by the time `import fjkit`
+    #: returns. Install cost and import cost are both zero, and an exemption
+    #: saying "this directory is excused" is worth less than a list saying what
+    #: the kit depends on.
     declared = {"fastapi", "starlette", "jinja2", "markupsafe", "pydantic", "fjkit"}
 
     package_root = Path(fjkit.__file__).parent
@@ -853,11 +857,11 @@ def test_the_kit_imports_nothing_outside_its_declared_dependencies():
 def test_no_part_of_the_kit_imports_a_charting_library():
     """The half of the old charts exemption that still earns its keep.
 
-    `fjkit.charts` ships Plotly's *JavaScript* (CHARTER §7 whitelists the
-    bundle) but never the Python library: `figure_of` is duck-typed on
-    `to_plotly_json()`. An `import plotly` anywhere in the package would make
-    the 20 MB `plotly.py` a runtime dependency of every install, quietly, and
-    the only visible symptom would be a slower `uv sync`."""
+    `fjkit.charts` ships Plotly's JavaScript (CHARTER §7 whitelists the bundle)
+    but never the Python library: `figure_of` is duck-typed on
+    `to_plotly_json()`. An `import plotly` anywhere in the package would quietly
+    make the 20 MB `plotly.py` a runtime dependency of every install, and the
+    only visible symptom would be a slower `uv sync`."""
     from pathlib import Path
 
     import fjkit
@@ -874,7 +878,7 @@ def test_no_part_of_the_kit_imports_a_charting_library():
 
 
 def _imported_roots(path):
-    """Every top-level package name imported at any level of one module."""
+    """Yield every top-level package name imported anywhere in one module."""
     import ast
 
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):

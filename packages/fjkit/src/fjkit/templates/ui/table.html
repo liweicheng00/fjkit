@@ -1,8 +1,8 @@
 {#
   table(columns, rows, …) — the basic data table.
 
-  0.1 scope: structure, column specs, and the zero-row case. Sorting, pagination
-  and batch selection land in 0.4.
+  0.1 scope: structure, column specs, and the zero-row case. Sorting,
+  pagination and batch selection land in 0.4.
 
       {% call table(
            columns=[{"label": "Task"}, {"label": "Owner"}, {"width": "min"}],
@@ -12,13 +12,13 @@
         {% for task in tasks %}{{ task_row(request, task) }}{% endfor %}
       {% endcall %}
 
-  Passing `rows` lets the macro own the empty case, so no caller ever repeats
-  the "if there are rows … else …" branch. Pass `rows=none` to always render
-  the body yourself.
+  Passing `rows` gives the macro the empty case, so no caller repeats the
+  "if there are rows … else …" branch. Pass `rows=none` to always render the
+  body yourself.
 
-  Rows are a macro call in the caller's loop, never `{% include %}` — include is
-  a template lookup plus a fresh context object per iteration, and the gap
-  widens linearly with row count.
+  Rows are a macro call in the caller's loop, never `{% include %}`: include
+  costs a template lookup plus a fresh context object per iteration, and the
+  gap widens linearly with row count.
 #}
 {% from "ui/attrs.html" import attrs %}
 {% from "ui/data.html" import empty_state %}
@@ -49,8 +49,8 @@
 {#
   cell(value, tone, numeric, align) — one <td>.
 
-  Exists so a row macro never writes `class="text-muted-foreground"`. tone is a
-  closed lookup; there is no way to pass a colour through.
+  Exists so a row macro never writes `class="text-muted-foreground"`. `tone` is
+  a closed lookup, and no colour can be passed through it.
 #}
 {% set _TONES = {
   "strong": "font-medium",

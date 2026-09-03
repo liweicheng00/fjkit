@@ -1,11 +1,11 @@
 """The extension seam — one object that contributes to the app and to Jinja.
 
 A plugin exists because some features need more than a macro: a middleware, an
-exception handler, a value in every template's context. Doing that by hand
-means an app wires four things in the right order and keeps them in step, which
-is the same failure `mount_fjkit()` exists to remove one level down.
+exception handler, a value in every template's context. Wiring that by hand
+means an app keeps four things in the right order and in step, which is the
+failure `mount_fjkit()` removes one level down.
 
-Two contribution points, because the kit genuinely has two moments:
+Two contribution points, because the kit has two moments:
 
 * `mount(AppSetup)` runs when the app is constructed — middleware, exception
   handlers, routes, static files.
@@ -16,9 +16,9 @@ Both are optional. A plugin that only puts a value in every template writes
 only `extend`. Hiding the split would be friendlier right up until someone's
 `mount` silently never ran.
 
-What a plugin deliberately **cannot** do is inject markup into the shell. A
-hook for that would let any plugin put a `<script>` on every page, and both
-"no build step on your side" and the closed vocabulary would leave through it.
+A plugin deliberately **cannot** inject markup into the shell. Such a hook
+would let any plugin put a `<script>` on every page, and both "no build step in
+the app" and the closed vocabulary would leave through it.
 """
 
 from __future__ import annotations
@@ -47,16 +47,16 @@ __all__ = [
 
 #: Called once per render with the live request, returning values to merge into
 #: the template context. **Synchronous**: it runs inside `Templates.page()`,
-#: which a `def` handler reaches from the threadpool. A plugin needing I/O does
-#: it in middleware and leaves the result on `request.state` for the processor
-#: to read — which is exactly what the auth plugin does.
+#: which a `def` handler reaches from the threadpool. A plugin that needs I/O
+#: does it in middleware and leaves the result on `request.state` for the
+#: processor to read, which is what the auth plugin does.
 ContextProcessor = Callable[[Request], Mapping[str, object]]
 
 
 class PluginWarning(UserWarning):
-    """A plugin's own install-time check found a configuration that will fail.
+    """A plugin's install-time check found a configuration that fails later.
 
-    Its own category so an app can turn it into an error:
+    Its own category, so an app can turn it into an error:
     `warnings.simplefilter("error", PluginWarning)`.
     """
 
@@ -67,7 +67,7 @@ class Plugin(Protocol):
 
     `name` identifies the plugin rather than labelling it: it detects duplicate
     registration, names the `request.state` field the plugin owns, and appears
-    in the error when two plugins claim the same global or context key.
+    in the error when two plugins claim one global or context key.
     """
 
     name: str
@@ -82,8 +82,8 @@ class Plugin(Protocol):
 class AppSetup:
     """What a plugin may do to the app. Handed to `Plugin.mount`.
 
-    A thin pass-through to FastAPI rather than a wrapper with opinions — except
-    that everything it does is attributed to the plugin, so a misbehaving one is
+    A pass-through to FastAPI rather than a wrapper with opinions, except that
+    everything it does is attributed to the plugin, so a misbehaving one is
     named in the traceback rather than found by elimination.
     """
 
@@ -96,7 +96,7 @@ class AppSetup:
 
     def add_middleware(self, cls: type, /, **options: Any) -> None:
         """Starlette runs middleware in reverse registration order, so a plugin
-        listed *later* in `FjkitConfig.plugins` wraps the earlier ones."""
+        listed later in `FjkitConfig.plugins` wraps the earlier ones."""
         self.app.add_middleware(cls, **options)
 
     def add_exception_handler(self, exc: type[Exception] | int, handler: Callable) -> None:
@@ -109,11 +109,11 @@ class AppSetup:
         self.app.mount(url, StaticFiles(directory=directory), name=f"fjkit_{self._name}_static")
 
     def warn(self, message: str) -> None:
-        """Report a configuration that is going to misbehave, at startup.
+        """Report at startup a configuration that misbehaves later.
 
-        For the combinations only the plugin can recognise — an in-memory store
-        under a production config, a token source that cannot refresh. The
-        symptom of each is a bug that surfaces days later on another machine.
+        For the combinations only the plugin recognises — an in-memory store
+        under a production config, a token source that cannot refresh. Each
+        surfaces days later on another machine.
         """
         warnings.warn(f"[fjkit:{self._name}] {message}", PluginWarning, stacklevel=2)
 
@@ -135,11 +135,12 @@ class EnvSetup:
         self._owners: dict[str, str] = {}
 
     def add_template_dir(self, directory: Path) -> None:
-        """Searched after the app's templates and before the kit's.
+        """Add a template directory, searched after the app's and before the
+        kit's.
 
-        After the app so a plugin can never shadow a file the app wrote — that
-        would break `fjkit eject` (CHARTER A5) from a direction the app cannot
-        see. Before the kit's so a plugin *can* replace a kit macro.
+        After the app's, so a plugin can never shadow a file the app wrote —
+        that would break `fjkit eject` (CHARTER A5) from a direction the app
+        cannot see. Before the kit's, so a plugin can replace a kit macro.
         """
         self.contributions.template_dirs.append(directory)
 
@@ -154,10 +155,10 @@ class EnvSetup:
     def add_context_processor(self, fn: ContextProcessor, *, provides: Sequence[str]) -> None:
         """Merge values into every template's context, once per render.
 
-        `provides` is the keys it will return, and it is required rather than
-        inferred: without it two plugins quietly fighting over `user` is only
-        discoverable by rendering a page, and then only if you notice. With it
-        the clash is a startup error naming both plugins.
+        `provides` lists the keys the processor returns. Required rather than
+        inferred: without it, two plugins fighting over `user` show up only by
+        rendering a page and noticing. With it, the clash is a startup error
+        naming both plugins.
         """
         for key in provides:
             self._claim(f"context key {key!r}", key)
@@ -180,8 +181,8 @@ class EnvContributions:
     template_dirs: list[Path] = field(default_factory=list)
     globals: dict[str, object] = field(default_factory=dict)
     filters: dict[str, Callable[..., Any]] = field(default_factory=dict)
-    #: (plugin name, declared keys, callable) — the first two only so a
-    #: processor that returns something it never declared can be named.
+    #: (plugin name, declared keys, callable) — the first two exist only to name
+    #: a processor that returns a key it never declared.
     processors: list[tuple[str, tuple[str, ...], ContextProcessor]] = field(default_factory=list)
 
 
@@ -208,8 +209,8 @@ def _ordered(config: FjkitConfig) -> tuple[Plugin, ...]:
     """The configured plugins, with duplicate names rejected.
 
     Two plugins under one name would collide on `request.state.<name>` and make
-    every later error message ambiguous, so it is refused at startup rather
-    than resolved by last-one-wins.
+    every later error message ambiguous, so the duplicate is refused at startup
+    rather than resolved by last-one-wins.
     """
     seen: set[str] = set()
     for plugin in config.plugins:

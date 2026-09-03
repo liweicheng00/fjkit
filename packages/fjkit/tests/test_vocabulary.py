@@ -1,5 +1,5 @@
-"""The closed vocabulary and the loader override, which are the two mechanisms
-the whole no-build promise rests on.
+"""The closed vocabulary and the loader override — the two mechanisms the
+no-build promise rests on.
 """
 
 from __future__ import annotations
@@ -14,9 +14,9 @@ from fjkit.cli.ejected import STAMP, find_ejected, stale_ejects
 from fjkit.cli.vocabulary import component_classes
 from fjkit.config import TEMPLATE_DIR
 
-#: Every component `fjkit eject <name>` will copy, and every macro inside one.
-#: Derived rather than listed, so a component added tomorrow is covered by the
-#: same tests without anyone remembering to add it here.
+#: Every component `fjkit eject <name>` copies, and every macro inside one.
+#: Derived rather than listed, so a component added later is covered by the same
+#: tests without anyone remembering to add it here.
 EJECTABLE = sorted(p.stem for p in (TEMPLATE_DIR / "ui").glob("*.html"))
 MACROS = [
     (component, macro)
@@ -28,8 +28,8 @@ MACROS = [
 
 class TestVocabulary:
     def test_component_classes_are_derived_not_hand_maintained(self):
-        """Harvested from Basecoat's stylesheets, so the allow-list cannot
-        drift from what actually ships."""
+        """Harvested from Basecoat's stylesheets, so the allow-list cannot drift
+        from what ships."""
         classes = component_classes()
         for name in ("btn", "card", "badge", "input", "label", "field", "table", "empty", "kbd"):
             assert name in classes, f"{name} should be part of the component vocabulary"
@@ -58,13 +58,13 @@ class TestCheck:
         assert "#ff0000" in tokens
 
     def test_absolute_white_is_rejected(self, tmp_path):
-        """It bets that the brand colour stays dark forever, instead of using
-        its contrast token."""
+        """It bets that the brand colour stays dark forever instead of naming
+        the contrast token."""
         (tmp_path / "page.html").write_text('<span class="text-white">x</span>')
         assert any(v.token == "text-white" for v in check_templates(tmp_path))
 
     def test_interpolated_classes_are_skipped(self, tmp_path):
-        """The checker cannot evaluate them; the 'never interpolate a class'
+        """The checker cannot evaluate them. The "never interpolate a class"
         rule is enforced in review instead."""
         (tmp_path / "page.html").write_text('<div class="card {{ extra }}">x</div>')
         assert check_templates(tmp_path) == []
@@ -84,7 +84,8 @@ class TestCheck:
 
     def test_a_jinja_comment_is_not_scanned(self, tmp_path):
         """A comment never reaches the browser, so a hue named inside one cannot
-        break a rebrand. Scanning them left the rule unable to describe itself.
+        break a rebrand. Scanning comments left the rule unable to describe
+        itself.
         """
         (tmp_path / "page.html").write_text(
             "{# upstream writes bg-green-600 here; we name a role instead #}\n<div class=\"card\">x</div>"
@@ -92,7 +93,7 @@ class TestCheck:
         assert check_templates(tmp_path) == []
 
     def test_a_multiline_comment_does_not_shift_later_line_numbers(self, tmp_path):
-        """Comments are blanked, not removed — a report that points at the wrong
+        """Comments are blanked, not removed. A report pointing at the wrong
         line is worse than no report."""
         (tmp_path / "page.html").write_text("{#\n  bg-green-600\n#}\n<div class=\"flex\">x</div>")
         assert [(v.line, v.token) for v in check_templates(tmp_path)] == [(4, "flex")]
@@ -104,7 +105,7 @@ class TestCheck:
 
 class TestLoaderOverride:
     def test_app_templates_shadow_the_kit(self, tmp_path):
-        """The mechanism behind `fjkit eject` — a file at the same path in the
+        """The mechanism behind `fjkit eject`: a file at the same path in the
         app wins, with no import change at any call site."""
         ui = tmp_path / "ui"
         ui.mkdir()
@@ -120,8 +121,8 @@ class TestLoaderOverride:
         assert 'class="btn"' in html
 
     def test_the_reserved_namespace_reaches_the_kit_through_an_override(self, tmp_path):
-        """The one thing an override needs and shadowing takes away: a name for
-        the file it is shadowing."""
+        """Shadowing takes away the one thing an override needs: a name for the
+        file it is shadowing."""
         ui = tmp_path / "ui"
         ui.mkdir()
         (ui / "button.html").write_text(
@@ -135,14 +136,14 @@ class TestLoaderOverride:
             '{% from "ui/button.html" import button, button_group %}'
             "{{ button('Go') }}{% call button_group() %}x{% endcall %}"
         ).render()
-        # `button` is the override's; `button_group` is still the kit's, and it
+        # `button` is the override's. `button_group` is still the kit's, and it
         # renders through a `{% call %}` block and its own `row` import.
         assert html.startswith("<em>Go</em>")
         assert html.endswith(">x</div>")
 
     def test_an_app_cannot_hijack_the_reserved_namespace(self, tmp_path):
-        """It is first in the chain, so an override can never be tricked into
-        re-exporting from something the app wrote."""
+        """The reserved namespace is first in the chain, so an override cannot
+        be tricked into re-exporting from something the app wrote."""
         hijack = tmp_path / "fjkit" / "ui"
         hijack.mkdir(parents=True)
         (hijack / "button.html").write_text("{% macro button(label) %}<hijacked>{% endmacro %}")
@@ -153,13 +154,13 @@ class TestLoaderOverride:
         assert 'class="btn"' in html
 
     def test_the_reserved_namespace_lists_nothing(self):
-        """Its files are already listed under their bare names; a second entry
-        each would double every compile-everything sweep."""
+        """Its files are already listed under their bare names, and a second
+        entry each would double every compile-everything sweep."""
         env = build_environment(FjkitConfig(auto_reload=False))
         assert [n for n in env.list_templates() if n.startswith("fjkit/")] == []
 
     def test_every_kit_template_compiles(self):
-        """Catches syntax errors in templates no test happens to render."""
+        """Catch syntax errors in templates no other test happens to render."""
         env = build_environment(FjkitConfig(auto_reload=False))
         names = env.list_templates(extensions=("html", "jinja"))
         assert names, "the kit should ship templates"
@@ -181,7 +182,7 @@ class TestIcons:
 
     def test_icons_carry_no_colour(self):
         """`stroke="currentColor"` on the wrapper is why icons never needed a
-        token of their own — a hard-coded fill in the path data would break it."""
+        token of their own. A hard-coded fill in the path data would break it."""
         from fjkit.icons import names, path
 
         for name in names()[:200]:
@@ -189,8 +190,8 @@ class TestIcons:
 
 
 class TestEjectStamp:
-    """`fjkit eject` leaves a trail, so a copy that has fallen behind the kit
-    can be found again. See `fjkit.cli.ejected`.
+    """`fjkit eject` leaves a trail, so a copy that has fallen behind the kit can
+    be found again. See `fjkit.cli.ejected`.
     """
 
     def _eject(self, tmp_path, name="button"):
@@ -216,8 +217,8 @@ class TestEjectStamp:
         assert stale_ejects(tmp_path) == []
 
     def test_editing_the_copy_does_not_make_it_stale(self, tmp_path):
-        """The digest is the *kit's* source at eject time, not the copy's.
-        Diverging is the whole point of ejecting; only upstream moving matters.
+        """The digest covers the kit's source at eject time, not the copy's.
+        Diverging is the point of ejecting; only upstream moving matters.
         """
         target = self._eject(tmp_path)
         target.write_text(target.read_text() + "\n{# a local change #}\n")
@@ -246,7 +247,7 @@ class TestEjectStamp:
         assert find_ejected(tmp_path) == []
 
     def test_a_stamp_below_the_first_line_is_not_a_stamp(self, tmp_path):
-        """Documentation that quotes a stamp is not itself an ejected file."""
+        """Documentation quoting a stamp is not itself an ejected file."""
         (tmp_path / "page.html").write_text(
             "<p>a stamp looks like this:</p>\n{# fjkit:eject button 0.1.0 sha256:000000000000 #}\n"
         )
@@ -254,14 +255,14 @@ class TestEjectStamp:
 
     @pytest.mark.parametrize("name", EJECTABLE)
     def test_ejecting_a_component_leaves_the_build_gate_green(self, tmp_path, name):
-        """The escape hatch has to be walkable. A kit macro writes utilities —
-        that is why an app never has to — so judging the copy by the app's rules
-        made `fjkit eject` produce a red build for every component but four."""
+        """The escape hatch has to be walkable. A kit macro writes utilities, so
+        that an app never has to; judging the copy by the app's rules made
+        `fjkit eject` produce a red build for every component but four."""
         self._eject(tmp_path, name)
         assert check_templates(tmp_path) == []
 
     def test_an_ejected_file_is_still_judged_on_colour(self, tmp_path):
-        """Utilities stop being a violation; hues do not. A hard-coded green in
+        """Utilities stop being a violation, hues do not. A hard-coded green in
         an ejected macro breaks a rebrand exactly as it would anywhere else."""
         target = self._eject(tmp_path)
         target.write_text(target.read_text() + '\n<div class="bg-green-600 flex gap-4">x</div>\n')
@@ -269,7 +270,7 @@ class TestEjectStamp:
         assert [v.token for v in check_templates(tmp_path)] == ["bg-green-600"]
 
     def test_an_unstamped_copy_gets_no_amnesty(self, tmp_path):
-        """The stamp is what says "the kit wrote this". Pasting a macro in by
+        """The stamp is what says "the kit wrote this". A macro pasted in by
         hand is an app template, and the closed vocabulary still applies."""
         ui = tmp_path / "ui"
         ui.mkdir()
@@ -288,8 +289,8 @@ class TestEjectStamp:
 
 
 class TestMacroEject:
-    """`fjkit eject badge` takes one macro and leaves the other fourteen with
-    the kit. See `fjkit.cli.eject`.
+    """`fjkit eject badge` takes one macro and leaves the rest of `ui/data.html`
+    with the kit. See `fjkit.cli.eject`.
     """
 
     def _eject(self, tmp_path, name, expect=0):
@@ -305,10 +306,10 @@ class TestMacroEject:
         return self._env(tmp_path).from_string(body).render()
 
     def _fork_the_kit(self, tmp_path, monkeypatch, component, before, after):
-        """A copy of the kit with one macro edited, standing in for an upgrade.
+        """Copy the kit with one macro edited, standing in for an upgrade.
 
         The reserved namespace and the fallback loader both read
-        `fjkit.templating.TEMPLATE_DIR`, so redirecting it is the whole of it.
+        `fjkit.templating.TEMPLATE_DIR`, so redirecting it is the whole trick.
         """
         fork = tmp_path / "upstream"
         shutil.copytree(TEMPLATE_DIR, fork)
@@ -326,8 +327,8 @@ class TestMacroEject:
 
     @pytest.mark.parametrize("target", MACROS, ids=lambda t: f"{t[0]}.{t[1]}")
     def test_an_override_exports_exactly_what_the_kit_did(self, tmp_path, target):
-        """A re-export that quietly dropped a macro would break a call site that
-        never asked to be involved."""
+        """A re-export that dropped a macro would break a call site that never
+        asked to be involved."""
         component, macro = target
         self._eject(tmp_path, f"{component}.{macro}")
 
@@ -344,8 +345,8 @@ class TestMacroEject:
         assert len(text.splitlines()) < len((TEMPLATE_DIR / "ui" / "data.html").read_text().splitlines()) // 3
 
     def test_a_re_export_keeps_receiving_upstream_fixes(self, tmp_path, monkeypatch):
-        """The point of the whole exercise: you own `badge`, and the kit's next
-        fix to `card` still reaches you."""
+        """The point of the exercise: you own `badge`, and the kit's next fix to
+        `card` still reaches you."""
         self._eject(tmp_path, "badge")
         self._fork_the_kit(tmp_path, monkeypatch, "data", '<div class="card"', '<div class="card" data-fixed')
 
@@ -361,8 +362,8 @@ class TestMacroEject:
         assert 'class="badge"' in html
 
     def test_kwargs_and_call_blocks_survive_a_re_export(self, tmp_path):
-        """`{% set card = _fjkit.card %}` binds the kit's macro object itself,
-        not a wrapper — so `**kwargs` and `caller()` are untouched."""
+        """`{% set card = _fjkit.card %}` binds the kit's macro object itself
+        rather than a wrapper, so `**kwargs` and `caller()` are untouched."""
         self._eject(tmp_path, "badge")
 
         html = self._render(
@@ -381,15 +382,15 @@ class TestMacroEject:
 
     def test_a_private_helper_is_copied_because_it_cannot_be_borrowed(self, tmp_path):
         """Jinja keeps `_`-prefixed names out of a module's namespace, so
-        `_fjkit._message` does not exist and the only option is a copy."""
+        `_fjkit._message` does not exist and a copy is the only option."""
         text = (self._eject(tmp_path, "text_field") / "ui" / "form.html").read_text()
         assert "{% macro _message(" in text
         assert "_fjkit._message" not in text
         assert STAMP.match(text.splitlines()[0])["macros"].split(",")[-1].startswith("_message=")
 
     def test_the_kit_keeps_using_its_own_copy_of_the_private_helper(self, tmp_path):
-        """The copy is yours. `select_field` is still the kit's, and the kit's
-        `select_field` calls the kit's `_message` — not the one in your file."""
+        """The copy is yours. `select_field` is still the kit's, and it calls the
+        kit's `_message` rather than the one in your file."""
         target = self._eject(tmp_path, "text_field") / "ui" / "form.html"
         target.write_text(target.read_text().replace('id="{{ field_id }}-hint"', 'id="mine"'))
 
@@ -406,8 +407,8 @@ class TestMacroEject:
 
     def test_only_the_lookup_tables_the_macro_reads_come_along(self, tmp_path):
         """A `_ROWS` copied beside a macro that never reads it is dead weight
-        that looks live — it would fall behind the kit while the macro that does
-        read it, re-exported `field_row`, went on using the kit's."""
+        that looks live: it falls behind the kit while the macro that does read
+        it, the re-exported `field_row`, goes on using the kit's."""
         text = (self._eject(tmp_path, "text_field") / "ui" / "form.html").read_text()
         assert "_ROWS" not in text
         assert '{% from "ui/attrs.html" import attrs %}' in text
@@ -417,8 +418,8 @@ class TestMacroEject:
         assert "wide-then-actions" in rows, "a multi-line {% set %} must be taken whole"
 
     def test_a_second_eject_rewrites_rather_than_refusing(self, tmp_path):
-        """Wanting a second macro is the ordinary next step, and refusing would
-        leave hand-editing as the only answer."""
+        """Wanting a second macro is the ordinary next step; refusing would leave
+        hand-editing as the only answer."""
         self._eject(tmp_path, "badge")
         text = (self._eject(tmp_path, "stat") / "ui" / "data.html").read_text()
 
@@ -444,8 +445,8 @@ class TestMacroEject:
         self._eject(tmp_path, "badge", expect=1)
 
     def test_a_file_name_still_means_the_whole_file(self, tmp_path):
-        """`table` is both a component and a macro inside it. Nothing that
-        worked before may change meaning, so the file wins."""
+        """`table` is both a component and a macro inside it. Nothing that worked
+        before may change meaning, so the file wins."""
         from fjkit.cli.eject import resolve
 
         assert resolve("table") == ("table", None)
@@ -467,13 +468,13 @@ class TestMacroEject:
 
     def test_a_page_skeleton_has_no_macros_to_take(self, tmp_path):
         """`shell.html` is a base template, not a macro library. `eject shell`
-        still copies the file; `eject shell.anything` is not a thing."""
+        still copies the file; `eject shell.anything` has nothing to take."""
         self._eject(tmp_path, "shell")
         self._eject(tmp_path, "shell.head", expect=1)
 
 
 class TestPerMacroStamp:
-    """The digest is per macro, so the report can say *which* one moved."""
+    """The digest is per macro, so the report can name which one moved."""
 
     def _stamp(self, tmp_path, macros):
         from fjkit.cli.ejected import macro_stamp
@@ -495,8 +496,8 @@ class TestPerMacroStamp:
         assert stale_ejects(tmp_path) == []
 
     def test_only_the_macros_you_own_can_go_stale(self, tmp_path):
-        """The whole reason for going per macro: a file-wide digest called your
-        copy of `badge` stale because the kit had changed `avatar`."""
+        """Why the digest is per macro: a file-wide digest called your copy of
+        `badge` stale because the kit had changed `avatar`."""
         digests = self._kit("badge", "stat")
         self._stamp(tmp_path, {"badge": digests["badge"], "stat": "000000000000"})
 
@@ -515,8 +516,8 @@ class TestPerMacroStamp:
         assert "no longer ships" in stale[0].render(tmp_path)
 
     def test_the_doc_comment_is_not_part_of_the_digest(self, tmp_path):
-        """Rewording a paragraph should not tell you your copy has fallen
-        behind. The digest covers the `{% macro %}` block and nothing else."""
+        """Rewording a paragraph must not report the copy as fallen behind. The
+        digest covers the `{% macro %}` block and nothing else."""
         from fjkit.cli.eject import components, parse
         from fjkit.cli.ejected import digest
 

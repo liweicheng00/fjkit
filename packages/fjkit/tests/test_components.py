@@ -1,9 +1,9 @@
 """Contract tests for the component macros.
 
-These lock down the parts of a macro that callers depend on: which element it
-emits, which attribute carries the variant, and that pass-through attributes
-survive. Once a signature is published it cannot change (CHARTER.md A4), so
-these are the tests that make a breaking change loud.
+These lock down what callers depend on: which element a macro emits, which
+attribute carries the variant, and that pass-through attributes survive. A
+published signature cannot change (CHARTER.md A4), so these tests are what make
+a breaking change loud.
 """
 
 from __future__ import annotations
@@ -47,8 +47,8 @@ class TestButton:
 
     @pytest.mark.parametrize("variant", ["primary", "secondary", "outline", "ghost", "link", "destructive"])
     def test_variant_is_an_attribute_not_a_class(self, render, variant):
-        """Basecoat's API is data-variant. A parallel `btn-primary` class would
-        be a second way to say the same thing, and they would drift."""
+        """Basecoat's API is `data-variant`. A parallel `btn-primary` class
+        would be a second way to say the same thing, and the two would drift."""
         html = render(f'{BUTTON}{{{{ button("Go", variant="{variant}") }}}}')
         assert f'data-variant="{variant}"' in html
         assert f"btn-{variant}" not in html
@@ -74,8 +74,8 @@ class TestLayout:
         assert "gap-6" in html and "flex-col" in html
 
     def test_unknown_gap_falls_back_rather_than_emitting_a_dead_class(self, render):
-        """An interpolated `gap-99` would not exist in the stylesheet, so the
-        element would silently lose its spacing."""
+        """An interpolated `gap-99` is not in the stylesheet, so the element
+        would silently lose its spacing."""
         html = render(f"{LAYOUT}{{% call stack(99) %}}x{{% endcall %}}")
         assert "gap-99" not in html
         assert "gap-4" in html
@@ -111,7 +111,7 @@ class TestLayout:
 
     def test_centered_falls_back_rather_than_emitting_a_dead_class(self, render):
         """`max-w-24rem` is not in the stylesheet, so the column would render at
-        full width and nothing would say why."""
+        full width with nothing to say why."""
         html = render(f'{LAYOUT}{{% call centered("24rem") %}}x{{% endcall %}}')
         assert "max-w-24rem" not in html
         assert "max-w-sm" in html
@@ -130,8 +130,8 @@ class TestTable:
         assert "ROWS" in html
 
     def test_actions_column_is_labelled_for_screen_readers(self, render):
-        """A header cell with no text is invisible to a screen reader reading
-        out the column of a focused button."""
+        """A header cell with no text is invisible to a screen reader reading out
+        the column of a focused button."""
         html = render(f"{TABLE}{{% call table({self.COLUMNS}) %}}x{{% endcall %}}")
         assert 'aria-label="Actions"' in html
 
@@ -183,9 +183,9 @@ class TestForm:
         assert 'hx-target="#board"' in html
 
     def test_form_without_a_target_is_a_plain_form(self, render):
-        """No target, no htmx: `action`/`method` and nothing else. An `hx-post`
-        here would swap the reply into the form itself, which is never what a
-        caller who omitted `target` meant."""
+        """No target, no htmx: `action` and `method` and nothing else. An
+        `hx-post` here would swap the reply into the form itself, which is never
+        what a caller who omitted `target` meant."""
         html = render(f'{FORM}{{% call form(action="/x") %}}f{{% endcall %}}')
         assert 'action="/x"' in html
         assert 'method="post"' in html
@@ -205,23 +205,23 @@ class TestForm:
 
     @pytest.mark.parametrize("method", ["put", "patch", "delete"])
     def test_a_browser_only_has_two_verbs_so_the_rest_post(self, render, method):
-        """`<form method="put">` is treated as GET by every browser, which drops
-        the body — a save that silently becomes a read. Falling back to POST
-        keeps what was typed; losing it would be the quieter failure."""
+        """Every browser treats `<form method="put">` as GET, which drops the
+        body: a save that silently becomes a read. Falling back to POST keeps
+        what was typed, and losing it would be the quieter failure."""
         html = render(f'{FORM}{{% call form(action="/x", method="{method}") %}}f{{% endcall %}}')
         assert 'method="post"' in html
         assert f'method="{method}"' not in html
 
     def test_a_verb_nobody_ships_is_not_invented(self, render):
-        """Same closed-lookup rule the encodings follow: a typo falls back
+        """The same closed-lookup rule the encodings follow: a typo falls back
         rather than emitting an `hx-` attribute htmx has never heard of."""
         html = render(f'{FORM}{{% call form(action="/x", method="pust", target="#t") %}}f{{% endcall %}}')
         assert 'hx-post="/x"' in html
         assert "hx-pust" not in html
 
     def test_a_form_is_urlencoded_unless_it_says_otherwise(self, render):
-        """The default has to stay the one that needs no extension loaded and
-        no JavaScript to submit."""
+        """The default stays the encoding that needs no extension loaded and no
+        JavaScript to submit."""
         html = render(f'{FORM}{{% call form(action="/x", target="#b") %}}f{{% endcall %}}')
         assert "hx-ext" not in html
 
@@ -232,30 +232,30 @@ class TestForm:
         assert 'hx-ext="json-enc"' in html
 
     def test_json_encoding_does_nothing_without_a_target(self, render):
-        """A form with no target is submitted by the browser, which sends
-        urlencoded or multipart and has never heard of an htmx extension.
-        Emitting `hx-ext` there would describe something that cannot happen."""
+        """The browser submits a form with no target, sending urlencoded or
+        multipart, and has never heard of an htmx extension. Emitting `hx-ext`
+        there would describe something that cannot happen."""
         html = render(f'{FORM}{{% call form(action="/x", encoding="json") %}}f{{% endcall %}}')
         assert "hx-ext" not in html
         assert 'action="/x"' in html
 
     def test_an_encoding_nobody_ships_is_not_invented(self, render):
-        """A closed enumeration, read through `.get`: a typo falls back to the
+        """A closed enumeration read through `.get`: a typo falls back to the
         default rather than emitting an extension name that does not exist."""
         html = render(f'{FORM}{{% call form(action="/x", target="#b", encoding="jsonn") %}}f{{% endcall %}}')
         assert "hx-ext" not in html
 
     def test_form_scripts_loads_the_extension_after_htmx(self, render):
         """`defer`, because deferred scripts run in document order and htmx is
-        deferred in the shell's head. Without it this runs first and throws on
-        an undefined `htmx`."""
+        deferred in the shell's head. Without it this script runs first and
+        throws on an undefined `htmx`."""
         html = render(f"{FORM}{{{{ form_scripts() }}}}")
         assert "<script defer" in html
         assert "vendor/htmx/json-enc.js" in html
 
     def test_the_extension_is_actually_in_the_package(self):
         """The macro names a path, and nothing else checks that the vendoring
-        script put a file there. A missing one is a 404 in the browser and a
+        script put a file there. A missing file is a 404 in the browser and a
         form that quietly posts urlencoded."""
         from fjkit.config import STATIC_DIR
 
@@ -271,9 +271,9 @@ class TestForm:
         ],
     )
     def test_every_field_reports_an_error_the_same_way(self, render, call):
-        """One contract across the set: aria-invalid on the control, the message
-        in a <p> the control names. A caller that learns it once for `text_field`
-        knows it for all of them, which is what 0.3 will fill in mechanically."""
+        """One contract across the set: `aria-invalid` on the control, and the
+        message in a `<p>` the control names. A caller who learns it once for
+        `text_field` knows it for all of them."""
         html = render(f"{FORM}{{{{ {call} }}}}")
         assert 'aria-invalid="true"' in html
         described = re.search(r'aria-describedby="([^"]+)"', html).group(1)
@@ -300,8 +300,8 @@ class TestForm:
         assert "value=" not in html
 
     def test_checkbox_and_switch_are_the_same_control_to_a_route(self, render):
-        """Only `role` separates them, so a handler reads one name either way and
-        swapping the presentation never touches the router."""
+        """Only `role` separates them, so a handler reads one name either way
+        and swapping the presentation never touches the router."""
         box = render(f'{FORM}{{{{ checkbox_field("done", checked=true) }}}}')
         switch = render(f'{FORM}{{{{ switch_field("done", checked=true) }}}}')
         for html in (box, switch):
@@ -313,7 +313,7 @@ class TestForm:
 
     def test_switch_puts_the_control_after_its_label(self, render):
         """A settings row lines its switches up on one edge; a checkbox sits in
-        front of the words it qualifies. That is the whole visual difference."""
+        front of the words it qualifies. That is the visual difference."""
         html = render(f'{FORM}{{{{ switch_field("d", label="Digest") }}}}')
         assert html.index("Digest") < html.index("<input")
         html = render(f'{FORM}{{{{ checkbox_field("d", label="Digest") }}}}')
@@ -333,7 +333,8 @@ class TestForm:
         assert not re.search(r'value="low"[^>]* checked', html)
 
     def test_radio_group_takes_the_same_options_shape_as_select(self, render):
-        """One shape for both, so swapping a select for radios is a one-word edit."""
+        """One shape for both, so swapping a select for radios is a one-word
+        edit."""
         options = '[("a", "A"), ("b", "B")]'
         selected = "b"
         radios = render(f'{FORM}{{{{ radio_group("p", options={options}, selected="{selected}") }}}}')
@@ -348,7 +349,7 @@ class TestForm:
         assert html.index("Why") < html.index("INNER")
 
     def test_a_group_legend_outranks_a_field_legend(self, render):
-        """`fieldset` names a section of the form; `radio_group`'s legend *is* a
+        """`fieldset` names a section of the form; `radio_group`'s legend is a
         field label and has to match the labels beside it."""
         group = render(f'{FORM}{{% call fieldset("Group") %}}x{{% endcall %}}')
         field = render(f'{FORM}{{{{ radio_group("p", label="P", options=[("a", "A")]) }}}}')
@@ -362,7 +363,7 @@ class TestData:
         assert html.index("ACT") < html.index("BODY")
 
     def test_unpadded_card_with_a_header_gets_a_rule(self, render):
-        """A flush body butting straight into header text reads as one block."""
+        """A flush body running straight into header text reads as one block."""
         html = render(f'{DATA}{{% call card("Title", padded=false) %}}BODY{{% endcall %}}')
         assert "border-t" in html
         assert "<section>" not in html
@@ -377,14 +378,14 @@ class TestData:
         assert 'aria-valuenow="42"' in html
 
     def test_link_is_underlined_not_only_coloured(self, render):
-        """A link distinguished only by colour fails for anyone who cannot see
-        the colour."""
+        """A link distinguished only by colour fails anyone who cannot see the
+        colour."""
         html = render(f'{DATA}{{{{ link("Docs", "/docs") }}}}')
         assert "underline" in html
 
     def test_caption_is_muted_and_small(self, render):
-        """The whole reason it is a macro: `text-muted-foreground` is a colour
-        utility an app template may not write."""
+        """Why it is a macro at all: `text-muted-foreground` is a colour utility
+        an app template may not write."""
         html = render(f'{DATA}{{{{ caption("Refreshed every five minutes.") }}}}')
         assert '<p class="text-muted-foreground text-sm">Refreshed every five minutes.</p>' in html
 
@@ -405,8 +406,8 @@ class TestSpinner:
         assert "animate-spin" in html
 
     def test_takes_its_colour_from_context_not_from_a_hue(self, render):
-        """`stroke="currentColor"` is why a spinner inside a primary button
-        needs no tone at all — and why there is no colour literal to leak."""
+        """`stroke="currentColor"` is why a spinner inside a primary button needs
+        no tone, and why there is no colour literal to leak."""
         assert 'stroke="currentColor"' in render(f"{FEEDBACK}{{{{ spinner() }}}}")
 
     @pytest.mark.parametrize("size", ["xs", "sm", "default", "lg"])
@@ -433,7 +434,7 @@ class TestSpinner:
         assert expected in render(f'{FEEDBACK}{{{{ spinner(tone="{tone}") }}}}')
 
     def test_current_tone_emits_no_colour_class_at_all(self, render):
-        """For a spinner inside a button, where the button already set the
+        """For a spinner inside a button, where the button has already set the
         colour and a tone would override it."""
         html = render(f'{FEEDBACK}{{{{ spinner(tone="current") }}}}')
         assert "text-" not in html
@@ -444,8 +445,8 @@ class TestSpinner:
         assert "text-muted-foreground" in html
 
     def test_without_a_label_it_is_decorative(self, render):
-        """Announcing the glyph as well as the "Saving…" text beside it would
-        say the same thing twice."""
+        """Announcing the glyph as well as the "Saving…" text beside it says the
+        same thing twice."""
         html = render(f"{FEEDBACK}{{{{ spinner() }}}}")
         assert 'aria-hidden="true"' in html
         assert "role=" not in html
@@ -459,8 +460,8 @@ class TestSpinner:
         assert "aria-live" not in html
 
     def test_indicator_opts_into_htmxs_own_show_hide(self, render):
-        """htmx injects the rule for this class itself, so an indicator needs
-        no CSS from fjkit and no JavaScript from anyone."""
+        """htmx injects the rule for this class itself, so an indicator needs no
+        CSS from fjkit and no JavaScript from anyone."""
         assert "htmx-indicator" in render(f"{FEEDBACK}{{{{ spinner(indicator=true) }}}}")
         assert "htmx-indicator" not in render(f"{FEEDBACK}{{{{ spinner() }}}}")
 
@@ -474,16 +475,17 @@ DIALOG_BODY = '{% call dialog("d1", title="Task 7") %}Body{% endcall %}'
 
 
 def outer_tag(html: str) -> str:
-    """The dialog element's own attributes, without the close button's — both
-    carry a `data-size`, and only one of them is the component's contract."""
+    """Return the dialog element's own attributes, without the close button's.
+    Both carry a `data-size`, and only the dialog's is the component's
+    contract."""
     return html.strip()[: html.strip().index(">") + 1]
 
 
 class TestDialog:
     def test_it_is_a_popover_so_nothing_has_to_open_it(self, render):
-        """The whole component rests on this attribute: with it the browser
-        owns open state, the top layer, Escape and click-outside. Without it
-        the macro would need a line of JavaScript to be worth anything."""
+        """The component rests on this attribute: with it the browser owns open
+        state, the top layer, Escape and click-outside. Without it the macro
+        would need JavaScript to be worth anything."""
         html = render(f"{FEEDBACK_DIALOG}{DIALOG_BODY}")
         assert "popover" in html
         assert "showModal" not in html and "onclick" not in html
@@ -505,8 +507,8 @@ class TestDialog:
         assert '<h2 id="d1-title">Task 7</h2>' in html
 
     def test_it_does_not_claim_modality_it_does_not_have(self, render):
-        """A popover leaves the page behind it reachable. Saying aria-modal
-        would tell a screen reader the opposite of what is true."""
+        """A popover leaves the page behind it reachable. `aria-modal` would
+        tell a screen reader the opposite of what is true."""
         assert "aria-modal" not in render(f"{FEEDBACK_DIALOG}{DIALOG_BODY}")
 
     def test_no_title_means_no_dangling_label_reference(self, render):
@@ -520,8 +522,8 @@ class TestDialog:
         assert 'id="d1-description"' in html
 
     def test_the_body_carries_the_id_htmx_targets(self, render):
-        """The published seam: a trigger fetches into `#<id>-body`, so the
-        shell can render once and the contents only when it is opened."""
+        """The published seam: a trigger fetches into `#<id>-body`, so the shell
+        renders once and the contents only when it is opened."""
         assert '<section id="d1-body">Body</section>' in render(f"{FEEDBACK_DIALOG}{DIALOG_BODY}")
 
     @pytest.mark.parametrize("size", ["sm", "lg"])
@@ -563,10 +565,10 @@ class FakeURL:
 class FakeRequest:
     """As much of a Starlette request as `url_for` and `is_active` touch.
 
-    A real request needs an app, a router and a scope to answer those two, and
-    none of that is what these tests are about — the macro's contract is that it
-    takes a *route name* and asks the globals, which a stub proves as well as a
-    running app does.
+    A real request needs an app, a router and a scope to answer those two, none
+    of which these tests are about. The macro's contract is that it takes a
+    route name and asks the globals, which a stub proves as well as a running
+    app does.
     """
 
     def __init__(self, active: str | None = None) -> None:
@@ -581,7 +583,7 @@ NAV = '{% call sidebar() %}<i>nav</i>{% endcall %}'
 
 class TestSidebar:
     def test_it_emits_basecoats_structure_because_the_css_depends_on_it(self, render):
-        """`aside.sidebar > nav > section` is not a style choice — every rule in
+        """`aside.sidebar > nav > section` is not a style choice: every rule in
         Basecoat's sidebar layer is written against that shape, so a macro that
         wrapped the body one element deeper would render unstyled."""
         html = render(f"{SIDEBAR}{NAV}")
@@ -599,8 +601,8 @@ class TestSidebar:
         assert f'data-side="{side}"' in html
 
     def test_unknown_side_falls_back_rather_than_killing_the_layout(self, render):
-        """There is no rule for `data-side="middle"`: the panel would lose its
-        border and the page would lose the margin that keeps it clear."""
+        """No rule matches `data-side="middle"`: the panel would lose its border
+        and the page would lose the margin that keeps it clear."""
         html = render(f'{SIDEBAR}{{% call sidebar(side="middle") %}}x{{% endcall %}}')
         assert "middle" not in html
         assert 'data-side="left"' in html
@@ -634,9 +636,9 @@ class TestSidebar:
         assert 'hx-get="/nav"' in html
 
     def test_group_labels_itself_without_minting_an_id(self, render):
-        """An id here would be an id a second copy of the same sidebar — an
-        htmx swap, say — duplicates, and a duplicate `aria-labelledby` resolves
-        to the wrong heading rather than to nothing."""
+        """A second copy of the same sidebar — an htmx swap, say — would
+        duplicate any id here, and a duplicate `aria-labelledby` resolves to the
+        wrong heading rather than to nothing."""
         html = render(f'{SIDEBAR}{{% call sidebar_group("Workspace") %}}<li>a</li>{{% endcall %}}')
         assert 'role="group"' in html and 'aria-label="Workspace"' in html
         assert "<h3>Workspace</h3>" in html
@@ -658,7 +660,7 @@ class TestSidebar:
 
     def test_the_label_sits_in_its_own_span_so_a_long_one_truncates(self, render):
         """Basecoat truncates the last span in the row. Text handed straight to
-        the anchor would push the icon out of the panel instead."""
+        the anchor pushes the icon out of the panel instead."""
         html = render(
             f'{SIDEBAR}{{{{ sidebar_link(request, "tasks_page", "Tasks", icon_name="list-checks") }}}}',
             request=FakeRequest(),
@@ -703,7 +705,7 @@ class TestSidebar:
 
     def test_trigger_does_not_render_a_state_the_script_owns(self, render):
         """A server-rendered `aria-expanded` is a second copy of the open state,
-        and the copy is stale the first time anyone clicks."""
+        and it goes stale the first time anyone clicks."""
         assert "aria-expanded" not in render(f"{SIDEBAR}{{{{ sidebar_trigger() }}}}")
 
 
@@ -727,9 +729,9 @@ class TestShellSidebarSlot:
         assert "max-w-6xl" not in html, "a centred wrapper would sit under the fixed panel"
 
     def test_the_wrapper_is_the_asides_immediate_sibling(self, render):
-        """Basecoat gives the margin to `.sidebar + *`. Anything rendered
-        between the two takes the margin instead, and the page slides under the
-        panel — silently, and only once someone opens it."""
+        """Basecoat gives the margin to `.sidebar + *`. Anything rendered between
+        the two takes the margin instead, and the page slides under the panel,
+        silently, and only once someone opens it."""
         html = render(SHELL_WITH_SIDEBAR)
         between = html[html.index("</aside>") + len("</aside>") : html.index("<div class=")]
         assert between.strip() == ""
@@ -751,9 +753,9 @@ FILE_ITEMS = '[{"id": "a", "label": "main.py"}, {"id": "b", "label": "router.py"
 
 
 class TestTabs:
-    """Basecoat's script drives `.tabs`, and it finds everything through the
-    aria wiring. These lock the four attributes it reads — get any of them
-    wrong and the tabs silently stop switching, with no error anywhere."""
+    """Basecoat's script drives `.tabs` and finds everything through the aria
+    wiring. These lock the four attributes it reads: get any of them wrong and
+    the tabs silently stop switching, with no error anywhere."""
 
     def test_each_tab_points_at_its_panel(self, render):
         html = render(
@@ -775,23 +777,23 @@ class TestTabs:
         assert html.count('aria-selected="true"') == 1
 
     def test_selected_names_the_open_tab(self, render):
-        """The server knows which tab the request was for, so this is a
-        parameter rather than something a script decides after paint."""
+        """The server knows which tab the request was for, so this is a parameter
+        rather than something a script decides after paint."""
         html = render(f'{TABS}{{% call tabs({FILE_ITEMS}, selected="b") %}}{{% endcall %}}')
         assert html.count('aria-selected="true"') == 1
         assert 'aria-controls="b"' in html.split('aria-selected="true"')[0]
 
     def test_orientation_is_a_closed_lookup(self, render):
-        """`aria-orientation` is what the key handler reads to choose between
-        Left/Right and Up/Down. Interpolating it would let a typo through and
-        leave the arrow keys dead with no other symptom."""
+        """The key handler reads `aria-orientation` to choose between Left/Right
+        and Up/Down. Interpolating it would let a typo through and leave the
+        arrow keys dead with no other symptom."""
         html = render(f'{TABS}{{% call tabs({FILE_ITEMS}, orientation="sideways") %}}{{% endcall %}}')
         assert 'aria-orientation="horizontal"' in html
         assert "sideways" not in html
 
     def test_panels_are_not_pre_hidden(self, render):
         """Basecoat hides the inactive panels on init. Rendering them hidden
-        would make them invisible to a reader with scripting off."""
+        makes them invisible to a reader with scripting off."""
         html = render(
             f"{TABS}{{% call tabs({FILE_ITEMS}) %}}"
             '{% call tab_panel("b") %}second{% endcall %}{% endcall %}'
@@ -804,23 +806,23 @@ class TestLazyTabPanel:
     """`lazy` makes a panel fetch its own body when it is shown.
 
     Every assertion here is a way the hand-written version goes wrong without
-    raising anything: the page is simply not lazy, or it fetches four times for
-    one broadcast, or it loops. None of that shows up in a route test."""
+    raising anything: the page is not lazy, or it fetches four times for one
+    broadcast, or it loops. None of that shows up in a route test."""
 
     LAZY = '{% call tab_panel("p", lazy="/detail", on=["task-selected"], include="[name=task_id]") %}S{% endcall %}'
 
     def test_the_trigger_is_intersect_and_never_revealed(self, render):
-        """`revealed` tests visibility with getBoundingClientRect, and a panel
+        """`revealed` tests visibility with `getBoundingClientRect`, and a panel
         hidden by `display:none` reports an all-zero rect that passes the test.
-        A `revealed` panel therefore fetches at page load — no error, no empty
-        panel, just a page that is not lazy. This is the whole component."""
+        A `revealed` panel therefore fetches at page load: no error, no empty
+        panel, just a page that is not lazy — which is the whole component."""
         html = render(f"{TABS}{self.LAZY}")
         assert "revealed" not in html
         assert 'hx-trigger="intersect' in html
 
     def test_a_broadcast_is_filtered_on_the_panel_being_visible(self, render):
-        """The events are raised on <body>, so a hidden panel hears them as
-        well as the open one. Without the filter, four tabs are four requests
+        """The events are raised on `<body>`, so a hidden panel hears them as
+        well as the open one. Without the filter, four tabs make four requests
         per broadcast and three are for markup nobody is looking at."""
         html = render(f"{TABS}{self.LAZY}")
         assert "task-selected[!this.hidden] from:body" in html
@@ -836,14 +838,14 @@ class TestLazyTabPanel:
     def test_the_panel_survives_its_own_reply(self, render):
         """An element carrying `intersect` that is replaced by markup carrying
         `intersect` is processed on screen, fires at once, and loops. The swap
-        has to be innerHTML onto the panel itself."""
+        has to be `innerHTML` onto the panel itself."""
         html = render(f"{TABS}{self.LAZY}")
         assert 'hx-target="this"' in html
         assert 'hx-swap="innerHTML"' in html
 
     def test_include_is_what_the_panel_sends(self, render):
-        """`intersect` carries no event, so the id cannot come from one. It is
-        a selector because the only thing both paths can read is the page."""
+        """`intersect` carries no event, so the id cannot come from one. It is a
+        selector because the page is the only thing both paths can read."""
         html = render(f"{TABS}{self.LAZY}")
         assert "hx-include=\"[name=task_id]\"" in html
 
@@ -865,13 +867,13 @@ class TestLazyTabPanel:
 class TestCodeBlock:
     def test_a_scroll_region_is_reachable_by_keyboard(self, render):
         """A scroll container nothing can focus cannot be scrolled without a
-        mouse. This is the reason the macro exists rather than being a <pre>."""
+        mouse. That is why this is a macro rather than a bare `<pre>`."""
         html = render(f'{CODE}{{{{ code_block("x = 1") }}}}')
         assert 'tabindex="0"' in html
 
     def test_a_region_role_is_only_used_with_a_name(self, render):
         """An unlabelled region is a stop in the tab order that announces
-        nothing — worse than no landmark at all."""
+        nothing, which is worse than no landmark at all."""
         bare = render(f'{CODE}{{{{ code_block("x = 1") }}}}')
         assert "role=" not in bare
 
@@ -890,8 +892,8 @@ class TestCodeBlock:
 
 class TestItemList:
     def test_uses_basecoat_s_markup_contract(self, render):
-        """`.item > section` is the text column and `.item > aside` the actions;
-        the CSS keys off those elements, so they are not interchangeable."""
+        """`.item > section` is the text column and `.item > aside` the actions.
+        The CSS keys off those elements, so they are not interchangeable."""
         html = render(f"{CODE}{{% call item_list() %}}{{{{ item(\"router.py\", \"routes\") }}}}{{% endcall %}}")
         assert 'class="item-group"' in html
         assert 'class="item"' in html
@@ -902,8 +904,8 @@ class TestItemList:
         assert '<a class="item"' in html and 'href="/docs"' in html
 
     def test_clamp_false_releases_the_two_line_limit(self, render):
-        """Basecoat clamps a row's description to two lines, which is right for
-        a feed and wrong for a definition list."""
+        """Basecoat clamps a row's description to two lines, which suits a feed
+        and not a definition list."""
         assert 'data-clamp="false"' in render(f'{CODE}{{{{ item("t", "d", clamp=false) }}}}')
         assert "data-clamp" not in render(f'{CODE}{{{{ item("t", "d") }}}}')
 
@@ -921,8 +923,8 @@ class TestButtonGroupOrientation:
         assert 'data-orientation="vertical"' in html
 
     def test_extra_keywords_reach_the_element(self, render):
-        """Every other component takes pass-through attributes; this one did
-        not, which made it the only one you could not hang an id on."""
+        """Regression: every other component took pass-through attributes and
+        this one did not, making it the only one you could not hang an id on."""
         for orientation in ("horizontal", "vertical"):
             html = render(
                 f'{GROUP}{{% call button_group(orientation="{orientation}", id="filters") %}}x{{% endcall %}}'
@@ -951,7 +953,7 @@ class TestAlert:
         assert f'data-variant="{variant}"' in html
 
     def test_destructive_interrupts_and_the_rest_do_not(self, render):
-        """`alert` interrupts a screen reader, `status` waits for a pause. The
+        """`alert` interrupts a screen reader; `status` waits for a pause. The
         variant already draws that distinction, so the role follows it."""
         assert 'role="alert"' in render(f'{ALERT}{{{{ alert("Failed", variant="destructive") }}}}')
         assert 'role="status"' in render(f'{ALERT}{{{{ alert("Saved", variant="success") }}}}')
@@ -1086,8 +1088,8 @@ class TestRangeField:
         assert 'type="range"' in html and 'class="input"' in html
 
     def test_the_fill_matches_the_value_on_first_paint(self, render):
-        """Basecoat paints the track from --slider-value and only updates it
-        from JS on drag; without this the bar starts at upstream's 20%."""
+        """Basecoat paints the track from `--slider-value` and only updates it
+        from JS on drag. Without this the bar starts at upstream's 20%."""
         assert "--slider-value: 25.0%" in render(f'{RANGE}{{{{ range_field("v", value=25) }}}}')
 
     def test_the_fill_accounts_for_a_non_zero_minimum(self, render):
@@ -1124,8 +1126,8 @@ class TestDisclosure:
         assert 'class="accordion"' in html
 
     def test_multiple_withholds_the_class_rather_than_adding_one(self, render):
-        """Allowing several open panels means shipping no JS behaviour, not
-        shipping JS that is asked to do nothing."""
+        """Allowing several open panels means shipping no JS behaviour, rather
+        than shipping JS that is asked to do nothing."""
         html = render(f'{DISCLOSURE}{{% call accordion(multiple=true) %}}x{{% endcall %}}')
         assert "accordion" not in html
 
@@ -1153,8 +1155,8 @@ INPUT_GROUP = '{% from "ui/form.html" import input_group_field, reveal_scripts %
 
 
 class TestOverlayIdWiring:
-    """One id in, four out. A mismatch here fails silently — the panel opens
-    but is never announced, or never opens at all."""
+    """One id in, four out. A mismatch fails silently: the panel opens but is
+    never announced, or never opens at all."""
 
     def test_popover_wires_trigger_to_panel(self, render):
         html = render(f'{OVERLAY}{{% call popover("p1", "Open") %}}body{{% endcall %}}')
@@ -1182,8 +1184,8 @@ class TestOverlayIdWiring:
 
 
 class TestOverlayStartingState:
-    """First paint is the state before Basecoat's JS has run. A trigger with
-    no aria-expanded is announced as a plain button."""
+    """First paint is the state before Basecoat's JS has run. A trigger with no
+    `aria-expanded` is announced as a plain button."""
 
     def test_a_closed_popover_says_so_on_both_ends(self, render):
         html = render(f'{OVERLAY}{{% call popover("p", "Open") %}}b{{% endcall %}}')
@@ -1202,8 +1204,8 @@ class TestMenuItem:
         assert 'role="menuitem"' in render(f'{OVERLAY}{{{{ menu_item("Profile") }}}}')
 
     def test_a_checked_item_changes_role(self, render):
-        """Reporting a checked state under role=menuitem is a contradiction a
-        screen reader cannot resolve."""
+        """Reporting a checked state under `role="menuitem"` is a contradiction
+        a screen reader cannot resolve."""
         html = render(f'{OVERLAY}{{{{ menu_item("Wrap", checked=true) }}}}')
         assert 'role="menuitemcheckbox"' in html and 'aria-checked="true"' in html
 
@@ -1236,7 +1238,7 @@ class TestMenuItem:
 
 class TestSelectMenuAndCombobox:
     def test_the_value_travels_in_a_hidden_input(self, render):
-        """The visible trigger is a button and submits nothing."""
+        """The visible trigger is a button, which submits nothing."""
         html = render(f'{OVERLAY}{{{{ select_menu("theme", [("d", "Dark")], selected="d") }}}}')
         assert '<input type="hidden" name="theme" value="d">' in html
 
@@ -1269,12 +1271,12 @@ class TestSelectMenuAndCombobox:
 
 class TestScriptedControlsAsFields:
     """`combobox` and `select_menu` render a bare control until one of
-    `visible_label`, `hint` or `error` is passed, and then they render the same
-    field every macro in `ui/form.html` renders.
+    `visible_label`, `hint` or `error` is passed, and then render the same field
+    every macro in `ui/form.html` renders.
 
-    Both halves matter. The bare form is what every existing call site gets and
-    must not move; the field form is what lets one of these sit in a form beside
-    a `text_field` without the app hand-copying the wrapper.
+    Both halves matter. Every existing call site gets the bare form, which must
+    not move; the field form lets one of these sit in a form beside a
+    `text_field` without the app hand-copying the wrapper.
     """
 
     OPTIONS = '[("1", "I"), ("2", "II")]'
@@ -1291,8 +1293,8 @@ class TestScriptedControlsAsFields:
         assert '<label class="label" for="s-phase-trigger">Phase</label>' in html
 
     def test_a_visible_label_replaces_the_aria_label(self, render):
-        """Both at once and a screen reader reads the attribute instead of the
-        text on the page — two names for one control, and the wrong one wins."""
+        """With both, a screen reader reads the attribute instead of the text on
+        the page: two names for one control, and the wrong one wins."""
         html = render(
             f'{OVERLAY}{{{{ select_menu("phase", {self.OPTIONS}, label="Aria", visible_label="Phase") }}}}'
         )
@@ -1315,9 +1317,9 @@ class TestScriptedControlsAsFields:
         assert 'aria-describedby="s-phase-hint"' in trigger
 
     def test_the_hidden_input_names_the_message_too(self, render):
-        """Not for a screen reader — a hidden input is not exposed to one. It is
+        """Not for a screen reader, which is never shown a hidden input. It is
         for `js/errors.js`, which finds the control a 422 names by `[name]`, and
-        that is this input."""
+        this is that input."""
         html = render(f'{OVERLAY}{{{{ select_menu("phase", {self.OPTIONS}, hint="h") }}}}')
         assert 'name="phase" value="" aria-describedby="s-phase-hint"' in html
 
@@ -1339,7 +1341,7 @@ class TestScriptedControlsAsFields:
     def test_a_field_with_nothing_to_say_still_reserves_the_paragraph(self, render):
         """`js/errors.js` creates its own `<p>` after the control when it finds
         none, and for these two the control is a hidden input at the end of the
-        wrapper — so the 422 would draw inside the select box. The reserved
+        wrapper, so the 422 would draw inside the select box. The reserved
         paragraph gives it somewhere correct to land."""
         html = render(f'{OVERLAY}{{{{ select_menu("phase", {self.OPTIONS}, visible_label="Phase") }}}}')
         assert '<p class="text-muted-foreground text-xs" id="s-phase-hint" hidden></p>' in html
@@ -1351,16 +1353,17 @@ class TestScriptedControlsAsFields:
 
 class TestMultipleSelection:
     """`multiple=true` is one attribute to Basecoat and a different wire format
-    to the route. Both halves are asserted here, because either one alone is a
+    to the route. Both halves are asserted here, because either alone gives a
     control that looks right and posts something a signature cannot read."""
 
     OPTIONS = '[("bug", "Bug"), ("ui", "UI"), ("docs", "Docs")]'
 
     @pytest.mark.parametrize("macro", ["select_menu", "combobox"])
     def test_the_listbox_is_what_basecoat_reads(self, render, macro):
-        """The attribute goes on the listbox, not on the root. Basecoat reads
+        """The attribute goes on the listbox, not the root. Basecoat reads
         `listbox.getAttribute("aria-multiselectable")` and nothing else, so the
-        same word on the wrapper is a multi-select that silently is not one."""
+        same word on the wrapper gives a multi-select that silently is not
+        one."""
         html = render(f'{OVERLAY}{{{{ {macro}("l", {self.OPTIONS}, multiple=true) }}}}')
         listbox = html[html.index('role="listbox"') :]
         assert 'aria-multiselectable="true"' in listbox[: listbox.index("</div>")]
@@ -1372,23 +1375,22 @@ class TestMultipleSelection:
 
     @pytest.mark.parametrize("macro", ["select_menu", "combobox"])
     def test_the_hidden_input_carries_a_json_array(self, render, macro):
-        """Basecoat's own format, so the control and the first paint agree
-        before any JS has run."""
+        """Basecoat's own format, so the control and the first paint agree before
+        any JS has run."""
         html = render(f'{OVERLAY}{{{{ {macro}("l", {self.OPTIONS}, selected=["bug", "ui"], multiple=true) }}}}')
         assert 'name="l" data-fjkit-multi value=\'["bug", "ui"]\'' in html
 
     @pytest.mark.parametrize("macro", ["select_menu", "combobox"])
     def test_the_json_array_is_single_quoted(self, render, macro):
-        """`tojson` escapes `<`, `>`, `&` and `'` — never `"`. Inside a
-        double-quoted attribute the value would be cut off at the first
-        element, which is a one-item selection that no test of the parsed
-        result would catch."""
+        """`tojson` escapes `<`, `>`, `&` and `'`, never `"`. Inside a
+        double-quoted attribute the value is cut off at the first element, which
+        is a one-item selection no test of the parsed result would catch."""
         html = render(f'{OVERLAY}{{{{ {macro}("l", {self.OPTIONS}, selected=["bug"], multiple=true) }}}}')
         assert "value='[" in html and 'value="[' not in html
 
     @pytest.mark.parametrize("macro", ["select_menu", "combobox"])
     def test_nothing_selected_is_an_empty_array_not_an_empty_string(self, render, macro):
-        """`""` parses to nothing useful; `[]` is the value Basecoat writes."""
+        """`""` parses to nothing useful. `[]` is the value Basecoat writes."""
         html = render(f'{OVERLAY}{{{{ {macro}("l", {self.OPTIONS}, multiple=true) }}}}')
         assert "value='[]'" in html
 
@@ -1398,24 +1400,24 @@ class TestMultipleSelection:
         assert html.count('aria-selected="true"') == 2
 
     def test_the_select_trigger_joins_the_labels(self, render):
-        """What Basecoat's JS writes the moment it runs. Anything else here is
-        a visible change at first paint."""
+        """What Basecoat's JS writes the moment it runs. Anything else here is a
+        visible change at first paint."""
         html = render(f'{OVERLAY}{{{{ select_menu("l", {self.OPTIONS}, selected=["bug", "docs"], multiple=true) }}}}')
         assert ">Bug, Docs<" in html
 
     def test_the_combobox_filter_box_starts_empty(self, render):
-        """It is the filter, not the display — a pre-filled one filters the
-        list down to the label it was filled with before anybody types."""
+        """It is the filter, not the display. A pre-filled one narrows the list
+        to the label it was filled with before anybody types."""
         html = render(f'{OVERLAY}{{{{ combobox("l", {self.OPTIONS}, selected=["bug"], multiple=true) }}}}')
         text_input = html[html.index('role="combobox"') : html.index(">", html.index('role="combobox"'))]
         assert 'value=""' in text_input
-        # …and the selection is still on the wire, in the input that carries it.
+        # The selection is still on the wire, in the input that carries it.
         assert 'data-fjkit-multi value=\'["bug"]\'' in html
 
     @pytest.mark.parametrize("macro", ["select_menu", "combobox"])
     def test_the_panel_stays_open_by_default(self, render, macro):
-        """Absent means "stay open" to Basecoat, and staying open is the only
-        sane default for a control whose point is picking more than one."""
+        """Absent means "stay open" to Basecoat, which is the right default for
+        a control whose point is picking more than one."""
         html = render(f'{OVERLAY}{{{{ {macro}("l", {self.OPTIONS}, multiple=true) }}}}')
         assert "data-close-on-select" not in html
 
@@ -1426,8 +1428,8 @@ class TestMultipleSelection:
 
     def test_the_script_is_deferred_after_htmx(self, render):
         """Deferred scripts run in document order and htmx is deferred in the
-        shell's head. An ordinary <script> would run first and register a
-        listener htmx has not defined the event for yet."""
+        shell's head. An ordinary `<script>` would run first and register a
+        listener for an event htmx has not defined yet."""
         html = render(f"{OVERLAY}{{{{ multiselect_scripts() }}}}")
         assert "<script defer" in html and "js/multiselect.js" in html
 
@@ -1453,7 +1455,7 @@ class TestDrawer:
         assert 'aria-haspopup="dialog"' in html and 'aria-controls="d"' in html
 
     def test_the_close_button_finds_its_dialog_structurally(self, render):
-        """closest('dialog'), not the id — a rename cannot break it."""
+        """`closest('dialog')`, not the id, so a rename cannot break it."""
         html = render(f'{OVERLAY}{{% call drawer("d") %}}b{{% endcall %}}')
         assert "this.closest('dialog').close()" in html
 
@@ -1475,19 +1477,19 @@ class TestCommand:
         assert 'data-keywords="date event"' in html
 
     def test_the_listbox_is_permanently_expanded(self, render):
-        """It is the dialog that opens and closes, not the listbox."""
+        """The dialog opens and closes, not the listbox."""
         assert 'aria-expanded="true"' in render(f'{OVERLAY}{{% call command("k") %}}x{{% endcall %}}')
 
     def test_a_command_group_heading_is_a_span(self, render):
-        """Upstream's command markup uses a span and its CSS selects on it."""
+        """Upstream's command markup uses a span, and its CSS selects on it."""
         html = render(f'{OVERLAY}{{% call command_group("Suggestions") %}}x{{% endcall %}}')
         assert '<span role="heading"' in html
 
 
 class TestInputGroup:
     def test_addons_are_optional_and_leave_nothing_behind(self, render):
-        """An empty addon still takes its padding, which is why these are
-        slots rather than a caller block."""
+        """An empty addon still takes its padding, which is why these are slots
+        rather than a caller block."""
         html = render(f'{INPUT_GROUP}{{{{ input_group_field("q") }}}}')
         assert "data-align" not in html
 
@@ -1496,7 +1498,7 @@ class TestInputGroup:
         assert 'data-align="start"' in html and 'data-align="end"' in html
 
     def test_the_inner_input_has_no_input_class(self, render):
-        """Basecoat paints the border on the group; a second one draws a box
+        """Basecoat paints the border on the group. A second one draws a box
         inside the box."""
         html = render(f'{INPUT_GROUP}{{{{ input_group_field("q") }}}}')
         assert 'class="input-group"' in html
@@ -1517,8 +1519,8 @@ class TestReveal:
         assert "data-fjkit-reveal" not in render(f'{INPUT_GROUP}{{{{ input_group_field("password") }}}}')
 
     def test_the_button_is_a_toggle_not_a_command(self, render):
-        """`aria-pressed` is what tells a screen reader the field's state; a
-        button without it announces the same thing in both."""
+        """`aria-pressed` is what tells a screen reader the field's state. A
+        button without it announces the same thing in both states."""
         html = render(f"{INPUT_GROUP}{self.CALL}")
         assert 'aria-pressed="false"' in html
         assert "data-fjkit-reveal" in html
@@ -1529,7 +1531,7 @@ class TestReveal:
 
     def test_the_button_names_the_input_it_controls(self, render):
         """`js/reveal.js` reads `aria-controls`, so this attribute is the wiring
-        and not only an accessibility nicety."""
+        and not only an accessibility affordance."""
         html = render(f"{INPUT_GROUP}{self.CALL}")
         assert 'id="f-password"' in html
         assert 'aria-controls="f-password"' in html
@@ -1540,7 +1542,8 @@ class TestReveal:
         assert 'aria-controls="f-password"' not in html
 
     def test_both_labels_travel_with_the_button(self, render):
-        """The script reads them off the element, so it holds no English."""
+        """The script reads both labels off the element, so it holds no
+        English."""
         html = render(
             f'{INPUT_GROUP}{{{{ input_group_field("password", revealable=true,'
             ' reveal_show="Mostrar", reveal_hide="Ocultar") }}'
@@ -1555,6 +1558,6 @@ class TestReveal:
 
     def test_the_script_is_opt_in_per_page(self, render):
         """CHARTER §7: a page downloads htmx and Basecoat by default and nothing
-        else. The macro is what a page uses to say otherwise."""
+        else. This macro is how a page says otherwise."""
         assert "js/reveal.js" not in render(f"{INPUT_GROUP}{self.CALL}")
         assert "js/reveal.js" in render(f"{INPUT_GROUP}{{{{ reveal_scripts() }}}}")

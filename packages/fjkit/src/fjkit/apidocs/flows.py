@@ -3,15 +3,15 @@
 OpenAPI can describe four kinds of authentication: an API key in a named place,
 an HTTP scheme, an OAuth2 flow, and OpenID Connect. Swagger UI implements
 exactly those, because it can only implement what the document can say. Every
-real sign-in that is not one of them — a password posted to your own `/login`,
-an OIDC exchange your server performs, a session cookie the browser is never
-allowed to read — is off the map, and the "Authorize" dialog is a text box
-where you paste a token you obtained some other way.
+other sign-in — a password posted to the app's own `/login`, an OIDC exchange
+the server performs, a session cookie the browser may never read — is off the
+map, and the "Authorize" dialog becomes a text box for a token obtained
+somewhere else.
 
 An `AuthFlow` is that dialog, written in Python by the app that owns the login.
 It answers three questions:
 
-* **What should the panel show?** `state()` — signed in or not, and the facts
+* **What does the panel show?** `state()` — signed in or not, and the facts
   worth putting on screen.
 * **How does someone sign in from here?** `sign_in()` — anything at all. The
   built-in `SessionFlow` calls `AuthPlugin.issue`, which runs the app's own
@@ -22,8 +22,8 @@ It answers three questions:
 
 The distinction that matters: the flow does not hand the console a credential
 to attach. It puts the caller into the state the app defines, and the console
-then makes a request as that caller. Which is why refresh, revocation and
-expiry all just work — `AuthPlugin` is doing them, not this module.
+then makes a request as that caller. That is why refresh, revocation and expiry
+work — `AuthPlugin` performs them, not this module.
 """
 
 from __future__ import annotations
@@ -52,8 +52,8 @@ __all__ = [
 ]
 
 
-#: Where `HeaderFlow` parks a token it saved during the request that saved it.
-#: On `request.state` rather than an instance attribute because the plugin is
+#: Where `HeaderFlow` keeps a token for the rest of the request that saved it.
+#: On `request.state` rather than an instance attribute, because the plugin is
 #: one object shared by every concurrent request.
 _STAGED = "fjkit_apidocs_token"
 
@@ -61,9 +61,9 @@ _STAGED = "fjkit_apidocs_token"
 class FlowError(Exception):
     """A sign-in that failed for a reason the person can act on.
 
-    Raise it for a bad password or a missing field. The message is printed on
-    the panel verbatim, so it is the flow's job to make sure it says something
-    a developer can use and nothing an app would not put on a page.
+    Raise it for a bad password or a missing field. The panel prints the
+    message verbatim, so the flow must make it useful to a developer and safe
+    to show on a page.
     """
 
 
@@ -86,8 +86,8 @@ class FlowState:
     signed_in: bool
     headline: str
     detail: str = ""
-    #: label/value rows. Whatever the flow thinks is worth seeing — who you
-    #: are, what you may do, when it runs out.
+    #: Label/value rows: who the caller is, what they may do, when the session
+    #: runs out — whatever the flow finds worth showing.
     facts: tuple[tuple[str, str], ...] = ()
     #: Shown only when signed out. A flow with none is read-only.
     fields: tuple[FlowField, ...] = ()
@@ -112,10 +112,10 @@ class AuthFlow(Protocol):
     label: str
 
     def state(self, request: Request) -> FlowState:
-        """Synchronous: it runs during a render, like a context processor.
+        """Describe the panel. Synchronous, because it runs during a render.
 
         A flow needing I/O does it in `sign_in` and reads the result back off
-        `request.state` — which is what `SessionFlow` does, via the session
+        `request.state`, which is what `SessionFlow` does with the session
         `AuthPlugin`'s middleware already loaded.
         """
 
@@ -136,11 +136,11 @@ class AuthFlow(Protocol):
 
 
 class NoFlow:
-    """The panel for an app with no sign-in — a statement, not a form.
+    """The panel for an app with no sign-in: a statement, not a form.
 
-    The default when the docs plugin finds no `AuthPlugin` alongside it. It
-    exists so the page has one shape rather than two: the session panel is
-    always there, and on an open API it says so.
+    The default when the docs plugin finds no `AuthPlugin` beside it. The page
+    then has one shape rather than two — the session panel is always present,
+    and on an open API it says so.
     """
 
     name = "none"
@@ -173,18 +173,18 @@ class SessionFlow:
     `sign_in` is `AuthPlugin.issue`, so the credentials go to whatever
     `TokenSource` the app configured — a password check, an OIDC exchange, an
     upstream token swap — and the browser is left holding the same signed
-    HttpOnly cookie the app's real login form would have set. From that point
-    the console is not carrying a credential at all: it forwards the cookie,
-    the session middleware does the rest, and a token that expires mid-session
-    is refreshed by the plugin exactly as it would be for a page.
+    HttpOnly cookie the app's real login form would set. From there the console
+    carries no credential at all: it forwards the cookie, the session
+    middleware does the rest, and the plugin refreshes a token that expires
+    mid-session exactly as it would for a page.
 
         auth = AuthPlugin(secret=…, source=MyOIDCSource(), trusted_origins=[…])
         docs = ApiDocsPlugin()                     # finds `auth` by itself
         FjkitConfig(plugins=(auth, docs))
 
     Name the fields when the source wants something other than a username and
-    a password — they are passed through to `TokenSource.exchange` as a plain
-    mapping, so a flow with one `api_key` field or three is the same code:
+    a password. They reach `TokenSource.exchange` as a plain mapping, so a flow
+    with one `api_key` field or three is the same code:
 
         ApiDocsPlugin(flow=SessionFlow(auth, fields=[FlowField("api_key", "API key")]))
     """
@@ -212,12 +212,12 @@ class SessionFlow:
         )
         #: Extra facts for the panel, from the app's own claims. The default
         #: shows what any session has; only the app knows that `claims["org"]`
-        #: is the thing you actually need to see before calling anything.
+        #: is the thing to check before calling anything.
         self.describe = describe
-        #: For an API that reads the upstream token from `Authorization`
-        #: rather than trusting the cookie. Off by default: putting the access
-        #: token in a header the console composes is the thing the token-handler
-        #: shape exists to avoid, and most fjkit apps do not need it.
+        #: For an API that reads the upstream token from `Authorization` rather
+        #: than trusting the cookie. Off by default: putting the access token
+        #: in a header the console composes is what the token-handler shape
+        #: exists to avoid, and most fjkit apps do not need it.
         self.attach_bearer = attach_bearer
 
     def state(self, request: Request) -> FlowState:
@@ -265,11 +265,10 @@ class SessionFlow:
         except FlowError:
             raise
         except Exception as exc:  # noqa: BLE001 — the source refused; say why
-            # Reported rather than swallowed. This page is read by whoever
-            # wrote the `TokenSource`, and "sign-in failed" with the reason
-            # hidden is the single most annoying thing a console can do. An app
-            # that must not print the reason raises `FlowError` with its own
-            # message from inside `exchange`.
+            # Reported rather than swallowed: whoever wrote the `TokenSource`
+            # reads this page, and "sign-in failed" with the reason hidden
+            # tells them nothing. An app that must not print the reason raises
+            # `FlowError` with its own message from inside `exchange`.
             #
             # The class name alone when there is no message: `raise
             # BadCredentials` is an ordinary way to write a source, and
@@ -290,15 +289,14 @@ class SessionFlow:
 
 
 class HeaderFlow:
-    """Hold a token and put it on every call. The classic case, done properly.
+    """Hold a token and put it on every call.
 
     For an API that authenticates with `Authorization: Bearer …` or an API key
-    header, and for an app with no `AuthPlugin` at all. The difference from
-    Swagger UI's version is where the value lives: in a signed, HttpOnly cookie
-    this plugin owns, not in the page's JavaScript. It is therefore not
-    readable by anything running on the page, it does not survive into a bug
-    report or a screen recording of the DOM, and it is scoped to the docs URL
-    rather than to the origin.
+    header, and for an app with no `AuthPlugin`. The difference from Swagger
+    UI's version is where the value lives: in a signed, HttpOnly cookie this
+    plugin owns, not in the page's JavaScript. Nothing running on the page can
+    read it, it does not reach a bug report or a screen recording of the DOM,
+    and it is scoped to the docs URL rather than to the origin.
 
         ApiDocsPlugin(flow=HeaderFlow(secret=os.environ["FJKIT_SECRET"]))
     """
@@ -337,10 +335,10 @@ class HeaderFlow:
         return self.cookie_path or "/"
 
     def _read(self, request: Request) -> str:
-        # What this same request just saved, before what the browser sent. A
+        # What this request just saved wins over what the browser sent. A
         # cookie set on the response is not in `request.cookies`, so without
-        # this the panel that renders straight after "Save" would say the token
-        # was not held — and the person would paste it again.
+        # this the panel rendered straight after "Save" would report no token
+        # held, and the person would paste it again.
         staged = getattr(request.state, _STAGED, None)
         if staged is not None:
             return staged
@@ -391,7 +389,7 @@ class HeaderFlow:
         setattr(request.state, _STAGED, token)
         # Hex rather than base64url: the payload goes straight into a cookie
         # value, and hex has no `=` padding to strip and no `/` or `+` to
-        # think about. It doubles the length of a token nobody reads.
+        # handle. The cost is doubling the length of a token nobody reads.
         response.set_cookie(
             self.cookie_name,
             sign_text(self.secret, token.encode("utf-8").hex()),
@@ -426,11 +424,10 @@ def _subject(session: Any) -> str:
 
 
 def _relative(moment: datetime) -> str:
-    """`in 12 min` / `4 s ago` — the form that answers "is this about to break".
+    """Format `moment` against now: `in 12 min`, `4 s ago`.
 
-    An absolute timestamp is the wrong unit for a token: nobody reading a docs
-    page is doing UTC arithmetic to find out whether the next call will trigger
-    a refresh.
+    An absolute timestamp is the wrong unit for a token: a reader would have to
+    do UTC arithmetic to find out whether the next call triggers a refresh.
     """
     delta = moment - datetime.now(UTC)
     seconds = int(abs(delta.total_seconds()))

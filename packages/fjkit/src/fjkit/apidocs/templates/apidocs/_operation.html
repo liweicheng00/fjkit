@@ -11,14 +11,14 @@
 {% from "ui/feedback.html" import spinner %}
 {#
   `textarea_field` is the kit's own, as of 0.2. This template carried a local
-  copy while it was still a roadmap item; keeping one now would be a second
+  copy while it was still a roadmap item; keeping one now would mean a second
   textarea with its own idea of `hint` and no `error` — and `error` is the seam
   0.3 fills in, which the console wants as much as any form does.
 
-  The three attributes below ride through `**attrs`. They are not decoration:
-  a JSON body under a spell-checker is a wall of red squiggles, and mobile
-  autocapitalisation turns `{"title"` into `{"Title"`, which is a payload that
-  fails validation for a reason nothing on screen explains.
+  The three attributes below ride through `**attrs`, and none is decoration: a
+  JSON body under a spell-checker is a wall of red squiggles, and mobile
+  autocapitalisation turns `{"title"` into `{"Title"`, a payload that fails
+  validation for a reason nothing on screen explains.
 #}
 {% from "ui/form.html" import form, textarea_field %}
 {% from "ui/icon.html" import icon %}
@@ -39,11 +39,11 @@
         </p>
       {% endif %}
       {#
-        The document's own two pointers outwards: the name every generated
-        client will give this call, and the link its author wrote to the real
+        The document's two pointers outwards: the name every generated client
+        gives this call, and the link its author wrote to the real
         explanation. Both are in the schema and neither usually survives being
-        rendered — which leaves a reference that is less informative than the
-        file it came from.
+        rendered, which leaves a reference less informative than the file it
+        came from.
       #}
       <div class="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
         {% if operation.operation_id %}
@@ -79,15 +79,15 @@
             {#
               Parameters and form-body fields in one run of inputs. They are
               different things to the document and the same thing to the person
-              filling them in, and `_compose` puts each back where its
-              `location` says it belongs.
+              filling them in; `_compose` puts each back where its `location`
+              says it belongs.
 
               Two columns, not a stack. A `limit` box or a `status` select
-              stretched across a full-width card is a text field the size of a
-              paragraph for a value that is four characters long — it reads as
-              though something long is expected. `grid` collapses to one column
-              on a narrow screen, so this is a wide-screen affordance rather
-              than a layout the small one has to live with.
+              stretched across a full-width card is a paragraph-sized text
+              field for a four-character value, and it reads as though
+              something long is expected. `grid` collapses to one column on a
+              narrow screen, so this is a wide-screen affordance rather than a
+              layout the small one has to live with.
             #}
             {% if operation.params or operation.body_fields %}
               {% call grid(cols=2, gap=3) %}
@@ -103,16 +103,15 @@
                   The box you type in, and what the document says about it,
                   side by side.
 
-                  They start identical — the textarea is prefilled with the very
-                  example beside it — and stop being identical the moment you
-                  paste your own payload in. That is the moment the reference is
-                  worth a column: a body built from `$ref`s and nested models is
-                  not something anyone reconstructs from memory, and the
-                  alternative is retyping it wrong or reloading the page to get
-                  it back. The Schema tab behind it is the other half of the
-                  same question — what is *allowed*, which is what you need the
-                  second the example stops working. Responses below do the same
-                  thing for the other direction.
+                  They start identical — the textarea is prefilled with the
+                  example beside it — and diverge the moment you paste your own
+                  payload in. That is when the reference earns a column: a body
+                  built from `$ref`s and nested models is not something anyone
+                  reconstructs from memory, and the alternative is retyping it
+                  wrong or reloading the page to get it back. The Schema tab
+                  behind it answers the other half of the question — what is
+                  allowed — which is what you need the second the example stops
+                  working. Responses below do the same for the other direction.
                 #}
                 {% call grid(cols=2, gap=3) %}
                   {{ textarea_field(body_field, label="Request body", value=operation.body_example,
@@ -138,15 +137,14 @@
 
               Everything above is a control the document asked for; this is the
               escape hatch for the one it did not — a feature flag, an
-              `If-None-Match`, a hand-typed `Accept` you are deliberately
-              testing. It belongs on the page and it does not belong in the
-              reading order: left open it is a two-line textarea sitting
-              between the parameters and the Send button, and it is empty on
-              almost every call anybody makes.
+              `If-None-Match`, a hand-typed `Accept` under deliberate test. It
+              belongs on the page and not in the reading order: left open it is
+              a two-line textarea between the parameters and the Send button,
+              and it is empty on almost every call anybody makes.
 
-              `<details>` rather than a scripted panel — the browser owns the
+              `<details>` rather than a scripted panel: the browser owns the
               open state, the keyboard handling and the expanded announcement,
-              and there is nothing left for JavaScript to add.
+              and nothing is left for JavaScript to add.
             #}
             <details class="text-sm">
               {#
@@ -187,10 +185,10 @@
     {#
       The parameters as a table, always — not only when the console is off.
 
-      The form fields carry the same facts and carry them one field at a time,
-      which is the right shape for filling something in and the wrong one for
-      reading what an endpoint takes. A client author copying this endpoint into
-      their own code wants the whole list at once, and Swagger gives them one.
+      The form fields carry the same facts one field at a time, which is the
+      right shape for filling something in and the wrong one for reading what
+      an endpoint takes. A client author copying this endpoint into their own
+      code wants the whole list at once, and Swagger gives them one.
     #}
     {% if operation.params or operation.body_fields %}
       {% call section("Parameters") %}
@@ -203,10 +201,10 @@
         {% call stack(gap=4) %}
           {#
             One block per documented status, not one example for the whole
-            endpoint. The 200 shape is what most readers are here for, but the
-            422 envelope and the 404 body are what they come back for — and a
-            page that documents four statuses and shows one example leaves the
-            other three as a shape you find out about from a failing call.
+            endpoint. Most readers come for the 200 shape and come back for the
+            422 envelope and the 404 body. A page that documents four statuses
+            and shows one example leaves the other three to be discovered from
+            a failing call.
           #}
           {% for entry in operation.responses %}
             {% call stack(gap=2) %}
@@ -243,8 +241,8 @@
 
 {#
   The sidebar, out of band, so its highlight follows the click that got here.
-  Only on a swap — `oob_nav` is false when this partial is embedded in the
-  page, where the sidebar renders itself and a second copy would be a duplicate
-  id in the document.
+  Only on a swap: `oob_nav` is false when this partial is embedded in the page,
+  where the sidebar renders itself and a second copy would duplicate an id in
+  the document.
 #}
 {% if oob_nav %}{% include "apidocs/_nav.html" %}{% endif %}

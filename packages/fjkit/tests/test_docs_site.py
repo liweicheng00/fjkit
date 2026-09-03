@@ -1,12 +1,12 @@
-"""The documentation site is a fjkit app, and these are the tests that say so.
+"""The documentation site is a fjkit app, and these tests hold it to that.
 
-`examples/fjkit-demo` proves the kit can build a back office. This site proves it can
-build the other thing every project needs — a documentation site with prose,
-source listings, tab strips and a navigation rail — and it is the harder case,
-because a docs page keeps reaching for shapes an admin never needs.
+`examples/fjkit-demo` proves the kit can build a back office. This site proves
+it can build a documentation site — prose, source listings, tab strips and a
+navigation rail — which is the harder case, because a docs page keeps reaching
+for shapes an admin never needs.
 
-The value is the failures. When one of these needs a new utility class to pass,
-that is the kit missing a component, and the missing component is named in
+The failures are the value. When one of these needs a new utility class to
+pass, the kit is missing a component, and that component is named in
 `assets/brand.css` under PART 2 before it is worked around anywhere.
 """
 
@@ -22,8 +22,8 @@ DOCS = Path(__file__).resolve().parents[1] / "docs" / "workbench"
 TEMPLATES = DOCS / "templates"
 
 #: Every page template, both languages. The Chinese pages are the same five
-#: pages translated — same `sections`, same shell — so they answer to the same
-#: assertions rather than a relaxed set.
+#: pages translated, with the same `sections` and the same shell, so they answer
+#: to the same assertions rather than a relaxed set.
 PAGES = [
     "introduction.html",
     "learn.html",
@@ -39,19 +39,19 @@ PAGES = [
 
 
 def test_the_site_stays_inside_the_vocabulary():
-    """The same gate `examples/fjkit-demo` passes, on the docs site's own templates.
+    """The same gate `examples/fjkit-demo` passes, on the docs site's templates.
 
-    This is the whole claim. If it fails, the site has started writing markup
-    the kit cannot express — and the fix is a component, not an exemption.
+    A failure means the site has started writing markup the kit cannot express.
+    The fix is a component, not an exemption.
     """
     violations = check_templates(TEMPLATES)
     assert not violations, "\n".join(v.render(TEMPLATES) for v in violations)
 
 
 def test_the_shell_is_the_kit_s():
-    """An app that stops extending the shell has quietly taken on the <head>,
-    the theme flash-guard and the asset links. Then the site is no longer
-    evidence of anything."""
+    """An app that stops extending the shell has taken on the `<head>`, the
+    theme flash-guard and the asset links itself, and the site is then no longer
+    evidence that the kit can build it."""
     assert '{% extends "ui/shell.html" %}' in (TEMPLATES / "base.html").read_text()
 
 
@@ -63,33 +63,56 @@ def test_pages_extend_the_site_shell(name):
 @pytest.mark.parametrize("name", PAGES, ids=lambda n: n.removesuffix(".html"))
 def test_every_page_declares_its_rail(name):
     """`base.html` builds the "On this page" group from a top-level `sections`
-    set in each page, so a page without one renders a navigation with nothing
-    in it rather than failing."""
+    set in each page. A page without one renders an empty navigation rather than
+    failing."""
     assert "{% set sections = [" in (TEMPLATES / name).read_text()
 
 
-#: A listener that goes looking for a tab element. Reading which tab is selected
-#: is fine; binding an input event and resolving a tab from it is the site
-#: taking over a component it ships.
+#: `{% call lesson("wiring", "01", …) %}` — the badge printed beside a heading.
+_LESSON_CALL = re.compile(r'\{%\s*call lesson\("([\w-]+)",\s*"(\d+)"')
+
+#: `{"id": "wiring", "num": "01", …}` — the same count, in the navigation rail.
+_RAIL_NUMBER = re.compile(r'\{"id":\s*"([\w-]+)",\s*"num":\s*"(\d+)"')
+
+
+@pytest.mark.parametrize("name", PAGES, ids=lambda n: n.removesuffix(".html"))
+def test_the_rail_counts_the_way_the_page_does(name):
+    """The number beside a heading and the number in the rail are written twice
+    — once in the `lesson()` call, once in `sections` — so this is what stops
+    the two from drifting after a lesson is inserted or removed.
+
+    Order matters as well as membership: the rail is the reading order.
+
+    A section with no number is not an error. The Cheatsheet numbers nothing on
+    purpose, and a trailing "Read next" band carries no badge, so both sides are
+    simply absent for those.
+    """
+    text = (TEMPLATES / name).read_text()
+    assert _LESSON_CALL.findall(text) == _RAIL_NUMBER.findall(text)
+
+
+#: A listener that goes looking for a tab element. Reading which tab is
+#: selected is allowed; binding an input event and resolving a tab from it is
+#: the site taking over a component it ships.
 _LISTENER_FINDS_A_TAB = re.compile(
     r"""addEventListener\(\s*["'](?:click|keydown|keyup)["'][\s\S]{0,400}?\[role=["']tab["']\]"""
 )
 
 
 def test_no_page_drives_tab_selection():
-    """Basecoat's `.tabs` owns which tab is selected, the roving tabindex and
-    the arrow keys, and the shell already loads it.
+    """Basecoat's `.tabs` owns tab selection, the roving tabindex and the arrow
+    keys, and the shell already loads it.
 
-    *Reading* that selection is allowed, and `components.js` does: the preview,
+    Reading that selection is allowed, and `components.js` does: the preview,
     the two code panes and the caption sit outside the tab group and still have
-    to follow it, and `aria-selected` is the one place every input path — click,
-    arrow key, a script calling `select()` — has to write. What this forbids is
-    a listener that resolves a tab itself, because that is how a keyboard user
-    ends up with one tab underlined and a different one's content on screen.
+    to follow it, and every input path (click, arrow key, a script calling
+    `select()`) writes `aria-selected`. What this forbids is a listener that
+    resolves a tab itself, because that leaves a keyboard user with one tab
+    underlined and another tab's content on screen.
 
-    The earlier version of this test looked for `role="tab"]` and `closest` in
-    the same file. It failed the day a caption mentioned `hx-target="closest
-    tr"`, which is the shape of an assertion matching prose rather than code.
+    The earlier version looked for `role="tab"]` and `closest` in the same file.
+    It failed the day a caption mentioned `hx-target="closest tr"` — an
+    assertion matching prose rather than code.
     """
     for path in sorted((DOCS / "assets").glob("*.js")):
         assert not _LISTENER_FINDS_A_TAB.search(path.read_text()), (
@@ -97,17 +120,17 @@ def test_no_page_drives_tab_selection():
         )
 
 
-#: `{% macro name(` — the definition, not a call. Names starting with an
-#: underscore are the file's own helpers (`_message`, `_ROWS`) and are no more
-#: part of the vocabulary than a private function is part of an API.
+#: `{% macro name(` — the definition, not a call. Underscore-prefixed names are
+#: the file's own helpers (`_message`, `_ROWS`) and are no more part of the
+#: vocabulary than a private function is part of an API.
 _MACRO = re.compile(r"\{%-?\s*macro\s+(\w+)\(")
 
 UI = Path(__file__).resolve().parents[1] / "src" / "fjkit" / "templates" / "ui"
 
 
 def _cheatsheet():
-    """The Cheatsheet page's data module. It sits beside `build.py` in the
-    workbench rather than in the package, so it is imported the same way."""
+    """Import the Cheatsheet page's data module. It sits beside `build.py` in
+    the workbench rather than in the package, so it is imported the same way."""
     import sys
 
     sys.path.insert(0, str(DOCS))
@@ -119,8 +142,8 @@ def _cheatsheet():
 
 
 def _rows() -> list[tuple[str, str, bool]]:
-    """Every row on the page, as (macro name, the file it is filed under, does
-    the sheet claim it takes a block)."""
+    """Every row on the page, as (macro name, the file it is filed under,
+    whether the sheet claims it takes a block)."""
     return [
         (macro["call"].split("(")[0], file["name"], bool(macro["block"]))
         for group in _cheatsheet().GROUPS
@@ -131,17 +154,15 @@ def _rows() -> list[tuple[str, str, bool]]:
 
 def test_the_cheatsheet_names_every_macro():
     """The Cheatsheet page is the index, and a reader treats it as complete: a
-    macro missing from it is a macro that does not exist as far as this site is
-    concerned.
+    macro missing from it does not exist as far as this site is concerned.
 
-    The rows are hand-written, because the grouping, the block column and the
-    one-line notes are the half that makes an index readable and no generator
-    would produce them. This is what stops that half from falling behind the
-    package — it caught `form_scripts` and `multiselect_scripts`, both shipped
-    without a line on the page.
+    The rows are hand-written, because no generator produces the grouping, the
+    Block column and the one-line notes that make an index readable. This test
+    stops that half falling behind the package; it caught `form_scripts` and
+    `multiselect_scripts`, both shipped without a line on the page.
 
     The file is checked as well as the name. `cheatsheet.py` files each macro
-    under the path you import it from, and a row filed under the wrong one is
+    under the path you import it from, and a row filed under the wrong path is
     worse than a missing row: it sends a reader to write an import that raises.
     """
     listed = {name: filed for name, filed, _ in _rows()}
@@ -158,13 +179,13 @@ def test_the_cheatsheet_names_every_macro():
 
 
 def test_the_cheatsheet_block_column_matches_the_macros():
-    """The Block column is the one thing on the page that is not copied from a
-    signature, and it is the reason the page exists: `·  block` was a notation
-    a reader had to guess at, so it became a column that says it in words.
+    """The Block column is the one thing on the page not copied from a
+    signature, and it is why the page exists: `·  block` was a notation a reader
+    had to guess at, so it became a column that says it in words.
 
-    A column of hand-written claims about the source is a column that can be
-    wrong, and this is what says so. `caller()` in the macro body is the fact —
-    a macro that calls it wants a block, and one that does not, does not.
+    Hand-written claims about the source can be wrong, and this test says so.
+    `caller()` in the macro body is the fact: a macro that calls it takes a
+    block, and one that does not, does not.
     """
     listed = {name: takes_block for name, _, takes_block in _rows()}
     wrong = []
@@ -183,9 +204,9 @@ def test_the_cheatsheet_block_column_matches_the_macros():
 
 
 def test_the_cheatsheet_reads_the_same_in_both_languages():
-    """`for_lang` is what keeps one index behind two pages. Both builds have to
-    come out of it with the same rows in the same order — the notes differ,
-    nothing structural does."""
+    """`for_lang` keeps one index behind two pages, so both builds come out with
+    the same rows in the same order. The notes differ; nothing structural
+    does."""
     en = _cheatsheet().for_lang("en")
     zh = _cheatsheet().for_lang("zh")
 
@@ -200,41 +221,13 @@ def test_the_cheatsheet_reads_the_same_in_both_languages():
                 )
 
 
-def test_the_quoted_routes_are_the_demo_s():
-    """Lesson 09 quotes two of the demo's routes to show one handler answering
-    with HTML and with JSON. The snippet is a literal in `build.py` because a
-    live capture would rewrite `docs/` on every build — so nothing but this
-    stops it describing routes the demo no longer has.
-
-    Only the decorator lines are compared. The bodies in the snippet are
-    trimmed and re-commented for the page, which is the point of quoting rather
-    than dumping the file.
-    """
-    import sys
-
-    sys.path.insert(0, str(DOCS))
-    try:
-        import build  # type: ignore[import-not-found]
-    finally:
-        sys.path.pop(0)
-
-    router = (
-        Path(__file__).resolve().parents[3] / "examples" / "fjkit-demo" / "app" / "features" / "tasks" / "router.py"
-    ).read_text()
-
-    quoted = [line for line in build.NEGOTIATION["route"].splitlines() if line.startswith("@")]
-    assert quoted, "the snippet quotes no routes at all"
-    missing = [line for line in quoted if line not in router]
-    assert not missing, "Lesson 09 quotes decorators the demo no longer declares:\n" + "\n".join(missing)
-
-
 def test_the_site_builds():
-    """End to end: all ten pages — five, twice — render through the real
-    Environment.
+    """End to end: all ten pages (five, twice) render through the real
+    `Environment`.
 
-    Also the only test that proves `url_for`/`is_active` still satisfy the
-    signatures `sidebar_link` and `brand` call them with — a static site swaps
-    those globals out, and the shell has no idea.
+    Also the only test that proves `url_for` and `is_active` still satisfy the
+    signatures `sidebar_link` and `brand` call them with. A static site swaps
+    those globals out, and the shell cannot tell.
     """
     import sys
 
@@ -265,7 +258,6 @@ def test_the_site_builds():
                 page=page,
                 lang=lang,
                 t=build.STRINGS[lang["code"]],
-                wire=build.NEGOTIATION,
                 sheet=build.cheatsheet.for_lang(lang["code"]),
             )
             assert html.startswith("<!doctype html>")
@@ -275,13 +267,13 @@ def test_the_site_builds():
 
 
 def test_every_asset_link_is_relative_to_its_page():
-    """GitHub Pages serves this site from a project subpath — `/fjkit/`, not
-    `/` — and the Chinese pages sit one directory deeper than the English ones.
+    """GitHub Pages serves this site from a project subpath (`/fjkit/`, not
+    `/`), and the Chinese pages sit one directory deeper than the English ones.
 
-    An absolute `/assets/...` would 404 on Pages while working perfectly from a
-    local server rooted at `docs/`, which is the failure that only shows up
-    after publishing. So the rule is checked on the built files: every link a
-    page makes is relative, and resolves to a file that exists next to it.
+    An absolute `/assets/...` would 404 on Pages while working from a local
+    server rooted at `docs/`, so the failure only shows up after publishing. The
+    rule is therefore checked on the built files: every link a page makes is
+    relative and resolves to a file next to it.
     """
     out = Path(__file__).resolve().parents[3] / "docs"
     if not (out / "index.html").exists():
@@ -297,9 +289,9 @@ def test_every_asset_link_is_relative_to_its_page():
             if ref.startswith(("http://", "https://", "#", "mailto:", "data:")):
                 continue
             assert not ref.startswith("/"), f"{page.name} links to {ref}, which breaks under /fjkit/"
-            # The fragment and the query are not part of the path. `fjkit_static`
-            # stamps every asset with `?v=<mtime>` so a browser cannot serve a
-            # stale stylesheet against current markup; a static host ignores the
-            # query and serves the file, and so must this check.
+            # The fragment and the query are not part of the path.
+            # `fjkit_static` stamps every asset with `?v=<mtime>` so a browser
+            # cannot serve a stale stylesheet against current markup; a static
+            # host ignores the query and serves the file, and so must this check.
             target = (page.parent / ref.split("#")[0].split("?")[0]).resolve()
             assert target.exists(), f"{page.relative_to(out)} links to {ref}, which is not there"

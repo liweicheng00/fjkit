@@ -1,30 +1,29 @@
 """`ApiDocsPlugin` — the API reference and console, mounted by registering it.
 
-Setup is one line, because that is what FastAPI's own `/docs` costs and a
-replacement that costs more will not be used:
+Setup is one line, matching what FastAPI's own `/docs` costs; a replacement
+costing more would not be used:
 
     config = FjkitConfig(template_dir=…, plugins=(auth, ApiDocsPlugin()))
 
 No route to write, no template to render, no static files to serve. The plugin
-adds its own router at `url`, renders out of its own `templates/apidocs/`,
-and — finding an `AuthPlugin` in the same `plugins` tuple — wires its sign-in
-panel to that plugin's `TokenSource`. Turn FastAPI's built-in docs off with
-`FastAPI(docs_url=None, redoc_url=None)` if you want only this one.
+adds its own router at `url`, renders out of its own `templates/apidocs/`, and,
+finding an `AuthPlugin` in the same `plugins` tuple, wires its sign-in panel to
+that plugin's `TokenSource`. Turn FastAPI's built-in docs off with
+`FastAPI(docs_url=None, redoc_url=None)` to keep only this one.
 
 **Why it exists.** Swagger UI's "Authorize" dialog can only express what an
-OpenAPI document can describe: an API key, an HTTP scheme, an OAuth2 flow. An
-app whose sessions are `fjkit.auth` — a signed HttpOnly cookie over a
-server-side token — is describable by none of those, and Swagger's console
-cannot send one anyway, because it runs in JavaScript and the credential is
-deliberately out of JavaScript's reach. So the console here does not run in the
-browser: it replays the request through the app in-process, forwarding the
-caller's own cookie (`fjkit.apidocs.console`). Sign-in is a Python object the
-app supplies (`fjkit.apidocs.flows`), which is the piece Swagger has no room
-for.
+OpenAPI document describes: an API key, an HTTP scheme, an OAuth2 flow. An app
+whose sessions are `fjkit.auth` — a signed HttpOnly cookie over a server-side
+token — matches none of those, and Swagger's console could not send one anyway:
+it runs in JavaScript, and the credential is deliberately out of JavaScript's
+reach. So this console does not run in the browser. It replays the request
+through the app in-process, forwarding the caller's own cookie
+(`fjkit.apidocs.console`). Sign-in is a Python object the app supplies
+(`fjkit.apidocs.flows`), the piece Swagger has no room for.
 
-**What it is not.** It does not replace `/openapi.json` — it reads it. Anything
-generating clients, running contract tests, or importing into another tool
-keeps using the document, which stays the single description of the API.
+**What it is not.** It reads `/openapi.json` rather than replacing it. Client
+generators, contract tests and other tools keep using the document, which stays
+the single description of the API.
 """
 
 from __future__ import annotations
@@ -54,8 +53,8 @@ __all__ = ["ApiDocsPlugin"]
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 
 #: The ids the templates swap against. Constants rather than literals in four
-#: files, because a typo in one of them is a target that silently matches
-#: nothing and an htmx click that appears to do nothing at all.
+#: files, because a typo in one of them gives a target that matches nothing and
+#: an htmx click that appears to do nothing.
 DETAIL_ID = "fjkit-apidocs-detail"
 SESSION_ID = "fjkit-apidocs-session"
 RESULT_ID = "fjkit-apidocs-result"
@@ -68,40 +67,40 @@ _HEADERS_FIELD = "headers"
 _QUERY_FIELD = "q"
 
 #: Where one field's several values are separated. A `list[str]` query parameter
-#: is `?tag=a&tag=b` on the wire, and one text box has to be able to say that —
-#: so a newline or a comma ends a value. A value that genuinely contains a comma
-#: is the case this cannot express, and the extra-headers box next to it can.
+#: is `?tag=a&tag=b` on the wire, and one text box has to express that, so a
+#: newline or a comma ends a value. A value containing a comma is the case this
+#: cannot express; the extra-headers box beside it can.
 _SEPARATORS = re.compile(r"[\n,]")
 
 #: Stripped out of a multipart part's name and filename. RFC 7578 leaves
 #: escaping inside the quoted string underspecified and servers disagree about
-#: it, so the characters that would need escaping simply do not go on the wire.
-#: A filename is a label here, not a path the endpoint should be trusting.
+#: it, so the characters that would need escaping never go on the wire. A
+#: filename is a label here, not a path the endpoint should trust.
 _UNQUOTABLE = re.compile(r'[\r\n"\\]')
 
 
 class ApiDocsPlugin:
     """Register in `FjkitConfig.plugins`. Everything else is defaults.
 
-    :param url: where the page lives. Not `/docs`: FastAPI has already claimed
-        that by the time a plugin mounts, the first route registered wins, and
-        a docs page that silently never renders is worse than a different URL.
-    :param flow: how someone signs in from the page. Defaults to
-        `SessionFlow` wrapping whichever `AuthPlugin` shares the config, and to
-        `NoFlow` when there is none.
-    :param dependencies: put on every route the plugin adds — this is how the
+    :param url: where the page lives. Not `/docs`: FastAPI has claimed that by
+        the time a plugin mounts, the first route registered wins, and a docs
+        page that never renders is worse than a different URL.
+    :param flow: how someone signs in from the page. Defaults to `SessionFlow`
+        wrapping whichever `AuthPlugin` shares the config, and to `NoFlow` when
+        there is none.
+    :param dependencies: put on every route the plugin adds, which is how the
         page is gated. `dependencies=[Depends(auth.required)]` makes the docs
-        staff-only; leaving it empty makes them public, which is the right
-        default for a public API and the wrong one for an internal service.
-    :param try_it: `False` renders the reference and drops the console. For an
-        environment where replaying a request server-side is not acceptable.
+        staff-only; leaving it empty makes them public — the right default for
+        a public API and the wrong one for an internal service.
+    :param try_it: `False` renders the reference without the console, for an
+        environment where replaying a request server-side is unacceptable.
     :param base_template: what the page extends. The kit's shell by default;
-        name the app's own `base.html` to put the docs inside its chrome — but
-        note that this page fills the shell's `sidebar` block with the operation
-        list, so a base that fills it too will lose its own navigation here.
-    :param home_url: rendered as a way back out, in the sidebar's footer. Worth
-        setting whenever the docs are part of a larger app: with the operation
-        list occupying the sidebar, the page is otherwise a room with no door.
+        name the app's own `base.html` to put the docs inside its chrome. This
+        page fills the shell's `sidebar` block with the operation list, so a
+        base that fills it too loses its own navigation here.
+    :param home_url: a way back out, rendered in the sidebar's footer. Set it
+        whenever the docs are part of a larger app: the operation list occupies
+        the sidebar, so the page otherwise has no way out.
     """
 
     name = "apidocs"
@@ -125,15 +124,15 @@ class ApiDocsPlugin:
             raise ValueError(f"ApiDocsPlugin(url={url!r}) must be an absolute path such as '/api-docs'.")
         self.url = url.rstrip("/")
         self.title = title
-        #: `NoFlow` until `mount` gets a look at the sibling plugins, unless the
-        #: app named one — in which case that choice is final and the
-        #: auto-detection below never runs.
+        #: `NoFlow` until `mount` inspects the sibling plugins. An app that
+        #: named a flow settles the choice here, and the auto-detection in
+        #: `_resolve_flow` never runs.
         self._flow_given = flow is not None
         self.flow: AuthFlow = flow if flow is not None else NoFlow()
         if isinstance(self.flow, HeaderFlow) and self.flow.cookie_path is None:
             # Scoped to the docs page. A token held for the whole origin would
-            # be attached to nothing else, but it would still be *sent* to every
-            # other route on the site, which is a wider blast radius than this
+            # be attached to nothing else, but the browser would still send it
+            # to every other route on the site — a wider blast radius than this
             # feature needs.
             self.flow.cookie_path = self.url
         self.dependencies = list(dependencies)
@@ -145,8 +144,8 @@ class ApiDocsPlugin:
         self.max_body = max_body
         self.route_name = route_name
         #: (id of the OpenAPI dict, flattened form). FastAPI caches the dict on
-        #: the app, so the identity check is what tells "same document" from
-        #: "someone called `app.openapi_schema = None` and it was rebuilt".
+        #: the app, so the identity check separates "same document" from
+        #: "someone set `app.openapi_schema = None` and it was rebuilt".
         self._spec: tuple[int, spec.Spec] | None = None
 
     # ---------------------------------------------------------------- plugin
@@ -165,24 +164,23 @@ class ApiDocsPlugin:
         setup.include_router(self._router())
 
     def extend(self, setup: EnvSetup) -> None:
-        """Put this plugin's own `templates/` on the loader path.
+        """Add this plugin's own `templates/` to the loader path.
 
-        The files live beside the code that renders them — `apidocs/templates/`
-        — rather than in the kit's shared `templates/`, so the feature is one
-        directory and deleting it takes nothing else with it.
+        The files live beside the code that renders them, in
+        `apidocs/templates/` rather than in the kit's shared `templates/`, so
+        the feature is one directory and deleting it takes nothing else with it.
 
         The inner `apidocs/` is deliberate, not a doubled path: the loader is
         given the `templates/` directory, so the names stay `apidocs/page.html`
-        and an app still shadows any of them by writing
-        `templates/apidocs/<name>.html` of its own. Plugin directories are
-        searched after the app's and before the kit's (CHARTER A5), which is
-        what keeps that true.
+        and an app shadows any of them by writing its own
+        `templates/apidocs/<name>.html`. Plugin directories are searched after
+        the app's and before the kit's (CHARTER A5), which keeps that true.
 
-        The one cost is that `fjkit.css` has to scan here too — it names this
-        directory in a second `@source`, because a template the Tailwind build
-        does not look at ships with every utility class in it missing from the
-        stylesheet, and the page renders, looks broken, and says nothing. The
-        stylesheet test in `tests/test_apidocs.py` is what holds that.
+        The cost is that `fjkit.css` has to scan here too, naming this directory
+        in a second `@source`. A template the Tailwind build never reads ships
+        with every utility class in it missing from the stylesheet, and the page
+        then renders, looks broken, and reports nothing. The stylesheet test in
+        `tests/test_apidocs.py` holds that.
 
         Nothing else is contributed: everything these templates need is per-page
         and comes from the routes. A plugin claiming `spec` or `flow` app-wide
@@ -191,19 +189,18 @@ class ApiDocsPlugin:
         setup.add_template_dir(TEMPLATE_DIR)
 
     def _resolve_flow(self, setup: AppSetup) -> None:
-        """Find the app's `AuthPlugin` and wrap it, unless one was named.
+        """Find the app's `AuthPlugin` and wrap it, unless a flow was named.
 
         Reading the sibling plugins rather than taking an `auth=` argument is
-        the difference between two lines of setup and one, and it is what makes
+        the difference between two lines of setup and one, and it makes
         `plugins=(auth, ApiDocsPlugin())` produce a working sign-in panel. It is
-        also the only thing here that knows `fjkit.auth` exists.
+        also the only code here that knows `fjkit.auth` exists.
 
-        The `sys.modules` check is not a micro-optimisation dressed up as a
-        guard — it is the whole reason an app with no sessions pays nothing for
-        this. An `AuthPlugin` *instance* cannot be in `config.plugins` unless
-        its class was imported first, so a missing module is proof there is
-        nothing to find, and importing one to discover that costs ~15 ms of
-        startup for a certainly-empty search.
+        The `sys.modules` check is why an app with no sessions pays nothing for
+        this. An `AuthPlugin` instance cannot be in `config.plugins` unless its
+        class was imported first, so a missing module proves there is nothing to
+        find, and importing one to discover that costs ~15 ms of startup for a
+        search that is certainly empty.
         """
         if self._flow_given:
             return
@@ -223,7 +220,7 @@ class ApiDocsPlugin:
             prefix=self.url,
             # Out of the app's own document, for the same reason FastAPI keeps
             # `/docs` out of it: these routes are a way of reading the API, not
-            # part of it. It also means the console can never be handed itself.
+            # part of it. It also keeps the console from being handed itself.
             include_in_schema=False,
             dependencies=self.dependencies,
         )
@@ -243,10 +240,10 @@ class ApiDocsPlugin:
             router.add_api_route("/try/{operation_id}", self._try, methods=["POST"], name=f"{self.route_name}_try")
         return router
 
-    # A `def` handler, so Starlette runs the render in the threadpool — the
-    # rule every rendering route in this kit follows. The two that read a form
-    # are `async def` because `await request.form()` leaves them no choice, and
-    # they render a fragment rather than a page.
+    # A `def` handler, so Starlette runs the render in the threadpool — the rule
+    # every rendering route in this kit follows. The two that read a form are
+    # `async def` because `await request.form()` requires it, and they render a
+    # fragment rather than a page.
     def _index(self, request: Request, q: str = "") -> HTMLResponse:
         return self._render(request, "apidocs/page.html", self._context(request, query=q))
 
@@ -254,8 +251,8 @@ class ApiDocsPlugin:
         document = self._document(request)
         operation = document.index.get(operation_id)
         if operation is None:
-            # 404 with the page rather than a bare error: an operation id in a
-            # bookmark stops being valid the moment a route is renamed, and
+            # 404 with the page rather than a bare error: a bookmarked
+            # operation id stops being valid the moment a route is renamed, and
             # landing on the index with the list still there is recoverable.
             return self._render(request, "apidocs/page.html", self._context(request, query=q), status_code=404)
         swap = _is_swap(request)
@@ -263,13 +260,13 @@ class ApiDocsPlugin:
         return self._render(request, "apidocs/_operation.html" if swap else "apidocs/page.html", context)
 
     def _model(self, request: Request, model_slug: str, q: str = "") -> HTMLResponse:
-        """One entry from `components.schemas`, in the same panel an operation uses.
+        """Render one entry from `components.schemas`, in an operation's panel.
 
         The types an API exchanges are half of its contract — every generated
-        client is built from them — and Swagger gives them a section for that
-        reason. Here they are a second branch of the sidebar rather than a slab
-        at the bottom of the page, because the sidebar is already the index and
-        a hundred models is navigation.
+        client is built from them — which is why Swagger gives them a section.
+        Here they are a second branch of the sidebar rather than a slab at the
+        bottom of the page, because the sidebar is already the index and a
+        hundred models is navigation.
         """
         document = self._document(request)
         model = document.model_index.get(model_slug)
@@ -307,8 +304,8 @@ class ApiDocsPlugin:
         operation = document.index.get(operation_id)
         if operation is None:
             # Answered with the result panel rather than a 404: this arrives as
-            # an htmx POST, and htmx swaps nothing for a 4xx — the button would
-            # appear to do nothing at all.
+            # an htmx POST, and htmx swaps nothing for a 4xx, so the button
+            # would appear to do nothing.
             return self._render(
                 request,
                 "apidocs/_result.html",
@@ -324,8 +321,8 @@ class ApiDocsPlugin:
                 if value.filename or data:
                     # An untouched file input still posts a part, with an empty
                     # filename and no bytes. Sending it would put an empty file
-                    # in the body of every call where the upload was optional
-                    # and left alone.
+                    # in the body of every call whose upload was optional and
+                    # left alone.
                     uploads.setdefault(key, []).append(
                         (value.filename or key, value.content_type or "application/octet-stream", data)
                     )
@@ -379,9 +376,9 @@ class ApiDocsPlugin:
     ) -> tuple[str, list[tuple[str, str]], dict[str, str], list[tuple[str, str]]]:
         """Turn the submitted form into a path, a query, headers and a body.
 
-        One loop over every declared parameter, `location` deciding where each
-        value goes. A form body's fields arrive here as `location="form"` and
-        come back out as the fourth return value, for the caller to encode.
+        One loop over every declared parameter, with `location` deciding where
+        each value goes. A form body's fields arrive as `location="form"` and
+        leave as the fourth return value, for the caller to encode.
         """
         path = operation.path
         query: list[tuple[str, str]] = []
@@ -392,15 +389,15 @@ class ApiDocsPlugin:
         for param in (*operation.params, *operation.body_fields):
             value = (values.get(param.field_name) or "").strip()
             if not value:
-                # An omitted optional parameter must be *absent*, not empty:
+                # An omitted optional parameter must be absent, not empty:
                 # `?status=` and no `status` at all are different requests, and
-                # only one of them is what leaving the box blank meant.
+                # only the second is what a blank box meant.
                 continue
             # An array parameter goes on the wire as its own name repeated —
-            # `?tag=a&tag=b` — which is what FastAPI parses `list[str]` back
-            # out of. One box holding "a,b" would send that string whole and
-            # the endpoint would receive a single-element list, so this is
-            # where the one field becomes the several values it stood for.
+            # `?tag=a&tag=b` — which is what FastAPI parses `list[str]` back out
+            # of. One box holding "a,b" would send that string whole and the
+            # endpoint would receive a single-element list, so this is where one
+            # field becomes the several values it stood for.
             many = _split(value) if param.multi else [value]
             if param.location == "path":
                 path = path.replace("{" + param.name + "}", quote(value, safe=""))
@@ -421,26 +418,25 @@ class ApiDocsPlugin:
         if cookies:
             # Merged with what the browser sent rather than replacing it: the
             # session cookie is in there, and dropping it would sign the caller
-            # out for exactly the call they were testing.
+            # out for the very call they were testing.
             existing = request.headers.get("cookie", "")
             headers["cookie"] = "; ".join(x for x in (existing, *cookies) if x)
 
         # Ask for what the document promises, rather than forwarding the
         # browser's `Accept: text/html`. A client that had read these docs would
-        # send this, and it is what the endpoint sees — the representation a
-        # `@render` route picks is settled by `SCOPE_RENDER_MODE` in
-        # `console.call`, but nothing else in the app knows about that key, and
-        # a route or a dependency that branches on `Accept` should be branching
-        # on the API's answer and not on this page's. Set, not forced — a
-        # hand-typed `Accept` in the extra headers box is a legitimate thing to
-        # be testing.
+        # send this, and it is what the endpoint sees. `SCOPE_RENDER_MODE` in
+        # `console.call` already settles the representation a `@render` route
+        # picks, but nothing else in the app knows that key, and a route or a
+        # dependency branching on `Accept` should branch on the API's answer
+        # rather than on this page's. Set, not forced: a hand-typed `Accept` in
+        # the extra-headers box is a legitimate thing to test.
         documented = next((r.media_type for r in operation.responses if r.media_type), "")
         if documented:
             headers.setdefault("accept", documented)
 
-        # The flow gets the last word — it is the thing that knows what
-        # authenticates a call, and a hand-typed header should not silently
-        # shadow it under a different capitalisation.
+        # The flow gets the last word: it knows what authenticates a call, and
+        # a hand-typed header must not shadow it under a different
+        # capitalisation.
         headers.update(self.flow.headers(request))
         return path, query, headers, fields
 
@@ -472,13 +468,13 @@ class ApiDocsPlugin:
             "model": model,
             # The filter's text and its result. The templates never call
             # `docs.filter` themselves: an unfiltered `docs.groups` rendered
-            # somewhere the filtered list was meant is a sidebar that ignores
-            # what was typed, and that is a hard bug to see.
+            # where the filtered list belonged is a sidebar that ignores what
+            # was typed, and that bug is hard to see.
             "query": query,
             "groups": document.filter(query),
-            # True only on a panel swap, where the sidebar is not being
-            # re-rendered by anything else and its highlight would otherwise go
-            # stale. `_nav.html` turns it into `hx-swap-oob`.
+            # True only on a panel swap, where nothing else re-renders the
+            # sidebar and its highlight would go stale. `_nav.html` turns it
+            # into `hx-swap-oob`.
             "oob_nav": oob_nav,
             "flow": self.flow,
             "flow_state": state if state is not None else self.flow.state(request),
@@ -489,8 +485,7 @@ class ApiDocsPlugin:
             "try_it": self.try_it,
             # `run` and not `try`: the templates reach these by attribute, and
             # `routes.try` is a Jinja expression starting with a Python keyword
-            # — a trap with no upside when the key can simply be called
-            # something else.
+            # — a trap with no upside when the key can be named otherwise.
             "routes": {
                 "index": f"{self.route_name}_index",
                 "operation": f"{self.route_name}_operation",
@@ -521,23 +516,23 @@ class ApiDocsPlugin:
 
 
 def _is_swap(request: Request) -> bool:
-    """An htmx request replacing part of the page — not a boosted navigation.
+    """Report an htmx swap of part of the page, as against a boosted navigation.
 
-    Same test `@render` makes. Not imported from `fjkit.rendering`, because
-    that one is private to it and this module is the second caller, not the
-    reason to publish it.
+    The same test `@render` makes. Not imported from `fjkit.rendering`: that
+    copy is private to it, and this module is the second caller, not a reason to
+    publish it.
     """
     headers = request.headers
     return headers.get("hx-request", "").lower() == "true" and headers.get("hx-boosted", "").lower() != "true"
 
 
 def _carry_cookies(source: Response, target: Response) -> None:
-    """Move `Set-Cookie` from the flow's carrier onto the rendered reply.
+    """Copy `Set-Cookie` from the flow's carrier onto the rendered reply.
 
-    A flow is handed a bare `Response` to set cookies on, because it has no
-    business knowing that what it is really writing to is a Jinja render. This
-    copies only the cookies: the carrier's `content-length: 0` belongs to the
-    empty response it is, not to the HTML actually being sent.
+    A flow is handed a bare `Response` to set cookies on, so it need not know it
+    is writing to a Jinja render. Only the cookies move: the carrier's
+    `content-length: 0` describes the empty response it is, not the HTML being
+    sent.
     """
     for key, value in source.raw_headers:
         if key.lower() == b"set-cookie":
@@ -557,7 +552,7 @@ def _missing(operation_id: str) -> console.Recorded:
 
 
 def _split(value: str) -> list[str]:
-    """One box's contents as the several values it stood for."""
+    """Split one box's contents into the several values it stood for."""
     return [part.strip() for part in _SEPARATORS.split(value) if part.strip()]
 
 
@@ -566,18 +561,16 @@ def _multipart(
 ) -> tuple[bytes, str]:
     """Encode a `multipart/form-data` body, and the content type that names it.
 
-    This is what lets the console call an `UploadFile` endpoint at all. The
-    browser posts the file to *this* route as multipart, Starlette parses it,
-    and the bytes are re-encoded here into a body the in-process replay carries
-    — so the endpoint under test is handed the same thing a real client would
-    send, rather than being told uploads are unsupported.
+    This is what lets the console call an `UploadFile` endpoint. The browser
+    posts the file to this route as multipart, Starlette parses it, and the
+    bytes are re-encoded here into a body the in-process replay carries, so the
+    endpoint under test receives what a real client would send.
 
-    Written out rather than pulled from a library because the whole of it is
-    twenty lines and the alternative is a runtime dependency on the client half
-    of `httpx` for a string join. The boundary is random per call: a fixed one
-    that happened to occur inside an uploaded file would split the body at the
-    wrong place, and a file whose contents you do not control is exactly what
-    this feature is for.
+    Written out rather than taken from a library: it is twenty lines, and the
+    alternative is a runtime dependency on the client half of `httpx` for a
+    string join. The boundary is random per call, because a fixed one occurring
+    inside an uploaded file would split the body in the wrong place — and files
+    whose contents the app does not control are what this feature is for.
     """
     boundary = f"fjkit{secrets.token_hex(16)}"
     marker = f"--{boundary}\r\n".encode("ascii")
@@ -612,12 +605,12 @@ def _curl(
     fields: Sequence[tuple[str, str]] = (),
     files: Sequence[tuple[str, str, str, bytes]] = (),
 ) -> str:
-    """The same call as a shell command, for pasting into a terminal or a bug.
+    """Render the same call as a shell command, for a terminal or a bug report.
 
-    Credentials are replaced with a placeholder rather than printed. A console
-    that renders the caller's live session cookie into a copyable snippet is a
-    console that puts it in every screenshot and every pasted bug report, and
-    the point of this plugin is that the cookie is not readable from the page.
+    Credentials become a placeholder rather than being printed. Rendering the
+    caller's live session cookie into a copyable snippet would put it in every
+    screenshot and every pasted bug report, and the point of this plugin is that
+    the cookie is not readable from the page.
     """
     url = f"{request.base_url.scheme}://{request.base_url.netloc}{path}"
     if query:
@@ -631,15 +624,15 @@ def _curl(
             parts.append(f"-H {_shell(f'{key}: <redacted>')}")
         elif key.lower() == "content-type" and files:
             # curl picks its own boundary, and one pasted from here would not
-            # match the body `-F` builds. Letting it write the header is the
-            # only version of this line that runs.
+            # match the body `-F` builds. Letting curl write the header is the
+            # only version of this command that runs.
             continue
         else:
             parts.append(f"-H {_shell(f'{key}: {value}')}")
     if files:
-        # `-F` rather than `--data`, because the body is bytes from a file that
-        # is not in the snippet. `@name` is curl's own syntax for "read this
-        # path", so the command is one that works once the file is beside it.
+        # `-F` rather than `--data`, because the body is bytes from a file the
+        # snippet does not contain. `@name` is curl's own syntax for "read this
+        # path", so the command runs once the file sits beside it.
         for name, filename, media_type, _ in files:
             parts.append(f"-F {_shell(f'{name}=@{filename};type={media_type}')}")
         for name, value in fields:

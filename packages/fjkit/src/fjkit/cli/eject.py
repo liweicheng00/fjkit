@@ -3,11 +3,11 @@
 A component template is a file of macros: `ui/data.html` holds fifteen. The
 loader searches the app's directory first (CHARTER.md A5), so a file the app
 writes at `ui/data.html` shadows the kit's and every call site keeps working.
-That is the escape hatch, and copying the whole file is how it used to be
-walked — which meant changing `badge` cost you the other fourteen macros'
-upstream fixes, for ever, silently.
+That is the escape hatch. Copying the whole file used to be the only way to walk
+it, so changing `badge` silently cost the other fourteen macros' upstream fixes,
+permanently.
 
-So the file an eject writes owns only what you asked for, and **re-exports** the
+So the file an eject writes owns only what was asked for, and re-exports the
 rest:
 
     {# fjkit:eject data 0.2.1 macros:badge=1f0c9a2d3456 #}
@@ -18,35 +18,34 @@ rest:
     {% set stat = _fjkit.stat %}
     …
 
-`{% set card = _fjkit.card %}` binds the kit's macro *object* under the name the
-module exports, so `{% from "ui/data.html" import card %}` at a call site keeps
-reaching the kit's implementation — including through `{% call %}` blocks and
-`**kwargs`, because it is the same object, not a wrapper. When the kit fixes
-`card`, the app has the fix on its next upgrade. The one macro you took is the
-one that diverges.
+`{% set card = _fjkit.card %}` binds the kit's macro object under the name the
+module exports, so `{% from "ui/data.html" import card %}` at a call site still
+reaches the kit's implementation, including through `{% call %}` blocks and
+`**kwargs`, because it is the same object rather than a wrapper. When the kit
+fixes `card`, the app gets the fix on its next upgrade. Only the macro taken
+diverges.
 
 Three details make it work.
 
-**The reserved namespace.** The override *is* `ui/data.html`, so it cannot
-import `ui/data.html` to reach what it shadows. `fjkit/ui/data.html` is a second
-name for the package's own copy that nothing can shadow — see
+**The reserved namespace.** The override is `ui/data.html`, so it cannot import
+`ui/data.html` to reach what it shadows. `fjkit/ui/data.html` is a second name
+for the package's own copy that nothing can shadow — see
 `fjkit.templating._ReservedNamespace`.
 
-**Private macros are copied, not borrowed.** Jinja does not put a name starting
-with `_` in a module's namespace, so `_fjkit._message` does not exist. A macro
-that calls one takes a copy of it. Across the whole kit that is exactly one
-macro, `form.html`'s `_message`. Dropping the underscore would fix the tooling
-by promoting an implementation detail to public API, which is the wrong trade.
+**Private macros are copied, not borrowed.** Jinja keeps a name starting with
+`_` out of a module's namespace, so `_fjkit._message` does not exist, and a
+macro that calls one takes a copy. Across the kit that is one macro,
+`form.html`'s `_message`. Dropping the underscore would fix the tooling by
+promoting an implementation detail to public API, which is the wrong trade.
 
 **Source order is preserved.** Every kept statement — the imports, the lookup
-tables, the macros — appears exactly where it did upstream, with a one-line
-re-export standing in for each macro you did not take. A diff against the kit's
-file then shows only what you changed.
+tables, the macros — appears where it did upstream, with a one-line re-export
+standing in for each macro not taken. A diff against the kit's file then shows
+only what changed.
 
-What that buys, measured on the worst case in the kit: `eject text_field` writes
-81 lines against `form.html`'s 327 — seventeen of them the header explaining
-itself — and the app diverges from upstream on two of twelve macros instead of
-all twelve.
+Measured on the kit's worst case: `eject text_field` writes 81 lines against
+`form.html`'s 327, seventeen of them the header explaining itself, and the app
+diverges from upstream on two of twelve macros instead of all twelve.
 """
 
 from __future__ import annotations
@@ -59,7 +58,7 @@ from pathlib import Path
 from jinja2 import Environment, nodes
 
 # `ejected` reaches back the other way for `kit_macro_digests`, but only from
-# inside a function — so this stays a one-directional import at module level.
+# inside a function, so this stays one-directional at module level.
 from fjkit.cli.ejected import STAMP, digest, macro_stamp, stamp_line
 from fjkit.config import TEMPLATE_DIR
 
@@ -75,17 +74,17 @@ class Macro:
     #: `{% macro … %}` … `{% endmacro %}`, verbatim.
     body: str
     #: The `{# … #}` block directly above it — the signature contract. Carried
-    #: along on an eject, and deliberately *not* part of the digest: a reworded
-    #: paragraph should not tell you your copy has fallen behind.
+    #: along on an eject, and kept out of the digest: a reworded paragraph
+    #: should not report the copy as behind.
     doc: str
-    #: Every name its body reads. Locals and parameters are in here too; they
-    #: match nothing the file binds at the top level, so they cost nothing.
+    #: Every name its body reads, locals and parameters included. Those match
+    #: nothing the file binds at the top level, so they cost nothing.
     uses: frozenset[str]
 
     @property
     def is_private(self) -> bool:
         """Jinja keeps `_`-prefixed names out of the module namespace, so this
-        one cannot be re-exported and has to be copied."""
+        macro cannot be re-exported and has to be copied."""
         return self.name.startswith("_")
 
 
@@ -94,11 +93,11 @@ class Statement:
     """A top-level `{% from %}`, `{% import %}` or `{% set %}` — the imports and
     the closed lookup tables a component's macros read."""
 
-    #: Verbatim, all of its lines. `{% set _ROWS = { … } %}` is seven of them,
-    #: which is why the end of a tag is found by pairing and not by `lineno`.
+    #: Verbatim, all of its lines. `{% set _ROWS = { … } %}` spans seven, which
+    #: is why a tag's end is found by pairing and not by `lineno`.
     text: str
     #: The `{# … #}` block directly above. A lookup table's comment is often the
-    #: signature contract of the macro that reads it — `field_row`'s explanation
+    #: signature contract of the macro that reads it: `field_row`'s explanation
     #: of why `template` is a key and not a raw grid string sits above `_ROWS`,
     #: not above the macro.
     doc: str
@@ -113,7 +112,7 @@ class Component:
     name: str
     path: Path
     source: str
-    #: Every top-level statement in source order — macros and the rest mixed,
+    #: Every top-level statement in source order, macros and the rest mixed,
     #: because the override reproduces that order and a diff against the kit's
     #: file then shows only what changed.
     items: tuple[Macro | Statement, ...]
@@ -124,10 +123,10 @@ class Component:
         return f"{UI}/{self.name}.html"
 
     def closure(self, name: str) -> list[str]:
-        """`name` plus every private macro it needs, transitively.
+        """List `name` plus every private macro it needs, transitively.
 
-        Public siblings are left out on purpose: those are re-exported, so a
-        macro you own calling one still calls the kit's.
+        Public siblings are left out because they are re-exported: an owned
+        macro calling one still calls the kit's.
         """
         taken: list[str] = []
         pending = [name]
@@ -141,13 +140,12 @@ class Component:
         return taken
 
     def needed_statements(self, owned: list[str]) -> set[int]:
-        """Which imports and lookup tables the owned macros actually read.
+        """Select the imports and lookup tables the owned macros read.
 
-        Copying all of them would be simpler and is what the first sketch did.
-        It is also wrong in a way that costs later: `_ROWS` copied beside a
-        `text_field` that never reads it is a table that will silently fall
-        behind the kit's while the macro that *does* read it —  re-exported
-        `field_row` — goes on using the kit's. Dead weight that looks live.
+        Copying all of them is simpler, and wrong: `_ROWS` copied beside a
+        `text_field` that never reads it falls silently behind the kit's, while
+        the macro that does read it — re-exported `field_row` — goes on using
+        the kit's. Dead weight that looks live.
         """
         statements = {i: item for i, item in enumerate(self.items) if isinstance(item, Statement)}
         wanted: set[str] = set()
@@ -166,11 +164,11 @@ class Component:
 
 
 def _tag_ends(env: Environment, source: str) -> dict[int, int]:
-    """First line of each `{% … %}` → the line its `%}` is on.
+    """Map the first line of each `{% … %}` to the line its `%}` is on.
 
-    A tag is not a line: `{% set _ROWS = { … } %}` spans seven of them, and
-    slicing on `lineno` alone would cut a dict in half. The lexer already knows
-    where every tag closes, so pair the tokens rather than guess from the text.
+    A tag is not a line: `{% set _ROWS = { … } %}` spans seven, and slicing on
+    `lineno` alone would cut a dict in half. The lexer already knows where every
+    tag closes, so pair the tokens rather than guess from the text.
     """
     ends: dict[int, int] = {}
     start: int | None = None
@@ -184,7 +182,7 @@ def _tag_ends(env: Environment, source: str) -> dict[int, int]:
 
 
 def _comment_ends(env: Environment, source: str) -> dict[int, int]:
-    """Last line of each `{# … #}` → the line it opened on."""
+    """Map the last line of each `{# … #}` to the line it opened on."""
     ends: dict[int, int] = {}
     start: int | None = None
     for lineno, token, _ in env.lex(source):
@@ -203,10 +201,10 @@ def _is_blank(node: nodes.Node) -> bool:
 
 
 def _macro_end(env: Environment, source: str, ends: dict[int, int], start: int) -> int:
-    """The line of the `{% endmacro %}` that closes the macro opening at `start`.
+    """Find the `{% endmacro %}` closing the macro that opens at `start`.
 
-    Counted rather than searched: Jinja allows a macro inside a macro, and the
-    first `{% endmacro %}` after the opening would then be the wrong one.
+    Counted rather than searched: Jinja allows a macro inside a macro, so the
+    first `{% endmacro %}` after the opening can be the wrong one.
     """
     depth = 0
     opening: int | None = None
@@ -225,7 +223,7 @@ def _macro_end(env: Environment, source: str, ends: dict[int, int], start: int) 
 
 
 def parse(path: Path, env: Environment | None = None) -> Component:
-    """Take one component file apart into statements and macros."""
+    """Split one component file into its statements and macros."""
     env = env or _env()
     source = path.read_text(encoding="utf-8")
     lines = source.splitlines(keepends=True)
@@ -236,7 +234,7 @@ def parse(path: Path, env: Environment | None = None) -> Component:
         return "".join(lines[first - 1 : last])
 
     def doc_above(first: int) -> str:
-        """The comment block directly above, skipping blank lines only."""
+        """Return the comment block directly above, skipping blank lines only."""
         above = first - 1
         while above >= 1 and not lines[above - 1].strip():
             above -= 1
@@ -270,8 +268,8 @@ def parse(path: Path, env: Environment | None = None) -> Component:
                 )
             )
         else:
-            # Output, {% block %}, {% if %} at the top level: `shell.html` is a
-            # page skeleton, not a macro library. Nothing to take a macro out of,
+            # Output, {% block %} or {% if %} at the top level: `shell.html` is
+            # a page skeleton, not a macro library. There is no macro to take,
             # so `eject shell` stays a whole-file copy and never reaches here.
             raise Unsplittable(path.stem)
 
@@ -283,13 +281,13 @@ def _reads(node: nodes.Node) -> set[str]:
 
 
 def _binds(node: nodes.Node) -> set[str]:
-    """The names a top-level statement puts into the module namespace."""
+    """Collect the names a top-level statement puts into the module namespace."""
     if isinstance(node, nodes.FromImport):
         return {n[1] if isinstance(n, tuple) else n for n in node.names}
     if isinstance(node, nodes.Import):
         return {node.target}
     # `find_all` walks descendants, and `{% set _ROWS = … %}`'s target is a bare
-    # `Name` with no descendants at all — so it has to be read directly.
+    # `Name` with no descendants, so it has to be read directly.
     target = node.target
     if isinstance(target, nodes.Name):
         return {target.name}
@@ -302,11 +300,11 @@ class Unsplittable(Exception):
 
 @cache
 def _env() -> Environment:
-    """A bare Environment for parsing only.
+    """Build a bare Environment for parsing only.
 
-    Deliberately not `build_environment()`: parsing needs the same syntax
-    settings, not the loaders, the globals or a plugin's `extend` hook. `eject`
-    runs in a CLI with no app.
+    Not `build_environment()`: parsing needs the same syntax settings, not the
+    loaders, the globals or a plugin's `extend` hook. `eject` runs in a CLI with
+    no app.
     """
     return Environment(trim_blocks=True, lstrip_blocks=True, autoescape=True)
 
@@ -319,10 +317,10 @@ def components() -> dict[str, Path]:
 def resolve(name: str) -> tuple[str, str | None]:
     """Turn what was typed into `(component, macro)`; macro None means the file.
 
-    `fjkit eject data` keeps meaning the whole of `data.html` — a file name wins
+    `fjkit eject data` still means the whole of `data.html`: a file name wins
     over a macro name, so nothing that worked before changes meaning. `fjkit
     eject badge` means that one macro, found by searching every component. A
-    name that two components both define is refused rather than guessed at:
+    name two components both define is refused rather than guessed at, and
     `data.badge` says which.
     """
     if "." in name:
@@ -368,7 +366,7 @@ class Ambiguous(Exception):
 
 
 def render_override(component: Component, owned: list[str], version: str) -> str:
-    """The override file: the kit's structure, with holes filled by re-exports.
+    """Render the override: the kit's structure, holes filled by re-exports.
 
     `owned` is every macro this copy takes — what was asked for, plus the
     private helpers Jinja will not let it borrow.
@@ -391,8 +389,8 @@ def render_override(component: Component, owned: list[str], version: str) -> str
             parts.append("\n" + item.doc + item.body)
         elif not item.is_private:
             parts.append(f"\n{{% set {item.name} = _fjkit.{item.name} %}}\n")
-        # An unowned private macro is dropped: nothing left in this file can
-        # call it, and the kit's own macros keep using the kit's copy.
+        # An unowned private macro is dropped: nothing left in this file calls
+        # it, and the kit's own macros keep using the kit's copy.
     return "".join(parts)
 
 
@@ -433,12 +431,12 @@ def _and(names: list[str]) -> str:
 
 
 def digest_of(component: Component, macro: str) -> str:
-    """The kit's fingerprint for one macro — the `{% macro %}` block, no doc."""
+    """Fingerprint one of the kit's macros: the `{% macro %}` block, no doc."""
     return digest(component.macros[macro].body)
 
 
 def kit_macro_digests(name: str, wanted: list[str]) -> dict[str, str]:
-    """What the installed kit's versions of `wanted` hash to now, if they exist."""
+    """Hash the installed kit's versions of `wanted`, skipping any it lacks."""
     path = components().get(name)
     if path is None:
         return {}
@@ -447,7 +445,7 @@ def kit_macro_digests(name: str, wanted: list[str]) -> dict[str, str]:
 
 
 def main(name: str, into: Path) -> int:
-    """The `fjkit eject` command."""
+    """Run the `fjkit eject` command."""
     try:
         component_name, macro = resolve(name)
     except (Unknown, Ambiguous) as exc:
@@ -488,9 +486,9 @@ def main(name: str, into: Path) -> int:
         return 0
 
     if stamp is not None and not stamp["macros"]:
-        # A copy of the whole file already owns this macro, along with fourteen
-        # others somebody may have spent a week editing. Rewriting it into a
-        # one-macro override would delete all of that without asking.
+        # A copy of the whole file already owns this macro, along with every
+        # other one in it, which someone may have spent a week editing.
+        # Rewriting it into a one-macro override would delete that unasked.
         print(
             f"fjkit eject: {target} is a copy of the whole component, so it already owns\n"
             f"{macro!r} — and every other macro in the file. Edit it there. To narrow it down\n"
@@ -502,9 +500,9 @@ def main(name: str, into: Path) -> int:
     component = parse(component_path)
 
     # A second eject from the same file rewrites the override: the macro moves
-    # out of the re-export list and into the owned section, and everything
-    # already owned stays owned. Refusing would leave "I want a second macro"
-    # with no answer but hand-editing.
+    # out of the re-export list into the owned section, and everything already
+    # owned stays owned. Refusing would leave hand-editing as the only way to
+    # take a second macro.
     already = _stamped_macros(stamp["macros"]) if stamp else []
     if macro in already:
         print(f"fjkit eject: {target} already owns {macro!r}", file=sys.stderr)
@@ -549,13 +547,12 @@ def _write(target: Path, text: str) -> None:
 
 
 def _version() -> str:
-    """The installed fjkit version, for the eject stamp.
+    """Read the installed fjkit version, for the eject stamp.
 
-    Read from the installed distribution rather than a `__version__` constant,
-    which is the single source hatchling already builds the wheel from. Running
-    from a source tree with nothing installed is not an error worth failing an
-    eject over — the digest is what detects staleness, the version is a
-    human-readable note beside it.
+    Taken from the installed distribution rather than a `__version__` constant,
+    because that is the single source hatchling already builds the wheel from.
+    Running from a source tree with nothing installed does not fail the eject:
+    the digest detects staleness, and the version is a readable note beside it.
     """
     from importlib.metadata import PackageNotFoundError, version
 

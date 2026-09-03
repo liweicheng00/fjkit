@@ -20,7 +20,6 @@ def test_the_page_starts_signed_out(client):
 
 
 def test_signing_in_is_a_swap_that_also_sets_the_cookie(htmx):
-    """POST /session answers a fragment and sets an HttpOnly cookie."""
     response = htmx.post("/session", data=GOOD)
 
     assert response.status_code == 200
@@ -42,7 +41,7 @@ def test_the_cookie_carries_no_claims(client):
 
 
 def test_bad_credentials_come_back_as_a_swappable_panel(htmx):
-    """Bad credentials answer 200 with the error panel and no cookie."""
+    """Bad credentials answer 200, not 401: htmx swaps a 2xx reply and drops everything else."""
     response = htmx.post("/session", data={"username": DEMO_USERNAME, "password": "wrong"})
 
     assert response.status_code == 200
@@ -61,9 +60,9 @@ def test_the_password_field_carries_a_reveal_and_the_page_loads_its_script(clien
 
 
 def test_the_reveal_survives_a_rejected_sign_in(htmx):
-    """The panel a rejected sign-in swaps in carries its own button. The
-    listener is on `document`, so this one works too — which is the whole
-    reason `js/reveal.js` is not bound per button."""
+    """The panel a rejected sign-in swaps in carries its own button, and the
+    listener is on `document` so that button works too. That is why
+    `js/reveal.js` binds nothing per button."""
     panel = htmx.post("/session", data={"username": DEMO_USERNAME, "password": "wrong"}).text
 
     assert "data-fjkit-reveal" in panel
@@ -72,7 +71,6 @@ def test_the_reveal_survives_a_rejected_sign_in(htmx):
 
 
 def test_signing_out_clears_the_session(htmx):
-    """DELETE /session over htmx answers the sign-in panel and clears the session."""
     htmx.post("/session", data=GOOD, headers=ORIGIN)
 
     response = htmx.request("DELETE", "/session", headers=ORIGIN)
@@ -82,7 +80,6 @@ def test_signing_out_clears_the_session(htmx):
 
 
 def test_signing_out_from_another_origin_is_refused(client):
-    """Sign-out with an untrusted Origin header returns 403 and keeps the session."""
     client.post("/session", data=GOOD, headers=ORIGIN)
 
     response = client.request("DELETE", "/session", headers={"origin": "http://evil.example.com"})
@@ -92,7 +89,7 @@ def test_signing_out_from_another_origin_is_refused(client):
 
 
 def test_a_write_with_no_origin_at_all_is_refused(client):
-    """Sign-out without an Origin header returns 403."""
+    """A missing `Origin` is untrusted as well, rather than read as same-origin."""
     client.post("/session", data=GOOD, headers=ORIGIN)
 
     assert client.request("DELETE", "/session").status_code == 403
@@ -157,13 +154,12 @@ def test_signing_out_closes_the_protected_route_again(htmx):
 
 
 def test_the_rest_of_the_app_stays_open(client):
-    """The overview, board and jobs pages answer 200 without a session."""
     for path in ("/", "/tasks", "/jobs"):
         assert client.get(path).status_code == 200
 
 
 def test_a_public_write_still_needs_no_origin(client):
-    """POST /tasks without a session cookie needs no Origin header."""
+    """The `Origin` check guards cookie-authenticated writes, and this write carries no cookie."""
     response = client.post("/tasks", json={"title": "no session here"})
 
     assert response.status_code == 200

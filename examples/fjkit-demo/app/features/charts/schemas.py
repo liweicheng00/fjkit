@@ -18,7 +18,7 @@ __all__ = [
 
 
 class Grouping(StrEnum):
-    """The x axis of the workload chart."""
+    """What the workload chart puts on its x axis."""
 
     OWNER = "owner"
     PRIORITY = "priority"

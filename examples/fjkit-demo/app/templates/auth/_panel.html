@@ -1,6 +1,6 @@
 {#
-  The session panel in its two states: the sign-in form, or the badge and sign-out
-  button. Returned by POST /session and DELETE /session, and embedded by
+  The session panel in its two states: the sign-in form, or the badge and
+  sign-out button. Returned by POST /session and DELETE /session, and embedded by
   auth/page.html.
 #}
 {% from "ui/button.html" import button %}
@@ -36,12 +36,11 @@
         {% call field_row("two") %}
           {{ text_field("username", label="Username", value=demo_username, required=true) }}
           {#
-            The reveal is worth having here twice over: the demo password is
-            prefilled, so Show is how you read what you are about to post — and
-            a rejected sign-in swaps this whole panel out, which is the case
-            the delegated listener in `js/reveal.js` exists for. Press Sign in
-            with the wrong password, then press Show on the panel that comes
-            back.
+            Two reasons for the reveal here. The demo password is prefilled, so
+            Show is how you read what you are about to post. And a rejected
+            sign-in swaps this whole panel out, which is the case the delegated
+            listener in `js/reveal.js` exists for: press Sign in with the wrong
+            password, then press Show on the panel that comes back.
           #}
           {{ input_group_field("password", label="Password", value=demo_password, type="password",
                                required=true, error=error, revealable=true) }}

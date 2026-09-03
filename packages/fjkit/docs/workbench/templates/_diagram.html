@@ -1,15 +1,15 @@
 {#
   The request diagram — one SVG, both languages.
 
-  Every word in it comes from `t.diagram`, which `build.py` carries per
-  language. Copying the figure to translate it would mean maintaining two sets
-  of coordinates, and the second set would be the one that goes stale.
+  Every word in it comes from `t.diagram`, which `build.py` carries per language.
+  Copying the figure to translate it would leave two sets of coordinates, and
+  the second set would be the one that goes stale.
 
   No classes anywhere in it: colours and sizes are SVG presentation attributes,
-  and the stage lighting is driven by `data-lit` on each group, which learn.js
-  flips from real htmx events. That keeps the figure inside the closed
-  vocabulary — an SVG is one of the few places where a page legitimately has no
-  component to reach for, and attributes are how it stays honest.
+  and the stage lighting is `data-lit` on each group, which learn.js flips from
+  real htmx events. That keeps the figure inside the closed vocabulary. An SVG
+  is one of the few places a page has no component to reach for, and attributes
+  are how it stays honest.
 #}
 <svg viewBox="0 0 720 320" role="img" fill="none"
      font-family="ui-monospace, SFMono-Regular, Menlo, monospace"

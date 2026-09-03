@@ -1,27 +1,26 @@
 """`fjkit check` — fail if an app template steps outside the vocabulary.
 
-A convention nobody can violate accidentally is worth more than one written
-down in a doc, so this ships as a CLI *and* as a pytest assertion an app can
-put in its own suite.
+An enforced convention outlasts a documented one, so this ships as a CLI and as
+a pytest assertion an app can put in its own suite.
 
 Two families of violation:
 
 1. **Colour literals** — a hex code, `oklch()`, a Tailwind palette hue,
-   `text-white`. Colours belong to the token layer; a hue in markup is a
-   rebrand waiting to fail.
-2. **Non-component classes** — anything that is not part of the published
-   component vocabulary. Layout is a component too (`stack`, `row`, `grid`),
-   so there is no legitimate reason for an app template to say `flex gap-4`.
+   `text-white`. Colours belong to the token layer; a hue in markup breaks a
+   later rebrand.
+2. **Non-component classes** — anything outside the published component
+   vocabulary. Layout is a component too (`stack`, `row`, `grid`), so an app
+   template has no reason to say `flex gap-4`.
 
-Two things are deliberately *not* checked.
+Two things are not checked.
 
 **Jinja comments.** `{# … #}` never reaches the browser, so a colour named
-inside one cannot break a rebrand. Scanning them made the rule unable to
-describe itself: `nav.html`'s signature comment explains why the brand tile
-must not say `text-white`, and that sentence was a violation.
+inside one cannot break a rebrand. Scanning them stopped the rule describing
+itself: `nav.html`'s signature comment explains why the brand tile must not say
+`text-white`, and that sentence counted as a violation.
 
-**An ejected file's classes.** A copy made by `fjkit eject` is judged by the
-kit's rules, not the app's — see `_ejected_paths`.
+**An ejected file's classes.** The kit's rules judge a copy made by `fjkit
+eject`, not the app's — see `_ejected_paths`.
 """
 
 from __future__ import annotations
@@ -56,8 +55,8 @@ CLASS_ATTR = re.compile(r"""class\s*=\s*"([^"]*)\"""", re.DOTALL)
 #: Jinja expressions are removed from a class attribute before it is split into
 #: tokens. Splitting first is wrong: `class="card {{ extra }}"` tokenises to
 #: `card`, `{{`, `extra`, `}}`, and `extra` then looks like a hand-written class
-#: name. The checker cannot evaluate what an expression produces, and the
-#: "never build a class by interpolation" rule is what covers that case.
+#: name. The checker cannot evaluate what an expression produces; the "never
+#: build a class by interpolation" rule covers that case.
 _JINJA_EXPR = re.compile(r"\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}", re.DOTALL)
 
 #: A Jinja comment, blanked out before either family of check runs.
@@ -66,10 +65,10 @@ _NOT_NEWLINE = re.compile(r"[^\n]")
 
 
 def _without_comments(text: str) -> str:
-    """The template with every `{# … #}` replaced by spaces of the same shape.
+    """Replace every `{# … #}` with spaces of the same shape.
 
-    Blanked rather than removed so that every remaining character keeps its line
-    number — the violation report is only useful if it points at the right line.
+    Blanked rather than removed so every remaining character keeps its line
+    number; the violation report is useful only if it points at the right line.
     """
     return _JINJA_COMMENT.sub(lambda m: _NOT_NEWLINE.sub(" ", m.group(0)), text)
 
@@ -87,30 +86,30 @@ class Violation:
 
 
 def _ejected_paths(template_dir: Path) -> frozenset[Path]:
-    """The files `fjkit eject` wrote, which the class rule does not apply to.
+    """Return the files `fjkit eject` wrote, exempt from the class rule.
 
-    The escape hatch has to be walkable. A kit macro writes utility classes —
-    that is its job, and it is the reason an app never has to — so a copy of one
-    fails the closed-vocabulary rule the instant it lands. Judging an ejected
-    file by the app's rules means the supported way to change a component is to
-    produce a red build, which is the same as not supporting it.
+    The escape hatch has to be usable. A kit macro writes utility classes — that
+    is its job, and why an app never has to — so a copy of one fails the
+    closed-vocabulary rule the moment it lands. Judging an ejected file by the
+    app's rules would make the supported way to change a component produce a red
+    build, which amounts to not supporting it.
 
-    So a stamped file is judged by the kit's rules instead: colours still belong
-    to the token layer (that survives an eject — a hue in an ejected macro breaks
-    a rebrand exactly as it would anywhere else), and the closed vocabulary does
-    not apply, because the closed vocabulary is a promise the kit makes *to* the
-    app about classes the app did not write.
+    So the kit's rules judge a stamped file instead. Colours still belong to the
+    token layer, which survives an eject: a hue in an ejected macro breaks a
+    rebrand as it would anywhere else. The closed vocabulary does not apply,
+    because it is a promise the kit makes to the app about classes the app did
+    not write.
 
-    The whole class family is dropped rather than just the utilities: without a
+    The whole class family is dropped rather than only the utilities: without a
     built stylesheet `emitted_classes()` is empty and every utility looks like a
-    typo, so "allow the utilities, still catch the typos" would report a clean
+    typo, so allowing utilities while still catching typos would report a clean
     eject as broken on any machine that has not run `fjkit build-css`.
     """
     return frozenset(e.path for e in find_ejected(template_dir))
 
 
 def check_templates(template_dir: Path) -> list[Violation]:
-    """Every violation in an app's template directory, in file order."""
+    """Collect every violation in an app's template directory, in file order."""
     allowed = component_classes()
     emitted = emitted_classes()
     ejected = _ejected_paths(template_dir)
@@ -155,7 +154,7 @@ def check_templates(template_dir: Path) -> list[Violation]:
 
 
 def assert_templates_clean(template_dir: Path) -> None:
-    """Raise `AssertionError` listing every violation. For an app's test suite.
+    """Raise `AssertionError` listing every violation. For an app's own suite.
 
     from fjkit.cli.check import assert_templates_clean
 
@@ -184,9 +183,9 @@ def main(template_dir: Path) -> int:
         print(f"{count} template(s) clean — every class is part of the fjkit vocabulary")
 
     # Printed either way, and never changes the exit code. Ejecting is a
-    # supported escape hatch: a copy that has diverged is the feature working,
-    # not a fault. Failing a build on it would push people back to editing the
-    # kit in place, which is the thing eject exists to avoid.
+    # supported escape hatch, so a diverged copy is the feature working, not a
+    # fault. Failing a build on it would push people back to editing the kit in
+    # place, which eject exists to avoid.
     if stale:
         print(f"\nnote: {len(stale)} ejected component(s) behind the kit:\n")
         print("\n".join(e.render(template_dir) for e in stale))

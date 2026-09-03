@@ -1,24 +1,23 @@
 # fjkit documentation
 
-**Build the interface where you build the routes.** fjkit is the UI layer
-FastAPI does not ship: pages, tables, forms, navigation, dark mode and htmx
-swaps, composed as Jinja macros in the same codebase as your handlers — with no
-front-end toolchain on your side.
+fjkit is the UI layer FastAPI does not ship: pages, tables, forms, navigation,
+dark mode and htmx swaps, composed as Jinja macros in the same codebase as your
+handlers, with no front-end toolchain on your side.
 
-**Learn it by operating it:** the
-[**published site**](https://liweicheng00.github.io/fjkit/) is five pages in
-two languages — English at the root, 中文 under
-[`zh/`](https://liweicheng00.github.io/fjkit/zh/) — two of which you can drive. Set macro parameters and watch the real output. Fire genuine htmx
-requests and watch the swap land. Turn the brand knob and watch the page
-repaint. Run the vocabulary checker on your own markup.
+The [published site](https://liweicheng00.github.io/fjkit/) is five pages in two
+languages — English at the root, 中文 under
+[`zh/`](https://liweicheng00.github.io/fjkit/zh/). Two of them are operable: set
+macro parameters and read the real output, fire genuine htmx requests and watch
+the swap land, turn the brand knob and watch the page repaint, run the
+vocabulary checker on your own markup.
 
-Rebuild it from this checkout with:
+Rebuild the site from this checkout:
 
 ```bash
 uv run python packages/fjkit/docs/workbench/build.py
 ```
 
-Five pages and their shared assets, written to `docs/` at the repo root —
+That writes five pages and their shared assets to `docs/` at the repo root,
 which is what GitHub Pages serves (*Settings → Pages → Deploy from a branch →
 `main` / `docs`*):
 
@@ -33,48 +32,55 @@ which is what GitHub Pages serves (*Settings → Pages → Deploy from a branch 
 | `docs/assets/brand.css` | — | the site's own stylesheet — tokens, typography, and the gaps |
 | `docs/zh/*.html` | 中文 | the same five pages, translated — `templates/zh/`, one directory deeper, sharing every asset |
 
-**Two languages, one skeleton.** `base.html`, `_parts.html`, the request
-diagram and every `assets/*.js` file are shared; `templates/zh/` holds the five
-translated pages, `build.py` holds the chrome strings (rail headings, the
-footer, the diagram's labels), and `cheatsheet.py` holds the macro index in both
-languages at once, so the two indexes cannot describe different macros. Each language is one `build_environment()` with
-its own `static_url` — `assets` at the root, `../assets` from `zh/` — because
-GitHub Pages serves the site from `/fjkit/`, where an absolute link leaves the
-site. `test_docs_site.py` checks that on the built files: no link starts with
-`/`, and every one of them resolves to a file that is actually there.
+## Two languages, one skeleton
 
-**The site is a fjkit app.** `templates/base.html` extends `ui/shell.html`, the
-navigation is `sidebar` + `sidebar_link`, and the pages are built from
-`page_header`, `section`, `card`, `table`, `grid` and `stack` — the same macros
-`examples/fjkit-demo` calls. `fjkit check` runs over `templates/` in CI
-(`tests/test_docs_site.py`) and it passes, so the site cannot show you a
-component the package does not ship.
+`base.html`, `_parts.html`, the request diagram and every `assets/*.js` file are
+shared. `templates/zh/` holds the five translated pages, `build.py` holds the
+chrome strings (rail headings, the footer, the diagram's labels), and
+`cheatsheet.py` holds the macro index in both languages at once, so the two
+indexes cannot describe different macros.
+
+Each language is one `build_environment()` with its own `static_url` — `assets`
+at the root, `../assets` from `zh/`. GitHub Pages serves the site from
+`/fjkit/`, where an absolute link leaves the site. `test_docs_site.py` checks
+that on the built files: no link starts with `/`, and every one of them resolves
+to a file that is there.
+
+## The site is a fjkit app
+
+`templates/base.html` extends `ui/shell.html`, the navigation is `sidebar` +
+`sidebar_link`, and the pages are built from `page_header`, `section`, `card`,
+`table`, `grid` and `stack` — the same macros `examples/fjkit-demo` calls.
+`fjkit check` runs over `templates/` in CI (`tests/test_docs_site.py`) and it
+passes, so the site cannot show you a component the package does not ship.
 
 That makes it the kit's second acceptance test, and the harder one: a
 documentation page reaches for shapes an admin never needs. What it cannot say
 in the vocabulary is collected in PART 2 of `workbench/assets/brand.css`, each
-block labelled with the macro that would remove it. **The length of part 2 is
+block labelled with the macro that would remove it. **The length of PART 2 is
 the honest answer to "is the vocabulary closed?"** — today it is four, down from
 seven: `code_block`, `tabs` and a vertical `button_group` are components now, so
 their rules moved into `fjkit.css`.
 
-Of the four left, one is deliberate (syntax highlighting — the kit renders code
-as text and should never learn a language) and two are shapes only a docs page
-wants. The fourth is the one that matters: the playground builds its controls in
-the browser, so it cannot call `field_row`, and `fjkit check` reads templates and
-never scripts. That is a missing capability and a hole in the gate, and the
-second half is the more serious one.
+Of the four left, one is deliberate — syntax highlighting, because the kit
+renders code as text and should never learn a language — and two are shapes only
+a docs page wants. The fourth matters: the playground builds its controls in the
+browser, so it cannot call `field_row`, and `fjkit check` reads templates and
+never scripts. That is a missing capability and a hole in the gate, and the hole
+is the more serious half.
 
 Two knobs turn the app into a static site, both already on `FjkitConfig`:
 `static_url="assets"` so `fjkit_static` resolves next to the page, and
 `globals={"url_for": …, "is_active": …}` so route names still work without a
 request. The shell is used unmodified.
 
-**There is no prose copy of any of this in the repository.** The site is the
+## Where the prose lives
+
+There is no prose copy of any of this in the repository. The site is the
 documentation, and `workbench/templates/` is its source. That is deliberate: a
-Markdown page can describe a macro that the package stopped shipping, and a
-rendered page cannot — every preview on the site is produced by the kit itself
-at build time.
+Markdown page can describe a macro the package stopped shipping, and a rendered
+page cannot — every preview on the site is produced by the kit itself at build
+time.
 
 Offline, the authority is the source: `src/fjkit/templates/ui/*.html` opens
 every macro with a signature comment, and `src/fjkit/static/src/fjkit.css`
@@ -92,8 +98,8 @@ the package.
 | `templates/<feature>/*.html` | `{% from "ui/*.html" import … %}` |
 | your own `brand.css` | overrides the `--primary` tokens |
 
-All four are one-directional: your app depends on fjkit, and fjkit never
-references your app.
+All four point one way: your app depends on fjkit, and fjkit never references
+your app.
 
 ## The promises, and what makes each one hold
 

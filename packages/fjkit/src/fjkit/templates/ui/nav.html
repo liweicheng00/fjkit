@@ -8,20 +8,20 @@
 {#
   brand(label, href, icon_name | icon_src) — the wordmark and home link.
 
-  Two ways to give it a mark, and they are mutually exclusive:
+  Two ways to give it a mark, and they are mutually exclusive.
 
   `icon_name` draws a Lucide glyph on a token-coloured tile. The tile uses
   `bg-primary text-primary-foreground`, never `text-white`: the contrast token
-  is what keeps the mark legible after someone rebrands to a light primary.
+  keeps the mark legible after a rebrand to a light primary.
 
-  `icon_src` places a piece of artwork — a real logo, served from wherever the
-  app keeps it. No tile, because a logo brings its own ground and painting
-  `bg-primary` behind it would only box it in. That does mean the mark stops
-  following `--primary`, which is the trade a brand asset always makes.
+  `icon_src` places artwork — a real logo, served from wherever the app keeps
+  it. No tile, because a logo brings its own ground and `bg-primary` behind it
+  would box it in. The mark then stops following `--primary`, which is the
+  trade a brand asset always makes.
 
-  `alt=""` on purpose: the label sits right beside it inside the same anchor,
-  so a screen reader that announced both would say the name twice. `width` and
-  `height` are set so the row does not reflow when the image arrives.
+  `alt=""` is deliberate: the label sits beside the image inside the same
+  anchor, so a screen reader announcing both would say the name twice. `width`
+  and `height` are set so the row does not reflow when the image arrives.
 #}
 {% macro brand(label, href="/", icon_name=none, icon_src=none) -%}
   <a href="{{ href }}" class="flex items-center gap-2 font-semibold tracking-tight"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
@@ -39,9 +39,9 @@
 {#
   nav_links(request, links) — top-level navigation.
 
-  `links` is a list of (route_name, label) pairs. Route *names*, not URLs, so
-  the active state is decided by comparing routes rather than string-matching
-  paths — which stays correct when a URL gains a query string.
+  `links` is a list of (route_name, label) pairs. Route names rather than URLs,
+  so the active state compares routes instead of string-matching paths, and
+  stays correct when a URL gains a query string.
 #}
 {% macro nav_links(request, links) -%}
   <nav class="text-muted-foreground flex items-center gap-1 text-sm">
@@ -57,9 +57,9 @@
 {#
   theme_toggle() — light/dark switch.
 
-  The only inline script fjkit ships besides the flash-guard in the shell. It
-  is two lines and it has to run before any bundle would have loaded, which is
-  why it is not in a .js file.
+  The only inline script fjkit ships besides the shell's flash-guard. Two
+  lines, and it has to run before any bundle would have loaded, so it is not in
+  a .js file.
 #}
 {% macro theme_toggle() -%}
   <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
@@ -74,18 +74,18 @@
   breadcrumb(trail, separator)
 
   `trail` is a list of `(label, href)` pairs. A pair whose href is none is the
-  current page: it renders as a `<span aria-current="page">`, not a link, so
-  the trail has exactly one non-navigable entry and assistive tech is told
-  which one it is. Passing the current page as a link is the usual way this
-  component goes wrong, and the shape of the parameter is what prevents it.
+  current page: it renders as `<span aria-current="page">` rather than a link,
+  so the trail holds exactly one non-navigable entry and assistive tech is told
+  which. Passing the current page as a link is the usual way this component
+  goes wrong, and the parameter's shape prevents it.
 
   Separators are their own `<li aria-hidden="true">` rather than CSS `::after`
-  content, because generated content is read aloud by some screen readers and
-  a trail punctuated by "greater than" five times is worse than silence. That
-  is Basecoat's structure and this follows it.
+  content: some screen readers read generated content aloud, and a trail
+  punctuated by "greater than" five times is worse than silence. This follows
+  Basecoat's structure.
 
-  The chevron mirrors under `dir="rtl"`; a dot has nothing to mirror, so the
-  flip is applied to the chevron only.
+  The separator mirrors under `dir="rtl"`; a dot has nothing to mirror, so the
+  flip skips it.
 #}
 {% set _CRUMB_SEPARATORS = {"chevron": "chevron-right", "slash": "slash", "dot": "dot"} %}
 

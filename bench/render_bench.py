@@ -1,8 +1,8 @@
-"""Measure what actually costs CPU and memory when Jinja2 renders.
+"""Measure what costs CPU and memory when Jinja2 renders.
 
-Every claim in docs/jinja-performance.md comes from a case below. Re-run it on
-your own hardware before believing any of the numbers — the *ordering* of the
-results is stable, the absolute microseconds are not.
+Every claim in `docs/jinja-performance.md` comes from a case below. The ordering
+of the results holds across machines; the absolute microseconds do not, so
+re-run this on your own hardware before quoting a number.
 
     uv run python bench/render_bench.py            # everything
     uv run python bench/render_bench.py macros     # one section
@@ -22,8 +22,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 
-#: The demo is a workspace member, not an installed package, so its own root
-#: goes on the path before its schemas can be imported.
+#: The demo is a workspace member, not an installed package, so its root has to
+#: be on the path before its schemas import.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "examples" / "fjkit-demo"))
 
 from app.features.tasks.schemas import Priority, Status, Task
@@ -31,19 +31,19 @@ from fjkit import FjkitConfig, build_environment
 from fjkit.config import TEMPLATE_DIR as KIT_TEMPLATE_DIR
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-#: The benchmark renders the demo's real templates, so the Environment needs
-#: the same two-layer search path the app uses: app first, kit second.
+#: The benchmark renders the demo's own templates, so the `Environment` needs
+#: the two-layer search path the app uses: app first, kit second.
 APP_TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "examples" / "fjkit-demo" / "app" / "templates"
 
 
 #: The globals the demo's own `main.py` supplies. `base.html` feeds
-#: `style_sheets` to its style picker through `| tojson`, and an undefined
-#: value there is a `TypeError` rather than a blank — so a benchmark that
-#: renders the demo's pages has to supply them, exactly as the app does.
+#: `style_sheets` to its style picker through `| tojson`, where an undefined
+#: value raises `TypeError` instead of rendering blank, so a benchmark of the
+#: demo's pages has to supply them exactly as the app does.
 #:
-#: A plain dict, not an import from the demo: the point of this file is to
-#: measure Jinja, and reaching into the app for a constant would make the
-#: numbers depend on the app's wiring.
+#: A plain dict rather than an import from the demo: this file measures Jinja,
+#: and reaching into the app for a constant would tie the numbers to the app's
+#: wiring.
 APP_GLOBALS = {"style_sheets": {"vega": "/_fjkit/dist/fjkit-vega.css"}}
 
 
@@ -131,18 +131,17 @@ def fixture_env(**kwargs) -> Environment:
 
 
 def bench_environment() -> None:
-    """auto_reload, StrictUndefined and the LRU, measured per render.
+    """Measure `auto_reload`, `StrictUndefined` and template lookup per render.
 
-    These are the knobs people argue about. Two of the three barely register;
-    knowing which two is the point.
+    Two of the three barely register; which two is the result.
     """
     tasks = make_tasks(50)
     ctx = {"request": _FakeRequest(), "tasks": tasks}
     rows = []
 
-    # auto_reload is charged at get_template() time, not at render() time — it
-    # stats every file in the inheritance chain. Measuring it means calling
-    # get_template() per iteration, which is what a route does anyway.
+    # auto_reload is charged at get_template(), not at render(): it stats every
+    # file in the inheritance chain. Measuring it means calling get_template()
+    # per iteration, which is what a route does anyway.
     for case, reload_ in [
         ("get_template + render, auto_reload=True", True),
         ("get_template + render, auto_reload=False", False),
@@ -178,7 +177,7 @@ def bench_environment() -> None:
 
 
 class _FakeRequest:
-    """Enough of a Request for the templates' url_for/is_active globals."""
+    """Enough of a `Request` for the templates' `url_for` and `is_active` globals."""
 
     scope: dict = {}
 
@@ -216,10 +215,10 @@ print((time.perf_counter() - start) * 1000, len(names))
 
 
 def bench_cold_start() -> None:
-    """The cost a *fresh process* pays before it can serve the first request.
+    """Measure what a fresh process pays before it can serve the first request.
 
-    Invisible in a long-lived server, and squarely on the critical path for
-    `--reload` loops, serverless cold starts and rolling deploys.
+    Invisible in a long-lived server; on the critical path for `--reload` loops,
+    serverless cold starts and rolling deploys.
     """
     root = str(Path(__file__).resolve().parent.parent)
     rows = []
@@ -245,10 +244,10 @@ def bench_cold_start() -> None:
 
 
 def bench_macros() -> None:
-    """macro vs include vs inline, for a component repeated N times.
+    """Compare macro, include and inline for a component repeated `n` times.
 
     `{% include %}` inside a loop re-resolves the template and builds a fresh
-    context per iteration. A macro is a call on a module that was built once.
+    context per iteration. A macro is a call on a module built once.
     """
     env = fixture_env()
     rows = []
@@ -282,11 +281,11 @@ def bench_macros() -> None:
 
 
 def bench_import_context() -> None:
-    """`{% from x import y %}` vs the same line `with context`.
+    """Compare `{% from x import y %}` with the same line `with context`.
 
-    Without context (the default) Jinja hands back a module it built once and
-    cached on the Template. `with context` rebuilds that module — re-running
-    every top-level statement in the imported file — on every single render.
+    Without context (the default) Jinja returns a module it built once and
+    cached on the `Template`. `with context` rebuilds that module on every
+    render, re-running every top-level statement in the imported file.
     """
     env = fixture_env()
     rows = []
@@ -309,7 +308,7 @@ def bench_import_context() -> None:
 
 
 def bench_whitespace() -> None:
-    """trim_blocks/lstrip_blocks: bytes on the wire, and what that costs."""
+    """Measure `trim_blocks`/`lstrip_blocks`: bytes on the wire, and the render cost."""
     tasks = make_tasks(200)
     rows = []
     for case, trim in [("trim_blocks off", False), ("trim_blocks on", True)]:
@@ -341,10 +340,10 @@ def bench_whitespace() -> None:
 
 
 def bench_memory() -> None:
-    """Peak allocation for one large page, three ways.
+    """Measure peak allocation for one large page, three ways.
 
-    render() materialises every fragment and then one joined string. Streaming
-    holds one buffer. The gap is the whole document.
+    `render()` materialises every fragment and then one joined string; streaming
+    holds one buffer. The gap between them is the whole document.
     """
     env = app_env(auto_reload=False)
     template = env.get_template("tasks/report.html")
@@ -377,13 +376,13 @@ def bench_memory() -> None:
 
 
 def bench_stream_buffer() -> None:
-    """Un-buffered streaming is a trap — but not for the reason you'd guess.
+    """Measure the cost of un-buffered streaming, which Jinja itself does not carry.
 
-    Jinja does not care how you drain its generator. The cost lands one layer
-    up: every yielded fragment becomes an ASGI `http.response.body` message and
-    an HTTP chunked-encoding frame. So this measures the generator alone *and*
-    the same page served through the ASGI stack, because only the second
-    number moves.
+    Draining the generator costs the same at any chunk size. The cost lands one
+    layer up: every yielded fragment becomes an ASGI `http.response.body`
+    message and an HTTP chunked-encoding frame. This section therefore measures
+    the generator alone and the same page served through the ASGI stack. Only
+    the second number moves.
     """
     import anyio
     import httpx
@@ -437,13 +436,13 @@ def bench_stream_buffer() -> None:
 
 
 def bench_event_loop() -> None:
-    """Rendering is CPU-bound and synchronous. Where it runs decides whether one
-    slow page also makes every *other* page slow.
+    """Measure how long each way of rendering holds the event loop.
 
-    A pinger task hammers a trivial endpoint while heavy renders run. The
-    number that matters is not the ping's own latency but the largest *gap*
-    between two consecutive pings: that gap is how long the event loop was
-    unavailable to everybody else.
+    Rendering is CPU-bound and synchronous, so where it runs decides whether one
+    slow page makes every other page slow. A pinger task calls a trivial
+    endpoint while heavy renders run. The number that matters is the largest gap
+    between two consecutive pings, not the ping's own latency: that gap is how
+    long the event loop was unavailable to everybody else.
     """
     import anyio
     import httpx
@@ -497,8 +496,8 @@ def bench_event_loop() -> None:
                 done = True
 
             async def pinger() -> None:
-                # The `done` check goes *after* the stamp on purpose: the last
-                # stall only becomes visible on the ping that follows it, and
+                # The `done` check comes after the stamp: the last stall only
+                # becomes visible on the ping that follows it, and
                 # `while not done` would exit before recording it.
                 while True:
                     await client.get("/ping")

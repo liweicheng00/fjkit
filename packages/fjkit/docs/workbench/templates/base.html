@@ -1,23 +1,23 @@
 {#
   The docs site's shell — this app's identity, and nothing structural.
 
-  It is the same file `examples/fjkit-demo/app/templates/base.html` is, doing the
-  same job: extend `ui/shell.html`, fill three blocks, stay out of the way. The
-  <head>, the theme flash-guard, the asset links and the sidebar/main/footer
-  skeleton all stay in the kit. This site is a fjkit app; if that stops being
-  true, `tests/test_docs_site.py` fails.
+  It does the job `examples/fjkit-demo/app/templates/base.html` does: extend
+  `ui/shell.html`, fill three blocks, stay out of the way. The <head>, the theme
+  flash-guard, the asset links and the sidebar/main/footer skeleton stay in the
+  kit. This site is a fjkit app, and `tests/test_docs_site.py` fails when that
+  stops being true.
 
-  `sections` is a top-level `{% set %}` in each page — a list of
-  {id, title} — which Jinja evaluates before this template renders, so the
-  in-page rail below is built from the page's own headings and cannot drift
-  away from them.
+  `sections` is a top-level `{% set %}` in each page — a list of {id, title},
+  each optionally carrying the `num` its heading badge shows —
+  which Jinja evaluates before this template renders, so the in-page rail below
+  is built from the page's own headings and cannot drift from them.
 
-  Both languages render through this one file. `t` is the chrome — rail
-  headings, the footer sentence, the label on the language link — and `lang` is
-  the build being written. Every asset is named through `fjkit_static`, whose
-  prefix is `assets` for the English pages and `../assets` for the Chinese ones
-  in `zh/`, because GitHub Pages serves this site from a project subpath and
-  every link on it has to be relative.
+  Both languages render through this one file. `t` is the chrome (rail headings,
+  the footer sentence, the label on the language link) and `lang` is the build
+  being written. Every asset is named through `fjkit_static`, whose prefix is
+  `assets` for the English pages and `../assets` for the Chinese ones in `zh/`:
+  GitHub Pages serves this site from a project subpath, so every link on it has
+  to be relative.
 #}
 {% extends "ui/shell.html" %}
 {% from "ui/nav.html" import brand, theme_toggle %}
@@ -37,17 +37,17 @@
   <meta property="og:type" content="article">
   {#
     The mock server, installed before htmx runs. A plain script executes during
-    parsing; the shell's htmx and Basecoat tags are `defer`, so they run after
-    it whatever the order in the file. Only the Learn page has live demos, but
+    parsing, and the shell's htmx and Basecoat tags are `defer`, so they run
+    after it whatever the order in the file. Only the Learn page has live demos;
     the shim is inert until a route is registered against it.
   #}
   <script src="{{ fjkit_static('mock-server.js') }}"></script>
 {% endblock %}
 
 {#
-  The one file the kit's four contact points allow an app to write for itself:
-  token overrides and element-level typography. No classes, so nothing here can
-  substitute for a component that ought to exist.
+  The one file the kit's four contact points let an app write for itself: token
+  overrides and element-level typography. No classes, so nothing here can stand
+  in for a component that ought to exist.
 #}
 {% block stylesheets %}
   <link rel="stylesheet" href="{{ fjkit_static('brand.css') }}">
@@ -62,18 +62,26 @@
       {% endfor %}
     {% endcall %}
 
+    {#
+      `num` is the same string the section's own badge shows, so the rail counts
+      the way the page does. It is optional: the Cheatsheet is not read in order
+      and numbers nothing, and a trailing "Read next" band carries no number
+      either — hence `.get`, because the Environment is StrictUndefined.
+      `test_docs_site.py` compares the two lists and fails when they disagree.
+    #}
     {% call sidebar_group(t.sections_group) %}
       {% for section in sections %}
-        {{ sidebar_link(request, page.route ~ "#" ~ section.id, section.title) }}
+        {{ sidebar_link(request, page.route ~ "#" ~ section.id,
+                        (section.get("num") ~ " · " ~ section.title) if section.get("num") else section.title) }}
       {% endfor %}
     {% endcall %}
 
     {#
-      The same page in the other language, never the other language's landing
-      page: someone reading about hx-swap wants to keep reading about hx-swap.
-      `url_for` resolves `zh:learn` into the relative hop between the two
-      builds, and `is_active` refuses a language-qualified name, so this link
-      is never the current one.
+      The same page in the other language, never that language's landing page:
+      someone reading about hx-swap wants to keep reading about hx-swap.
+      `url_for` resolves `zh:learn` into the relative hop between the two builds,
+      and `is_active` refuses a language-qualified name, so this link is never
+      the current one.
     #}
     {% call sidebar_group(t.language_group) %}
       {{ sidebar_link(request, lang.other ~ ":" ~ page.route, t.other_language, icon_name="languages") }}
@@ -84,26 +92,26 @@
 {#
   The GitHub mark, and the one piece of artwork this site draws by hand.
 
-  fjkit's icons are Lucide, and Lucide ships no brand marks — `icon("github")`
+  fjkit's icons are Lucide, Lucide ships no brand marks, and `icon("github")`
   raises. The kit has no seam for one either, on purpose: a brand-icon set is a
-  licensing question before it is a rendering question, and it is not the kit's
-  to answer. So the mark sits with the site, beside its other brand asset.
+  licensing question before it is a rendering question, and not the kit's to
+  answer. So the mark sits with the site, beside its other brand asset.
 
   `fill="currentColor"` and no `stroke`: this is a filled logo, not a Lucide
   stroke glyph. That attribute is the whole of its dark-mode handling — it takes
   the button's text colour, like the sun and moon next to it.
 
-  Through `button()` rather than a hand-written `<a class="btn">`, so it carries
-  whatever the button contract is: the same ghost/icon-sm pairing `theme_toggle`
-  uses, which is what keeps the two the same size in the header.
+  Drawn through `button()` rather than a hand-written `<a class="btn">`, so it
+  carries the button contract: the same ghost/icon-sm pairing `theme_toggle`
+  uses, which keeps the two the same size in the header.
 
-  The label is `t`, not a literal. Everything else in the chrome is translated in
-  one file and this is chrome — an icon-only link whose only name is its
-  `aria-label` is the last place to leave a stray English string.
+  The label is `t`, not a literal. The rest of the chrome is translated in one
+  file and this is chrome; an icon-only link whose only name is its `aria-label`
+  is the last place to leave a stray English string.
 
-  The footer already links to the same repository in prose. This is not a
-  duplicate so much as the other half of it: the footer sentence names the repo
-  for someone reading to the bottom, the header gives it a fixed place to be.
+  The footer links to the same repository in prose. The two are halves of one
+  thing: the footer sentence names the repo for someone reading to the bottom,
+  the header gives it a fixed place to be.
 #}
 {% set github_mark %}
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
@@ -129,9 +137,9 @@
 
 {#
   `defer`, all of them. The shell loads htmx and Basecoat deferred from the
-  <head>, and deferred scripts run in document order *after* parsing — so a
-  plain script down here would execute first and find neither of them. Same
-  rule any app page follows when it adds a script of its own.
+  <head>, and deferred scripts run in document order after parsing, so a plain
+  script down here would execute first and find neither of them. Any app page
+  adding a script of its own follows the same rule.
 #}
 {% block scripts %}
   <script defer src="{{ fjkit_static('data.js') }}"></script>

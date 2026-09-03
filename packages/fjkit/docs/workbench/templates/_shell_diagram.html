@@ -1,0 +1,58 @@
+{#
+  The shell diagram — one SVG, both languages.
+
+  Same contract as `_diagram.html`: the geometry lives here once, and every
+  word that is prose comes from `t.shell`, which `build.py` carries per
+  language. Block names, tag names and file names stay literal — they are code,
+  and code is not translated.
+
+  Everything sits inside one `data-lit="true"` group, which is what lets
+  `data-accent` reach `--primary` in brand.css. Accent marks the slots an app
+  fills; the rest is what the shell owns. No classes anywhere in it.
+#}
+<svg viewBox="0 0 720 440" role="img" fill="none"
+     font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+     aria-label="{{ t.shell.alt }}">
+  <g data-lit="true">
+    <text x="8" y="18" font-size="10" fill="var(--muted-foreground)">ui/shell.html — {{ t.shell.file }}</text>
+    <rect x="8" y="28" width="704" height="400" rx="8" fill="var(--card)" stroke="currentColor"></rect>
+
+    {# ------------------------------------------------------------- head #}
+    <rect x="24" y="44" width="672" height="110" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="36" y="64" font-size="12" fill="currentColor">&lt;head&gt;</text>
+    <text x="36" y="84" font-size="10" fill="var(--muted-foreground)">&lt;title&gt;{% raw %}{% block title %}{% endraw %} · {% raw %}{% block site_title %}{% endraw %}</text>
+    <text x="36" y="102" font-size="10" fill="var(--muted-foreground)">{{ t.shell.theme }}</text>
+    <text x="36" y="120" font-size="10" fill="var(--muted-foreground)">dist/fjkit-&lt;style&gt;.css · vendor/htmx · vendor/basecoat · js/errors.js</text>
+    <text data-accent x="36" y="141" font-size="10" fill="currentColor">{% raw %}{% block stylesheets %}{% endraw %}  {% raw %}{% block head %}{% endraw %} — {{ t.shell.head_note }}</text>
+
+    {# ------------------------------------------------------------- body #}
+    <rect x="24" y="160" width="672" height="252" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="36" y="180" font-size="12" fill="currentColor">&lt;body&gt;</text>
+
+    {# the aside, which comes first in the body and is empty unless filled #}
+    <rect data-accent x="36" y="192" width="176" height="170" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text data-accent x="46" y="212" font-size="11" fill="currentColor">{% raw %}{% block sidebar %}{% endraw %}</text>
+    <text x="46" y="232" font-size="9" fill="var(--muted-foreground)">{{ t.shell.sidebar_1 }}</text>
+    <text x="46" y="246" font-size="9" fill="var(--muted-foreground)">{{ t.shell.sidebar_2 }}</text>
+    <text x="46" y="260" font-size="9" fill="var(--muted-foreground)">{{ t.shell.sidebar_3 }}</text>
+
+    {# the wrapper: header, main, footer #}
+    <rect x="222" y="192" width="462" height="170" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="232" y="209" font-size="9" fill="var(--muted-foreground)">&lt;div&gt; — {{ t.shell.wrapper }}</text>
+
+    <rect x="234" y="218" width="438" height="46" rx="4" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="244" y="235" font-size="11" fill="currentColor">&lt;header&gt;</text>
+    <text data-accent x="244" y="253" font-size="9" fill="currentColor">{% raw %}{% block brand %}{% endraw %}  {% raw %}{% block nav %}{% endraw %}  {% raw %}{% block header_actions %}{% endraw %}</text>
+
+    <rect data-accent x="234" y="274" width="438" height="48" rx="4" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text data-accent x="244" y="294" font-size="12" fill="currentColor">&lt;main&gt; — {% raw %}{% block content %}{% endraw %}</text>
+    <text x="244" y="311" font-size="9" fill="var(--muted-foreground)">{{ t.shell.content_note }}</text>
+
+    <rect x="234" y="332" width="438" height="20" rx="4" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text data-accent x="244" y="346" font-size="9" fill="currentColor">&lt;footer&gt; — {% raw %}{% block footer %}{% endraw %}</text>
+
+    {# the toaster, which is why a swap can raise a message #}
+    <rect x="36" y="372" width="648" height="28" rx="4" stroke="currentColor" stroke-dasharray="3 3"></rect>
+    <text x="46" y="390" font-size="10" fill="var(--muted-foreground)">{% raw %}{% block toasts %}{% endraw %} — {{ t.shell.toast_note }}</text>
+  </g>
+</svg>

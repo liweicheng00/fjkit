@@ -1,13 +1,13 @@
-"""`<body>.<mac>` — the one cookie format the kit signs things with.
+"""`<body>.<mac>` — the one cookie format the kit signs with.
 
-Two plugins now keep a value in a cookie that the browser must not be able to
-write: a flash message (which would otherwise be a way to make a site display
-any text an attacker likes) and the API console's credential. Neither needs
-the value kept *secret* — one is about to be printed on the page, the other is
-the caller's own token — so this signs and does not encrypt.
+Two plugins keep a value in a cookie the browser must not be able to write: a
+flash message (otherwise a way to make a site display any text an attacker
+likes) and the API console's credential. Neither value has to stay secret — one
+is about to be printed on the page, the other is the caller's own token — so
+this signs and does not encrypt.
 
-One implementation rather than one per plugin, because signing and verifying
-drifting apart is the shape of bug that makes every cookie look valid.
+One implementation rather than one per plugin: signing and verifying drifting
+apart is the shape of bug that makes every cookie look valid.
 """
 
 from __future__ import annotations
@@ -26,10 +26,10 @@ def sign(secret: bytes, payload: bytes) -> str:
 
 
 def sign_text(secret: bytes, body: str) -> str:
-    """The signing half on its own, for a body that is already ASCII-safe.
+    """Sign a body that is already ASCII-safe.
 
-    Also what verification calls: `unsign` re-signs the body it was handed and
-    compares, so there is exactly one place that decides what a signature is.
+    Verification calls this too: `unsign` re-signs the body it was handed and
+    compares, so one place decides what a signature is.
     """
     mac = hmac.new(secret, body.encode("ascii"), hashlib.sha256).digest()
     return f"{body}.{base64.urlsafe_b64encode(mac).decode('ascii').rstrip('=')}"
@@ -54,9 +54,9 @@ def unsign_text(secret: bytes, raw: str) -> str | None:
     try:
         expected = sign_text(secret, body)
     except UnicodeEncodeError:
-        # A body with non-ASCII in it was never produced by `sign_text`, so it
-        # cannot verify. Refusing here keeps the failure a `None` like every
-        # other bad cookie instead of an exception on the hot path.
+        # `sign_text` never produced a body with non-ASCII in it, so it cannot
+        # verify. Refusing here keeps the failure a `None` like every other bad
+        # cookie instead of an exception on the hot path.
         return None
     if not hmac.compare_digest(raw, expected):
         return None

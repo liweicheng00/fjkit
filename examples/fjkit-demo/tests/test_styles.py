@@ -30,19 +30,18 @@ def test_the_pack_the_server_chose_is_the_one_preselected(client):
 
 @pytest.mark.parametrize("pack", list(STYLE_SHEETS), ids=list(STYLE_SHEETS))
 def test_every_offered_pack_is_actually_served(client, pack):
-    """Every pack URL in the picker answers 200 with `text/css`."""
+    """An option pointing at a 404 loses every style on the page, and the browser reports nothing."""
     response = client.get(STYLE_SHEETS[pack])
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/css")
 
 
 def test_the_kit_stylesheet_is_the_first_link_on_the_page(client):
-    """The first `<link rel="stylesheet">` on the page is one of the packs."""
     first = re.search(r'<link rel="stylesheet" href="([^"]*)"', client.get("/").text).group(1)
     assert first.split("?")[0] in STYLE_SHEETS.values()
 
 
 @pytest.mark.parametrize("path", ["/tasks/board", "/jobs"])
 def test_swaps_do_not_carry_the_picker(htmx, path):
-    """htmx partials contain no style picker."""
+    """The picker belongs to the shell; a swap that carried it would put a second one on the page."""
     assert not PICKER.search(htmx.get(path).text)

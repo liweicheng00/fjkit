@@ -2,9 +2,9 @@
   The search page: both htmx mechanisms, in one workflow.
 
   A query is one question the server answers completely, so it is one reply and
-  four `hx-swap-oob` passengers. A pick is not — it produces an id, and the
-  panels that care each have a different question to ask with it — so it is one
-  in-band region plus an event, and the subscribers fetch themselves.
+  four `hx-swap-oob` passengers. A pick is not: it produces an id, and the panels
+  that care each have a different question to ask with it, so it is one in-band
+  region plus an event and the subscribers fetch themselves.
 #}
 {% extends "base.html" %}
 {% from "ui/button.html" import button %}

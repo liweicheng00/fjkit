@@ -3,12 +3,12 @@
 Two things have to happen before a route can render: the kit's assets need a
 URL, and the Jinja Environment needs building. Both read the same `FjkitConfig`
 and neither is useful without the other, so they are one call rather than two
-an app has to remember to keep in step.
+an app must keep in step.
 
 The Environment is built here, at app construction, rather than in lifespan.
-It is per-process either way — every worker constructs the app — and doing it
-here means a `TestClient` used without its context manager still has templates,
-which is the failure this consolidation removes.
+It is per-process either way — every worker constructs the app — and building
+it here means a `TestClient` used without its context manager still has
+templates, which is the failure this consolidation removes.
 """
 
 from __future__ import annotations
@@ -30,14 +30,14 @@ def mount_fjkit(app: FastAPI, config: FjkitConfig | None = None) -> Templates:
 
     Serves the stylesheet and the vendored htmx/Basecoat JS out of the
     installed package at `config.static_url`, then puts the `Templates` on
-    `app.state.templates` where `@render` looks for it.
+    `app.state.templates`, where `@render` looks for it.
 
-    Returns the same `Templates` it stored, for a caller that wants to render
-    outside a request — a build script, a test.
+    Returns the same `Templates` it stored, for a caller that renders outside a
+    request — a build script, a test.
     """
     config = config or FjkitConfig()
 
-    # The resolved pack, not just any pack: a wheel built before this pack
+    # Check the resolved pack, not just any pack: a wheel built before this pack
     # existed would otherwise pass the check and 404 on the page. Resolving here
     # as well as in the Environment is deliberate — an app that mounts but never
     # renders should still fail at startup rather than on its first request.
@@ -58,8 +58,8 @@ def mount_fjkit(app: FastAPI, config: FjkitConfig | None = None) -> Templates:
     )
 
     # Before the plugins, because Starlette keys exception handlers by class and
-    # the last registration wins: going first is what lets a plugin — or the app
-    # — replace the kit's answer to a rejected form rather than be shadowed by it.
+    # the last registration wins: going first lets a plugin — or the app —
+    # replace the kit's answer to a rejected form rather than be shadowed by it.
     install_error_handlers(app, config)
 
     # Before the Environment: a plugin's `mount` may refuse a configuration

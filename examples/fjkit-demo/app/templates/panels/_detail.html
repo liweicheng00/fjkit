@@ -2,10 +2,10 @@
   The detail panel's body — no wrapper, and no id.
 
   The tab panel is the element htmx swaps, so this partial is only ever its
-  contents. Compare `search/_detail.html`, which has to wrap itself in
+  contents. Compare `search/_detail.html`, which must wrap itself in
   `#search-detail` and re-declare its whole subscription on every render, because
-  it is its own target. A lazy panel moves both of those into `tab_panel`, and
-  what is left in this file is the markup.
+  it is its own target. A lazy panel moves both into `tab_panel`, leaving this
+  file the markup.
 #}
 {% set selected = selected | default(none) %}
 {% from "ui/button.html" import button %}

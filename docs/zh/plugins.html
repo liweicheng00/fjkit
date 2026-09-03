@@ -16,7 +16,7 @@
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
   <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
-  <script defer src="../assets/js/errors.js?v=1787594535"></script>
+  <script defer src="../assets/js/errors.js?v=1788369088"></script>
   <meta name="description" content="用一個物件、一個註冊點，加上 middleware、exception handler，或每個模板都拿得到的值——以及第一個需要它的 session 外掛。">
   <meta property="og:title" content="fjkit 外掛">
   <meta property="og:description" content="用一個物件、一個註冊點，加上 middleware、exception handler，或每個模板都拿得到的值——以及第一個需要它的 session 外掛。">
@@ -51,39 +51,39 @@ fjkit
 </ul>
   </div>
 <div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
-    <a href="plugins.html#why">      <span>plugin 是什麼</span>
+    <a href="plugins.html#why">      <span>01 · plugin 是什麼</span>
     </a>
   </li>
         <li>
-    <a href="plugins.html#mount">      <span>mount()：app 那一側</span>
+    <a href="plugins.html#mount">      <span>02 · mount()：app 那一側</span>
     </a>
   </li>
         <li>
-    <a href="plugins.html#extend">      <span>extend()：Jinja 與每一次渲染</span>
+    <a href="plugins.html#extend">      <span>03 · extend()：Jinja 與每一次渲染</span>
     </a>
   </li>
         <li>
-    <a href="plugins.html#rules">      <span>順序、碰撞與界線</span>
+    <a href="plugins.html#rules">      <span>04 · 順序、碰撞與界線</span>
     </a>
   </li>
         <li>
-    <a href="plugins.html#auth">      <span>auth plugin</span>
+    <a href="plugins.html#auth">      <span>05 · auth plugin</span>
     </a>
   </li>
         <li>
-    <a href="plugins.html#messages">      <span>訊息：三層</span>
+    <a href="plugins.html#messages">      <span>06 · 訊息：三層</span>
     </a>
   </li>
         <li>
-    <a href="plugins.html#write">      <span>flash plugin</span>
+    <a href="plugins.html#write">      <span>07 · flash plugin</span>
     </a>
   </li>
         <li>
-    <a href="plugins.html#errors">      <span>表單被退回的時候</span>
+    <a href="plugins.html#errors">      <span>08 · 表單被退回的時候</span>
     </a>
   </li>
         <li>
-    <a href="plugins.html#apidocs">      <span>API 主控台</span>
+    <a href="plugins.html#apidocs">      <span>09 · API 主控台</span>
     </a>
   </li>
 </ul>
@@ -115,7 +115,7 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Plugins</h1>
-<p class="text-muted-foreground text-sm">    有些東西不是 macro。plugin 加的是 middleware、exception handler，或是每個模板都該拿到的值——
+<p class="text-muted-foreground text-sm">    有些東西不是 macro。plugin 加的是 middleware、exception handler，或每個模板都該拿到的值：
     一個物件，一個地方註冊。
 </p>    </div>
   </div>
@@ -124,16 +124,16 @@ fjkit
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">plugin 是什麼</h2><p class="text-muted-foreground text-sm">兩個貢獻時機，因為 kit 真的有兩個時機。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">plugin 是什麼</h2><p class="text-muted-foreground text-sm">兩個貢獻時機，對應 kit 的兩個時機。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        macro 管的是一頁畫出什麼。它管不到 handler 執行之前發生的事，也管不到「每個模板都該知道、
-        但不該由每條路由傳過去」的東西。session 兩者都要；語系與 feature flag 只要後者；
-        flash 訊息只要前者。
+        macro 只管一頁畫出什麼。handler 執行之前發生的事，以及每個模板都該知道、
+        但不該由每條路由傳過去的值，都不歸它管。session 兩者都要，
+        語系與 feature flag 只要後者，flash 訊息只要前者。
       </p>
       <p>
         plugin 是一個物件，兩個方法都可選。<code>mount()</code> 在 app 建構時執行，
-        <code>extend()</code> 在 Jinja environment 建立時執行。只想給每個模板一個值的 plugin，
-        就只寫後面那個；只想在請求經過時動點手腳的，就只寫前面那個。
+        <code>extend()</code> 在 Jinja environment 建立時執行。只給每個模板一個值的 plugin
+        只寫 <code>extend()</code>；只在請求經過時處理的 plugin 只寫 <code>mount()</code>。
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">config = FjkitConfig(
@@ -144,12 +144,12 @@ mount_fjkit(app, config)</pre>
 
 
 <div class="flex flex-col gap-3">      <p>
-        註冊就這樣而已。<code>mount_fjkit()</code> 本來就要讀這份 config 來掛靜態檔與建
+        註冊到此結束。<code>mount_fjkit()</code> 本來就要讀這份 config 來掛靜態檔與建立
         environment，所以 plugin 不需要第二個呼叫，也沒有 import 順序要記。
       </p>
       <p>
-        分成兩個時機是刻意讓它看得見的。藏起來會比較友善——直到某個人的 <code>mount()</code>
-        靜悄悄地沒有執行為止。
+        兩個時機刻意保持可見。把它藏起來的代價，是某個 plugin 的 <code>mount()</code>
+        沒有執行而沒有人發現。
       </p>
 </div>
 </section></div></div>
@@ -161,8 +161,8 @@ mount_fjkit(app, config)</pre>
       <div>
 <h2 class="text-lg font-semibold tracking-tight">mount()：app 那一側</h2><p class="text-muted-foreground text-sm">middleware、handler、路由——而且都記在加它的那個 plugin 頭上。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        <code>AppSetup</code> 基本上就是 FastAPI 的轉手。它多做的事是署名：出問題的 plugin 會被
-        指名，而不是靠一個一個拔掉來找。
+        <code>AppSetup</code> 把呼叫轉給 FastAPI，並多做一件事：署名。
+        出問題時錯誤訊息會指名那個 plugin，不必逐一拔掉來找。
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -170,7 +170,7 @@ mount_fjkit(app, config)</pre>
 <h3>AppSetup</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>add_middleware(cls, **options)</h4><p>Starlette 依註冊的反序執行 middleware，所以 plugins= 裡排在後面的 plugin 包在前面那些的外層</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>add_exception_handler(exc, handler)</h4><p>注意 middleware 裡拋出的例外永遠到不了 handler——Starlette 的 handler 那一層在使用者 middleware 的內側</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_exception_handler(exc, handler)</h4><p>middleware 裡拋出的例外到不了 handler：Starlette 的 handler 那一層在使用者 middleware 的內側</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>include_router(router)</h4><p>給自帶端點的 plugin</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>mount_static(url, directory)</h4><p>給自帶資產的 plugin，掛載名稱由 plugin 名字衍生</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>warn(message)</h4><p>啟動期的設定檢查；訊息會冠上 plugin 名稱，以 PluginWarning 發出</p>    </section>  </div><div class="item" data-clamp="false">    <section>
@@ -178,9 +178,9 @@ mount_fjkit(app, config)</pre>
   </div>
 
 <div class="flex flex-col gap-3">      <p>
-        <code>warn()</code> 是給「只有這個 plugin 認得出來」的組合用的。例如正式設定配上記憶體版
-        session store：在你的筆電上完全正常，換到四個 worker 後面就會隨機把人登出，而且 traceback
-        裡沒有任何一行指向原因。
+        <code>warn()</code> 用於只有這個 plugin 認得出來的組合。例如正式設定配上記憶體版
+        session store：在開發機上正常，換到四個 worker 後面會隨機把人登出，
+        而且 traceback 裡沒有一行指向原因。
       </p>
 </div>
 </section></div></div>
@@ -190,11 +190,11 @@ mount_fjkit(app, config)</pre>
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">extend()：Jinja 與每一次渲染</h2><p class="text-muted-foreground text-sm">per-request 的 context，是原本缺的那一塊。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">extend()：Jinja 與每一次渲染</h2><p class="text-muted-foreground text-sm">per-request 的 context，就是 globals 缺的那一塊。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        <code>FjkitConfig.globals</code> 每個 process 只算一次。對版本字串來說剛剛好，對「現在登入
-        的是誰」來說毫無用處。<code>add_context_processor()</code> 是另外那一半：每次渲染執行一次，
-        拿得到當下的 request。
+        <code>FjkitConfig.globals</code> 每個 process 只算一次，適合版本字串，
+        不適合「現在登入的是誰」。<code>add_context_processor()</code> 補上另一半：
+        每次渲染執行一次，拿得到當下的 request。
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -215,21 +215,20 @@ mount_fjkit(app, config)</pre>
 
 
 <div class="flex flex-col gap-3">      <p>
-        兩個限制，都是刻意的。processor 必須是<strong>同步</strong>的：它在
+        兩個限制都是刻意的。processor 必須<strong>同步</strong>：它在
         <code>Templates.page()</code> 裡執行，而那是 <code>def</code> handler 從 threadpool 進來的。
-        需要 I/O 的 plugin 在 middleware 裡做完，把結果留在 <code>request.state</code> 上——上面那
-        一行讀的正是這個。
+        需要 I/O 的 plugin 在 middleware 裡做完，把結果留在 <code>request.state</code> 上，
+        上面那一行讀的正是這個。
       </p>
       <p>
-        <code>provides=</code> 是強制宣告而不是自動推得。沒有它，兩個 plugin 默默搶同一個
-        <code>user</code>，只能靠渲染一頁然後剛好注意到才會發現；有了它，衝突是一個點名雙方的啟動
-        期錯誤。
+        <code>provides=</code> 是強制宣告，不是自動推得。沒有它，兩個 plugin 會默默搶同一個
+        <code>user</code>，只能靠渲染頁面時碰巧注意到。有了它，衝突變成一個點名雙方的啟動期錯誤。
       </p>
       <p>
-        <code>add_template_dir()</code> 是「一個帶 UI 的 plugin 怎麼把 UI 帶進來」的答案，第 09 節
-        就是那個範例。它有一個附帶條件：Tailwind 的掃描範圍是 <code>fjkit.css</code> 裡一份明列的
-        目錄清單，所以 kit 內建的 plugin 要把自己的模板目錄加進那份清單。漏掉不會有任何失敗——模板
-        照樣渲染，裡面每一個 utility class 都不在樣式表裡，頁面就只是看起來壞掉。
+        <code>add_template_dir()</code> 是帶 UI 的 plugin 把 UI 帶進來的方式，第 09 節是範例。
+        它有一個附帶條件：Tailwind 的掃描範圍是 <code>fjkit.css</code> 裡一份明列的目錄清單，
+        所以 kit 內建的 plugin 要把自己的模板目錄加進那份清單。
+        漏掉不會產生任何錯誤：模板照樣渲染，但裡面的 utility class 都不在樣式表裡，頁面看起來是壞的。
       </p>
 </div>
 </section></div></div>
@@ -239,7 +238,7 @@ mount_fjkit(app, config)</pre>
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">順序、碰撞與界線</h2><p class="text-muted-foreground text-sm">所有可能撞在一起的東西，都在啟動時炸，不會留到正式環境。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">順序、碰撞與界線</h2><p class="text-muted-foreground text-sm">所有可能相撞的東西都在啟動時報錯，不會留到正式環境。</p>      </div>
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>模板搜尋順序</h3><p>先找到的贏。</p>      </div>
@@ -277,21 +276,21 @@ mount_fjkit(app, config)</pre>
       <div>
 <h3>啟動時就拒絕</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>兩個 plugin 同名</h4><p>它們會在 request.state.&lt;name&gt; 上撞在一起，之後每一則錯誤訊息都變得沒辦法分辨</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>兩個 plugin 搶同一個 global、filter 或 context key</h4><p>錯誤訊息會點名雙方，並要你改名或拿掉一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>processor 回傳沒宣告過的 key</h4><p>在 strict_undefined 下會被抓到，所以是在開發階段浮現</p>    </section>  </div></div></div>
+      <h4>兩個 plugin 同名</h4><p>它們會在 request.state.&lt;name&gt; 上相撞，之後的錯誤訊息無法分辨是哪一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>兩個 plugin 搶同一個 global、filter 或 context key</h4><p>錯誤訊息會點名雙方，並要求改名或拿掉一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>processor 回傳沒宣告過的 key</h4><p>strict_undefined 會抓到，所以在開發階段就浮現</p>    </section>  </div></div></div>
   </div>
 
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>plugin 做不到的事</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>注入 markup</h4><p>      沒有任何一個 hook 能把 markup 塞進 shell。有的話，任何 plugin 都能在每一頁放一段
-      <code>&lt;script&gt;</code>——「你這端零建置」與封閉詞彙表會同時從那道側門走掉。要出 UI 的
-      plugin 出的是<em>模板</em>，而且跟其他東西一樣得過 <code>fjkit check</code>。
+      <h4>注入 markup</h4><p>      沒有任何 hook 能把 markup 塞進 shell。有的話，任何 plugin 都能在每一頁放一段
+      <code>&lt;script&gt;</code>，零建置與封閉詞彙表會同時失守。要出 UI 的
+      plugin 出的是模板，而且跟其他東西一樣要過 <code>fjkit check</code>。
 </p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>依賴另一個 plugin</h4><p>順序就是你寫的順序，沒有解析步驟——因為目前還沒有東西需要</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>在啟動時開連線</h4><p>沒有 lifespan hook。plugin 收的是 app 已經建好的 client，這也是 RedisStore 有一個 client 參數的原因</p>    </section>  </div></div></div>
+      <h4>依賴另一個 plugin</h4><p>順序就是你寫的順序，沒有解析步驟，因為目前沒有東西需要</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>在啟動時開連線</h4><p>沒有 lifespan hook。plugin 收的是 app 已經建好的 client，RedisStore 有一個 client 參數就是這個原因</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>
@@ -304,12 +303,12 @@ mount_fjkit(app, config)</pre>
 <h2 class="text-lg font-semibold tracking-tight">auth plugin</h2><p class="text-muted-foreground text-sm">瀏覽器拿 cookie，token 留在伺服器。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         內建的第一個 plugin，也是這個接縫存在的理由。瀏覽器只拿到一個不透明、簽名過的
-        <code>HttpOnly</code> cookie；access token、refresh token 與你的 claims 全部留在伺服器端的
-        session store 裡。
+        <code>HttpOnly</code> cookie。access token、refresh token 與 claims 全部留在伺服器端的
+        session store。
       </p>
       <p>
-        這正是 htmx app 要的形狀。不需要 <code>htmx:configRequest</code> 去掛 header、不需要
-        refresh 重試的膠水、DOM 裡沒有 token——瀏覽器每個請求都會帶上 cookie，因為瀏覽器本來就會。
+        這正是 htmx app 需要的形狀：不必用 <code>htmx:configRequest</code> 掛 header，
+        不必寫 refresh 重試的接合程式碼，DOM 裡也沒有 token。cookie 由瀏覽器自動帶上。
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">auth = AuthPlugin(
@@ -323,22 +322,22 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
 
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>三個各自可換的接縫</h3>      </div>
+<h3>三個可替換的接縫</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>SessionStore</h4><p>開發用 MemoryStore、正式用 RedisStore，或你自己的——五個 async 方法</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>TokenSource</h4><p>憑證怎麼變成 session：比對密碼、OIDC code 交換、跟上游換 token。預設的 LocalSource 根本沒有上游</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>Csrf</h4><p>cookie 是 ambient credential，所以 CSRF 回來了。SameSite=Lax 加上精確的 Origin 比對——兩者漏掉的東西不一樣</p>    </section>  </div></div></div>
+      <h4>SessionStore</h4><p>開發用 MemoryStore、正式用 RedisStore，或你自己的實作，共五個 async 方法</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>TokenSource</h4><p>憑證怎麼變成 session：比對密碼、OIDC code 交換、跟上游換 token。預設的 LocalSource 沒有上游</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Csrf</h4><p>cookie 是 ambient credential，所以 CSRF 回來了。SameSite=Lax 加上精確的 Origin 比對，兩者漏掉的東西不同</p>    </section>  </div></div></div>
   </div>
 
 <div class="flex flex-col gap-3">      <p>
-        路由完全看不到這些。在 router 上掛 <code>Depends(auth.required)</code>，底下的 handler
-        簽名一個字都不用改；session 在 <code>request.state.auth</code> 上，在每個模板裡叫
+        路由看不到這些。在 router 上掛 <code>Depends(auth.required)</code>，底下的 handler
+        簽名不用改。session 在 <code>request.state.auth</code> 上，在每個模板裡叫
         <code>session</code>。
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>未登入的請求怎麼被拒絕</h3><p>@render 拿來決定線上格式的那個問題，換個角度問：該怎麼說不。</p>      </div>
+<h3>未登入的請求怎麼被拒絕</h3><p>@render 決定線上格式的那個問題，換成：該怎麼拒絕。</p>      </div>
     </header>      <section>      <div class="table-container">
       <table class="table">
         <thead>
@@ -351,7 +350,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
         <tbody>        <tr>
           <td class="font-medium">htmx</td>
           <td class=""><span class="badge" data-variant="info">401 + HX-Redirect</span></td>
-          <td class="">——htmx 在讀狀態碼之前就處理 HX-Redirect，所以這一格兩者兼得</td>
+          <td class="">htmx 在讀狀態碼之前就處理 HX-Redirect，所以兩者可以同時成立</td>
         </tr>
         <tr>
           <td class="font-medium">瀏覽器導覽</td>
@@ -361,7 +360,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
         <tr>
           <td class="font-medium">腳本、curl、另一個服務</td>
           <td class=""><span class="badge" data-variant="outline">401</span></td>
-          <td class="">——401 就是為這個呼叫端存在的</td>
+          <td class="">401 就是為這種呼叫端而存在</td>
         </tr>
 </tbody>
       </table>
@@ -370,22 +369,22 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
 </section>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        只有中間那一列不能是 401：一般導覽沒有任何機制可以對它做出反應，只會停在一片空白上。
-        htmx 那一列才有意思——它處理完 <code>HX-Redirect</code> 就 return，<em>還沒讀到</em>狀態碼，
-        所以狀態碼可以誠實，而瀏覽器照樣整頁移動。導覽的判定是 <code>Sec-Fetch-Mode: navigate</code>，
-        沒有的話退而看 <code>Accept</code> 有沒有提到 <code>text/html</code>；其餘都是
-        <code>render_mode="auto"</code> 下會拿到 JSON 的那個呼叫端。那個 401 不帶
-        <code>WWW-Authenticate</code>：RFC 9110 要求這個欄位，但所有已註冊的機制在這裡都是錯的。
-        <code>Basic</code> 會讓瀏覽器跳出它自己的帳密對話框，而那正是這個 plugin 要取代掉的登入表單。
+        只有中間那一列不能是 401：一般導覽沒有機制可以回應它，只會停在空白頁上。
+        htmx 那一列處理完 <code>HX-Redirect</code> 就 return，還沒讀到狀態碼，
+        所以狀態碼可以照實回，而瀏覽器照樣整頁移動。導覽的判定是 <code>Sec-Fetch-Mode: navigate</code>，
+        沒有這個標頭時改看 <code>Accept</code> 有沒有提到 <code>text/html</code>；其餘都是
+        <code>render_mode="auto"</code> 下會拿到 JSON 的呼叫端。那個 401 不帶
+        <code>WWW-Authenticate</code>：RFC 9110 要求這個欄位，但所有已註冊的機制在這裡都不適用。
+        <code>Basic</code> 會讓瀏覽器跳出自己的帳密對話框，而那正是這個 plugin 要取代的登入表單。
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>動手之前值得知道的</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>每個請求一次 store 查詢</h4><p>這是「刪一筆就能撤銷 session」與「refresh token 永不上線」的代價</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>refresh 有鎖</h4><p>否則同時發出的四個 swap 會送出四次 refresh，而有輪替的上游在第二次到達時就撤銷整個 family</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>refresh 期間不換 session id</h4><p>換了的話並行的 swap 會各帶回一張不同的 Set-Cookie，最後一張贏，其餘變孤兒</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>每個請求一次 store 查詢</h4><p>這是「刪一筆就能撤銷 session」與「refresh token 不出伺服器」的代價</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>refresh 有鎖</h4><p>否則同時發出的四個 swap 會送出四次 refresh，而有輪替的上游在第二次到達時撤銷整個 family</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>refresh 期間不換 session id</h4><p>換了的話並行的 swap 會各帶回一張不同的 Set-Cookie，最後一張生效，其餘變孤兒</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>登入路由是 async def</h4><p>它們要 await store，真正的 TokenSource 還要 await 身分提供者。只負責渲染的路由維持 def</p>    </section>  </div></div></div>
   </div>
 
@@ -398,14 +397,14 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
       <div>
 <h2 class="text-lg font-semibold tracking-tight">訊息：三層</h2><p class="text-muted-foreground text-sm">一則訊息，三層——而且只有最上面那層需要 secret。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        「給發出這次請求的那個人看一行字」不是一個功能，是三個疊起來的：畫出它的表面、讓它搭上這個
-        回應的方法，以及讓它活過一次轉址的方法。只有最後一個需要簽章用的 secret，而那正是這三層裡
-        只有一個是 plugin、另外兩個是核心的全部理由。
+        「給發出這次請求的人看一行字」由三層組成：畫出它的元件、讓它搭上這個回應的方法，
+        以及讓它活過一次轉址的方法。只有最後一層需要簽章用的 secret，
+        所以三層裡只有它是 plugin，另外兩層在核心。
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>三層</h3><p>其中兩層是核心，因為它們不需要你給任何東西。</p>      </div>
+<h3>三層</h3><p>其中兩層在核心，因為它們不需要任何設定。</p>      </div>
     </header>      <section>      <div class="table-container">
       <table class="table">
         <thead>
@@ -416,7 +415,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
           </tr>
         </thead>
         <tbody>        <tr>
-          <td class="font-medium">表面</td>
+          <td class="font-medium">元件</td>
           <td class="">ui/feedback.html 的 toaster 區域，由 ui/shell.html 在每一頁畫出來——裡面有沒有東西都畫</td>
           <td class=""><span class="badge" data-variant="secondary">核心</span></td>
         </tr>
@@ -443,15 +442,15 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
 
 
 <div class="flex flex-col gap-3">      <p>
-        沒有 plugin、沒有 secret、沒有任何設定——線畫在這裡就是為了這個。簽一顆 cookie 需要 secret，
-        而要求每一支 app 都準備一個（包括一支沒有表單、也沒有話要說的 app），就等於宣告
-        <code>mount_fjkit(app)</code> 不再是零設定就能跑。凡是不需要 secret 的，都留在核心。
+        不需要 plugin、secret 或任何設定，這條線就是為此劃的。簽一顆 cookie 需要 secret；
+        要求每一支 app 都準備一個（包括沒有表單、也沒有訊息要顯示的 app），等於讓
+        <code>mount_fjkit(app)</code> 不再零設定可跑。不需要 secret 的都留在核心。
       </p>
       <p>
-        而第三層也不是第二層的超集合。轉址會把整頁換掉，所以本來要顯示訊息的那份文件，在回應抵達之前
-        就不在了，唯一跨得過去的只有 cookie。但對一個<em>不是</em>轉址的回應來說，同一顆 cookie 就是
-        錯的工具——為了一則馬上就要被渲染出來的訊息多跑一趟。所以兩者是疊起來而不是合而為一：
-        <code>FlashPlugin</code> 把 cookie 排進 <code>fjkit.messages</code>，於是 shell 裡只有一個
+        第三層也不是第二層的超集合。轉址會換掉整頁，本來要顯示訊息的那份文件在回應抵達前
+        就不存在了，唯一跨得過去的只有 cookie。但對不是轉址的回應來說，同一顆 cookie 是
+        錯的工具：一則馬上就要渲染出來的訊息不必多跑一趟。所以兩者是疊起來而不是合而為一：
+        <code>FlashPlugin</code> 把 cookie 排進 <code>fjkit.messages</code>，shell 裡因此只有一個
         迴圈，而不是每種送達方式各一個。
       </p>
 </div>
@@ -484,25 +483,25 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
 </section>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        走標頭而不是 markup，因為 fragment 裡沒有 toaster：一次 htmx swap 換掉的是一個區域，而 toast
-        該待的那個區域在頁面上的別處。它也能用在 htmx 根本不會 swap 的回應上——htmx 在
-        <code>handleAjaxResponse</code> 裡讀 <code>HX-Trigger</code> 的時機，<em>早於</em>它去查
-        <code>responseHandling</code> 決定這個狀態碼要不要換內容，所以一個 422 或 500 照樣能在使用者
-        正在看的那一頁上跳出 toast。第 08 節整套送達機制就是這個。
+        走標頭而不是 markup，因為 fragment 裡沒有 toaster：一次 htmx swap 換掉的是一個區域，
+        而 toast 該待的區域在頁面上的別處。它也能用在 htmx 不會 swap 的回應上：htmx 在
+        <code>handleAjaxResponse</code> 裡讀 <code>HX-Trigger</code> 的時機，早於它查
+        <code>responseHandling</code> 決定這個狀態碼要不要換內容，所以一個 422 或 500 照樣能在
+        使用者正在看的那一頁上跳出 toast。第 08 節整套送達機制就是這個。
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>值得知道的幾件事</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>fjkit_messages() 是 global，不是 context key</h4><p>所以路由什麼都不用傳，一頁從沒聽過 messages 的模板照樣顯示得出來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>靠被迭代來消耗</h4><p>      有模板迭代過那個佇列，才算送達；只是問「裡面有沒有東西」不算，因為那不是把它顯示出來。
+      <h4>fjkit_messages() 是 global，不是 context key</h4><p>路由不用傳任何東西，一份從沒聽過 messages 的模板照樣顯示得出來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>靠被迭代來消耗</h4><p>      有模板迭代過那個佇列才算送達；只查詢「裡面有沒有東西」不算，因為那不是把它顯示出來。
       第 07 節整個依賴這個區別
 </p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>HX-Trigger 是合併，不是覆蓋</h4><p>handler 自己設的事件會留著——只因為剛好排了一個 toast 就把它丟掉，是那種兩邊同時出現才會現形的 bug</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>category</h4><p>      <code>info</code>、<code>success</code>、<code>warning</code>、<code>error</code>——是意義，
+      <h4>HX-Trigger 是合併，不是覆蓋</h4><p>handler 自己設的事件會留著。只因為排了一個 toast 就把它丟掉，是那種兩邊同時出現才會現形的 bug</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>category</h4><p>      <code>info</code>、<code>success</code>、<code>warning</code>、<code>error</code> 是意義，
       不是顏色。<code>toast()</code> 把每一種對到一個圖示與一段停留時間，<code>fjkit.css</code>
-      把每一種對到一個角色 token，所以「錯誤是紅的」只決定一次，而且換品牌時活得下來
+      把每一種對到一個角色 token，所以「錯誤是紅的」只決定一次，而且撐得過換品牌
 </p>    </section>  </div></div></div>
   </div>
 
@@ -515,14 +514,14 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
       <div>
 <h2 class="text-lg font-semibold tracking-tight">flash plugin</h2><p class="text-muted-foreground text-sm">一則活得比產生它的那個回應更久的訊息。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        轉址是訊息的墳場。<code>HX-Trigger</code> 是叫頁面去觸發一個事件，但頁面在那個標頭抵達之前
-        就被換掉了；一般導覽更是從頭到尾沒有 JavaScript 參與。唯一跨得過去的只有 cookie。
+        轉址會讓訊息消失。<code>HX-Trigger</code> 是叫頁面觸發一個事件，但頁面在那個標頭抵達之前
+        已經被換掉；一般導覽更是全程沒有 JavaScript 參與。唯一跨得過去的只有 cookie。
       </p>
       <p>
         所以 flash 是一個短命的簽名 cookie：在轉址的那個回應上種下去，在落地的那個請求上讀回來，
-        跟其他訊息一樣排進 <code>fjkit.messages</code>，並在真的被顯示過之後才清掉——這就是它只出現
-        一次、重新整理不會再跳的原因。<code>ui/shell.html</code> 裡的 toaster 區域本來就在，也本來就
-        在畫那個佇列，所以註冊 plugin 就是全部的設定，你的模板一個字都不用改。
+        跟其他訊息一樣排進 <code>fjkit.messages</code>，並在真的顯示過之後才清掉。
+        它因此只出現一次，重新整理不會再跳。<code>ui/shell.html</code> 裡的 toaster 區域本來就在，
+        也本來就在畫那個佇列，所以註冊 plugin 就是全部的設定，模板不用改。
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">flash = FlashPlugin(secret=os.environ[&#34;FJKIT_SECRET&#34;])
@@ -532,22 +531,22 @@ config = FjkitConfig(template_dir=…, plugins=(flash, auth))</pre>
 
 
 <div class="flex flex-col gap-3">      <p>
-        <code>auth</code> 是被交給 flash，而不是自己 import 它。兩個 plugin 誰也不依賴誰——auth
-        沒有 flash 也能跑，而一條剛存好資料的路由想要的是
-        <code>flash.add(response, "Saved")</code>，跟 session 毫無關係。把它們接起來的是 app，
-        這也是第 04 節裡沒有相依解析的同一個理由。
+        app 把 flash 交給 <code>auth</code>，<code>auth</code> 不自己 import 它。兩個 plugin 互不依賴：
+        auth 沒有 flash 也能跑，而一條剛存好資料的路由要的是
+        <code>flash.add(response, "Saved")</code>，跟 session 無關。把它們接起來的是 app，
+        理由與第 04 節沒有相依解析相同。
       </p>
       <p>
-        它在 Jinja 那一側什麼都沒有——沒有 <code>extend()</code>，也沒有任何屬於自己的 context key。
-        cookie 是在 middleware 裡排進 <code>fjkit.messages</code> 的，所以模板永遠不會知道這則訊息
-        是搭 cookie 來的、而不是它正在渲染的那個 handler 給的。這就是第 06 節那個分層換來的東西：
+        它在 Jinja 那一側沒有任何東西：沒有 <code>extend()</code>，也沒有自己的 context key。
+        middleware 把 cookie 排進 <code>fjkit.messages</code>，所以模板不會知道這則訊息
+        是搭 cookie 來的，還是它正在渲染的那個 handler 給的。這就是第 06 節分層換來的結果：
         shell 裡一個迴圈，而不是每種送達方式各一個。
       </p>
       <p>
-        有意思的是那顆 cookie 什麼時候被清掉，答案是「等到 <code>messages.shown(request)</code>
-        為真」——也就是等到有模板迭代過那個佇列，或佇列被序列化進 <code>HX-Trigger</code>。一次頁面
-        載入發出的請求不只頁面本身——htmx 的輪詢、prefetch 都算——如果「顯示過」的定義是「這個請求
-        帶了那顆 cookie」，其中任何一個都會把訊息吃掉，讓它本來該出現的那一頁空著。
+        那顆 cookie 在 <code>messages.shown(request)</code> 為真時才被清掉，也就是有模板迭代過
+        那個佇列，或佇列被序列化進 <code>HX-Trigger</code>。一次頁面載入發出的請求不只頁面本身，
+        htmx 的輪詢與 prefetch 都算。若把「顯示過」定義成「這個請求帶了那顆 cookie」，
+        其中任何一個都會吃掉訊息，讓它該出現的那一頁空著。
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="fjkit/flash.py" data-lang="python">def mount(self, setup: AppSetup) -&gt; None:
@@ -564,18 +563,18 @@ if carried and messages.shown(request):
 
 
 <div class="flex flex-col gap-3">      <p>
-        在任何地方發一則——<code>flash.add(response, "Saved", category="success")</code>——它就會
-        出現在瀏覽器接下來落地的那一頁上，長成一個 toast，而那一頁的路由對它一無所知。這也是判斷
-        一樣東西該不該做成 plugin 的標準：這個值，路由自己傳得過去嗎？這裡傳不過去，因為發出訊息
-        的那條路由，不是渲染它的那條。
+        在任何地方呼叫 <code>flash.add(response, "Saved", category="success")</code>，
+        訊息就會以 toast 出現在瀏覽器接下來落地的那一頁上，而那一頁的路由對它一無所知。
+        這也是判斷一樣東西該不該做成 plugin 的標準：這個值，路由自己傳得過去嗎？
+        這裡傳不過去，因為發出訊息的路由不是渲染它的路由。
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>鴨子型別，不是繼承</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>name</h4><p>一個 str 屬性——必要，而且只有這一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>mount / extend</h4><p>要寫哪個都行，兩個都不寫也行；沒有的那個就不會被呼叫</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>name</h4><p>一個 str 屬性，必要，而且只有這一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>mount / extend</h4><p>兩個都可選；沒有定義的那個不會被呼叫</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>沒有基底類別</h4><p>Plugin 是 Protocol，所以一個 plugin 不需要 import fjkit 才能成為 plugin</p>    </section>  </div></div></div>
   </div>
 
@@ -586,24 +585,26 @@ if carried and messages.shown(request):
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
 <span class="badge" data-variant="secondary">fjkit.errors</span></div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">表單被退回的時候</h2><p class="text-muted-foreground text-sm">表單被退回，以前換來的是一整頁 JSON。現在它會說哪裡不對，就標在欄位下面，而且沒有任何一條路由要求過。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">表單被退回的時候</h2><p class="text-muted-foreground text-sm">表單被退回時，錯誤標在欄位下面，不再是一整頁 JSON，而且不需要任何一條路由要求。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         FastAPI 對一份被退回的表單回的是 <code>{"detail":[{"type":"missing",…}]}</code> 加一個 422。
-        對 API 來說這完全正確；對一頁畫面來說它等於什麼都沒有：htmx 預設不會 swap 4xx，所以正在填
-        表單的人看到的是「按了沒反應」，而一般的 POST 則會把他丟到一整頁 JSON 上。
+        對 API 來說這正確，對一頁畫面來說等於什麼都沒有：htmx 預設不會 swap 4xx，
+        所以正在填表單的人看到的是按了沒反應，而一般的 POST 會把他丟到一整頁 JSON 上。
       </p>
       <p>
-        解法是看清楚那個回應本來就是什麼。它把每個失敗的欄位都點了名，用的正是表單送出時的那個
-        名字，訊息也是給人讀的——而表單還在頁面上，使用者打過的每一個字都還在控制項裡。沒有任何東西
-        需要重新渲染、記住、或重建。所以 <code>mount_fjkit()</code> 把 422 原封不動送回去，由 shell
-        載入的一支 script <code>js/errors.js</code> 把每則訊息寫到它的欄位下面。每個 handler 的簽名
-        都還是 FastAPI 寫的那個，也沒有任何一條路由得替「被退回」這個狀態指名一個模板，因為根本沒有
-        東西要渲染。
+        解法是利用那個回應原本就有的內容。它點名每個失敗的欄位，用的正是表單送出時的名字，
+        訊息也是給人讀的；而表單還在頁面上，使用者打過的每一個字都還在控制項裡。
+        沒有東西需要重新渲染、記住或重建。
+      </p>
+      <p>
+        所以 <code>mount_fjkit()</code> 把 422 原封不動送回去，由 shell 載入的一支 script
+        <code>js/errors.js</code> 把每則訊息寫到它的欄位下面。每個 handler 的簽名還是 FastAPI 寫的那個，
+        也沒有任何一條路由要替「被退回」這個狀態指名模板，因為沒有東西要渲染。
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>每種呼叫端拿到什麼</h3><p>@render 用來決定線上格式的那個問題，換到「一次被拒絕的送出」上再問一次。</p>      </div>
+<h3>每種呼叫端拿到什麼</h3><p>@render 決定線上格式的那個問題，換到一次被拒絕的送出上再問一次。</p>      </div>
     </header>      <section>      <div class="table-container">
       <table class="table">
         <thead>
@@ -616,7 +617,7 @@ if carried and messages.shown(request):
         <tbody>        <tr>
           <td class="font-medium">htmx</td>
           <td class=""><span class="badge" data-variant="info">FastAPI 的 422，由頁面畫出來</span></td>
-          <td class="">表單還在原地；script 把每則訊息寫到 loc 指名的那個控制項下面，打過的字一個都不動</td>
+          <td class="">表單還在原地；script 把每則訊息寫到 loc 指名的控制項下面，打過的字不動</td>
         </tr>
         <tr>
           <td class="font-medium">瀏覽器導覽</td>
@@ -626,7 +627,7 @@ if carried and messages.shown(request):
         <tr>
           <td class="font-medium">腳本、curl、另一個服務</td>
           <td class=""><span class="badge" data-variant="outline">FastAPI 原本的回應</span></td>
-          <td class="">——一個位元組都不動，狀態碼也是原本那個。跟第一列是同樣的位元組，差別只在誰在讀</td>
+          <td class="">一個位元組都不動，狀態碼也是原本那個。與第一列是同樣的位元組，差別只在誰在讀</td>
         </tr>
 </tbody>
       </table>
@@ -635,13 +636,13 @@ if carried and messages.shown(request):
 </section>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        最後那一列值得講明白。沒有要 markup 的呼叫端，拿到的還是 <code>{"detail": …}</code>，因為把
-        一個 API 的錯誤變成一頁 HTML，會是比這裡要修的那個問題更糟的 bug。而第一列是同樣的位元組——
-        這正是整個設計。一個同時也是別人 API 的端點只有一份錯誤契約，頁面讀它的方式跟任何其他
-        客戶端一樣。
+        最後那一列值得講明白。沒有要 markup 的呼叫端拿到的還是 <code>{"detail": …}</code>，
+        因為把一個 API 的錯誤變成一頁 HTML，會是比這裡要修的問題更糟的 bug。
+        第一列是同樣的位元組，這正是整個設計：一個同時也是別人 API 的端點只有一份錯誤契約，
+        頁面讀它的方式跟其他客戶端一樣。
       </p>
       <p>
-        這對一條路由的要求只有一件事，而且是 FastAPI 本來就在要求的那件事：
+        這對一條路由只有一項要求，而且 FastAPI 本來就在要求：
       </p>
 </div>
     <div class="card">      <div class="tabs">
@@ -657,42 +658,42 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
     service.create(payload)
     return _board(service)</pre>
 
-<footer>模型就是簽名。它的欄位、限制與 OpenAPI schema 是同一份宣告，被退回時由 FastAPI 來報——放在 body 底下，帶著欄位的名字。</footer></div><div id="invalid-form" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="_new_task.html" data-lang="jinja">{% call form(action=url_for(request, &#34;tasks_create&#34;), target=&#34;#board&#34;,
+<footer>模型就是簽名。它的欄位、限制與 OpenAPI schema 是同一份宣告，被退回時由 FastAPI 回報，放在 body 底下，帶著欄位的名字。</footer></div><div id="invalid-form" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="_new_task.html" data-lang="jinja">{% call form(action=url_for(request, &#34;tasks_create&#34;), target=&#34;#board&#34;,
              reset_on_success=true, encoding=&#34;json&#34;, id=&#34;new-task&#34;) %}
   {{ text_field(&#34;title&#34;, label=&#34;New task&#34;, required=true) }}
   {{ select_field(&#34;priority&#34;, label=&#34;Priority&#34;, options=priority_options,
                   selected=&#34;normal&#34;) }}
 {% endcall %}</pre>
 
-<footer>一份表單，寫一次，裡面沒有任何關於錯誤的東西。script 用 name 找到控制項、用 aria-describedby 找到它下面那個段落——每個欄位 macro 本來就接好的線。</footer></div></div>
+<footer>一份表單，寫一次，裡面沒有任何關於錯誤的東西。script 用 name 找到控制項，用 aria-describedby 找到它下面那個段落，兩者都是每個欄位 macro 本來就接好的線。</footer></div></div>
   </div>
 
 <div class="flex flex-col gap-3">      <p>
-        把使用者填過的東西留住是零成本的，因為沒有任何東西碰到它。以前對 422 的答案是把表單重畫一次、
-        把值回填進去，這一直行得通——直到某個欄位有多個值，或者表單需要某樣只有「那個沒跑過的
-        handler」才建得出來的東西。表單不再重畫，這兩個問題就一起消失了。
+        保留使用者填過的內容是零成本的，因為沒有東西碰到它。以前對 422 的做法是重畫表單、
+        把值回填進去，這行得通，直到某個欄位有多個值，或表單需要某樣只有那個沒跑過的
+        handler 才建得出來的東西。表單不再重畫，這兩個問題一起消失。
       </p>
       <p>
-        沒有欄位可以落腳的訊息——整個模型層級的規則、解析不了的 body、壞掉的路徑片段——會透過
-        <code>fjkit.messages</code> 用的同一個事件升成一個 toast。而同一份表單的下一次送出會把上一次
-        說過的話清掉，所以一次被接受的重送不會把過期的退回留在畫面上。
+        沒有欄位可以落腳的訊息——模型層級的規則、解析不了的 body、壞掉的路徑片段——會透過
+        <code>fjkit.messages</code> 用的同一個事件升成一個 toast。同一份表單的下一次送出會清掉上一次的訊息，
+        所以一次被接受的重送不會把過期的退回留在畫面上。
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>其餘的表面</h3>      </div>
+<h3>其餘的介面</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>你自己的程式碼丟出的 ValidationError</h4><p>      刻意放它走。它跟一份被退回的表單長得一樣，但它不是：它同樣可能是 service 裡三層深的
-      <code>Task(**row)</code> 爆掉，而把一個 bug 畫成一句親切的訊息，等於用「某個沒人填過的欄位」
-      的道歉把它藏起來。把模型宣告在簽名上，FastAPI 就會丟出<em>會</em>被接住的那種 request 層級錯誤
+      <h4>你自己的程式碼丟出的 ValidationError</h4><p>      刻意不接住它。它跟一份被退回的表單長得一樣，但它不是：它同樣可能是 service 裡三層深的
+      <code>Task(**row)</code> 失敗，而把一個 bug 畫成一句親切的訊息，等於用「某個沒人填過的欄位」
+      的道歉把它藏起來。把模型宣告在簽名上，FastAPI 就會丟出會被接住的那種 request 層級錯誤
 </p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>catch_unexpected_errors</h4><p>      預設是關的，而這個預設才是有用的那個：開發時終端機裡的一份 traceback，勝過瀏覽器裡一句得體的
+      <h4>catch_unexpected_errors</h4><p>      預設是關的，而這個預設有用：開發時終端機裡的一份 traceback，勝過瀏覽器裡一句得體的
       道歉。<code>FjkitConfig.for_production()</code> 會把它打開，連同另外兩個只在開發時有意義的
-      開關。422 那個 handler 不管怎樣都會裝——被退回的表單不是 bug
+      開關。422 那個 handler 一律安裝，因為被退回的表單不是 bug
 </p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>unexpected_error</h4><p>那則 toast 說的話。不設就是 kit 自己的一句 &lt;em&gt;Something went wrong&lt;/em&gt;；給一個 &lt;code&gt;Message&lt;/code&gt; 就一次換掉，給一個 &lt;code&gt;(request, exc) -&amp;gt; Message&lt;/code&gt; 的函式就能依例外種類挑句子。用例外來&lt;em&gt;選&lt;/em&gt;句子，不要把 &lt;code&gt;str(exc)&lt;/code&gt; 放進去——那是你 app 的內部</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>errors/page.html</h4><p>導覽失敗時落到的那一頁。在你自己的模板目錄放一個同路徑的檔案就能換掉——跟 fjkit eject 用的是同一套遮蔽，所以沒有另一套「自訂錯誤頁」的機制要學</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>js/errors.js</h4><p>每一頁載入的第三個、也是最後一個檔案，排在 htmx 與 Basecoat 之後。它聽的是 htmx:beforeSwap，所以一個不是 FastAPI 清單的 422——某條路由自己回了 markup——會被放過</p>    </section>  </div></div></div>
+      <h4>unexpected_error</h4><p>那則 toast 的內容。不設就是 kit 自己的一句 &lt;em&gt;Something went wrong&lt;/em&gt;；給一個 &lt;code&gt;Message&lt;/code&gt; 就整批換掉，給一個 &lt;code&gt;(request, exc) -&amp;gt; Message&lt;/code&gt; 的函式就能依例外種類挑句子。用例外挑句子，不要把 &lt;code&gt;str(exc)&lt;/code&gt; 放進去，那是你 app 的內部</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>errors/page.html</h4><p>導覽失敗時落到的那一頁。在自己的模板目錄放一個同路徑的檔案就能換掉，用的是與 fjkit eject 相同的遮蔽機制，所以沒有另一套「自訂錯誤頁」要學</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>js/errors.js</h4><p>每一頁載入的第三個、也是最後一個檔案，排在 htmx 與 Basecoat 之後。它聽 htmx:beforeSwap，所以不是 FastAPI 清單的 422——某條路由自己回了 markup——會被放過</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>
@@ -702,18 +703,18 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
 <span class="badge" data-variant="secondary">fjkit.apidocs</span></div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">API 主控台</h2><p class="text-muted-foreground text-sm">在這一頁登入，底下每一次呼叫就都是以你的身分送出去的。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">API 主控台</h2><p class="text-muted-foreground text-sm">在這一頁登入，底下每一次呼叫都以你的身分送出。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        Swagger UI 的 <em>Authorize</em> 只能表達 OpenAPI 文件說得出來的東西：API key、HTTP scheme、
-        OAuth2 flow。而第 05 節那種 session——簽章過的 <code>HttpOnly</code> cookie，token 留在伺服器
-        ——四種都不是。它的 <em>Try it out</em> 本來也送不出去：那是在瀏覽器裡跑 <code>fetch()</code>，
-        而那顆 cookie 正好就是不給 JavaScript 讀的那一顆。
+        Swagger UI 的 <em>Authorize</em> 只能表達 OpenAPI 文件描述得出來的東西：API key、HTTP scheme、
+        OAuth2 flow。第 05 節那種 session——簽章過的 <code>HttpOnly</code> cookie，token 留在伺服器
+        ——四種都不是。它的 <em>Try it out</em> 也送不出去：那是在瀏覽器裡跑 <code>fetch()</code>，
+        而那顆 cookie 正好不給 JavaScript 讀。
       </p>
       <p>
         所以兩件事都搬到伺服器。登入是一個由你的 app 提供的 Python 物件，對 <code>fjkit.auth</code>
-        的 app 來說就是登入頁本來就在呼叫的那個 <code>TokenSource</code>。送出請求是在你自己的 app
-        裡行程內重放，帶著呼叫者自己的 cookie 走完整條 middleware——所以 token 換發、撤銷、Origin
-        檢查用的都是你已經寫好的那一份，而不是一份住在文件頁裡的第二實作。
+        的 app 來說就是登入頁本來就在呼叫的那個 <code>TokenSource</code>。送出請求則在你自己的 app
+        裡行程內重放，帶著呼叫者自己的 cookie 走完整條 middleware。
+        token 換發、撤銷與 Origin 檢查因此用的是你已經寫好的那一份，而不是文件頁裡的第二實作。
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">docs = ApiDocsPlugin(title=&#34;Board API&#34;, home_url=&#34;/&#34;)
@@ -722,9 +723,9 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
 
 
 <div class="flex flex-col gap-3">      <p>
-        接線就這些。沒有路由要寫、沒有模板要渲染、沒有靜態檔要服務：plugin 自己帶路由、自己帶模板，
-        並從同一個 <code>plugins</code> tuple 裡找出 <code>AuthPlugin</code> 接上登入面板。app 用別的
-        方式認證時就傳 <code>flow=</code>；只想留這一頁的話，
+        接線到此結束。不用寫路由、不用渲染模板、不用服務靜態檔：plugin 自己帶路由與模板，
+        並從同一個 <code>plugins</code> tuple 裡找出 <code>AuthPlugin</code> 接上登入面板。
+        app 用別的方式認證時傳 <code>flow=</code>；只想留這一頁時，設
         <code>FastAPI(docs_url=None, redoc_url=None)</code>。
       </p>
 </div>
@@ -770,18 +771,18 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
       <div>
 <h3>每個參數決定什麼</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>url=&#34;/api-docs&#34;</h4><p>這一頁的位置。不是 /docs：plugin 掛載時 FastAPI 早就把它拿走了，先註冊的路由贏，而一頁默默永遠不會渲染的文件比換個網址更糟——所以路徑被佔用時，plugin 會在啟動時就警告</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>flow=</h4><p>怎麼從這一頁登入。預設是同一份 config 裡的 AuthPlugin；沒有的話，面板就只會說 anonymous</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>dependencies=</h4><p>加在 plugin 新增的每一條路由上——這就是擋這一頁的方式。留空對公開 API 是對的，對內部服務是錯的</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>try_it=False</h4><p>只渲染參考文件、拿掉主控台，給「在伺服器端重放請求不可接受」的環境用</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>home_url=</h4><p>側欄頁尾的那條出路。操作清單已經佔走側欄，沒有它這一頁就是一個沒有門的房間</p>    </section>  </div></div></div>
+      <h4>url=&#34;/api-docs&#34;</h4><p>這一頁的位置。不是 /docs：plugin 掛載時 FastAPI 早就把它拿走了，先註冊的路由勝出，而一頁永遠不會渲染的文件比換個網址更糟，所以路徑被佔用時 plugin 會在啟動時警告</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>flow=</h4><p>怎麼從這一頁登入。預設是同一份 config 裡的 AuthPlugin；沒有的話，面板只會顯示 anonymous</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>dependencies=</h4><p>加在 plugin 新增的每一條路由上，也就是擋住這一頁的方式。公開 API 可以留空，內部服務不行</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>try_it=False</h4><p>只渲染參考文件、拿掉主控台，用於不接受在伺服器端重放請求的環境</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>home_url=</h4><p>側欄頁尾的返回連結。操作清單已經佔滿側欄，沒有它就沒有離開這一頁的入口</p>    </section>  </div></div></div>
   </div>
 
 <div class="flex flex-col gap-3">      <p>
-        它同時也是第 03 節 <code>add_template_dir()</code> 在 kit 裡的實例。主控台的模板跟它的程式碼
+        它同時是第 03 節 <code>add_template_dir()</code> 在 kit 裡的實例。主控台的模板與它的程式碼
         放在一起，在 <code>fjkit/apidocs/templates/apidocs/</code>，由 <code>extend()</code> 把那個
-        目錄交給 loader。裡面那層 <code>apidocs/</code> 是讓名字維持 <code>apidocs/page.html</code>
-        的原因——也就是你的 app 只要寫一份自己的 <code>templates/apidocs/&lt;名稱&gt;.html</code>
+        目錄交給 loader。裡面那層 <code>apidocs/</code> 讓模板名維持 <code>apidocs/page.html</code>，
+        所以你的 app 只要寫一份自己的 <code>templates/apidocs/&lt;名稱&gt;.html</code>
         就能換掉其中任何一支，因為 app 的目錄排在最前面被搜。
       </p>
 </div>
@@ -791,8 +792,8 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>它的路由不在你的文件裡</h4><p>include_in_schema=False，跟 FastAPI 把 /docs 排除在外是同一個理由：這些是讀 API 的方式，不是 API 的一部分</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>一次呼叫有上限</h4><p>body 64 KB、逾時 30 秒，兩個都是參數。主控台是讀 API 的工具，不是壓測工具</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>form body 會拆成欄位</h4><p>一條 Annotated[str, Form()] 的路由拿到的是一欄一個輸入框而不是一個文字框，沒有人需要自己手刻 urlencoding。JSON body 則是一份可編輯的範例，內容由 schema 預先填好</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>這一頁上沒有任何東西讀得到憑證</h4><p>登入是你的 app 定義的表單，不是一個貼 token 的框——這跟那顆 cookie 值得擁有的是同一個性質</p>    </section>  </div></div></div>
+      <h4>form body 會拆成欄位</h4><p>一條 Annotated[str, Form()] 的路由拿到的是一欄一個輸入框，而不是一個文字框，不必自己手寫 urlencoding。JSON body 則是一份可編輯的範例，內容由 schema 預先填好</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>這一頁上沒有任何東西讀得到憑證</h4><p>登入是你的 app 定義的表單，不是一個貼 token 的框，性質與那顆 cookie 相同</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>

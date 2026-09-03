@@ -1,7 +1,8 @@
 {#
   The feedback layer: what the page says while it is busy, and afterwards.
+
   0.6 fills the rest in (alert, toast, skeleton). 0.1 lands `spinner` and
-  `dialog` because htmx makes both first-week states: "a request is in flight",
+  `dialog`, because htmx makes both first-week states: "a request is in flight"
   and "show me this row without leaving the page". Without a component for
   either, the app writes its own <svg> and its own overlay — a colour literal
   and a stack of utilities outside the closed vocabulary.
@@ -15,24 +16,23 @@
   size:  xs | sm | default | lg
   tone:  muted | primary | success | warning | info | destructive
 
-  One Lucide arc plus `animate-spin` — no second SVG asset, no runtime JS, and
-  `stroke="currentColor"` means it takes the colour of whatever it sits in, so
-  a spinner inside a primary button needs no tone at all.
+  One Lucide arc plus `animate-spin`: no second SVG asset and no runtime JS.
+  `stroke="currentColor"` takes the colour of whatever it sits in, so a spinner
+  inside a primary button needs no tone.
 
-  Two accessibility modes, chosen by `label`:
+  `label` chooses between two accessibility modes:
 
-  * no label — `aria-hidden`, decorative. Correct when text beside it already
-    says what is happening ("Saving…"), because announcing the glyph too would
-    say it twice.
+  * no label — the glyph stays `aria-hidden` and decorative. Correct when text
+    beside it already says what is happening ("Saving…"): announcing the glyph
+    as well says it twice.
   * a label  — `role="status"` and a visually hidden name. Correct when the
-    spinner *is* the only announcement. `role="status"` already implies a
-    polite live region, so `aria-live` would be redundant.
+    spinner is the only announcement. `role="status"` implies a polite live
+    region, so `aria-live` would repeat it.
 
-  `indicator=true` adds htmx's `htmx-indicator` class, which is the whole of
-  what `hx-indicator` needs: htmx injects the show/hide rule itself, so the
-  spinner renders hidden and appears only while the request it names is in
-  flight. That is the loading state with no JavaScript of ours and no
-  server round trip to reveal it.
+  `indicator=true` adds htmx's `htmx-indicator` class, which is all
+  `hx-indicator` needs: htmx injects the show/hide rule itself, so the spinner
+  renders hidden and appears only while the request naming it is in flight — a
+  loading state with no JavaScript of ours and no round trip to reveal it.
 
       {{ button("Start", hx_post=…, hx_indicator="#busy") }}
       {{ spinner(indicator=true, id="busy", label="Starting") }}
@@ -40,9 +40,9 @@
 {% macro spinner(size="default", tone="muted", label=none, indicator=false) -%}
   {#
     Closed lookups, not interpolation. Tailwind finds a class by scanning this
-    file's text, so `text-{{ tone }}` would be absent from the stylesheet while
-    still rendering happily. Every value below appears here literally, and an
-    unknown key falls back rather than emitting a class that does not exist.
+    file's text, so `text-{{ tone }}` renders happily and is absent from the
+    stylesheet. Every value below appears here literally, and an unknown key
+    falls back rather than emitting a class that does not exist.
   #}
   {%- set sizes = {"xs": 12, "sm": 14, "default": 16, "lg": 24} -%}
   {%- set tones = {
@@ -77,38 +77,36 @@
         …
       {% endcall %}
 
-  `popovertarget` is a plain HTML attribute, so it needs no macro of its own —
-  it passes through `**attrs` on whatever button you already have. Closing is
-  the same attribute plus `popovertargetaction="hide"`, which is what the ✕ in
-  the corner uses.
+  `popovertarget` is a plain HTML attribute and needs no macro of its own: it
+  passes through `**attrs` on whatever button you already have. Closing is the
+  same attribute plus `popovertargetaction="hide"`, which is what the ✕ in the
+  corner uses.
 
-  **What the Popover API gives us, and what it does not.** Open state, the top
-  layer, the backdrop, Escape-to-close, click-outside-to-close and returning
-  focus to the trigger are all the browser's. What is missing compared with
-  `showModal()` is *modality*: the page behind stays reachable by Tab and by a
-  screen reader, so this is `role="dialog"` without `aria-modal`. That is the
-  honest label for what the markup does. It is the right trade for showing a
-  record, and the wrong one for a confirmation that must not be dodged —
-  `hx-confirm` still covers that case, and a real modal is a decision about
-  shipping JavaScript (CHARTER.md §11.3), not something to fake with CSS.
+  What the Popover API provides: open state, the top layer, the backdrop,
+  Escape-to-close, click-outside-to-close, and focus returned to the trigger.
+  What it lacks against `showModal()` is modality — the page behind stays
+  reachable by Tab and by a screen reader — so this is `role="dialog"` without
+  `aria-modal`, the honest label for what the markup does. That trade is right
+  for showing a record and wrong for a confirmation that must not be dodged:
+  `hx-confirm` covers that case, and a real modal is a decision to ship
+  JavaScript (CHARTER.md §11.3) rather than something to fake with CSS.
 
-  **The body carries `id="<id>-body"`**, which is the seam htmx needs: the
-  trigger fetches the content and targets that id, so a list of rows renders
-  one shell per row and pays for the contents only when one is opened.
+  The body carries `id="<id>-body"`, the seam htmx needs: the trigger fetches
+  the content and targets that id, so a list of rows renders one shell per row
+  and pays for the contents only when one is opened.
 
       {{ button("Details", popovertarget="task-7",
                 hx_get=url_for(request, "task_detail", task_id=7),
                 hx_target="#task-7-body") }}
 
-  Both halves happen on the one click, in the order that reads best: the panel
-  opens immediately with whatever the shell holds (a spinner), and the response
-  replaces it. htmx does not cancel the click's default action on a plain
-  button — it only does that for anchors and submit buttons — so the popover
-  still opens.
+  Both happen on the one click, in the order that reads best: the panel opens
+  immediately with whatever the shell holds (a spinner), and the response
+  replaces it. htmx cancels the click's default action only for anchors and
+  submit buttons, so the popover on a plain button still opens.
 
-  A shell per row also means an open panel can never show the previous row's
-  data while a request is in flight. One shared dialog re-targeted at each row
-  is the right shape for a long list; it just has to accept that flash.
+  A shell per row also keeps an open panel from showing the previous row's data
+  while a request is in flight. One shared dialog re-targeted at each row is
+  the right shape for a long list, and it has to accept that flash.
 
   One trap, and it is silent: `hx-swap` is inherited. A trigger nested inside an
   element that swaps itself with `outerHTML` — a row that polls, say — replaces
@@ -119,8 +117,8 @@
   {#
     Basecoat sizes `.dialog > *` and gives `.alert-dialog` a `data-size`; the
     two extra widths extend that same attribute API rather than inventing a
-    `dialog-lg` class. `default` deliberately emits nothing, so the common case
-    inherits whatever Basecoat's own rule says.
+    `dialog-lg` class. `default` emits nothing, so the common case inherits
+    Basecoat's own rule.
   #}
   {%- set sizes = {"sm": "sm", "default": "", "lg": "lg"} -%}
   {%- set size_attr = sizes.get(size, "") -%}
@@ -132,9 +130,9 @@
     {#
       The inner element is the panel. Basecoat styles `.dialog > *`, so this
       wrapper is load-bearing: the outer element is only a positioning context
-      and the backdrop's owner, which is also why it can be a <div> rather than
-      a <dialog> — nothing here calls showModal(), and `<dialog popover>` mixes
-      two open-state mechanisms for no gain.
+      and the backdrop's owner. That is also why it can be a <div> rather than
+      a <dialog> — nothing here calls `showModal()`, and `<dialog popover>`
+      mixes two open-state mechanisms for no gain.
     #}
     <div>
       {%- if title or description %}
@@ -147,11 +145,11 @@
       {%- if footer %}<footer>{{ footer }}</footer>{% endif %}
       {%- if dismissible %}
       {#
-        `autofocus` is what moves focus into the panel when it opens — a
-        popover does not do that on its own, and a dialog nobody is focused in
-        is one a screen reader never announces. It is inert until the panel is
-        shown, because a closed popover is display:none and therefore not
-        focusable, so eight of these on a page still fight over nothing.
+        `autofocus` moves focus into the panel when it opens: a popover does
+        not do that on its own, and a screen reader never announces a dialog
+        nobody is focused in. It stays inert until the panel is shown, because
+        a closed popover is `display:none` and so not focusable — eight of
+        these on a page contend over nothing.
       #}
       <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
               popovertarget="{{ id }}" popovertargetaction="hide"
@@ -164,13 +162,13 @@
 {#
   toaster(align) — the region toasts appear in. One per page, in the shell.
 
-  `id="toaster"` is not a choice: Basecoat registers its controller against
-  `#toaster` specifically, and the CSS is written as `.toaster .toast`, so a
-  toast outside this element gets neither the behaviour nor the skin.
+  `id="toaster"` is fixed: Basecoat registers its controller against `#toaster`
+  and writes its CSS as `.toaster .toast`, so a toast outside this element gets
+  neither the behaviour nor the skin.
 
-  Empty is the normal state. It costs one element and no CSS, and having it
-  always present is what lets a server-rendered toast arrive without the page
-  needing to know in advance that one might.
+  Empty is the normal state. It costs one element and no CSS, and keeping it
+  always present lets a server-rendered toast arrive on a page that did not
+  know in advance one was coming.
 #}
 {% macro toaster(align="end") -%}
   <div id="toaster" class="toaster" data-align="{{ align }}">{{ caller() if caller else "" }}</div>
@@ -181,22 +179,21 @@
 
   category: info | success | warning | error
 
-  Server-rendered, and that is the whole point of it. Basecoat scans the DOM
-  for `.toast` and initialises whatever it finds, so a toast written into the
-  page by a template behaves exactly like one raised by script — it animates
-  in, times out, and dismisses on click. No JavaScript of ours, and nothing to
-  call after the page has loaded.
+  Server-rendered, which is the point. Basecoat scans the DOM for `.toast` and
+  initialises whatever it finds, so a toast written into the page by a template
+  behaves like one raised by script: it animates in, times out, and dismisses
+  on click. No JavaScript of ours, and nothing to call after the page loads.
 
-  That is what makes a message survive a redirect. `HX-Trigger` cannot: the
-  document it would fire into is replaced before it arrives. Markup in the next
-  page is the only carrier a full navigation leaves intact.
+  That is how a message survives a redirect. `HX-Trigger` cannot: the document
+  it would fire into is replaced before it arrives. Markup in the next page is
+  the only carrier a full navigation leaves intact.
 
   `duration` is milliseconds, or -1 to stay until dismissed. Left unset,
-  Basecoat uses 3s, and 5s for `error`.
+  Basecoat uses 3 s, and 5 s for `error`.
 
-  The icon is fjkit's, not Basecoat's inline SVG: one icon set on the page
-  keeps stroke weight and corner radius consistent, and it costs nothing
-  because `icon()` is already resolved per render.
+  The icon is fjkit's rather than Basecoat's inline SVG: one icon set keeps
+  stroke weight and corner radius consistent across the page, and it costs
+  nothing because `icon()` is already resolved per render.
 #}
 {% set _TOAST_ICONS = {
   "info": "info",
@@ -231,14 +228,14 @@
 
   Basecoat's alert is four optional slots under one `.alert` root: an icon, a
   heading, a `<section>` of prose, and a `<footer>` of actions. The footer is
-  positioned absolutely against the root, which is why actions arrive through
-  `{% call %}` rather than as a parameter — a caller block is the only shape
-  that lets a button carry its own `hx-*` attributes.
+  positioned absolutely against the root, so actions arrive through `{% call %}`
+  rather than as a parameter — a caller block is the only shape that lets a
+  button carry its own `hx-*` attributes.
 
   `variant` is Basecoat's own `data-variant` plus the three fjkit adds in
-  `fjkit.css`, so the vocabulary matches `badge` exactly. The icon is chosen
-  from the variant when the caller does not name one: an alert that says
-  "destructive" and shows a tick is worse than no icon at all.
+  `fjkit.css`, so the vocabulary matches `badge`. The icon follows the variant
+  when the caller names none: an alert marked "destructive" showing a tick is
+  worse than an alert with no icon.
 #}
 {% set _ALERT_ICONS = {
   "destructive": "circle-alert",
@@ -252,9 +249,9 @@
   <div class="alert"
        {%- if variant %} data-variant="{{ variant }}"{% endif %}
        {#
-         `alert` for destructive, `status` for the rest. The difference is that
-         a screen reader interrupts for the first and waits for a pause on the
-         second — which is the whole distinction the variant already draws.
+         `alert` for destructive, `status` for the rest: a screen reader
+         interrupts for the first and waits for a pause on the second, which is
+         the distinction the variant already draws.
        #}
        role="{{ "alert" if variant == "destructive" else "status" }}"
        {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
@@ -270,14 +267,14 @@
 
   Upstream's skeleton is a bare `.skeleton` sized by whatever utilities the
   caller writes — `h-4 w-[150px]`, `size-10 rounded-full`. An app template
-  cannot write those (A2), so the sizes are the parameter: `shape` picks the
-  geometry and `width` picks one of five fractions. Both are closed lookups,
-  which is also what keeps the classes in the stylesheet — Tailwind scans this
-  file's text, and an interpolated `w-{{ width }}` would be absent from the
-  build while still rendering happily.
+  cannot write those (A2), so the sizes are parameters: `shape` picks the
+  geometry, `width` picks one of five fractions. Both are closed lookups, which
+  also keeps the classes in the stylesheet — Tailwind scans this file's text,
+  and an interpolated `w-{{ width }}` renders happily while missing from the
+  build.
 
-  `lines` > 1 renders a paragraph, with the last line short. That is the shape
-  real text has, and a placeholder that ignores it reads as a table.
+  `lines` > 1 renders a paragraph with a short last line. That is the shape
+  real text has; a placeholder that ignores it reads as a table.
 #}
 {% set _SKELETON_SHAPES = {
   "text": "h-4 rounded-md",

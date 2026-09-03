@@ -1,8 +1,8 @@
 """fjkit — a server-rendered UI kit for FastAPI.
 
 Jinja2 for templates, Basecoat for component CSS, htmx for interactivity. The
-stylesheet is built when fjkit is released, not when your app runs: there is no
-Tailwind, no package.json and no build step on your side.
+stylesheet is built when fjkit is released, not when the app runs: no Tailwind,
+no `package.json`, no build step in the app.
 
     from fastapi import FastAPI
     from fjkit import FjkitConfig, mount_fjkit

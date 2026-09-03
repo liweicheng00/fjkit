@@ -1,14 +1,13 @@
 {#
   The docs site's own macros.
 
-  Same discipline the kit asks of any app: anything that appears more than once
-  is a macro, and every one of these is composed from `ui/*` macros or from a
-  Basecoat component class. There is no hand-written chrome here — if one of
-  these needed a utility class, that would be the kit missing a component, and
-  `tests/test_docs_site.py` would say so.
+  Same discipline the kit asks of any app: anything appearing more than once is
+  a macro, and every one of these is composed from `ui/*` macros or a Basecoat
+  component class. No hand-written chrome — a utility class here would mean the
+  kit is missing a component, and `tests/test_docs_site.py` would say so.
 
   Markup arguments (a thesis with a <code> in it, a note with a link) are passed
-  as `{% set x %}…{% endset %}` blocks, which yield Markup — the same trick
+  as `{% set x %}…{% endset %}` blocks, which yield Markup. That is the trick
   tasks/page.html uses, and the reason none of these need |safe.
 #}
 {% from "ui/data.html" import badge, card, code_block, item, item_list %}
@@ -17,8 +16,8 @@
 
 {#
   One numbered band. The id is the anchor the sidebar's "On this page" group
-  links to; `sections` in the page template is the list those links come from,
-  so the rail and the headings are the same data.
+  links to, and `sections` in the page template is where those links come from,
+  so the rail and the headings are one list.
 #}
 {% macro lesson(id, num, title, thesis="", tag="") %}
 {# `caller` is rebound inside a {% call %} body, so capture ours first. #}
@@ -40,11 +39,11 @@
 {#
   `lesson` without the number.
 
-  The Learn and Components pages are read in order, and the badge is what says
-  so. A reference page is not: nobody starts the Cheatsheet at the top and
-  works down, so a "07" beside a heading there would be claiming a sequence
-  that does not exist. Same anchor, same rail contract, same divider — the
-  count is the only thing dropped.
+  The Learn and Components pages are read in order, and the badge says so. A
+  reference page is not read that way: nobody starts the Cheatsheet at the top
+  and works down, so a "07" beside a heading there would claim a sequence that
+  does not exist. Same anchor, same rail contract, same divider — only the count
+  is dropped.
 #}
 {% macro band(id, title, thesis="") %}
 {% set body = caller() %}
@@ -58,7 +57,7 @@
 
 {#
   Body copy. Bare <p> inside a stack: the gap is the component's, and the
-  measure is set on `main` in brand.css — an element rule, so no paragraph on
+  measure is set on `main` in brand.css as an element rule, so no paragraph on
   the site carries a class.
 #}
 {% macro prose(gap=3) %}
@@ -67,28 +66,27 @@
 {% endmacro %}
 
 {#
-  A source pane. `code_block` is the kit's now — it carries the scroll region,
-  its focusability and its label. All this adds is `data-lang`, which is the
-  highlighter's cue: common.js reads the source back out of `textContent` and
-  marks up the tokens, so the code stays legible with scripting off.
+  A source pane. `code_block` is the kit's, and carries the scroll region, its
+  focusability and its label. This adds only `data-lang`, the highlighter's cue:
+  common.js reads the source back out of `textContent` and marks up the tokens,
+  so the code stays legible with scripting off.
 #}
 {% macro code(source, lang="python", label=none) %}
 {{ code_block(source, label=label, data_lang=lang) }}
 {% endmacro %}
 
 {#
-  Several files behind tabs — now one `tabs()` call.
+  Several files behind tabs, in one `tabs()` call.
 
-  The aria wiring, the skin and the keyboard handling all belong to the kit;
-  this only has to name the panels. `entries` is a list of
-  {name, lang, source, note}.
+  The aria wiring, the skin and the keyboard handling belong to the kit; this
+  names the panels. `entries` is a list of {name, lang, source, note}.
 #}
 {% macro files(entries, label="File") %}
 {% call card(padded=false) %}
   {#
-    `entries` goes straight to `tabs()` — it already carries `id` and `label`,
+    `entries` goes straight to `tabs()`: it already carries `id` and `label`,
     and the macro ignores the rest. No parallel list is built here, because a
-    template that assembles data is a template doing the router's job.
+    template that assembles data is doing the router's job.
   #}
   {% call tabs(entries, label=label) %}
     {% for entry in entries %}
@@ -102,12 +100,12 @@
 {% endmacro %}
 
 {#
-  A titled list of term/definition pairs. `items` is a list of (term, body)
+  A titled list of term/definition pairs. `items` is a list of (term, body),
   where body may be Markup.
 
-  `clamp=false` is why the kit's `item` grew that parameter: Basecoat clamps a
-  row's description to two lines, which is right for a feed and wrong for a
-  definition that runs to three.
+  This is why the kit's `item` grew `clamp`: Basecoat clamps a row's description
+  to two lines, which is right for a feed and wrong for a definition that runs
+  to three.
 #}
 {% macro defs(heading, items) %}
 {% call card(heading, padded=false) %}
@@ -118,9 +116,9 @@
 {% endmacro %}
 
 {#
-  A live preview. Just a card: whatever is inside is the kit's own output, and
-  the card around it is the kit's own too — which is the strongest way to show
-  that a component looks right in the surface it will actually live in.
+  A live preview: a card, and nothing else. What is inside is the kit's output
+  and so is the card around it, which shows a component in the surface it will
+  live in.
 #}
 {% macro stage(label=none, description=none, padded=true) %}
 {% set body = caller() %}
@@ -130,7 +128,7 @@
 {% endmacro %}
 
 {#
-  A card with something in its header, for the stages that carry a control —
+  A card with something in its header, for the stages that carry a control:
   "Fire the request", a filter, a reset. `actions` takes pre-rendered markup,
   like every other fjkit slot that is not the body.
 #}

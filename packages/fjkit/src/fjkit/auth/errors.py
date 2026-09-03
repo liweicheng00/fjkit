@@ -1,9 +1,8 @@
-"""What can go wrong, and who each one is aimed at.
+"""The failures this plugin raises, and the response each one implies.
 
-Two shapes, deliberately not one. `NotAuthenticated` means *leave this page* —
-the browser is sent to the login screen. `CsrfRejected` means *this request is
-not yours* — the browser stays where it is and gets a 403, because sending a
-possible attacker's victim to a login form is neither helpful nor honest.
+Two shapes rather than one. `NotAuthenticated` sends the browser to the login
+screen. `CsrfRejected` leaves the browser where it is and answers 403, because
+the request may come from an attacker and its victim has no login to do.
 """
 
 from __future__ import annotations
@@ -20,11 +19,11 @@ class NotAuthenticated(AuthError):
 
 
 class RefreshFailed(NotAuthenticated):
-    """The upstream would not renew the token.
+    """The upstream refused to renew the token.
 
-    A subclass rather than a sibling: an app that cannot refresh is an app whose
-    user has to log in again, so one handler covers both and no caller has to
-    remember the second name.
+    A subclass rather than a sibling, because a failed refresh also means the
+    user logs in again: one handler covers both, and no caller has to remember
+    the second name.
     """
 
 

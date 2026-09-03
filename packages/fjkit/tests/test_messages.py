@@ -1,8 +1,8 @@
-"""`fjkit.messages` — the message that rides out on whichever channel fits.
+"""`fjkit.messages` — picking the channel a message rides out on.
 
-A full page carries its own toaster, a fragment does not. The caller never says
-which, so the choice is made in `_deliver_messages`, and getting it wrong is
-either a message shown twice or a message shown never.
+A full page carries its own toaster; a fragment does not. The caller never says
+which, so `_deliver_messages` decides. Getting it wrong shows a message twice
+or never.
 """
 
 from __future__ import annotations
@@ -14,8 +14,8 @@ from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, Message, messages, mount_fjkit, render
 from jinja2 import DictLoader
 
-#: The page reads `fjkit_messages()`; the fragment deliberately does not, because
-#: an htmx swap replaces a region that has no toaster in it.
+#: The page reads `fjkit_messages()`; the fragment deliberately does not,
+#: because an htmx swap replaces a region with no toaster in it.
 TEMPLATES = {
     "page.html": "{% for m in fjkit_messages() %}[{{ m.category }}:{{ m.title }}:{{ m.text }}]{% endfor %}",
     "_frag.html": "<div id=frag>fragment</div>",
@@ -25,10 +25,10 @@ HTMX = {"HX-Request": "true"}
 
 
 def make_app(existing_trigger: str | None = None) -> TestClient:
-    """An app whose routes queue a message and then render something.
+    """Build an app whose routes queue a message and then render something.
 
-    `existing_trigger` is written by the handler onto its own `Response`, which
-    is how an app raises an event of its own alongside a toast.
+    The handler writes `existing_trigger` onto its own `Response`, which is how
+    an app raises an event of its own alongside a toast.
     """
     router = APIRouter()
 
@@ -68,7 +68,7 @@ def make_app(existing_trigger: str | None = None) -> TestClient:
 
 
 def toast_detail(response) -> list[dict[str, str]]:
-    """The toast payload out of an `HX-Trigger`, parsed."""
+    """Parse the toast payload out of an `HX-Trigger` header."""
     return json.loads(response.headers["hx-trigger"])[messages.TOAST_EVENT]["messages"]
 
 
@@ -78,7 +78,7 @@ def toast_detail(response) -> list[dict[str, str]]:
 
 
 def test_a_message_on_a_full_page_render_goes_into_the_toaster():
-    """The shell is on its way out already, so the message travels in the
+    """The shell is already on its way out, so the message travels in the
     document rather than in a header."""
     client = make_app()
 
@@ -101,8 +101,8 @@ def test_a_message_on_an_htmx_swap_goes_out_as_a_trigger_header():
 
 
 def test_the_same_route_never_uses_both_channels():
-    """Delivering twice is the failure this split exists to prevent: one message
-    would show as a toast and again in the toaster the swap did not replace."""
+    """Delivering twice is the failure this split prevents: one message shown as
+    a toast and again in the toaster the swap did not replace."""
     client = make_app()
 
     page = client.get("/swap")
@@ -116,7 +116,7 @@ def test_the_same_route_never_uses_both_channels():
 
 def test_a_swap_with_nothing_queued_sets_no_trigger_header():
     """`trigger_header` returns what it was given when the queue is empty, so a
-    route that raises nothing stays a route that says nothing."""
+    route that raises nothing sends nothing."""
     client = make_app()
 
     assert "hx-trigger" not in client.get("/quiet", headers=HTMX).headers
@@ -128,8 +128,8 @@ def test_a_swap_with_nothing_queued_sets_no_trigger_header():
 
 
 def test_a_trigger_the_handler_set_as_json_survives_alongside_the_toast():
-    """Dropping the handler's event because a toast happened to be queued is a
-    bug that only appears when both are in play."""
+    """Dropping the handler's event because a toast was queued is a bug that
+    appears only when both are in play."""
     client = make_app('{"myEvent":null}')
 
     events = json.loads(client.get("/swap", headers=HTMX).headers["hx-trigger"])
@@ -139,8 +139,8 @@ def test_a_trigger_the_handler_set_as_json_survives_alongside_the_toast():
 
 
 def test_a_bare_event_name_is_promoted_rather_than_overwritten():
-    """htmx accepts `HX-Trigger: myEvent`, so a handler is entitled to write it.
-    Adding a toast has to turn that into an object, not replace it."""
+    """htmx accepts `HX-Trigger: myEvent`, so a handler may write it. Adding a
+    toast turns that into an object rather than replacing it."""
     client = make_app("myEvent")
 
     events = json.loads(client.get("/swap", headers=HTMX).headers["hx-trigger"])
@@ -150,8 +150,8 @@ def test_a_bare_event_name_is_promoted_rather_than_overwritten():
 
 
 def test_a_comma_separated_list_of_event_names_keeps_every_name():
-    """The multi-event form of the same header. All of them are the handler's
-    intent, so all of them survive."""
+    """The multi-event form of the same header. Every name is the handler's
+    intent, so every name survives."""
     client = make_app("myEvent, otherEvent")
 
     events = json.loads(client.get("/swap", headers=HTMX).headers["hx-trigger"])
@@ -162,9 +162,9 @@ def test_a_comma_separated_list_of_event_names_keeps_every_name():
 
 
 def test_the_handlers_header_is_found_under_the_name_starlette_stored_it_as():
-    """A handler writes `HX-Trigger`; `MutableHeaders` lowercases it, so what
-    reaches `_deliver_messages` is `hx-trigger`. A case-sensitive lookup would
-    miss it and emit two conflicting headers."""
+    """A handler writes `HX-Trigger`; `MutableHeaders` lowercases it, so
+    `_deliver_messages` sees `hx-trigger`. A case-sensitive lookup would miss it
+    and emit two conflicting headers."""
     client = make_app('{"myEvent":null}')
 
     response = client.get("/swap", headers=HTMX)
@@ -174,7 +174,8 @@ def test_the_handlers_header_is_found_under_the_name_starlette_stored_it_as():
 
 
 def test_a_trigger_header_the_kit_did_not_write_is_left_alone():
-    """No message, no reason to touch it — least of all to reserialise it."""
+    """No message means no reason to touch the header, least of all to
+    reserialise it."""
     client = make_app("myEvent")
 
     assert client.get("/quiet", headers=HTMX).headers["hx-trigger"] == "myEvent"
@@ -186,8 +187,8 @@ def test_a_trigger_header_the_kit_did_not_write_is_left_alone():
 
 
 def test_several_messages_keep_their_order_on_a_page():
-    """Queue order is the order they were raised in, which is the order the
-    handler meant them to be read in."""
+    """Queue order is the order the handler raised them in, which is the order
+    it meant them to be read in."""
     client = make_app()
 
     assert client.get("/many").text == "[info:First:None][error:Second:None]"
@@ -209,13 +210,13 @@ def test_several_messages_keep_their_order_in_the_trigger_header():
 
 
 def test_a_message_without_text_carries_no_description():
-    """Basecoat's toaster renders the description slot when the key is there, so
-    an absent body has to be an absent key rather than a null."""
+    """Basecoat's toaster renders the description slot whenever the key is
+    present, so an absent body must be an absent key rather than a null."""
     assert Message("Saved").as_detail() == {"category": "info", "title": "Saved"}
 
 
 def test_a_message_with_text_carries_it_as_description():
-    """`text` is fjkit's name for the field and `description` is Basecoat's. The
+    """`text` is fjkit's name for the field, `description` is Basecoat's. The
     rename happens here and nowhere else."""
     detail = Message("Saved", "Two rows changed.", category="success").as_detail()
 
@@ -228,13 +229,13 @@ def test_a_message_with_text_carries_it_as_description():
 
 
 def fake_request() -> Request:
-    """A `Request` with nothing but state — all the queue ever touches."""
+    """A `Request` carrying only `state`, which is all the queue touches."""
     return Request({"type": "http", "headers": [], "method": "GET", "path": "/", "state": {}})
 
 
 def test_iterating_the_queue_marks_the_messages_shown():
-    """`shown()` is what `FlashPlugin` reads before clearing its cookie, and a
-    message that reached a template is a message that reached the browser."""
+    """`FlashPlugin` reads `shown()` before clearing its cookie, and a message
+    that reached a template reached the browser."""
     request = fake_request()
     messages.add(request, "Saved")
 
@@ -243,8 +244,8 @@ def test_iterating_the_queue_marks_the_messages_shown():
 
 
 def test_asking_whether_there_is_anything_to_show_does_not_show_it():
-    """`{% if fjkit_messages() %}` guards a region; it does not render one. Mark
-    on that and a flash cookie is cleared by a page that never drew it."""
+    """`{% if fjkit_messages() %}` guards a region rather than rendering one.
+    Marking on that would let a page clear a flash cookie it never drew."""
     request = fake_request()
     messages.add(request, "Saved")
     queue = messages.queue(request)
@@ -255,8 +256,8 @@ def test_asking_whether_there_is_anything_to_show_does_not_show_it():
 
 
 def test_iterating_an_empty_queue_shows_nothing():
-    """A page that reads the toaster and finds it empty has not shown anything,
-    so a message queued later on the same request must still get out."""
+    """A page that reads an empty toaster has shown nothing, so a message queued
+    later on the same request must still get out."""
     request = fake_request()
 
     assert list(messages.queue(request)) == []
@@ -264,8 +265,8 @@ def test_iterating_an_empty_queue_shows_nothing():
 
 
 def test_draining_the_queue_empties_it_and_marks_it_shown():
-    """The header channel takes the messages away, which is what stops the same
-    response delivering them a second time through a template."""
+    """The header channel takes the messages away, which stops the same response
+    delivering them a second time through a template."""
     request = fake_request()
     messages.add(request, "Saved", category="warning")
     queue = messages.queue(request)
@@ -276,8 +277,8 @@ def test_draining_the_queue_empties_it_and_marks_it_shown():
 
 
 def test_the_queue_is_the_same_object_on_every_lookup():
-    """Two calls that returned different queues would mean a message added
-    through `add()` is invisible to the template that reads it."""
+    """Two calls returning different queues would make a message added through
+    `add()` invisible to the template that reads it."""
     request = fake_request()
 
     assert messages.queue(request) is messages.queue(request)

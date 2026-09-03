@@ -1,16 +1,16 @@
 /* The Components page, one section per file in `src/fjkit/templates/ui/`.
  *
  * `MACROS` is the knobs; `SHOWCASE` is the macros with nothing to turn;
- * `SNIPPET` is the two files that render no preview at all. Each entry names
- * the section that hosts it, and the sections are the directory listing — so
- * "which section does this go in" is answered by the macro's own file. */
+ * `SNIPPET` is the two files that render no preview at all. Each entry names the
+ * section that hosts it, and the sections are the directory listing, so a
+ * macro's own file answers which section it goes in. */
 
 /* ------------------------------------------------- the playground entries */
 const ICON_CHOICES = Object.keys(DATA.icons);
 
-/* The form picker's five states. Kept out of the entry itself because each one
-   carries a Jinja snippet, and five of those inline turn one macro's definition
-   into half the file. */
+/* The form picker's five states. Kept out of the entry itself: each carries a
+   Jinja snippet, and five of those inline turn one macro's definition into half
+   the file. */
 const FORM_STATE = {
   "htmx form": "board",
   "with an error": "error",
@@ -231,15 +231,15 @@ const MACROS = {
 
 /* One playground, instantiated once per file that has knobs to offer.
  *
- * `slug` names the section — `button`, `data`, `form`, `table` — and
- * the template renders the same skeleton under it either way:
+ * `slug` names the section — `button`, `data`, `form`, `table` — and the
+ * template renders the same skeleton under it either way:
  *
  *     #<slug>-picker      the tab strip, when the file has more than one macro
  *     #<slug>-controls    the knobs, when it has exactly one
  *     #<slug>-preview     #<slug>-jinja pre   #<slug>-html pre   #<slug>-caption
  *
- * A one-macro file gets no tab strip, because a tablist with a single tab is a
- * control that cannot be operated. */
+ * A one-macro file gets no tab strip: a tablist with a single tab is a control
+ * that cannot be operated. */
 function playground(slug, keys) {
   const picker = document.getElementById(`${slug}-picker`);
   const tablist = picker?.querySelector('[role="tablist"]');
@@ -252,13 +252,13 @@ function playground(slug, keys) {
   let current = keys[0];
   const state = {};
 
-  /* One tab and one panel per macro, which is the pattern the picker always
-     was: a row of choices where exactly one set of knobs is showing. It used to
-     be a `button-group`, and a `role="group"` of buttons gives a keyboard user
-     no arrow keys and a screen reader no idea the row selects a view.
+  /* One tab and one panel per macro, which is what the picker always was: a row
+     of choices where exactly one set of knobs is showing. It used to be a
+     `button-group`, and a `role="group"` of buttons gives a keyboard user no
+     arrow keys and a screen reader no idea the row selects a view.
 
      Every panel is built once and kept, so switching costs nothing and a knob
-     you set on `badge` is still set when you come back to it. */
+     set on `badge` is still set when you come back to it. */
   keys.forEach((key) => {
     const macro = MACROS[key];
     state[key] = Object.fromEntries(macro.controls.map((c) => [c.key, c.value]));
@@ -272,8 +272,8 @@ function playground(slug, keys) {
     panel.id = `${slug}-panel-${key}`;
     panel.setAttribute("role", "tabpanel");
     /* Pre-hidden, unlike a server-rendered `tab_panel`: nothing here exists
-       without JavaScript anyway, so there is no reader to keep it legible for —
-       only a stack of panels flashing before Basecoat's script runs. */
+       without JavaScript, so there is no reader to keep it legible for — only a
+       stack of panels flashing before Basecoat's script runs. */
     panel.hidden = key !== current;
     buildControls(key, panel);
     picker.appendChild(panel);
@@ -289,15 +289,14 @@ function playground(slug, keys) {
   });
 
   /* Selection, the roving tabindex and the arrow keys are Basecoat's. What is
-     left for this file is the three panes *outside* the tab group — preview,
-     code, caption — which have to follow the selection.
+     left for this file is the three panes outside the tab group — preview, code,
+     caption — which have to follow the selection.
 
-     Watching the attribute rather than listening for a click is not defensive
-     coding: Basecoat's arrow-key handler calls its own `select()` directly and
-     dispatches no click, so a click listener leaves a keyboard user looking at
-     one component's knobs and another's preview. `aria-selected` is the one
-     place every path — pointer, keyboard, a script calling `picker.select()` —
-     has to write, so it is the thing worth reading. */
+     Watch the attribute rather than listening for a click: Basecoat's arrow-key
+     handler calls its own `select()` directly and dispatches no click, so a
+     click listener leaves a keyboard user looking at one component's knobs and
+     another's preview. `aria-selected` is the one place every path — pointer,
+     keyboard, a script calling `picker.select()` — has to write. */
   if (tablist) {
     const follow = () => {
       const key = tablist.querySelector('[role="tab"][aria-selected="true"]')?.dataset.macro;
@@ -312,9 +311,9 @@ function playground(slug, keys) {
     });
 
     /* Deferred scripts run in document order and Basecoat initialises on
-       DOMContentLoaded, so it sees the tabs above and needs no help. The call is
-       here for the day someone moves a <script> tag: `refresh` exists only once
-       Basecoat has already run, and it re-reads a tablist that changed since. */
+       DOMContentLoaded, so it sees the tabs above and needs no help. This call
+       is here for the day someone moves a <script> tag: `refresh` exists only
+       once Basecoat has run, and it re-reads a tablist that changed since. */
     picker.refresh?.();
   }
 
@@ -322,7 +321,7 @@ function playground(slug, keys) {
     MACROS[key].controls.forEach((control) => {
       const wrap = document.createElement("div");
       wrap.className = "field";
-      // Basecoat's own knob for a control that sits beside its label.
+      // Basecoat's knob for a control that sits beside its label.
       if (control.type === "check") wrap.dataset.orientation = "horizontal";
       const id = `mc-${slug}-${key}-${control.key}`;
       const label = document.createElement("label");
@@ -383,8 +382,8 @@ function playground(slug, keys) {
   update();
 }
 
-/* The sections that carry knobs, in the order the page lists them — which is
-   the order `ls src/fjkit/templates/ui/` prints. */
+/* The sections that carry knobs, in the order the page lists them, which is the
+   order `ls src/fjkit/templates/ui/` prints. */
 playground("button", ["button", "button_group"]);
 playground("data", ["badge", "stat", "progress", "card"]);
 playground("form", ["form"]);
@@ -499,11 +498,11 @@ playground("table", ["table"]);
 
 
 /* ------------------------------------------------------------- showcases
- * The macros with nothing to configure. Same data.json as every other preview
- * on the site: the markup is what fjkit emitted at build time, and the `jinja`
- * string beside it is the call that produced it. Placeholders (__TITLE__ …)
- * are substituted here for the same reason they are in the playground — Jinja
- * prints whatever it is handed, so the surrounding markup is still genuine. */
+ * The macros with nothing to configure. Same data.json as every other preview on
+ * the site: the markup is what fjkit emitted at build time, and the `jinja`
+ * string beside it is the call that produced it. Placeholders (__TITLE__ …) are
+ * substituted here for the reason they are in the playground — Jinja prints
+ * whatever it is handed, so the markup around them is still genuine. */
 const TILE = '<div data-tile>your content</div>';
 
 const SHOWCASE = {
@@ -547,7 +546,7 @@ const SHOWCASE = {
                      required=true, revealable=true) }}
 
 {% block scripts %}{{ reveal_scripts() }}{% endblock %}`,
-    caption: "Live on this page — click Show. The button is markup and the script is four lines, but the two things that make it correct are not obvious: the listener is delegated from document, because the form a password sits in is the one most likely to be swapped out by a 422 and a listener bound to the old button goes with it; and the input is found through aria-controls, so nothing hard-codes the id the macro chose. reveal_scripts() is per page, never in the shell.",
+    caption: "Live on this page — click Show. The button is markup and the script is four lines. Two things make it correct: the listener is delegated from document, because a 422 is most likely to swap out the form a password sits in and take a listener bound to the old button with it; and the input is found through aria-controls, so nothing hard-codes the id the macro chose. reveal_scripts() is per page, never in the shell.",
   },
 
   section: {
@@ -615,8 +614,8 @@ const SHOWCASE = {
   },
 
   /* --- the gallery: one rendered example per macro that has nothing to turn.
-   * `html` reads DATA.gallery, so these previews are what fjkit emitted at
-   * build time — the page cannot show markup the kit does not produce. */
+   * `html` reads DATA.gallery, so these previews are what fjkit emitted at build
+   * time, and the page cannot show markup the kit does not produce. */
 
   spinner: {
     html: () => DATA.gallery.spinner,
@@ -835,9 +834,9 @@ const SHOWCASE = {
     caption: "Filtering is client-side, over the options rendered here. For server-side search this is the wrong component — use a text_field with hx_get and swap the listbox from the response.",
   },
 
-  /* The multiple= pair. Rendered as first paint, so the select preview shows
-     its selection and the combobox preview does not — which is the difference
-     worth seeing before choosing between them. */
+  /* The multiple= pair. Rendered as first paint, so the select preview shows its
+     selection and the combobox preview does not — the difference worth seeing
+     before choosing between them. */
   select_menu_multiple: {
     html: () => DATA.gallery.select_menu_multiple,
     jinja: `{% from "ui/overlay.html" import select_menu, multiselect_scripts %}
@@ -885,11 +884,11 @@ const SHOWCASE = {
 };
 
 /* ------------------------------------------- shell.html and sidebar.html
- * The two files with no preview to give, for opposite reasons. `shell.html`
- * *is* the page you are reading — a copy inside a card would be a second
- * document. `sidebar`'s panel is `position: fixed`, so a live one here would
- * cover the page instead of sitting in it; the rail on the left is the running
- * example, rendered by `base.html` from the call printed below.
+ * The two files with no preview to give, for opposite reasons. `shell.html` is
+ * the page you are reading, and a copy inside a card would be a second document.
+ * `sidebar`'s panel is `position: fixed`, so a live one here would cover the
+ * page instead of sitting in it; the rail on the left is the running example,
+ * rendered by `base.html` from the call printed below.
  *
  * Same rule as everywhere else on this page: what is shown is a call, and the
  * live instance is named rather than imitated. */

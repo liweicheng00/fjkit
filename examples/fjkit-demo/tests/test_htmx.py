@@ -57,7 +57,7 @@ FORM = re.compile(r"<form\b[^>]*>.*?</form>", re.S)
 
 
 def test_every_mutating_control_disables_itself(htmx):
-    """Every hx-post or hx-delete control on the board carries hx-disabled-elt."""
+    """Without `hx-disabled-elt` a second click during the request sends the mutation twice."""
     board = htmx.get("/tasks/board").text
     mutating = re.findall(r"<(?:form|button)\b[^>]*hx-(?:post|delete)=[^>]*>", board)
     assert mutating, "the board is where the mutations are"
@@ -66,7 +66,7 @@ def test_every_mutating_control_disables_itself(htmx):
 
 
 def test_a_form_s_disabled_selector_finds_something(client):
-    """Every form with hx-disabled-elt uses find button[type=submit] and has such a button."""
+    """A selector that matches nothing disables nothing, so the guard is absent and no test says so."""
     for page in ("/tasks", "/jobs", "/session"):
         for form in FORM.findall(client.get(page).text):
             if "hx-disabled-elt=" not in form:

@@ -69,7 +69,6 @@ def test_a_protected_route_answers_the_console_and_refuses_a_stranger(console):
 
 
 def test_a_fragment_endpoint_answers_the_console_with_its_model(console):
-    """A console call to a fragment route returns 200 with a JSON body."""
     result = console.post(BOARD_OP)
 
     assert "200" in result.text
@@ -77,7 +76,6 @@ def test_a_fragment_endpoint_answers_the_console_with_its_model(console):
 
 
 def test_even_a_page_route_answers_the_console_with_its_model(console):
-    """A console call to a page route returns JSON, not an HTML document."""
     result = console.post(TASKS_OP, data={"p.query.status": "todo"})
 
     assert "200" in result.text
@@ -87,7 +85,6 @@ def test_even_a_page_route_answers_the_console_with_its_model(console):
 
 
 def test_the_same_route_still_gives_a_browser_the_page(console):
-    """A direct GET of the page route still returns an HTML document."""
     page = console.get("/tasks?status=todo")
 
     assert page.headers["content-type"].startswith("text/html")

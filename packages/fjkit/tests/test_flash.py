@@ -1,4 +1,4 @@
-"""`FlashPlugin` — the message that has to outlive the response that raised it."""
+"""`FlashPlugin` — the message that must outlive the response that raised it."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, FlashMessage, FlashPlugin, mount_fjkit, render
 from jinja2 import DictLoader
 
-#: The shell reads `fjkit_messages()`, not a `flash` key: since 0.3 the cookie
-#: is queued into `fjkit.messages` rather than delivered through a context
+#: The shell reads `fjkit_messages()`, not a `flash` key. Since 0.3 the cookie
+#: is queued into `fjkit.messages` instead of arriving through a context
 #: processor of its own, so a template cannot tell how a message arrived.
 TEMPLATES = {
     "page.html": "{% for m in fjkit_messages() %}[{{ m.category }}:{{ m.title }}:{{ m.text }}]{% endfor %}",
@@ -44,7 +44,8 @@ def make_app(**kwargs):
 
 
 def test_a_message_survives_into_the_next_request():
-    """The whole point: the response that sets it renders nothing."""
+    """The response that sets the message renders nothing, so delivery waits for
+    the next request."""
     _, client = make_app()
 
     client.post("/raise")
@@ -53,7 +54,7 @@ def test_a_message_survives_into_the_next_request():
 
 
 def test_it_is_shown_once_and_then_gone():
-    """A reload must not replay it. That is what makes it a flash."""
+    """A reload must not replay the message. That is what makes it a flash."""
     _, client = make_app()
     client.post("/raise")
 
@@ -65,10 +66,10 @@ def test_it_is_shown_once_and_then_gone():
 
 
 def test_a_page_that_never_rendered_it_does_not_consume_it():
-    """A favicon, a stylesheet, an htmx poll — anything can arrive first.
+    """A favicon, a stylesheet or an htmx poll can arrive before the page.
 
-    Clearing on any request that merely *carried* the cookie would let one of
-    those eat the message before the page it belonged to was drawn.
+    Clearing on any request that merely carried the cookie would let one of
+    those consume the message before the page it belonged to was drawn.
     """
     _, client = make_app()
     client.post("/raise")
@@ -97,8 +98,8 @@ def test_the_cookie_is_httponly_and_signed():
 
 
 def test_a_tampered_message_is_dropped():
-    """An unsigned flash cookie is a way to make a site display any text an
-    attacker likes — which is a phishing tool, not a message."""
+    """An unsigned flash cookie lets an attacker make the site display any text
+    they choose, which is a phishing tool rather than a message."""
     flash, client = make_app()
     client.post("/raise")
 

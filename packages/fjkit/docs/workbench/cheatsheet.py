@@ -1,32 +1,31 @@
-"""The macro index behind the Cheatsheet page, as data rather than as a wall of
-pre-formatted text.
+"""The macro index behind the Cheatsheet page, as data rather than pre-formatted
+text.
 
 It used to be one string: ninety macros aligned with spaces, annotated with a
-`·` whose meaning was never stated anywhere. The annotation carried the single
-fact a reader most often needs — *does this macro take a `{% call %}` block, and
-what goes inside it* — in a notation they had to reverse-engineer. So the fact
-became a badge on the macro's own row, written out in words.
+`·` no legend explained. That notation carried the fact a reader most often
+needs — does this macro take a `{% call %}` block, and what goes inside it — so
+the fact became a badge on the macro's own row, written out in words.
 
 One row per macro, in one place, for both languages:
 
 * `call` is the signature, copied from the macro definition. It is the same
-  string in every language, because a parameter name is not prose.
+  string in every language: a parameter name is not prose.
 * `block` names what goes between `{% call %}` and `{% endcall %}`, or is empty
   when the macro takes no block. Two kinds of value, both plain text by the
   time a template sees them: a slot key out of `SLOTS`, which is translated,
   and a literal `macro()` name, which is not.
-* `note` is the one line of prose, and the only field that is written twice.
+* `note` is the one line of prose, and the only field written twice.
 
-`for_lang(code)` flattens all of that into exactly what the template prints, so
-neither page template reshapes anything and the two cannot describe the kit
-differently. `tests/test_docs_site.py` walks `GROUPS` against the real
+`for_lang(code)` flattens all of that into what the template prints, so neither
+page template reshapes anything and the two cannot describe the kit differently.
+`tests/test_docs_site.py` walks `GROUPS` against the real
 `src/fjkit/templates/ui/` and fails when a macro ships without a row here.
 """
 
 from __future__ import annotations
 
-#: The translated block slots. A key here is a *role* — what the block is for —
-#: not a description of the markup, because the markup is the macro's business.
+#: The translated block slots. A key here names a role — what the block is for —
+#: rather than describing the markup, which is the macro's business.
 SLOTS = {
     "body": {"en": "the body", "zh": "內容"},
     "children": {"en": "the children", "zh": "子元素"},
@@ -49,14 +48,14 @@ OPTIONAL = {"en": " (optional)", "zh": "（可省略）"}
 #: that macro, not free markup.
 CALLS = {"en": " calls", "zh": " 呼叫"}
 
-#: In front of every one of them. The badge has to read on its own — a reader
-#: who lands mid-page from the rail has not read the legend — and "the actions"
-#: alone does not say what it is the actions *of*.
+#: In front of every one of them. The badge has to read on its own: a reader who
+#: lands mid-page from the rail has not read the legend, and "the actions" alone
+#: does not say what it is the actions of.
 PREFIX = {"en": "block: ", "zh": "區塊："}
 
 
 def _m(call: str, block: str = "", en: str = "", zh: str = "", optional: bool = False) -> dict:
-    """One row. `block` is a `SLOTS` key, a literal `macro()`, or empty."""
+    """Build one row. `block` is a `SLOTS` key, a literal `macro()`, or empty."""
     return {"call": call, "block": block, "optional": optional, "en": en, "zh": zh}
 
 
@@ -694,8 +693,8 @@ GROUPS = [
 ]
 
 #: `ui/shell.html` is blocks, not macros, so it gets its own two-column table
-#: rather than a row in one of the tables above. Listed in the order a page
-#: fills them, which is not the order they appear in the file.
+#: rather than rows above. Listed in the order a page fills them, which is not
+#: the order they appear in the file.
 SHELL_BLOCKS = [
     {
         "name": "site_title",
@@ -790,9 +789,9 @@ GLOBALS = [
 ]
 
 #: The htmx attributes worth having next to the macro index, because they are
-#: passed *to* these macros — `hx_post="/tasks"` on a form, a button or a row.
-#: Same row shape as a macro: the thing you write, then one line on what it
-#: does. The full reference is upstream and the page links to it.
+#: passed to these macros — `hx_post="/tasks"` on a form, a button or a row.
+#: Same row shape as a macro: what you write, then one line on what it does.
+#: The full reference is upstream, and the page links to it.
 HTMX = [
     {
         "id": "request",
@@ -967,10 +966,11 @@ HTMX = [
 ]
 
 
-#: The two listings on the page, here rather than in the templates because a
-#: Jinja sample is full of `{%` and `#}` and a template that quotes one inline
-#: is asking the lexer to tell a string apart from a tag. Python has no such
-#: problem. The comments inside them are prose, so they are written twice.
+#: The two listings on the page. They live here rather than in the templates
+#: because a Jinja sample is full of `{%` and `#}`, and a template that quotes
+#: one inline asks the lexer to tell a string apart from a tag. Python does not
+#: have that problem. The comments inside them are prose, so they are written
+#: twice.
 SAMPLES = {
     "shapes": {
         "en": """\
@@ -1012,16 +1012,15 @@ SAMPLES = {
 
 
 def _slot(block: str, optional: bool, code: str) -> str:
-    """The badge on a macro's row, as the one plain-text phrase a template
-    prints — or empty, when the macro takes no block.
+    """Phrase the badge on a macro's row, or return empty for a macro that takes
+    no block.
 
-    Empty rather than a dash, because absence is the more common case and a
-    column of dashes is noise. A badge on the row means "this one is called
-    with a block", and the badge says what goes in it.
+    Empty rather than a dash: absence is the common case, and a column of dashes
+    is noise. A badge means the macro is called with a block, and says what goes
+    in it.
 
-    Two shapes, neither of them a notation to decode: a translated role out of
-    `SLOTS`, and a literal `macro()` name when the block is a run of calls to
-    that macro.
+    Two shapes, neither a notation to decode: a translated role out of `SLOTS`,
+    and a literal `macro()` name when the block is a run of calls to that macro.
     """
     if not block:
         return ""
@@ -1030,17 +1029,18 @@ def _slot(block: str, optional: bool, code: str) -> str:
 
 
 def for_lang(code: str) -> dict:
-    """Everything the Cheatsheet page prints, in one language, already flat.
+    """Flatten the index into everything the Cheatsheet page prints, in one
+    language.
 
-    The page template loops and prints. It does not choose a language, look a
-    slot up or assemble a phrase — that is data reshaping, and a template that
-    does it is the one place the English and Chinese pages could start
-    describing different macros.
+    The page template loops and prints. It chooses no language, looks up no slot
+    and assembles no phrase: that is data reshaping, and a template doing it is
+    the one place the English and Chinese pages could start describing different
+    macros.
     """
     return {
         #: The middle of the page's rail. The fixed bands around it — the
         #: legend, the shell, the globals, htmx — are headings the page writes
-        #: for itself, so they stay in the template with the prose they head.
+        #: for itself, so they stay in the template beside the prose they head.
         "rail": [{"id": group["id"], "title": group[code]["title"]} for group in GROUPS],
         "groups": [
             {

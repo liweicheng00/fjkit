@@ -10,13 +10,13 @@
 {#
   pick_row(request, task, selected_id) — one row of the board.
 
-  The title is the button and the row is the hit target, the same trade
-  `search/macros.html` makes and for the same reasons: a `<tr>` with the `hx-get`
-  on it would give the same mouse behaviour and no keyboard path at all.
+  The title is the button and the row is the hit target — the trade
+  `search/macros.html` makes, for the same reason: a `<tr>` carrying the `hx-get`
+  would give the same mouse behaviour and no keyboard path at all.
 
   One refusal here rather than search's two. This table subscribes to nothing, so
-  there is no inherited `hx-vals` to unset — the pick's id is in its URL, and the
-  panels read the *result* of the pick off the hidden input the table carries.
+  there is no inherited `hx-vals` to unset: the pick's id is in its URL, and the
+  panels read the result of the pick off the hidden input the table carries.
 #}
 {% macro pick_row(request, task, selected_id=none) -%}
   <tr>
@@ -66,8 +66,8 @@
   stamp(rendered_label) — the moment the router built this fragment.
 
   It is the page's evidence. Without a timestamp per panel there is no reading
-  which panels a given click reached, which on this page is the whole point:
-  the hidden ones are meant not to move.
+  which panels a click reached, which here is the point: the hidden ones are
+  meant not to move.
 #}
 {% macro stamp(rendered_label) -%}
   {{ badge("rendered " ~ rendered_label, variant="outline") }}

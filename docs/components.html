@@ -16,7 +16,7 @@
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
   <script defer src="assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
-  <script defer src="assets/js/errors.js?v=1787594535"></script>
+  <script defer src="assets/js/errors.js?v=1788369088"></script>
   <meta name="description" content="Every fjkit macro with a live preview, the Jinja call that produced it and the HTML it emits — rendered by the kit itself, so a signature here cannot drift from the package.">
   <meta property="og:title" content="fjkit components">
   <meta property="og:description" content="Every fjkit macro with a live preview, the Jinja call that produced it and the HTML it emits — rendered by the kit itself, so a signature here cannot drift from the package.">
@@ -51,55 +51,55 @@ fjkit
 </ul>
   </div>
 <div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
-    <a href="components.html#button">      <span>Button</span>
+    <a href="components.html#button">      <span>01 · Button</span>
     </a>
   </li>
         <li>
-    <a href="components.html#data">      <span>Data</span>
+    <a href="components.html#data">      <span>02 · Data</span>
     </a>
   </li>
         <li>
-    <a href="components.html#disclosure">      <span>Disclosure</span>
+    <a href="components.html#disclosure">      <span>03 · Disclosure</span>
     </a>
   </li>
         <li>
-    <a href="components.html#feedback">      <span>Feedback</span>
+    <a href="components.html#feedback">      <span>04 · Feedback</span>
     </a>
   </li>
         <li>
-    <a href="components.html#form">      <span>Form</span>
+    <a href="components.html#form">      <span>05 · Form</span>
     </a>
   </li>
         <li>
-    <a href="components.html#icon">      <span>Icon</span>
+    <a href="components.html#icon">      <span>06 · Icon</span>
     </a>
   </li>
         <li>
-    <a href="components.html#layout">      <span>Layout</span>
+    <a href="components.html#layout">      <span>07 · Layout</span>
     </a>
   </li>
         <li>
-    <a href="components.html#nav">      <span>Nav</span>
+    <a href="components.html#nav">      <span>08 · Nav</span>
     </a>
   </li>
         <li>
-    <a href="components.html#overlay">      <span>Overlay</span>
+    <a href="components.html#overlay">      <span>09 · Overlay</span>
     </a>
   </li>
         <li>
-    <a href="components.html#shell">      <span>Shell</span>
+    <a href="components.html#shell">      <span>10 · Shell</span>
     </a>
   </li>
         <li>
-    <a href="components.html#sidebar">      <span>Sidebar</span>
+    <a href="components.html#sidebar">      <span>11 · Sidebar</span>
     </a>
   </li>
         <li>
-    <a href="components.html#table">      <span>Table</span>
+    <a href="components.html#table">      <span>12 · Table</span>
     </a>
   </li>
         <li>
-    <a href="components.html#tabs">      <span>Tabs</span>
+    <a href="components.html#tabs">      <span>13 · Tabs</span>
     </a>
   </li>
         <li>
@@ -150,11 +150,11 @@ fjkit
       <div class="flex flex-col gap-3">      <p>
         Every parameter on this page is a <strong>closed enumeration</strong>. There is no
         <code>class=</code> escape hatch and no hue to pass: you pick a variant, and the token layer
-        decides what that looks like. Anything <em>else</em> you hand a macro becomes an HTML
-        attribute — <code>hx_post="/tasks"</code> renders as <code>hx-post="/tasks"</code>. That
-        conversion is one file, <code>ui/attrs.html</code>, which every macro forwards its leftover
-        keywords to and no app ever calls. It is why htmx appears in no macro definition in the kit,
-        and why a keyword a macro has never heard of is an attribute rather than an error.
+        decides what it looks like. Anything a macro does not name becomes an HTML attribute, so
+        <code>hx_post="/tasks"</code> renders as <code>hx-post="/tasks"</code>. That conversion is one
+        file, <code>ui/attrs.html</code>, which every macro forwards its leftover keywords to and no
+        app ever calls. It is why htmx appears in no macro definition in the kit, and why a keyword a
+        macro has never heard of is an attribute rather than an error.
       </p>
       <p>
         <code>button</code> is the macro every other file reaches for, and the one whose signature is
@@ -164,10 +164,10 @@ fjkit
         imports <code>icon</code> to put a glyph on a button.
       </p>
       <p>
-        <code>button_group</code> is two components wearing one name, and the knob tells you which:
+        <code>button_group</code> is two components under one name, and the knob tells you which:
         horizontal is a <code>row</code>, so the gap is yours; vertical is Basecoat's
-        <code>.button-group</code>, which joins the buttons into a single control with shared
-        borders and has no gap to give.
+        <code>.button-group</code>, which joins the buttons into a single control with shared borders
+        and has no gap to give.
       </p>
 </div>
     <div class="card">          <div class="tabs" id="button-picker" data-picker>
@@ -208,10 +208,10 @@ fjkit
         for you when <code>rows</code> is empty, so no caller writes the if-rows-else branch.
       </p>
       <p>
-        <code>avatar</code> is the one to read the signature of. The name is both the
-        <code>alt</code> text and the fallback initials, so the two cannot disagree, and the
-        initials leave the accessibility tree the moment an image carries the name — otherwise the
-        same person is announced twice, once properly and once as two stray letters.
+        <code>avatar</code> is the one whose signature to read. The name is both the <code>alt</code>
+        text and the fallback initials, so the two cannot disagree, and the initials leave the
+        accessibility tree the moment an image carries the name. Otherwise the same person is
+        announced twice, once properly and once as two stray letters.
       </p>
 </div>
     <div class="card">          <div class="tabs" id="data-picker" data-picker>
@@ -331,10 +331,9 @@ fjkit
         attribute — no second element exists.
       </p>
       <p>
-        The tooltip's mechanism has one consequence worth stating plainly: CSS
-        <code>content()</code> is never in the accessibility tree. A tooltip is a <em>hint</em>,
-        never the only label a control has. Give the control an <code>aria_label</code> when the
-        tooltip is the only text on it.
+        The tooltip's mechanism has one consequence: CSS <code>content()</code> is never in the
+        accessibility tree. A tooltip is a hint, never the only label a control has. Give the control
+        an <code>aria_label</code> when the tooltip is the only text on it.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -367,19 +366,18 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Feedback</h2><p class="text-muted-foreground text-sm">Five ways of saying "wait", "done" and "that did not work".</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        These differ in <em>who is waiting and for what</em>, which is also how you pick one.
-        <code>alert</code> is a fact that stays on the page. <code>spinner</code> and
-        <code>skeleton</code> both mean "not yet", and the choice between them is whether you know
-        the shape of what is coming: a skeleton draws that shape, a spinner admits you cannot.
-        <code>dialog</code> interrupts. <code>toast</code> is the one that outlives the response
-        that raised it.
+        These differ in who is waiting and for what, which is how you pick one. <code>alert</code> is
+        a fact that stays on the page. <code>spinner</code> and <code>skeleton</code> both mean "not
+        yet", and the choice between them is whether you know the shape of what is coming: a skeleton
+        draws that shape, a spinner admits you cannot. <code>dialog</code> interrupts.
+        <code>toast</code> outlives the response that raised it.
       </p>
       <p>
         Two of them make an accessibility decision for you.
-        <code>alert(variant="destructive")</code> takes <code>role="alert"</code>, which interrupts
-        a screen reader mid-sentence; every other variant is <code>role="status"</code>, which
-        waits for a pause. And a multi-line <code>skeleton</code> is one live region, not six —
-        six bars are one thing loading.
+        <code>alert(variant="destructive")</code> takes <code>role="alert"</code>, which interrupts a
+        screen reader mid-sentence; every other variant is <code>role="status"</code>, which waits for
+        a pause. A multi-line <code>skeleton</code> is one live region rather than six, because six
+        bars are one thing loading.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -450,10 +448,10 @@ fjkit
         ordinary POST that works without JavaScript.
       </p>
       <p>
-        The two below are the fields that do something <em>about</em> their own mechanism.
-        <code>range_field</code> writes the filled part of the track for the first paint — Basecoat
-        paints it from a custom property and only updates it from JavaScript on drag, so without
-        that the bar sits at upstream's default and disagrees with the number beside it.
+        The two below are the fields that correct their own mechanism. <code>range_field</code> writes
+        the filled part of the track for the first paint: Basecoat paints it from a custom property
+        and updates it from JavaScript only on drag, so without that the bar sits at upstream's
+        default and disagrees with the number beside it.
       </p>
 </div>
     <div class="card">          <div id="form-controls" data-controls></div>
@@ -520,8 +518,8 @@ fjkit
         colour, and it costs no network request at any size.
       </p>
       <p>
-        Most macros take <code>icon_name=</code> directly: <code>button</code>, <code>stat</code>,
-        <code>empty_state</code>, <code>brand</code>, <code>sidebar_link</code>. So you rarely call
+        Most macros take <code>icon_name=</code> directly — <code>button</code>, <code>stat</code>,
+        <code>empty_state</code>, <code>brand</code>, <code>sidebar_link</code> — so you rarely call
         this one yourself. The links in this site's sidebar are all of them. A sample of the set is
         below, and any Lucide name works.
       </p>
@@ -551,17 +549,17 @@ fjkit
       <div class="flex flex-col gap-3">      <p>
         Components alone do not get you to a closed vocabulary. The first time you need two cards
         side by side you reach for a utility class, and the stylesheet fjkit shipped has no idea you
-        wanted it. So spacing and columns are macros too. Every value is a lookup whose entries
-        appear <em>verbatim</em> in the kit's source, where Tailwind can see them.
+        wanted it. So spacing and columns are macros too. Every value is a lookup whose entries appear
+        verbatim in the kit's source, where Tailwind can see them.
       </p>
       <p>
-        The dashed tiles are your content. Change the knobs and watch the source line change with them.
+        The dashed tiles are your content. Change the knobs and the source line changes with them.
       </p>
       <p>
         The other three in this file are what a page is made of before any of its data arrives.
         <code>page_header</code> takes a block, and the block is its actions: a title, a description
         and a row of buttons stay on one line at every width, with no caller measuring anything. The
-        header at the top of this page is the same macro, called plainly, with no actions to place.
+        header at the top of this page is the same macro with no actions to place.
       </p>
 </div>
 <div class="card">            <div id="layout-controls"></div>
@@ -633,16 +631,16 @@ fjkit
         rail is <code>brand</code>, and the switch in the header is <code>theme_toggle</code>.
       </p>
       <p>
-        <code>nav_links</code> takes route <em>names</em>, not URLs, so the active state is decided
-        by comparing routes rather than string-matching paths — which stays correct when a URL gains
-        a query string. Past about six destinations a header row runs out of width; that is the
-        point at which you fill the shell's <code>sidebar</code> block instead.
+        <code>nav_links</code> takes route names, not URLs, so the active state comes from comparing
+        routes rather than string-matching paths, and stays correct when a URL gains a query string.
+        Past about six destinations a header row runs out of width; fill the shell's
+        <code>sidebar</code> block instead.
       </p>
       <p>
-        <code>breadcrumb</code> takes <code>(label, href)</code> pairs where a null href
-        <em>is</em> the current page. That is deliberate: the usual way this component goes wrong
-        is a trail whose last entry links to the page you are already on, and the shape of the
-        argument makes that unspellable.
+        <code>breadcrumb</code> takes <code>(label, href)</code> pairs, where a null href marks the
+        current page. That is deliberate: the usual way this component goes wrong is a trail whose
+        last entry links to the page you are already on, and the shape of the argument makes that
+        unspellable.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -695,37 +693,36 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Overlay</h2><p class="text-muted-foreground text-sm">One id in, four out — and a mismatch fails without a word.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        Everything in <code>ui/overlay.html</code> is driven by Basecoat's own JavaScript, which
-        the shell already loads and which re-scans on <code>htmx:afterSwap</code> — so an overlay
-        that arrives in a swap works with nothing extra.
+        Everything in <code>ui/overlay.html</code> is driven by Basecoat's own JavaScript, which the
+        shell already loads and which re-scans on <code>htmx:afterSwap</code>, so an overlay that
+        arrives in a swap works with nothing extra.
       </p>
       <p>
-        What they share is <strong>id wiring</strong>. A trigger and its panel find each other
-        through four related ids, and getting one wrong fails silently: the panel opens but is
-        never announced, or never opens at all. Every macro here takes one <code>id</code> and
-        derives the rest. That is the whole reason they are macros rather than markup to copy.
+        What they share is <strong>id wiring</strong>. A trigger and its panel find each other through
+        four related ids, and getting one wrong fails silently: the panel opens but is never
+        announced, or never opens at all. Every macro here takes one <code>id</code> and derives the
+        rest, which is why they are macros rather than markup to copy.
       </p>
       <p>
         <code>select_menu</code> and <code>combobox</code> put their value in a hidden input,
-        pre-filled — upstream ships <code>value=""</code> and writes it from JS, which loses the
-        selection on any round trip that re-renders the fragment. Prefer
-        <code>select_field</code> to either: a native <code>&lt;select&gt;</code> is correct for
-        free and costs one element instead of thirty.
+        pre-filled. Upstream ships <code>value=""</code> and writes it from JS, which loses the
+        selection on any round trip that re-renders the fragment. Prefer <code>select_field</code> to
+        either: a native <code>&lt;select&gt;</code> is correct for free and costs one element instead
+        of thirty.
       </p>
       <p>
-        Both take <code>multiple=true</code>, and both then want a <strong>list</strong> in
-        <code>selected</code> where they took a scalar before. The hidden input carries Basecoat's
-        JSON array, and <code>multiselect_scripts()</code> — one script, opted into by the page
-        that has such a field — re-emits it on submit as the repeated field HTML has always used:
-        <code>labels=bug&amp;labels=ui</code>. So the route stays ordinary:
-        <code>labels: list[str] = Form([])</code>, no parsing anywhere. Forget the script and the
+        Both take <code>multiple=true</code>, and both then want a list in <code>selected</code> where
+        they took a scalar before. The hidden input carries Basecoat's JSON array, and
+        <code>multiselect_scripts()</code> — one script, opted into by the page that has such a field
+        — re-emits it on submit as the repeated field HTML has always used:
+        <code>labels=bug&amp;labels=ui</code>. The route stays ordinary at
+        <code>labels: list[str] = Form([])</code>, with no parsing anywhere. Forget the script and the
         field posts one JSON-shaped string instead, which is a 422 on a page that looks correctly
         filled in.
       </p>
       <p>
-        A checkbox group inside a <code>fieldset</code> posts exactly the same thing and needs no
-        script at all. It is the better answer up to about a dozen options, which is where these
-        two start.
+        A checkbox group inside a <code>fieldset</code> posts the same thing and needs no script at
+        all. It is the better answer up to about a dozen options, which is where these two start.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -864,16 +861,16 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Sidebar</h2><p class="text-muted-foreground text-sm">A back office outgrows a header bar at about six destinations.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        The rail on the left of this page is this file. There is no preview in a card below, and
-        that is the honest rendering: the panel is <code>position: fixed</code>, so a copy of it
-        here would cover the page rather than sit in it. The running instance is two feet to the
-        left, and the call that produced it is printed below.
+        The rail on the left of this page is this file. There is no preview in a card below: the
+        panel is <code>position: fixed</code>, so a copy of it here would cover the page rather than
+        sit in it. The running instance is on the left, and the call that produced it is printed
+        below.
       </p>
       <p>
-        Route names again, an icon by name, closed enumerations, and no class string anywhere in
-        the signature. <code>open</code> is the <em>desktop</em> starting state only: on a narrow
-        screen the sidebar always starts closed, because it renders as a full-screen overlay there
-        and a page that opens covered by its own navigation is a bug rather than a preference.
+        Route names again, an icon by name, closed enumerations, and no class string anywhere in the
+        signature. <code>open</code> is the desktop starting state only: on a narrow screen the
+        sidebar always starts closed, because it renders as a full-screen overlay there and a page
+        that opens covered by its own navigation is a bug rather than a preference.
       </p>
       <p>
         With JavaScript off, the server-rendered <code>aria-hidden="false"</code> leaves a wide
@@ -899,10 +896,10 @@ fjkit
 <h2 class="text-lg font-semibold tracking-tight">Table</h2><p class="text-muted-foreground text-sm">Pass rows and the macro owns the empty case.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         <code>columns</code> is a list of dicts — <code>label</code>, and optionally
-        <code>align</code> or <code>width</code> — and <code>rows</code> is what the macro tests to
-        decide whether to render your body or the empty state. That is the whole reason it takes the
-        rows it does not iterate: no caller repeats the if-rows-else branch, and no page can ship a
-        table that renders as a lone header row.
+        <code>align</code> or <code>width</code> — and the macro tests <code>rows</code> to decide
+        whether to render your body or the empty state. That is why it takes rows it does not
+        iterate: no caller repeats the if-rows-else branch, and no page can ship a table that renders
+        as a lone header row.
       </p>
       <p>
         A repeated row is a macro call inside your loop. <code>{% include %}</code>
@@ -939,15 +936,15 @@ fjkit
 <h2 class="text-lg font-semibold tracking-tight">Tabs</h2><p class="text-muted-foreground text-sm">Two ids, passed once, and the keyboard is Basecoat's.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         Basecoat owns which tab is selected, the roving tabindex and the arrow keys, and the shell
-        already loads it. What this macro carries is the aria contract that behaviour reads:
-        a <code>[role="tab"]</code> whose <code>aria-controls</code> names a
-        <code>[role="tabpanel"]</code> with that id. Getting that pairing right by hand is exactly
-        what a component should stop you having to think about.
+        already loads it. This macro carries the aria contract that behaviour reads: a
+        <code>[role="tab"]</code> whose <code>aria-controls</code> names a
+        <code>[role="tabpanel"]</code> with that id. Getting that pairing right by hand is what a
+        component should stop you having to think about.
       </p>
       <p>
-        <code>selected</code> names the tab that starts open, and the server knows which one the
-        request was for — so it is a parameter rather than something a script decides after paint.
-        The two representations under every playground on this page are one of these.
+        <code>selected</code> names the tab that starts open. The server knows which one the request
+        was for, so it is a parameter rather than something a script decides after paint. The two
+        representations under every playground on this page are one of these.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -1009,6 +1006,6 @@ fjkit
   <script defer src="assets/data.js?v=0.1.0.dev0"></script>
   <script defer src="assets/common.js?v=0.1.0.dev0"></script>
   <script defer src="assets/components.js?v=0.1.0.dev0"></script>
-  <script defer src="assets/js/reveal.js?v=1788336837"></script>
+  <script defer src="assets/js/reveal.js?v=1788369088"></script>
 </body>
 </html>

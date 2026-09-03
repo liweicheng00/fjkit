@@ -16,7 +16,7 @@
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
   <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
-  <script defer src="../assets/js/errors.js?v=1787594535"></script>
+  <script defer src="../assets/js/errors.js?v=1788369088"></script>
   <meta name="description" content="每一支 fjkit macro，一個檔案一張表：完整簽名、要不要用區塊呼叫、區塊裡放什麼——外加外殼的 block、模板 global，以及 fjkit 頁面實際會用到的 htmx 屬性。">
   <meta property="og:title" content="fjkit 速查表">
   <meta property="og:description" content="每一支 fjkit macro，一個檔案一張表：完整簽名、要不要用區塊呼叫、區塊裡放什麼——外加外殼的 block、模板 global，以及 fjkit 頁面實際會用到的 htmx 屬性。">
@@ -127,8 +127,8 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">fjkit 速查表</h1>
-<p class="text-muted-foreground text-sm">    kit 出貨的每一支 macro，依用途分組，並且把索引最常被問到的那個問題直接標在該列上：這支
-    macro 要不要用區塊呼叫，區塊裡放什麼。<a href="components.html">元件</a>那一頁是看它們跑起來的地方；這一頁是查東西的地方。
+<p class="text-muted-foreground text-sm">    kit 出貨的每一支 macro，依用途分組，並在每一列標出這支 macro 要不要用區塊呼叫、區塊裡放什麼。
+    <a href="components.html">元件</a>那一頁看它們跑起來，這一頁用來查。
 </p>    </div>
   </div>
 
@@ -137,11 +137,11 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">怎麼讀這張表</h2><p class="text-muted-foreground text-sm">一列上有什麼，以及兩條每一列都適用的規則。</p>      </div>
     <div class="flex flex-col gap-3">      <p>
-        Jinja macro 有兩種呼叫方式，而且從名字看不出來是哪一種。裡面不放東西的 macro
-        直接印出來；會包住東西的 macro 用 <code>{% call %}</code>
-        呼叫，夾在它跟 <code>{% endcall %}</code> 之間的內容會交給 macro
-        去擺放——Jinja 把它叫做 <em>caller 區塊</em>，而底下每一支需要它的 macro
-        都會掛一個標籤說明。
+        Jinja macro 有兩種呼叫方式，從名字看不出來是哪一種。裡面不放東西的 macro
+        直接印出來。會包住東西的 macro 用 <code>{% call %}</code>
+        呼叫，<code>{% call %}</code> 與
+        <code>{% endcall %}</code> 之間的內容交給 macro
+        擺放，Jinja 稱之為 caller 區塊。底下每一支需要區塊的 macro 都掛了一個標籤。
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="兩種形狀" data-lang="jinja">{% from &#34;ui/data.html&#34; import badge, card %}
@@ -158,17 +158,17 @@ fjkit
       <div>
 <h3>一列上有什麼</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>簽名</h4><p>那一行呼叫，含每個參數與它的預設值。每份清單上方的標題就是你要 <code>import</code> 的檔案</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>區塊標籤</h4><p>在一列的右邊，而且只出現在有區塊的那幾列：代表這支 macro 要用 <code>{% call %}</code> 呼叫，標籤上寫的是區塊裡放什麼。沒有標籤就直接用 <code>{{ }}</code> 印出來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>底下那一行說明</h4><p>簽名沒說的那件事。簽名已經說完的時候就不寫</p>    </section>  </div></div></div>
+      <h4>簽名</h4><p>那一行呼叫，含每個參數與預設值。清單上方的標題就是要 <code>import</code> 的檔案</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>區塊標籤</h4><p>在列的右邊，只出現在有區塊的列：這支 macro 要用 <code>{% call %}</code> 呼叫，標籤寫的是區塊裡放什麼。沒有標籤就用 <code>{{ }}</code> 印出來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>底下那一行說明</h4><p>簽名沒說的事；簽名說完的就不寫</p>    </section>  </div></div></div>
   </div>
 
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>兩條通則</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>多出來的關鍵字</h4><p>簽名裡沒有的關鍵字都會變成屬性，底線換成連字號：<code>hx_post="/tasks"</code> 到了標記裡是 <code>hx-post="/tasks"</code>。每一支 macro 的每一個 <code>hx-*</code>、<code>aria-*</code>、<code>data-*</code> 都走這條路</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>用角色，不用顏色</h4><p><code>variant</code>、<code>tone</code>、<code>category</code> 指的是角色——<code>success</code>、<code>destructive</code>、<code>muted</code>——不是顏色。顏色歸 token 層，換品牌時只動一個地方</p>    </section>  </div></div></div>
+      <h4>多出來的關鍵字</h4><p>簽名裡沒有的關鍵字一律變成屬性，底線換成連字號：<code>hx_post="/tasks"</code> 到了標記裡是 <code>hx-post="/tasks"</code>。每一支 macro 的每一個 <code>hx-*</code>、<code>aria-*</code>、<code>data-*</code> 都走這條路徑</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>用角色，不用顏色</h4><p><code>variant</code>、<code>tone</code>、<code>category</code> 指的是角色（<code>success</code>、<code>destructive</code>、<code>muted</code>），不是顏色。顏色歸 token 層，換品牌只動一個地方</p>    </section>  </div></div></div>
   </div>
 </div>
 </section></div>
@@ -467,12 +467,12 @@ fjkit
 <div id="shell">
 <section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">外殼</h2><p class="text-muted-foreground text-sm">是 block，不是 macro——唯一一個你 extends 而不是 import 的檔案。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">外殼</h2><p class="text-muted-foreground text-sm">是 block，不是 macro：唯一一個用 extends 而不是 import 的檔案。</p>      </div>
     <div class="flex flex-col gap-3">      <p>
-        <code>ui/shell.html</code> 帶著 <code>&lt;head&gt;</code>、主題閃爍防護、資源連結，以及
-        header／main／footer 的骨架。一支 app 在自己的 <code>base.html</code> 裡 extends
-        它一次，然後填自己需要的 block。<code>sidebar</code> 跟 <code>nav</code>
-        只填一個——外殼會依照哪一個被填而排出不同的標頭，兩個都填就會得到兩套導覽。
+        <code>ui/shell.html</code> 提供 <code>&lt;head&gt;</code>、主題閃爍防護、資源連結，
+        以及 header／main／footer 骨架。app 在自己的 <code>base.html</code> 裡 extends 它一次，
+        再填需要的 block。<code>sidebar</code> 與 <code>nav</code> 只填一個：外殼依照填了哪一個
+        排出不同的標頭，兩個都填會得到兩套導覽。
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/base.html" data-lang="jinja">{% extends &#34;ui/shell.html&#34; %}
@@ -525,7 +525,7 @@ fjkit
 <div id="globals">
 <section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Globals</h2><p class="text-muted-foreground text-sm">每個模板裡本來就有——不用 import，也不用從 context 傳。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Globals</h2><p class="text-muted-foreground text-sm">每個模板裡都有，不用 import，也不用從 context 傳。</p>      </div>
         <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>build_environment()</h3>      </div>
@@ -548,12 +548,12 @@ fjkit
 <div id="htmx">
 <section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">htmx 屬性</h2><p class="text-muted-foreground text-sm">它們不屬於 fjkit，但是傳給 fjkit macro 的——所以該放在索引旁邊。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">htmx 屬性</h2><p class="text-muted-foreground text-sm">它們不屬於 fjkit，但會傳給 fjkit macro，所以列在索引旁邊。</p>      </div>
     <div class="flex flex-col gap-3">      <p>
-        這裡每一個都是以「多出來的關鍵字」的身分傳給 macro，再進到標記裡：<code>{{ button("Refresh", hx_get="/tasks/board", hx_target="#board") }}</code>。路上底線會變成連字號，整套整合就只有這件事——kit
-        裡沒有任何一支 macro 有 htmx 專屬參數，也不需要有。完整參考是
-        <a href="https://htmx.org/reference/">htmx.org/reference</a>；底下列的是 fjkit
-        頁面實際會用到的部分。
+        這裡每一個都以多出來的關鍵字傳給 macro，再進到標記裡：<code>{{ button("Refresh", hx_get="/tasks/board", hx_target="#board") }}</code>。底線在途中變成連字號，整套整合只有這件事：kit
+        裡沒有一支 macro 有 htmx 專屬參數，也不需要有。完整參考是
+        <a href="https://htmx.org/reference/">htmx.org/reference</a>，底下列的是 fjkit
+        頁面實際用到的部分。
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -635,15 +635,15 @@ HX-Refresh: true                 (response)</code></h4><p>由 fragment 回應要
 <div id="missing">
 <section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">這裡找不到的時候</h2><p class="text-muted-foreground text-sm">答案是某個參數、某個關鍵字，或一張 issue——依這個順序找。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">這裡找不到的時候</h2><p class="text-muted-foreground text-sm">答案是某個參數、某個關鍵字，或一張 issue，依這個順序找。</p>      </div>
     <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>找不到想要的 macro 時</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>先看參數</h4><p>多數需求其實是一個已經存在的關鍵字——size、tone、padded、align</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>直接傳過去</h4><p>任何多的關鍵字都會變成屬性，這涵蓋了所有 hx-*、aria-* 與 data-*</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>先看參數</h4><p>多數需求對應到一個已經存在的關鍵字：size、tone、padded、align</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>直接傳過去</h4><p>多出來的關鍵字一律變成屬性，涵蓋所有 hx-*、aria-* 與 data-*</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>fjkit eject badge</h4><p>把那一支 macro 拿進你的 app 改；同檔的其他 macro 由 kit 再匯出，照樣收上游的修正</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>開一張 issue</h4><p>被擋下來的 class 指名了那個還不存在的元件；那就是最好的回報內容</p>    </section>  </div></div></div>
+      <h4>開一張 issue</h4><p>被擋下來的 class 指名了還不存在的元件，那就是最好的回報內容</p>    </section>  </div></div></div>
   </div>
 
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -651,7 +651,7 @@ HX-Refresh: true                 (response)</code></h4><p>由 fragment 回應要
 <h3>接著讀</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>上手</h4><p><a href="learn.html">各個零件怎麼接，以及 htmx 送出什麼</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>元件</h4><p><a href="components.html">每一支 macro 跑起來的樣子，旋鈕可以轉</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>元件</h4><p><a href="components.html">每一支 macro 的實際渲染，參數可以現場調整</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>examples/fjkit-demo/</h4><p>同一批 macro 放在一支能跑的 app 裡，在 repo 中</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>src/fjkit/static/src/fjkit.css</h4><p>每個 variant 背後那張 token 表</p>    </section>  </div></div></div>
   </div>

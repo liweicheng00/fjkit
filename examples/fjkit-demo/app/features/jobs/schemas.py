@@ -48,8 +48,8 @@ KIND_OPTIONS: list[tuple[JobKind, str]] = [
     (JobKind.SYNC, "Sync upstream (fails on purpose)"),
 ]
 
-#: Job kind -> the sentence the "Job kinds" drawer shows. The select has room for a
-#: label and nothing else, which is what the drawer is for.
+#: Job kind -> the sentence the "Job kinds" drawer shows. The select has room for
+#: a label and nothing else, which is what the drawer is for.
 KIND_NOTES: dict[JobKind, str] = {
     JobKind.EXPORT: "Walks the board once and writes a row per task. The longest of the three.",
     JobKind.REINDEX: "Re-reads every title and rebuilds the search index in place.",
@@ -79,7 +79,7 @@ class Job(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def running(self) -> bool:
-        """True while the job is queued or running; the card polls only while this is true."""
+        """True while the job is queued or running. The card polls only while it is."""
         return self.state in (JobState.QUEUED, JobState.RUNNING)
 
 

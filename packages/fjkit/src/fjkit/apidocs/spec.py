@@ -1,15 +1,14 @@
 """The OpenAPI document, flattened into what a template can loop over.
 
-Jinja is deliberately bad at this. A schema is `$ref`s into `components`,
-`allOf` chains and `anyOf` unions, and resolving those in a template means
-recursive macros, `strict_undefined` landmines, and a page that fails to render
-because one endpoint used `oneOf`. So the whole document is turned into plain
-frozen dataclasses here, once per process, and the template only ever reads
-attributes that exist.
+A schema is `$ref`s into `components`, `allOf` chains and `anyOf` unions.
+Resolving those in a template means recursive macros, `strict_undefined`
+landmines, and a page that fails to render because one endpoint used `oneOf`. So
+the whole document becomes plain frozen dataclasses here, once per process, and
+the template only reads attributes that exist.
 
-Built from `app.openapi()`, which FastAPI already caches — so this pays for
-itself once and then never again, and it stays correct when a route changes,
-because it is the same document `/openapi.json` serves.
+Built from `app.openapi()`, which FastAPI already caches, so this runs once. It
+stays correct when a route changes, because it is the same document
+`/openapi.json` serves.
 """
 
 from __future__ import annotations
@@ -34,14 +33,14 @@ __all__ = [
     "build",
 ]
 
-#: Anything outside this is replaced in an operation's URL slug. Kept to the
-#: characters that survive a path segment untouched, so the docs URL never
+#: Anything outside this set is replaced in an operation's URL slug. Limited to
+#: the characters that survive a path segment untouched, so the docs URL never
 #: needs escaping and can be copied out of the address bar.
 _UNSAFE = re.compile(r"[^A-Za-z0-9_.-]+")
 
-#: How deep an example generator will follow `$ref`s before it gives up and
-#: emits a placeholder. A self-referential model (a tree node, a comment with
-#: replies) is a normal thing to have and must not hang the docs page.
+#: How deep an example generator follows `$ref`s before giving up and emitting
+#: a placeholder. A self-referential model — a tree node, a comment with replies
+#: — is normal and must not hang the docs page.
 _MAX_DEPTH = 6
 
 #: What each JSON type looks like when the schema gave no example of its own.
@@ -55,36 +54,36 @@ _PLACEHOLDERS: dict[str, Any] = {
     "null": None,
 }
 
-#: The methods a console will offer. `trace` and `connect` are excluded: no
+#: The methods the console offers. `trace` and `connect` are excluded: no
 #: FastAPI app routes them, and OpenAPI puts other keys (`parameters`,
 #: `summary`) alongside the methods in a path item.
 METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
 
 #: The body media types the console takes apart into fields rather than handing
-#: over as one blob. `multipart` is here because a file is a control the browser
-#: already has: the field becomes `<input type="file">`, the console re-encodes
-#: what was uploaded, and the endpoint sees the multipart body it declared.
+#: over as one blob. `multipart` is here because the browser already has a
+#: control for a file: the field becomes `<input type="file">`, the console
+#: re-encodes what was uploaded, and the endpoint sees the multipart body it
+#: declared.
 FORM_MEDIA = "application/x-www-form-urlencoded"
 MULTIPART_MEDIA = "multipart/form-data"
 _FIELD_MEDIA = (FORM_MEDIA, MULTIPART_MEDIA)
 
-#: How OpenAPI spells "this is a file" — the one property type that cannot be
-#: typed into a box, and therefore the one that decides a body goes up as
-#: multipart.
+#: How OpenAPI spells "this is a file": the one property type that cannot be
+#: typed into a box, and so the one that decides a body goes up as multipart.
 #:
-#: There are two spellings and a document only ever uses one. OpenAPI 3.0 said
+#: There are two spellings and a document uses only one. OpenAPI 3.0 said
 #: `format: binary`; 3.1 dropped it, because JSON Schema has no such format, and
 #: says `contentMediaType` instead. FastAPI emits 3.1 for an `UploadFile`, so
-#: reading only `format` finds nothing and every upload silently renders as a
-#: text box — which posts the filename as a string and fails inside the
-#: endpoint, a long way from the cause.
+#: reading only `format` finds nothing and every upload renders as a text box,
+#: which posts the filename as a string and fails inside the endpoint, a long
+#: way from the cause.
 BINARY_FORMAT = "binary"
 _BINARY_KEY = "contentMediaType"
 
 #: What a schema's bounds read as on screen. Ordered, because "≥ 1 · ≤ 64 chars"
-#: is a range and "≤ 64 chars · ≥ 1" is two facts that happen to be adjacent.
-#: The symbols rather than the JSON Schema keywords: a reader is being told what
-#: values are allowed, not which vocabulary the document used to say so.
+#: is a range and "≤ 64 chars · ≥ 1" is two adjacent facts. Symbols rather than
+#: the JSON Schema keywords: the reader is told which values are allowed, not
+#: which vocabulary the document used to say so.
 _CONSTRAINTS: tuple[tuple[str, str], ...] = (
     ("minimum", "≥ {}"),
     ("exclusiveMinimum", "> {}"),
@@ -99,9 +98,8 @@ _CONSTRAINTS: tuple[tuple[str, str], ...] = (
 )
 
 #: Which HTML control a parameter gets. A closed lookup rather than passing the
-#: JSON type through, because the value lands in `<input type="…">` and an
-#: unknown type there silently becomes `text` in some browsers and nothing in
-#: others.
+#: JSON type through, because the value lands in `<input type="…">`, where an
+#: unknown type becomes `text` in some browsers and nothing in others.
 _CONTROLS = {
     "integer": "number",
     "number": "number",
@@ -121,15 +119,15 @@ class Param:
     required: bool
     type: str
     description: str = ""
-    #: Rendered into the field, so a caller starts from something that works
-    #: rather than from an empty box.
+    #: Rendered into the field, so a caller starts from a working value rather
+    #: than an empty box.
     default: str = ""
     #: Non-empty turns the field into a `<select>`.
     choices: tuple[str, ...] = ()
     deprecated: bool = False
     #: `date-time`, `uuid`, `binary`, … — the half of a string's type that says
-    #: what shape the string has to be, and the only thing that separates a
-    #: field you type into from one you attach a file to.
+    #: what shape the string must be, and the only thing separating a field to
+    #: type into from one to attach a file to.
     format: str = ""
     #: `≥ 1 · ≤ 64 chars`, already rendered. The document's bounds are the
     #: difference between guessing at a value and sending one that validates.
@@ -139,7 +137,7 @@ class Param:
 
     @property
     def control(self) -> str:
-        """`"select"`, `"file"`, `"number"` or `"text"` — the try-it control."""
+        """Pick the try-it control: `"select"`, `"file"`, `"number"` or `"text"`."""
         if self.format == BINARY_FORMAT:
             return "file"
         if self.choices:
@@ -154,26 +152,26 @@ class Param:
         which is what FastAPI parses `tags: list[str] = Query(())` back out of.
         A single box holding `a,b` would send the literal string "a,b" and the
         endpoint would receive a one-element list, so the console splits on
-        commas and newlines instead, and the field says that it does.
+        commas and newlines, and the field says so.
         """
         return self.type == "array" and not self.choices and self.format != BINARY_FORMAT
 
     @property
     def detail(self) -> str:
-        """Everything about this parameter that is not its name or its prose.
+        """Everything about this parameter except its name and its prose.
 
-        One string, because it is one line under a field label, and building it
-        at each call site is how two of them start disagreeing.
+        One string, because it is one line under a field label; building it at
+        each call site is how two of them start to disagree.
         """
         return f"{self.location} · {self.type_detail}"
 
     @property
     def type_detail(self) -> str:
-        """`detail` without the location — for the table that has a column for it.
+        """`detail` without the location, for the table that has a column for it.
 
         Repeating "form" in the In column and again at the front of the Type
-        column is the sort of duplication that makes a reference table look
-        like it was generated by something that was not reading it.
+        column is the duplication that makes a reference table look mechanically
+        generated.
         """
         parts = [self.type + (f" ({self.format})" if self.format else "")]
         if self.required:
@@ -193,9 +191,8 @@ class Param:
     def field_name(self) -> str:
         """The form field this parameter arrives back in.
 
-        Namespaced by location because a `limit` query parameter and a `limit`
-        header are different things and an OpenAPI document is allowed to
-        declare both.
+        Namespaced by location, because a `limit` query parameter and a `limit`
+        header are different things and an OpenAPI document may declare both.
         """
         return f"p.{self.location}.{self.name}"
 
@@ -204,10 +201,10 @@ class Param:
 class Field:
     """One property of a model — a row in the Schema view.
 
-    Deliberately not a `Param`. A parameter is something a console renders a
-    control for; a field is something a reader is told about, and the two differ
-    on exactly the keywords that matter here — `readOnly`, `writeOnly`, and a
-    `ref` that is a link to another model rather than a type name.
+    Not a `Param`: a parameter is what the console renders a control for, a
+    field is what a reader is told about, and the two differ on the keywords
+    that matter here — `readOnly`, `writeOnly`, and a `ref` that links to
+    another model rather than naming a type.
     """
 
     name: str
@@ -219,9 +216,9 @@ class Field:
     choices: tuple[str, ...] = ()
     default: str = ""
     #: The name of the model this field is, when it is one. The Schema view
-    #: renders it as a link rather than recursing: a `Task` with an `owner: User`
-    #: with an `avatar: Image` is three tables deep before anyone has scrolled,
-    #: and the reader wanted the first one.
+    #: renders it as a link rather than recursing: a `Task` with an
+    #: `owner: User` with an `avatar: Image` is three tables deep before anyone
+    #: scrolls, and the reader wanted the first one.
     ref: str = ""
     nullable: bool = False
     deprecated: bool = False
@@ -235,11 +232,11 @@ class Field:
 
     @property
     def qualifiers(self) -> str:
-        """`detail` without the type — for the row that renders the type as a link.
+        """`detail` without the type, for the row that renders the type as a link.
 
         Split out rather than sliced back off `detail` in the template: a
         property whose name is a substring of one of its own qualifiers would
-        make that surgery quietly wrong, and this costs a method.
+        make that surgery wrong. The cost is one method.
         """
         parts: list[str] = []
         if self.nullable:
@@ -247,9 +244,8 @@ class Field:
         if self.required:
             parts.append("required")
         if self.read_only:
-            # Worth saying out loud, because it is the difference between a
-            # field that belongs in a request body and one that will be
-            # rejected there. Swagger shows it and it is not decoration.
+            # The difference between a field that belongs in a request body and
+            # one that is rejected there. Swagger shows it for the same reason.
             parts.append("read-only")
         if self.write_only:
             parts.append("write-only")
@@ -264,9 +260,9 @@ class Field:
 class Shape:
     """What a body is, for the Schema half of an Example/Schema pair.
 
-    The document describes a body twice over — once as a value you could send
-    and once as the rules that value has to obey — and a reference that offers
-    only the first is guessing-by-example. This is the second, flattened one
+    The document describes a body twice: as a value that could be sent, and as
+    the rules that value must obey. A reference offering only the first leaves
+    the reader guessing from an example. This is the second, flattened one
     level: the properties of the object, or of the objects in the array, with
     anything deeper left as a link.
     """
@@ -291,9 +287,9 @@ class Shape:
 class Model:
     """One entry from `components.schemas` — a Swagger "Schemas" row.
 
-    Every generated client, every contract test and every hand-written payload
-    is built against these, and an API reference that documents the endpoints
-    but not the types they exchange has documented the easy half.
+    Every generated client, contract test and hand-written payload is built
+    against these. An API reference that documents the endpoints but not the
+    types they exchange has documented the easy half.
     """
 
     name: str
@@ -307,9 +303,9 @@ class Model:
     choices: tuple[str, ...] = ()
     example: str = ""
     source: str = ""
-    #: Operation ids that mention this model, so a type can be read backwards
-    #: to the endpoints that carry it. OpenAPI knows this and no viewer of it
-    #: usually says so.
+    #: Operation ids that mention this model, so a type can be read back to the
+    #: endpoints that carry it. The document holds this relation and most
+    #: viewers never show it.
     used_by: tuple[str, ...] = ()
 
 
@@ -319,9 +315,8 @@ class Server:
 
     Shown, never selected. Swagger's server dropdown chooses where `fetch()`
     aims; this console replays in-process against the app that is answering, so
-    a dropdown here would be a control that changes nothing. What the list is
-    still good for is the thing it was written for — telling a reader which
-    base URL to point a real client at.
+    a dropdown here would change nothing. The list still does what it was
+    written for: telling a reader which base URL to point a real client at.
     """
 
     url: str
@@ -337,19 +332,19 @@ class ResponseDoc:
     media_type: str = ""
     example: str = ""
     #: Name and description of each header the document promises. Almost the
-    #: only place a `Location`, a `Retry-After` or a rate-limit budget is ever
-    #: written down, and the panel below shows what actually came back beside it.
+    #: only place a `Location`, a `Retry-After` or a rate-limit budget is
+    #: written down, and the panel below shows beside it what came back.
     headers: tuple[tuple[str, str], ...] = ()
     shape: Shape | None = None
-    #: The document's *named* examples, beyond the one shown by default —
-    #: `(label, value)`. An endpoint whose author wrote out the empty case, the
-    #: full case and the error case wrote three things worth reading, and a
-    #: viewer that shows one of them has thrown away the other two.
+    #: The document's named examples beyond the one shown by default, as
+    #: `(label, value)`. An author who wrote out the empty case, the full case
+    #: and the error case wrote three things worth reading; a viewer showing one
+    #: throws the other two away.
     examples: tuple[tuple[str, str], ...] = ()
 
     @property
     def tone(self) -> str:
-        """The badge variant for the status. Closed set — see `ui/data.html`."""
+        """Map the status to a badge variant. Closed set — see `ui/data.html`."""
         if not self.status.isdigit():
             return "secondary"
         code = int(self.status)
@@ -364,12 +359,12 @@ class ResponseDoc:
 
 @dataclass(frozen=True, slots=True)
 class SecurityScheme:
-    """What the *document* says authenticates a call.
+    """What the document says authenticates a call.
 
     Shown because it is the contract other clients read, and captioned on the
     page because it is rarely the whole story: an app whose sessions come from
     `fjkit.auth` authenticates with a cookie the document does not describe and
-    Swagger UI cannot send. Naming both is the honest version.
+    Swagger UI cannot send. The page names both.
     """
 
     name: str
@@ -399,13 +394,13 @@ class Operation:
     responses: tuple[ResponseDoc, ...] = ()
     security: tuple[str, ...] = ()
     #: The `operationId` as the document spells it — the name every generated
-    #: client will give this call. The `id` beside it is a URL slug and may have
+    #: client gives this call. The `id` beside it is a URL slug and may have
     #: been renamed to break a collision, so the two are not interchangeable.
     operation_id: str = ""
     #: Every media type the body was declared in, not only the one the console
     #: picked. Swagger puts these in a dropdown; here it is a line of text,
-    #: because the console can compose exactly one of them and saying which is
-    #: more use than offering a choice that does not work.
+    #: because the console composes exactly one of them and naming it is more
+    #: use than offering a choice that does not work.
     media_types: tuple[str, ...] = ()
     body_shape: Shape | None = None
     body_examples: tuple[tuple[str, str], ...] = ()
@@ -422,30 +417,29 @@ class Operation:
 
     @property
     def multipart(self) -> bool:
-        """Whether the body has to go up as multipart — i.e. it carries a file."""
+        """Whether the body must go up as multipart, i.e. it carries a file."""
         return self.body_media == MULTIPART_MEDIA
 
     @property
     def haystack(self) -> str:
         """Everything the sidebar filter matches against, lowercased once.
 
-        The path and the summary are what someone types, but so is the tag and
-        so, for anyone who has read the generated client, is the operation id.
-        Built here rather than in the filter because it is a property of the
-        operation and the filter runs once per keystroke.
+        People type the path and the summary, but also the tag and — for anyone
+        who has read the generated client — the operation id. Built here rather
+        than in the filter, because it is a property of the operation and the
+        filter runs once per keystroke.
         """
         return " ".join((self.method, self.path, self.summary, self.operation_id, *self.tags)).lower()
 
     @property
     def has_raw_body(self) -> bool:
-        """Whether the console has to offer a text box rather than fields.
+        """Whether the console must offer a text box rather than fields.
 
-        A `Form()` endpoint is the common shape in a fjkit app — it is what
-        every htmx form posts to — and asking someone to hand-write
-        `title=x&owner=y` into a textarea, correctly percent-encoded, is a
-        console that is worse than curl. So a form body becomes fields, and
-        this is true only for the bodies that genuinely are one blob: JSON, and
-        the media types nothing here knows how to take apart.
+        A `Form()` endpoint is the common shape in a fjkit app — every htmx form
+        posts to one — and asking someone to hand-write `title=x&owner=y` into a
+        textarea, correctly percent-encoded, would be worse than curl. So a form
+        body becomes fields, and this is true only for bodies that are one blob:
+        JSON, and the media types nothing here can take apart.
         """
         return self.has_body and not self.body_fields
 
@@ -480,9 +474,9 @@ class Spec:
     #: templates have only the name — so the lookup lives here rather than as
     #: string surgery in Jinja.
     by_name: Mapping[str, Model] = field(default_factory=dict)
-    #: The masthead facts OpenAPI carries and almost nothing renders: who to
-    #: ask, what licence it is under, what the terms are. They are in the
-    #: document because somebody meant them to be read.
+    #: The masthead facts OpenAPI carries and few viewers render: who to ask,
+    #: which licence applies, what the terms are. They are in the document
+    #: because somebody meant them to be read.
     contact: tuple[tuple[str, str], ...] = ()
     license_name: str = ""
     license_url: str = ""
@@ -496,22 +490,22 @@ class Spec:
 
     @property
     def model_groups(self) -> tuple[tuple[str, tuple[Model, ...]], ...]:
-        """`models`, split by kind, for a sidebar that is not one long run.
+        """`models`, split by kind, so the sidebar is not one long run.
 
-        Objects and enums are different things to look up. An object is a shape
-        you are about to send or parse; an enum is a closed vocabulary you check
-        a spelling against — and in a list of thirty names sorted alphabetically
-        the five enums are scattered through it, which is exactly when a
-        classification is worth having.
+        Objects and enums are different things to look up: an object is a shape
+        to send or parse, an enum is a closed vocabulary to check a spelling
+        against. In thirty names sorted alphabetically the five enums are
+        scattered through the list, which is when the classification earns its
+        place.
 
         Objects first: they are the majority and the reason anyone opened the
         branch. Declaration order inside each, because that is the order the
-        document wrote them and re-sorting throws that away.
+        document wrote them and re-sorting throws it away.
 
         Built here rather than with `selectattr` in the template, for the same
-        reason `build()` exists at all — reshaping data is not markup's job, and
-        a template that reaches for a filter chain is one refactor away from
-        needing a second one.
+        reason `build()` exists: reshaping data is not markup's job, and a
+        template reaching for a filter chain is one refactor from needing a
+        second.
         """
         kinds = (("Objects", "object"), ("Enums", "enum"))
         groups = tuple((label, tuple(m for m in self.models if m.kind == kind)) for label, kind in kinds)
@@ -521,15 +515,15 @@ class Spec:
         """`groups`, keeping only the operations that match `query`.
 
         Substring, case-insensitive, over path, summary, tag and operation id —
-        the same match Swagger's filter box makes, minus its tag-only mode.
-        A group with nothing left is dropped rather than rendered empty: the
-        point of typing is to make the list shorter.
+        the same match Swagger's filter box makes, minus its tag-only mode. A
+        group with nothing left is dropped rather than rendered empty: typing is
+        meant to shorten the list.
 
-        Filtering server-side is not a compromise here. The list is already
-        rendered by the server, an app with two hundred routes is exactly when
-        shipping all of them to the client to hide most of them is worst, and
-        `hx-get` on the input costs one attribute against a script that would
-        have to be written, shipped and kept working with the DOM.
+        Filtering server-side costs nothing here. The server already renders the
+        list, an app with two hundred routes is the worst case for shipping all
+        of them to the client to hide most of them, and `hx-get` on the input
+        costs one attribute against a script that would have to be written,
+        shipped and kept working with the DOM.
         """
         needle = query.strip().lower()
         if not needle:
@@ -553,10 +547,10 @@ class Spec:
 def build(schema: Mapping[str, Any], *, skip_prefix: str = "") -> Spec:
     """Flatten `app.openapi()`.
 
-    `skip_prefix` drops the docs plugin's own routes. They are registered with
-    `include_in_schema=False` already, so this is belt and braces — but an app
-    that mounts a second docs instance, or hand-writes its schema, would
-    otherwise get a console that can call itself.
+    `skip_prefix` drops the docs plugin's own routes. They already carry
+    `include_in_schema=False`, so this is a second guard — but without it an app
+    that mounts a second docs instance, or hand-writes its schema, would get a
+    console that can call itself.
     """
     components = schema.get("components") or {}
     info = schema.get("info") or {}
@@ -596,10 +590,10 @@ def build(schema: Mapping[str, Any], *, skip_prefix: str = "") -> Spec:
             for tag in operation.tags:
                 by_tag.setdefault(tag, []).append(operation)
 
-    # Declared tags first and in the order the document declared them, then
-    # whatever a route invented, alphabetically. An app that bothered to write
-    # a `tags=` list on its FastAPI() is describing an information architecture,
-    # and re-sorting it would throw that away.
+    # Declared tags first, in the document's own order, then whatever a route
+    # invented, alphabetically. An app that wrote a `tags=` list on its
+    # FastAPI() is describing an information architecture, and re-sorting it
+    # would throw that away.
     ordered = [t for t in tag_order if t in by_tag]
     ordered += sorted(t for t in by_tag if t not in tag_order)
 
@@ -648,11 +642,10 @@ def build(schema: Mapping[str, Any], *, skip_prefix: str = "") -> Spec:
 
 
 def _external(raw: Any) -> tuple[str, str]:
-    """An `externalDocs` object as (url, label).
+    """Read an `externalDocs` object as (url, label).
 
-    The one place a document is allowed to say "the real explanation is over
-    there", and a viewer that drops it silently strips the author's own link to
-    their own prose.
+    The one place a document can say "the real explanation is elsewhere". A
+    viewer that drops it strips the author's link to their own prose.
     """
     if not isinstance(raw, Mapping) or not raw.get("url"):
         return "", ""
@@ -676,9 +669,9 @@ def _operation(
     )
     external_url, external_label = _external(body.get("externalDocs"))
 
-    # `["default"]` is FastAPI's tag for an untagged route, and calling the
-    # group that is better than calling it nothing: a page with one unnamed
-    # section reads as broken.
+    # `["default"]` is FastAPI's tag for an untagged route. Naming the group
+    # that beats leaving it unnamed: a page with one unnamed section reads as
+    # broken.
     tags = tuple(str(t) for t in (body.get("tags") or ())) or ("default",)
 
     return Operation(
@@ -711,14 +704,13 @@ def _param(raw: Mapping[str, Any], components: Mapping[str, Any]) -> Param:
     default = resolved.get("default", raw.get("example"))
     choices = tuple(_scalar(v) for v in resolved.get("enum", ()) if v is not None)
     if not choices and kind == "boolean":
-        # A checkbox cannot express the third state a query parameter has —
-        # absent. `true`/`false`/blank in a select can, and "leave it out" is
+        # A checkbox cannot express the third state a query parameter has:
+        # absent. A select of `true`/`false`/blank can, and "leave it out" is
         # the answer that matters most on an optional flag.
         choices = ("true", "false")
-    # `example` beside a schema is the document showing a value that works,
-    # which is not the same statement as `default` and is worth keeping when
-    # both are there — the field prefills with the default and says what a real
-    # one looks like underneath it.
+    # `example` beside a schema shows a value that works, which is a different
+    # statement from `default` and worth keeping when both are present: the
+    # field prefills with the default and shows a real value underneath.
     example = raw.get("example", resolved.get("example"))
     return Param(
         name=str(raw.get("name", "")),
@@ -736,7 +728,7 @@ def _param(raw: Mapping[str, Any], components: Mapping[str, Any]) -> Param:
 
 
 def _format_of(schema: Mapping[str, Any]) -> str:
-    """The schema's `format`, with 3.1's way of saying "binary" folded in."""
+    """Read the schema's `format`, folding in 3.1's way of saying "binary"."""
     declared = str(schema.get("format", ""))
     if not declared and schema.get(_BINARY_KEY):
         return BINARY_FORMAT
@@ -744,22 +736,22 @@ def _format_of(schema: Mapping[str, Any]) -> str:
 
 
 def _constraints(schema: Mapping[str, Any]) -> str:
-    """The schema's bounds, as one line of prose.
+    """Render the schema's bounds as one line of prose.
 
-    Every one of these is a way for a call to be rejected with a 422 that the
-    reference could have prevented. Swagger shows them; a console that does not
-    is one where you find out about `maxLength` from the error.
+    Each of these is a way for a call to be rejected with a 422 the reference
+    could have prevented. Swagger shows them; without them a reader finds out
+    about `maxLength` from the error.
     """
     return " · ".join(text.format(schema[key]) for key, text in _CONSTRAINTS if schema.get(key) is not None)
 
 
 def _named(entry: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
-    """A media-type object's `examples` map, as (label, pretty value) pairs.
+    """Read a media-type object's `examples` map as (label, pretty value) pairs.
 
-    OpenAPI lets one body carry several worked examples, and FastAPI exposes it
-    as `openapi_examples=`. Somebody who wrote out "minimal", "with an owner"
-    and "the one that 422s" wrote three things worth reading; Swagger gives them
-    a dropdown, and showing only the first is throwing two of them away.
+    OpenAPI lets one body carry several worked examples, and FastAPI exposes
+    that as `openapi_examples=`. Somebody who wrote out "minimal", "with an
+    owner" and "the one that 422s" wrote three things worth reading; Swagger
+    gives them a dropdown, and showing only the first throws two away.
     """
     examples = entry.get("examples")
     if not isinstance(examples, Mapping):
@@ -768,7 +760,7 @@ def _named(entry: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
     for name, body in examples.items():
         if not isinstance(body, Mapping) or "value" not in body:
             continue
-        # The summary when the author wrote one — it is prose meant to label
+        # The summary when the author wrote one: it is prose meant to label
         # this example, which the key rarely is.
         out.append((str(body.get("summary") or name), _pretty(body["value"])))
     return tuple(out)
@@ -785,12 +777,11 @@ def _request_body(
 
     offered = tuple(str(m) for m in content)
 
-    # A body with a file in it can only go up one way, so multipart wins over
-    # JSON when the document offers both — the alternative is a console that
-    # renders the JSON branch and has no control for the upload the endpoint is
-    # actually there for. Otherwise JSON when it is on offer, and whatever came
-    # first when it is not: a form-only endpoint is not a lesser case, it is the
-    # usual one in a fjkit app.
+    # A body with a file in it can go up only one way, so multipart wins over
+    # JSON when the document offers both; otherwise the console would render the
+    # JSON branch with no control for the upload the endpoint exists for.
+    # Failing that, JSON when it is offered, and whatever came first when it is
+    # not: a form-only endpoint is the usual case in a fjkit app.
     media = next(
         (m for m in content if m == MULTIPART_MEDIA),
         next((m for m in content if "json" in m), next(iter(content))),
@@ -806,8 +797,8 @@ def _request_body(
             return str(media), required, "", fields, shape, offered, named
 
     # The document's own example first, then the first one it named, then one
-    # worked out from the schema. Prefilling the box with a value somebody wrote
-    # beats prefilling it with one this module invented.
+    # worked out from the schema: a value somebody wrote beats one this module
+    # invented.
     if entry.get("example") is not None:
         text = _pretty(entry["example"])
         rest = named
@@ -819,19 +810,18 @@ def _request_body(
 
 
 def _form_fields(schema: Mapping[str, Any], components: Mapping[str, Any]) -> tuple[Param, ...]:
-    """A form body's properties, as parameters the console can render.
+    """Read a form body's properties as parameters the console can render.
 
     The schema for `Annotated[str, Form()]` parameters is an ordinary object
-    with `properties` and `required`, so the same `Param` that describes a
-    query parameter describes one of these — enums become selects, integers
-    become number boxes, and defaults prefill. `location="form"` is what tells
-    `_compose` to encode it into the body rather than onto the URL.
+    with `properties` and `required`, so the same `Param` that describes a query
+    parameter describes one of these: enums become selects, integers become
+    number boxes, and defaults prefill. `location="form"` tells `_compose` to
+    encode the value into the body rather than onto the URL.
 
-    A `multipart` body arrives here too, and the only thing that distinguishes
-    it is that one or more of its properties is `format: binary`. Those become
-    `<input type="file">` through the same `Param.control` lookup as everything
-    else, which is why supporting uploads cost a branch rather than a parallel
-    code path.
+    A `multipart` body arrives here too, distinguished only by one or more of
+    its properties being `format: binary`. Those become `<input type="file">`
+    through the same `Param.control` lookup as everything else, which is why
+    supporting uploads cost a branch rather than a parallel code path.
     """
     resolved = _resolve(schema, components, 0)
     properties = resolved.get("properties")
@@ -857,7 +847,7 @@ def _responses(raw: Mapping[str, Any], components: Mapping[str, Any]) -> tuple[R
         payload = (content.get(media) or {}) if media else {}
         # Same order of preference as a request body: what the document showed,
         # then the first thing it named, then something worked out from the
-        # schema. The rest of the named ones stay, as tabs beside it.
+        # schema. The remaining named ones stay, as tabs beside it.
         named = _named(payload)
         if payload.get("example") is not None:
             text = _pretty(payload["example"])
@@ -883,7 +873,7 @@ def _responses(raw: Mapping[str, Any], components: Mapping[str, Any]) -> tuple[R
         )
     # Numeric codes ascending, then `default` and anything else. Sorting the
     # whole thing as strings would put "422" before "5XX" but also "200" after
-    # "1XX", which is not an order anybody reads a response table in.
+    # "1XX", which is not the order a response table is read in.
     docs.sort(key=lambda d: (0, int(d.status)) if d.status.isdigit() else (1, 0))
     return tuple(docs)
 
@@ -914,7 +904,7 @@ def _schemes(raw: Mapping[str, Any]) -> tuple[SecurityScheme, ...]:
 
 
 def _ref_name(schema: Any) -> str:
-    """The model name a `$ref` points at, or empty for anything else."""
+    """Return the model name a `$ref` points at, or empty for anything else."""
     if not isinstance(schema, Mapping):
         return ""
     ref = schema.get("$ref")
@@ -924,10 +914,10 @@ def _ref_name(schema: Any) -> str:
 
 
 def _shape(schema: Any, components: Mapping[str, Any]) -> Shape | None:
-    """What a body *is*, one level deep.
+    """What a body is, one level deep.
 
     The Example half of the reference answers "what do I send"; this answers
-    "what am I allowed to send", which is the question you have the second the
+    "what am I allowed to send", the question that arrives the moment the
     example stops working. One level and no further, by design: a model whose
     fields are models is a link away, and a Schema view that inlined the whole
     graph would put a page of `User` under an endpoint about tasks.
@@ -961,7 +951,7 @@ def _shape(schema: Any, components: Mapping[str, Any]) -> Shape | None:
 
 
 def _fields(schema: Mapping[str, Any], components: Mapping[str, Any]) -> tuple[Field, ...]:
-    """An object schema's properties, as rows."""
+    """Read an object schema's properties as rows."""
     if not isinstance(schema, Mapping):
         return ()
     properties = schema.get("properties")
@@ -974,9 +964,9 @@ def _fields(schema: Mapping[str, Any], components: Mapping[str, Any]) -> tuple[F
             continue
         ref = _ref_name(raw)
         resolved = _effective(raw, components)
-        # `_effective` unwraps `T | None`, which is the shape of every optional
-        # field FastAPI emits — so the nullability has to be read off the
-        # original, before the branch that recorded it was dropped.
+        # `_effective` unwraps `T | None`, the shape of every optional field
+        # FastAPI emits, so nullability has to be read off the original, before
+        # the branch that recorded it was dropped.
         nullable = _nullable(raw)
         if not ref:
             ref = next(
@@ -1025,20 +1015,20 @@ def _models(
 ) -> tuple[Model, ...]:
     """`components.schemas`, as the Schemas section renders it.
 
-    FastAPI puts one of these here for every Pydantic model on the boundary,
-    which makes this section the closest thing the document has to a data
-    dictionary. Swagger renders it at the bottom of the page; here it is a
-    branch of the sidebar, for the same reason the operations are — a list of
-    two hundred types is navigation, not content.
+    FastAPI puts one entry here for every Pydantic model on the boundary, which
+    makes this section the closest thing the document has to a data dictionary.
+    Swagger renders it at the bottom of the page; here it is a branch of the
+    sidebar, for the same reason the operations are — a list of two hundred
+    types is navigation, not content.
     """
     if not isinstance(raw, Mapping) or not raw:
         return ()
 
     # Which operations exchange each model. Read off the shapes rather than by
-    # crawling the document for `$ref` strings, and *directly* exchanged is the
+    # crawling the document for `$ref` strings, and direct exchange is the
     # relation worth showing: `Task` is used by the three task endpoints, not by
     # every endpoint that returns something with a `Task` buried in it. The
-    # nested ones are one link away, under the model that actually holds them.
+    # nested ones are one link away, under the model that holds them.
     mentions: dict[str, list[str]] = {}
     for operation in index.values():
         seen = {
@@ -1079,13 +1069,13 @@ def _models(
 
 
 def _example(schema: Any, components: Mapping[str, Any], depth: int) -> Any:
-    """A value that satisfies `schema`, as far as it can be worked out.
+    """Work out a value that satisfies `schema`, as far as the schema allows.
 
-    Not validation and not a generator: the point is to put something in the
-    request-body box that a developer can edit rather than compose from
-    nothing. Where the schema is genuinely ambiguous — an untyped object, a
-    union — it picks the first branch and moves on, because a wrong-but-shaped
-    example is more useful than an empty one.
+    Not validation and not a generator: it puts something in the request-body
+    box that a developer can edit rather than compose from nothing. Where the
+    schema is ambiguous — an untyped object, a union — it takes the first branch
+    and moves on, because an example with the right shape and a wrong value
+    beats an empty one.
     """
     if depth > _MAX_DEPTH or not isinstance(schema, Mapping):
         return None
@@ -1134,19 +1124,19 @@ def _example(schema: Any, components: Mapping[str, Any], depth: int) -> Any:
 
 
 def _effective(schema: Mapping[str, Any], components: Mapping[str, Any]) -> Mapping[str, Any]:
-    """The schema a *form field* is built from — the optional wrapper removed.
+    """The schema a form field is built from, with the optional wrapper removed.
 
     `status: Literal["todo", "doing"] | None = None` is the commonest parameter
-    in a FastAPI app and OpenAPI 3.1 writes it as
+    in a FastAPI app, and OpenAPI 3.1 writes it as
 
         {"anyOf": [{"type": "string", "enum": [...]}, {"type": "null"}],
          "default": null}
 
-    Reading `enum` off the outer object finds nothing, and the field silently
-    degrades from a three-choice select to a free-text box — which still works
-    and is still wrong. So the null branch is dropped, the remaining one is
-    resolved, and the outer `default` and `description` are kept: they belong to
-    the parameter, not to the branch.
+    Reading `enum` off the outer object finds nothing, and the field degrades
+    from a three-choice select to a free-text box — which still works and is
+    still wrong. So the null branch is dropped, the remaining one is resolved,
+    and the outer `default` and `description` are kept: they belong to the
+    parameter, not to the branch.
     """
     resolved = dict(_resolve(schema, components, 0))
     for key in ("anyOf", "oneOf", "allOf"):
@@ -1155,9 +1145,9 @@ def _effective(schema: Mapping[str, Any], components: Mapping[str, Any]) -> Mapp
             continue
         real = [b for b in branches if isinstance(b, Mapping) and b.get("type") != "null"]
         if len(real) != 1:
-            # A genuine union of two shapes. There is no single control that
-            # expresses it, so it stays a text box rather than picking one
-            # branch and quietly hiding the other.
+            # A genuine union of two shapes. No single control expresses it, so
+            # it stays a text box rather than picking one branch and hiding the
+            # other.
             break
         inner = dict(_resolve(real[0], components, 0))
         inner.update({k: v for k, v in resolved.items() if k not in (key, *inner)})
@@ -1168,16 +1158,16 @@ def _effective(schema: Mapping[str, Any], components: Mapping[str, Any]) -> Mapp
 def _resolve(schema: Mapping[str, Any], components: Mapping[str, Any], depth: int) -> Mapping[str, Any]:
     """Follow `$ref` into `components`, as far as it goes.
 
-    Only local refs. A `$ref` to another document would need fetching it, and a
-    docs page that makes outbound HTTP requests to render is a docs page that
-    hangs behind a firewall.
+    Local refs only. Following a `$ref` to another document would mean fetching
+    it, and a docs page that makes outbound HTTP requests to render hangs behind
+    a firewall.
 
     Keywords written beside a `$ref` survive the hop. OpenAPI 3.1 allows them —
     `{"$ref": ".../Priority", "default": "normal"}` is how FastAPI writes a
     parameter whose type is an enum and whose default is one of its members —
-    and dropping them loses exactly the part that belongs to this use of the
-    schema rather than to the schema itself. The outermost wins, because that is
-    the most specific place anyone wrote it down.
+    and dropping them loses the part that belongs to this use of the schema
+    rather than to the schema itself. The outermost wins, as the most specific
+    place anyone wrote it down.
     """
     seen: set[str] = set()
     siblings: dict[str, Any] = {}
@@ -1203,7 +1193,7 @@ def _resolve(schema: Mapping[str, Any], components: Mapping[str, Any], depth: in
 
 
 def _type_of(schema: Mapping[str, Any]) -> str:
-    """The JSON type, with 3.1's list form collapsed to its first real entry."""
+    """Read the JSON type, collapsing 3.1's list form to its first real entry."""
     kind = schema.get("type")
     if isinstance(kind, list):
         kind = next((k for k in kind if k != "null"), None)
@@ -1220,10 +1210,10 @@ def _pretty(value: Any) -> str:
 
 
 def _scalar(value: Any) -> str:
-    """A parameter value as it goes on the wire.
+    """Render a parameter value as it goes on the wire.
 
-    `True` has to become `true`, not `True`: it is going into a query string
-    that FastAPI will parse back, and Python's repr is not what it accepts.
+    `True` becomes `true`, not `True`: the value goes into a query string that
+    FastAPI parses back, and Python's repr is not what it accepts.
     """
     if isinstance(value, bool):
         return "true" if value else "false"

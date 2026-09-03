@@ -14,7 +14,6 @@ def test_the_form_is_an_htmx_put_carrying_json(client):
 
 
 def test_the_page_loads_both_scripts_the_form_depends_on(client):
-    """The edit page loads json-enc.js and multiselect.js."""
     html = client.get("/tasks/1/edit").text
     assert "vendor/htmx/json-enc.js" in html
     assert "js/multiselect.js" in html
@@ -27,7 +26,6 @@ def test_every_editable_field_is_on_the_page(client):
 
 
 def test_the_form_is_filled_from_the_task(client):
-    """The edit form for task 4 shows its notes, blocked flag and priority."""
     html = client.get("/tasks/4/edit").text
     assert "bytecode cache warmed" in html
     assert re.search(r'name="blocked"[^>]* checked', html)
@@ -35,7 +33,7 @@ def test_the_form_is_filled_from_the_task(client):
 
 
 def test_the_page_embeds_the_partial_the_route_returns(client, htmx):
-    """The htmx fragment of the edit form is embedded verbatim in the page."""
+    """The page embeds the partial its htmx endpoint returns, so one markup serves both paths."""
     page = client.get("/tasks/1/edit").text
     fragment = htmx.get("/tasks/1/edit").text
     assert not fragment.lstrip().startswith("<!doctype")
@@ -43,8 +41,8 @@ def test_the_page_embeds_the_partial_the_route_returns(client, htmx):
 
 
 def test_the_form_page_caps_its_own_measure(client, htmx):
-    """A page that is one form gets a width. The cap belongs to the page, not
-    to the partial — an htmx swap of the form must not carry a second one."""
+    """A page that is one form gets a width cap, and the cap belongs to the page:
+    the partial is swapped inside it and must not carry a second one."""
     page = client.get("/tasks/1/edit").text
     fragment = htmx.get("/tasks/1/edit").text
 
@@ -54,7 +52,6 @@ def test_the_form_page_caps_its_own_measure(client, htmx):
 
 
 def test_saving_answers_hx_redirect_rather_than_a_303(htmx):
-    """A successful PUT returns 204 with an HX-Redirect to /tasks."""
     response = htmx.put("/tasks/1", json={"title": "Renamed", "priority": "high", "owner": "mei"})
 
     assert response.status_code == 204
@@ -66,7 +63,7 @@ def test_saving_answers_hx_redirect_rather_than_a_303(htmx):
 
 
 def test_an_absent_field_reads_as_false(htmx):
-    """A PUT without blocked or watching unsets both flags."""
+    """An unchecked box sends nothing, so an absent flag means false rather than unchanged."""
     htmx.put("/tasks/4", json={"title": "Still here", "priority": "normal", "owner": "kai"})
 
     html = htmx.get("/tasks/4/edit").text
@@ -75,7 +72,6 @@ def test_an_absent_field_reads_as_false(htmx):
 
 
 def test_editing_does_not_touch_status(client, htmx):
-    """A PUT leaves the task status unchanged."""
     before = client.get("/tasks").text
     htmx.put("/tasks/3", json={"title": "Move component includes to macros", "priority": "low", "owner": "mei"})
     after = client.get("/tasks").text
@@ -88,7 +84,6 @@ def test_a_missing_task_is_a_404_on_both_verbs(client, htmx):
 
 
 def test_the_board_links_to_the_edit_page(client):
-    """The board contains a plain link to /tasks/1/edit."""
     html = client.get("/tasks").text
     assert 'href="/tasks/1/edit"' in html
 
@@ -117,7 +112,6 @@ def test_one_label_arrives_as_a_bare_string_and_is_still_a_list(htmx):
 
 
 def test_an_absent_selection_clears_the_labels(htmx):
-    """A PUT without labels clears the task's labels."""
     htmx.put("/tasks/1", json={"title": "Untagged", "priority": "high", "owner": "livy"})
 
     assert "value='[]'" in htmx.get("/tasks/1/edit").text

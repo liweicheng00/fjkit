@@ -1,13 +1,13 @@
 {#
   The API console page.
 
-  `base_template` is a variable, not a literal: the kit's shell by default, or
-  the app's own `base.html` when `ApiDocsPlugin(base_template=…)` names it — so
-  the docs can sit inside the app's chrome without this file knowing anything
-  about it.
+  `base_template` is a variable rather than a literal: the kit's shell by
+  default, or the app's own `base.html` when `ApiDocsPlugin(base_template=…)`
+  names it, so the docs sit inside the app's chrome without this file knowing
+  anything about it.
 
-  The layout is the shell's sidebar version, which the shell picks up simply
-  because the `sidebar` block below is not empty.
+  The layout is the shell's sidebar version, which the shell picks because the
+  `sidebar` block below is not empty.
 #}
 {% extends base_template %}
 
@@ -22,25 +22,25 @@
 
 {#
   The sidebar keeps `--sidebar-width` as it comes. This page is one of several
-  a host app serves, and a docs route that quietly widens the chrome makes the
-  sidebar jump every time someone navigates in or out of it. An app that wants
-  a wider one sets the token once, for every page it owns, and this page
-  inherits it like the others — which is what the token is for.
+  a host app serves, and a docs route that widened the chrome would make the
+  sidebar jump on every navigation in or out of it. An app that wants a wider
+  one sets the token once for every page it owns, and this page inherits it
+  like the others — which is what the token is for.
 #}
 {% block sidebar %}
   {%- set mark %}
     {{ brand(docs_title, url_for(request, routes.index), icon_name="braces") }}
     {#
       The filter. Swagger has one for the same reason: an app with two hundred
-      routes has a sidebar nobody scrolls, and the tag headings only help if you
-      already know which tag.
+      routes has a sidebar nobody scrolls, and the tag headings only help
+      someone who already knows the tag.
 
-      It filters on the server and swaps the list, which costs one round trip
-      per pause in typing and buys a list that is *actually* shorter — the
+      It filters on the server and swaps the list, costing one round trip per
+      pause in typing and buying a list that is genuinely shorter — the
       client-side version ships all two hundred rows and hides most of them.
-      `delay:250ms` is what makes it one request per pause rather than one per
-      keystroke. The input is outside the swapped region, so what was typed and
-      where the caret is both survive the swap.
+      `delay:250ms` makes it one request per pause rather than one per
+      keystroke. The input sits outside the swapped region, so the text typed
+      and the caret position both survive the swap.
 
       A `name` and a real URL, so this is also a GET anybody can bookmark: the
       page route reads the same `?q=`.
@@ -53,8 +53,8 @@
   {%- endset %}
   {#
     The way back out. The operation list has taken the sidebar, so without this
-    the docs are a room with no door — which is exactly the complaint people
-    have about a `/docs` page bookmarked out of context.
+    the docs have no exit — the usual complaint about a `/docs` page bookmarked
+    out of context.
   #}
   {%- set exit %}
     {% if home_url %}{{ button(home_label, variant="ghost", size="sm", href=home_url, icon_name="arrow-left") }}{% endif %}
@@ -68,9 +68,9 @@
   {% call stack(gap=6) %}
 
     {#
-      The session panel is above the operation and stays put when one is
-      swapped in — the whole page is arranged around the one question Swagger
-      cannot answer, which is "who am I right now".
+      The session panel sits above the operation and stays put when one is
+      swapped in. The page is arranged around the question Swagger cannot
+      answer: "who am I right now".
     #}
     {% include "apidocs/_session.html" %}
 
@@ -118,11 +118,11 @@
           {% endif %}
 
           {#
-            The masthead OpenAPI carries and almost nothing renders: who to ask,
-            what licence it is under, what the terms are, where the prose lives.
-            Somebody wrote each of these into the document meaning it to be
-            read, and dropping them is how a generated reference ends up less
-            informative than the file it was generated from.
+            The masthead OpenAPI carries and almost nothing renders: who to
+            ask, what licence it is under, what the terms are, where the prose
+            lives. Somebody wrote each of these into the document meaning it to
+            be read, and dropping them is how a generated reference ends up
+            less informative than the file it came from.
           #}
           {%- set masthead = docs.contact or docs.license_name or docs.terms_url or docs.external_url -%}
           {% if masthead %}
@@ -152,12 +152,12 @@
           {#
             The tags, with the prose the document wrote for each.
 
-            A `tags=` list on `FastAPI()` is an information architecture and a
+            A `tags=` list on `FastAPI()` is an information architecture, and a
             description on one of its entries is the paragraph explaining what
-            that group of endpoints is *for* — which the sidebar has no room for
-            and which is, on a large API, the first thing a newcomer needs. It
-            only renders when somebody wrote one: a list of bare tag names would
-            repeat the sidebar and say nothing.
+            that group of endpoints is for — which the sidebar has no room for,
+            and which is the first thing a newcomer to a large API needs. It
+            renders only when somebody wrote one: a list of bare tag names
+            would repeat the sidebar and say nothing.
           #}
           {%- set described = docs.groups | selectattr("description") | list -%}
           {% if described %}
@@ -178,9 +178,8 @@
             {#
               Shown, not selected. Swagger's server dropdown chooses where its
               `fetch()` goes; this console replays in-process against the app
-              answering right now, so a dropdown here would be a control that
-              changes nothing. The list is still worth printing — it is where a
-              real client is meant to point.
+              answering right now, so a dropdown here would change nothing. The
+              list is still worth printing: it is where a real client points.
             #}
             {% call card("Servers", "Where a client sends. Try it always goes to this app.") %}
               {% call item_list() %}

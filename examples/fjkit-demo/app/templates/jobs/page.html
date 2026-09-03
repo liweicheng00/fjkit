@@ -42,12 +42,12 @@
   {% endcall %}
 
   {#
-    The page's second overlay, and deliberately the other kind. A job's Details
-    is a `dialog` — a popover, non-modal, so the list behind it stays readable
-    while it is open. This one is a `drawer`: a native <dialog> opened with
-    `showModal()`, which is what a panel you are meant to read and dismiss
-    should be. It sits outside `#job-list`, so a swap of the list never touches
-    it, and its body is rendered with the page because it never changes.
+    The page's second overlay, and the other kind on purpose. A job's Details is
+    a `dialog`: a non-modal popover, so the list behind it stays readable while
+    it is open. This one is a `drawer`: a native <dialog> opened with
+    `showModal()`, which suits a panel you read and then dismiss. It sits outside
+    `#job-list`, so a swap of the list never touches it, and its body renders
+    with the page because it never changes.
   #}
   {% call drawer("job-kinds", "Job kinds",
                  "What each option in the select above actually does.", side="right") %}

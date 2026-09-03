@@ -2,15 +2,15 @@
   Form controls.
 
   Every field takes the same four presentation parameters — `label`, `hint`,
-  `error`, `id` — and wires them together the same way: the control gets an id,
-  the label points at it, and `hint`/`error` render into one `<p>` the control
-  names in `aria-describedby`. An `error` replaces the hint rather than stacking
-  on it, because two messages under one control is two things to read and only
-  one of them matters.
+  `error`, `id` — and wires them the same way: the control gets an id, the
+  label points at it, and `hint`/`error` render into one `<p>` the control
+  names in `aria-describedby`. An `error` replaces the hint rather than
+  stacking on it: two messages under one control is two things to read when
+  only one of them matters.
 
-  A rejected submit fills the same `<p>` from the browser: `js/errors.js`
+  A rejected submit fills the same `<p>` from the browser — `js/errors.js`
   reads FastAPI's 422 and writes each message under the control its `loc`
-  names. `error=` is for a message known at first paint.
+  names. Pass `error=` for a message known at first paint.
 #}
 {% from "ui/attrs.html" import attrs %}
 {% from "ui/button.html" import button %}
@@ -22,34 +22,33 @@
         {% call field_row("1fr auto") %}…{% endcall %}
       {% endcall %}
 
-  `target` is what decides which kind of form this is, and it decides the whole
-  of it:
+  `target` decides which kind of form this is, and decides all of it:
 
       form(action=…, target="#board")  ->  hx-post + hx-target + hx-swap
       form(action=…)                   ->  action= + method=
 
-  The htmx form also sets `hx-disinherit="hx-target hx-swap"`: a control
-  inside it that fires its own request names its own target, or it swaps into
-  itself — never into the form's target by inheritance.
+  The htmx form also sets `hx-disinherit="hx-target hx-swap"`: a control inside
+  it that fires its own request names its own target, or swaps into itself —
+  never into the form's target by inheritance.
 
-  A form with a target is an htmx form; one without is an ordinary POST that
-  needs no JavaScript. Same macro and the same fields either way — that
-  symmetry is what makes progressive enhancement cheap. `hx-post` without a
-  target would swap the reply into the form itself, which is never what a
-  caller who omitted `target` meant.
+  A form with a target is an htmx form; one without is an ordinary POST needing
+  no JavaScript. Same macro and same fields either way, and that symmetry is
+  what makes progressive enhancement cheap. `hx-post` without a target would
+  swap the reply into the form itself, which a caller who omitted `target`
+  never meant.
 
-  `method` is where that symmetry runs out, and it does so quietly enough to be
-  worth stating. htmx issues all five verbs; a browser issues two. So
+  `method` is where that symmetry runs out, and it runs out quietly. htmx
+  issues all five verbs; a browser issues two:
 
       form(action=…, method="put", target="#form")  ->  hx-put
       form(action=…, method="put")                  ->  method="post"
 
-  and the second is not a bug being papered over: `<form method="put">` is
-  treated by every browser as GET, which drops the body entirely. A save that
+  The second is not a bug being papered over: every browser treats
+  `<form method="put">` as GET, which drops the body entirely. A save that
   becomes a read is worse than a save that arrives as a POST. See
   `_NATIVE_METHODS` below.
 
-  `encoding` decides what the submit *carries*, which is a different question
+  `encoding` decides what the submit carries, which is a different question
   from what it targets:
 
       form(action=…, target="#board")                     ->  title=Ship+it
@@ -57,43 +56,41 @@
 
   JSON is for a route that declares its body as a model — `def create(payload:
   TaskCreate)` — because FastAPI reads such a body as JSON and refuses a form
-  outright. Everything after that is unchanged: the values arrive as strings
-  either way, pydantic's lax mode reads `"3"` as an int and `"on"` as `True`,
-  and a rejected submit is drawn under the fields by `js/errors.js` with
-  everything still typed in them.
+  outright. Nothing else changes: the values arrive as strings either way,
+  pydantic's lax mode reads `"3"` as an int and `"on"` as `True`, and
+  `js/errors.js` draws a rejected submit under the fields with everything still
+  typed in them.
 
-  Three things it cannot do, all of them properties of the extension rather
-  than of this macro:
+  Three limits, all of them the extension's rather than this macro's:
 
-  - **No `target`, no JSON.** A browser submitting a form natively can send
-    urlencoded or multipart and nothing else, so `encoding="json"` on a form
-    with no `target` is ignored rather than silently changing what a no-JS
-    submit posts.
-  - **No nesting.** Every field lands at the top level of the object, so
+  - No `target`, no JSON. A browser submitting natively sends urlencoded or
+    multipart and nothing else, so `encoding="json"` on a form with no `target`
+    is ignored rather than silently changing what a no-JS submit posts.
+  - No nesting. Every field lands at the top level of the object, so
     `name="items.0.title"` posts that string as a key. A model with a nested
     shape needs a flat DTO in front of it.
-  - **No file upload.** `JSON.stringify` has nothing to say about a `File`.
+  - No file upload. `JSON.stringify` has nothing to say about a `File`.
 
-  And the page has to load the extension — `form_scripts()`, below.
+  The page also has to load the extension — `form_scripts()`, below.
 
-  `reset_on_success` means what it says, and only since 0.3. It used to emit an
-  unconditional `this.reset()`, and `htmx:afterRequest` fires whether the
-  request succeeded or not — so a rejected submit cleared the box the person
-  had just typed into. Keeping what was typed is the whole of how a rejected
-  form comes back, so this is the line that guards it.
+  `reset_on_success` resets only on success, and only since 0.3. It used to
+  emit an unconditional `this.reset()`, and `htmx:afterRequest` fires whether
+  or not the request succeeded, so a rejected submit cleared the box the person
+  had just typed into. Keeping what was typed is how a rejected form comes
+  back, and this parameter is what guards it.
 #}
 {% set _ENCODINGS = {"urlencoded": none, "json": "json-enc"} %}
 
 {#
-  What each `method` is called on each path, and the asymmetry is the whole
-  point of two tables rather than one.
+  What each `method` is called on each path. The asymmetry is why there are two
+  tables and not one.
 
-  htmx will issue any of the five. A browser submitting a form natively will
-  issue two: anything else in a `<form method=…>` is treated as GET, which
-  drops the body — a save that silently becomes a read. So the native table
-  answers `post` to everything that is not a read, and a `method="put"` form
-  with no `target` posts rather than quietly losing what was typed. Use
-  `_method`-style tunnelling in the route if the server needs to know.
+  htmx issues any of the five. A browser submitting a form natively issues two:
+  anything else in a `<form method=…>` is treated as GET, which drops the body
+  — a save that silently becomes a read. So the native table answers `post` to
+  everything that is not a read, and a `method="put"` form with no `target`
+  posts rather than quietly losing what was typed. Use `_method`-style
+  tunnelling in the route where the server has to know.
 #}
 {% set _HX_METHODS = {
   "get": "hx-get",
@@ -130,19 +127,19 @@
 {%- endmacro %}
 
 {#
-  form_scripts() — what a page loads to be allowed `encoding="json"`.
+  form_scripts() — the script a page loads to be allowed `encoding="json"`.
 
       {% block scripts %}{{ form_scripts() }}{% endblock %}
 
-  Per page, and never from the shell. CHARTER §7 budgets what a page downloads
-  *by default* and the answer has to stay "htmx and Basecoat" — so 1,012 bytes
-  that only some forms need are opted into by the page that has one, exactly
-  the way `chart_scripts()` opts into Plotly.
+  Per page, never from the shell. CHARTER §7 budgets what a page downloads by
+  default and the answer has to stay "htmx and Basecoat", so the 1,012 bytes
+  only some forms need are opted into by the page that has one — the way
+  `chart_scripts()` opts into Plotly.
 
   `defer` keeps it after htmx: deferred scripts run in document order, htmx is
   deferred in the shell's head, and the extension calls `htmx.defineExtension`
-  the moment it runs. Ordinary `<script>` here would run *before* the deferred
-  htmx and throw on an undefined global.
+  as soon as it runs. An ordinary `<script>` here runs before the deferred htmx
+  and throws on an undefined global.
 
   A form asking for `encoding="json"` on a page that forgot this posts
   urlencoded to a route that only reads JSON, and the reply is a 422 nobody
@@ -191,18 +188,17 @@
 {#
   select_field(name, label, options, selected)
 
-  `options` is a list of (value, label) pairs — the caller decides the labels,
-  so the macro never reaches into a domain enum it should not know about.
+  `options` is a list of (value, label) pairs. The caller decides the labels, so
+  the macro never reaches into a domain enum it should not know about.
 
-  Native <select> on purpose: no JS, keyboard and screen-reader correct for
-  free, and one element instead of the ~30 a scripted listbox emits. Reach for
-  `ui/overlay.html`'s `combobox` when you need to type-to-filter, and either
-  that or `select_menu(multiple=true)` when you need more than one value —
-  both of those cost the page a script, which is the trade being made.
+  A native <select>: no JS, correct for keyboard and screen reader, and one
+  element against the ~30 a scripted listbox emits. Use `ui/overlay.html`'s
+  `combobox` for type-to-filter, and either that or `select_menu(multiple=true)`
+  for more than one value; both cost the page a script.
 
   A checkbox group in a `fieldset` is the third answer and often the right one:
-  it needs no JS at all and posts the same repeated field. It stops scaling at
-  about a dozen options, which is where the two above start.
+  no JS at all, and it posts the same repeated field. It stops scaling at about
+  a dozen options, which is where the two above start.
 #}
 {% macro select_field(name, label=none, options=(), selected=none, id=none, blank=none, hint=none, error=none) -%}
   {%- set field_id = id or ("f-" ~ name) -%}
@@ -225,8 +221,8 @@
   _message(field_id, hint, error) — the single <p> under a control.
 
   One paragraph, never two: an error replaces the hint. Every field points
-  `aria-describedby` at this id, which is why the id is derived from the
-  control's rather than passed in — a caller cannot get the two out of step.
+  `aria-describedby` at this id, and the id is derived from the control's
+  rather than passed in, so a caller cannot get the two out of step.
 #}
 {% macro _message(field_id, hint=none, error=none) -%}
   {%- if error %}<p class="text-destructive text-xs" id="{{ field_id }}-hint">{{ error }}</p>
@@ -283,11 +279,11 @@
 {#
   switch_field(name, label, checked) — the same checkbox, read as a setting.
 
-  Same element and same wire format as `checkbox_field`: `role="switch"` is
-  what the stylesheet and the screen reader both key off, so a route cannot
-  tell the two apart and does not need to. Label first, control at the far
-  right — a switch reads as a state you are flipping, not a box you are
-  ticking, and settings rows line their controls up on one edge.
+  Same element and same wire format as `checkbox_field`: the stylesheet and the
+  screen reader both key off `role="switch"`, so a route cannot tell the two
+  apart and does not need to. Label first, control at the far right — a switch
+  reads as a state being flipped rather than a box being ticked, and settings
+  rows align their controls on one edge.
 #}
 {% macro switch_field(name, label=none, checked=false, value="on", hint=none, error=none, id=none) -%}
   {%- set field_id = id or ("f-" ~ name) -%}
@@ -308,12 +304,12 @@
   radio_group(name, label, options, selected)
 
   `options` is the same list of (value, label) pairs `select_field` takes, so
-  swapping one for the other is a one-word edit. Which to reach for is a
-  question about the options, not about taste: a radio group shows them all at
-  once and costs a line each, so it wins up to about five and loses after that.
+  swapping one for the other is a one-word edit. Which one to use follows from
+  the options: a radio group shows them all at once and costs a line each, so
+  it wins up to about five and loses after that.
 
   A real <fieldset>/<legend>, not a div with a label: that is what makes the
-  group announce itself as one control with N choices instead of N unrelated
+  group announce itself as one control with N choices rather than N unrelated
   boxes, and arrow-key navigation between them comes from the browser.
 #}
 {% macro radio_group(name, label=none, options=(), selected=none, hint=none, error=none, id=none) -%}
@@ -345,13 +341,13 @@
         {{ switch_field("digest", label="Weekly digest") }}
       {% endcall %}
 
-  Use it when a form has more than one subject. One fieldset wrapping the whole
+  Use it when a form has more than one subject. One fieldset wrapping a whole
   form says nothing the <form> did not already say.
 
   The legend is sized as a heading (`data-variant="legend"`), one step up from
   the field labels under it. `radio_group` writes its own legend at
-  `data-variant="label"` instead, because there the legend *is* the field's
-  label and has to look like every other one on the form.
+  `data-variant="label"`, because there the legend is the field's label and has
+  to match every other label on the form.
 #}
 {% macro fieldset(legend=none, hint=none) -%}
   <fieldset class="fieldset"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
@@ -368,15 +364,15 @@
   touch behaviour arrive correct and free, where a scripted slider has to
   re-implement all three and usually re-implements two.
 
-  Basecoat paints the filled part of the track from a `--slider-value`
-  custom property and updates it from its own JS as the thumb moves. The
-  starting value has to be set here, or the fill is stuck at upstream's 20%
-  default until the first drag — a bar that disagrees with the number beside
-  it on first paint.
+  Basecoat paints the filled part of the track from a `--slider-value` custom
+  property and updates it from its own JS as the thumb moves. The starting
+  value has to be set here, or the fill sits at upstream's 20% default until
+  the first drag — a bar that disagrees on first paint with the number beside
+  it.
 
-  `output` is a live region showing the current value. Off by default: a
-  slider that is already labelled "Volume 40%" by its own text does not need
-  it, and a second announcement on every keypress is noise.
+  `output` is a live region showing the current value, off by default: a slider
+  whose own text already reads "Volume 40%" does not need it, and a second
+  announcement on every keypress is noise.
 #}
 {% macro range_field(name, label=none, value=50, min=0, max=100, step=1, hint=none, error=none, id=none, output=false) -%}
   {%- set field_id = id or ("f-" ~ name) -%}
@@ -408,15 +404,15 @@
       {{ input_group_field("q", "Search", end=count) }}
 
   Slots rather than a caller block, because both are optional and a caller
-  cannot say "nothing here" — `{% call %}` would render an empty addon, and an
+  cannot say "nothing here": `{% call %}` would render an empty addon, and an
   empty addon still takes its padding.
 
-  Basecoat strips the border from the inner control and paints it on the group
-  instead, so the input is `class="input"`-free on purpose: giving it one
-  draws a second box inside the first.
+  Basecoat strips the border from the inner control and paints it on the group,
+  so the input deliberately carries no `class="input"` — giving it one draws a
+  second box inside the first.
 
-  **revealable** puts a Show/Hide toggle in the end group, for the one field
-  that always wants one:
+  `revealable` puts a Show/Hide toggle in the end group, for the one field that
+  always wants one:
 
       {{ input_group_field("password", label="Password", type="password",
                            required=true, autocomplete="current-password",
@@ -425,17 +421,17 @@
       {% block scripts %}{{ reveal_scripts() }}{% endblock %}
 
   It lives here rather than in `text_field` because the reveal has to sit inside
-  the input's box, and `.input-group` is the only markup in the kit that has a
-  place to put it — a plain `.input` with a button after it is two boxes.
+  the input's box, and `.input-group` is the only markup in the kit with a place
+  for it: a plain `.input` followed by a button is two boxes.
 
-  `reveal_show` / `reveal_hide` are the button's two labels. They are parameters
-  and not constants because a Spanish sign-in page is not a fork of the kit; the
-  script reads both off the element, so it never holds an English string.
+  `reveal_show` and `reveal_hide` are the button's two labels. They are
+  parameters rather than constants so that a Spanish sign-in page is not a fork
+  of the kit; the script reads both off the element and never holds an English
+  string.
 
-  A page that forgets `reveal_scripts()` gets a button that does nothing when
-  clicked, which is the loudest of this kit's missing-script failures and still
-  not loud enough — the field itself keeps working, so nothing is broken except
-  the affordance.
+  A page that forgets `reveal_scripts()` gets a button that does nothing on
+  click. That is the loudest of this kit's missing-script failures and still
+  quiet: the field keeps working, and only the affordance is broken.
 #}
 {% macro input_group_field(name, label=none, value="", placeholder="", type="text", start=none, end=none, required=false, hint=none, error=none, id=none, revealable=false, reveal_show="Show", reveal_hide="Hide") -%}
   {%- set field_id = id or ("f-" ~ name) -%}
@@ -449,9 +445,9 @@
              {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
              {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
       {#
-        `data-align` decides the order, not the source order — the CSS sets
-        `order-first` / `order-last` — so the input can stay first in the
-        markup where it belongs for the label association to read naturally.
+        `data-align` decides the order rather than the source order — the CSS
+        sets `order-first` / `order-last` — so the input stays first in the
+        markup, where the label association reads naturally.
       #}
       {%- if start %}<span role="group" data-align="start">{{ start }}</span>{% endif %}
       {#
@@ -483,16 +479,16 @@
 {#
   reveal_scripts() — the script behind `input_group_field(revealable=true)`.
 
-  Per page, and never from the shell, for the same reason `form_scripts()` and
-  `multiselect_scripts()` are: CHARTER §7 budgets what a page downloads *by
-  default*, and the answer has to stay "htmx and Basecoat". A sign-in page is
+  Per page, never from the shell, for the reason `form_scripts()` and
+  `multiselect_scripts()` are: CHARTER §7 budgets what a page downloads by
+  default, and the answer has to stay "htmx and Basecoat". A sign-in page is
   one page.
 
-  What it buys is a toggle that survives a rejected submit. The listener is on
-  `document`, so the button that arrives in the swapped-in panel works as well
-  as the one that was there at first paint — which is the case that matters,
-  because the form a password lives in is the form most likely to come back
-  with a 422 and a fresh copy of itself.
+  It buys a toggle that survives a rejected submit. The listener is on
+  `document`, so a button arriving in a swapped-in panel works as well as one
+  present at first paint — the case that matters, because the form a password
+  lives in is the form most likely to come back with a 422 and a fresh copy of
+  itself.
 #}
 {% macro reveal_scripts() -%}
   <script defer src="{{ fjkit_static("js/reveal.js") }}"></script>

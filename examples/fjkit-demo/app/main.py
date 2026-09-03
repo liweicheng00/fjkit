@@ -31,7 +31,7 @@ from app.features.tasks.service import TaskService
 APP_DIR = Path(__file__).resolve().parent
 ROOT_DIR = APP_DIR.parent
 
-#: URL prefix the kit's static assets are served from.
+#: URL prefix for the kit's static assets.
 STATIC_URL = "/_fjkit"
 
 #: Style pack name -> stylesheet URL, used by the shell's style picker.

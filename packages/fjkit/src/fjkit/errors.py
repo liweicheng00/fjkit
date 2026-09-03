@@ -34,15 +34,14 @@ if TYPE_CHECKING:
 
 __all__ = ["ERROR_TEMPLATE", "install_error_handlers"]
 
-#: The page a failed navigation lands on. An app replaces it by putting a file
-#: at the same path in its own template directory — the same shadowing that
-#: makes `fjkit eject` work, so there is no separate "custom error page"
-#: mechanism to learn.
+#: The page a failed navigation lands on. An app replaces it with a file at the
+#: same path in its own template directory — the shadowing that makes `fjkit
+#: eject` work, so there is no separate "custom error page" mechanism to learn.
 ERROR_TEMPLATE = "errors/page.html"
 
 _log = logging.getLogger("fjkit.errors")
 
-#: Said to the person, not to the developer. A 500 means the app is in a state
+#: Addressed to the user, not the developer. A 500 means the app is in a state
 #: nobody predicted, so the honest thing to show is that something broke and
 #: nothing about what. An app changes the words with
 #: `FjkitConfig.unexpected_error`.
@@ -52,8 +51,8 @@ _UNEXPECTED = messages.Message(
 
 
 def install_error_handlers(app: FastAPI, config: FjkitConfig) -> None:
-    """Wire both handlers. Called by `mount_fjkit`. The 500 handler is
-    installed only when `catch_unexpected_errors` is on."""
+    """Install the 422 handler, and the 500 handler when
+    `catch_unexpected_errors` is on. Called by `mount_fjkit`."""
     app.add_exception_handler(RequestValidationError, _on_request_validation)
     if config.catch_unexpected_errors:
         choose = config.unexpected_error
@@ -65,9 +64,10 @@ def install_error_handlers(app: FastAPI, config: FjkitConfig) -> None:
 
 
 def _message_for(choose: Any, request: Request, exc: Exception) -> messages.Message:
-    """The words for this failure. A callable that itself raises is treated as
-    the bug it is — logged, and the kit's own wording used — because the
-    handler it runs inside is the last one there is."""
+    """Choose the words for this failure.
+
+    A `choose` callable that itself raises is logged and falls back to the kit's
+    own wording: the handler it runs inside is the last one there is."""
     if choose is None:
         return _UNEXPECTED
     if callable(choose):
@@ -85,8 +85,8 @@ def _message_for(choose: Any, request: Request, exc: Exception) -> messages.Mess
 
 
 async def _on_request_validation(request: Request, exc: Exception) -> Response:
-    """A swap and a JSON client get FastAPI's reply unchanged; a navigation
-    gets the error page."""
+    """Answer a rejected input: FastAPI's reply unchanged for a swap or a JSON
+    client, `ERROR_TEMPLATE` for a navigation."""
     if htmx.is_swap(request) or not _wants_markup(request, _plan_for(request)):
         return await _fastapi_validation_reply(request, exc)
     return _error_page(request, status_code=422, errors=field_errors(exc, request_scoped=True))
@@ -98,21 +98,20 @@ async def _on_request_validation(request: Request, exc: Exception) -> Response:
 
 
 async def _on_unexpected(request: Request, exc: Exception, message: messages.Message) -> Response:
-    """Logged in full; `message` to the user."""
+    """Log the exception in full and show `message` to the user."""
     _log.exception("unhandled error on %s %s", request.method, request.url.path, exc_info=exc)
 
     if not _wants_markup(request, _plan_for(request)):
-        # Whatever this caller was reading, it was not a page. Starlette's own
-        # answer, not ours — and not a re-raise, because raising from inside
-        # `ServerErrorMiddleware`'s handler replaces the original traceback
-        # with a second one from this line.
+        # This caller was not reading a page, so hand back Starlette's own
+        # answer. Not a re-raise: raising inside `ServerErrorMiddleware`'s
+        # handler replaces the original traceback with one from this line.
         return Response("Internal Server Error", status_code=500, media_type="text/plain")
 
     messages.extend(request, (message,))
     if htmx.is_swap(request):
-        # No markup in this reply, so htmx must not swap the empty body into
-        # the target. The toast rides the header, which htmx reads before it
-        # decides about swapping at all.
+        # The reply carries no markup, so htmx must not swap an empty body into
+        # the target. The toast rides the header instead, which htmx reads
+        # before it decides on swapping at all.
         response = Response(status_code=500)
         trigger = messages.trigger_header(request, None)
         if trigger is not None:
@@ -127,8 +126,8 @@ async def _on_unexpected(request: Request, exc: Exception, message: messages.Mes
 
 
 def _error_page(request: Request, *, status_code: int, errors: FieldErrors | None) -> Response:
-    """`errors/page.html` through the app's own `Templates`; plain text if
-    that render fails too."""
+    """Render `ERROR_TEMPLATE` through the app's own `Templates`, falling back
+    to plain text when that render fails too."""
     templates = getattr(request.app.state, "templates", None)
     if templates is None:  # pragma: no cover — mount_fjkit always sets it
         return Response(_UNEXPECTED.title, status_code=status_code, media_type="text/plain")

@@ -44,7 +44,6 @@ def test_a_refused_swap_is_empty_and_carries_the_toast(htmx):
 
 
 def test_a_refused_navigation_gets_the_same_status(client):
-    """A browser navigation to /failures/400 returns 400."""
     reply = client.get("/failures/400", headers=BROWSER)
     assert reply.status_code == 400
 

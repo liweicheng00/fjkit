@@ -149,10 +149,10 @@ class ReportResponse(BaseModel):
 class Fragment(BaseModel):
     """What every fragment of the search page carries: the moment it rendered.
 
-    The stamp is what makes the page readable. Two mechanisms move regions here —
+    The stamp is what makes the page readable. Two mechanisms move regions there:
     one reply carrying four out of band, and an event each region answers for
-    itself — and without a timestamp per region there is no way to see which
-    regions a given click actually reached.
+    itself. Without a timestamp per region there is no way to see which regions a
+    click reached.
     """
 
     rendered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -201,6 +201,6 @@ class SearchResponse(MatchesResponse, StatsResponse, FacetsResponse, RelatedResp
     """One query's answer: the matches in band, and four regions out of band.
 
     The fields are the union of what the five partials read, because one handler
-    renders all five — which is precisely what `hx-swap-oob` is for, and what the
+    renders all five. That is what `hx-swap-oob` is for, and what the
     event-driven half of this page is not.
     """

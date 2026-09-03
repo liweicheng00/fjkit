@@ -1,30 +1,29 @@
 """`FlashPlugin` — a message that survives a redirect.
 
-`fjkit.messages` shows a message on *this* response. This is the layer above
-it, and it exists for the one case that cannot reach: a redirect replaces the
+`fjkit.messages` shows a message on the current response. This layer sits above
+it and covers the one case that layer cannot reach: a redirect replaces the
 page, so the document that would have shown the message is gone before the
-response arrives. `HX-Trigger` cannot help — it names an event for a page that
-is about to be discarded — and a full navigation has no JavaScript at all.
+response arrives. `HX-Trigger` cannot help — it names an event for a page about
+to be discarded — and a full navigation runs no JavaScript at all.
 
-What does survive is the cookie jar. So a flash is written as a short-lived
-signed cookie on the response that redirects, read back on the request that
-lands, **queued into `fjkit.messages`** like any other message, and cleared
-once it has actually been shown — which is why it appears exactly once and not
-again on reload.
+The cookie jar does survive. A flash is written as a short-lived signed cookie
+on the response that redirects, read back on the request that lands, queued
+into `fjkit.messages` like any other message, and cleared once it has been
+shown — so it appears exactly once and not again on reload.
 
-That last step is why this is a plugin and `fjkit.messages` is not. Signing
+That last step is why this is a plugin and `fjkit.messages` is core. Signing
 needs a secret, and requiring one from every app — including one with no forms
-and nothing to say — would end `mount_fjkit(app)` working with no config at
-all. Everything that does not need a secret is core.
+and nothing to say — would stop `mount_fjkit(app)` from working with no config
+at all. Everything that needs no secret is core.
 
-Registering it is the whole setup. `ui/shell.html` renders the toaster region
-and fills it from the message queue, so no template in the app changes:
+Registering the plugin is the whole setup. `ui/shell.html` renders the toaster
+region and fills it from the message queue, so no template in the app changes:
 
     flash = FlashPlugin(secret=os.environ["FJKIT_SECRET"])
     config = FjkitConfig(template_dir=…, plugins=(flash,))
 
 Nothing here is specific to sessions. `AuthPlugin` takes one of these to
-explain why it bounced you, but so can a route that just finished something:
+explain why it bounced you, and so can a route that just finished something:
 
     flash.add(response, "Saved", category="success")
 """
@@ -47,21 +46,20 @@ from fjkit.signing import sign, unsign
 
 __all__ = ["FlashMessage", "FlashPlugin"]
 
-#: The same `Message` core uses, under the name this module shipped it as.
-#: A flash is not a different kind of message — it is an ordinary one that took
-#: a longer route to the page, so a second type would be two names for one
-#: thing and a conversion between them at the seam.
+#: Core's `Message`, under the name this module shipped it as. A flash is an
+#: ordinary message that took a longer route to the page, so a second type
+#: would mean two names for one thing and a conversion between them at the seam.
 FlashMessage = Message
 
 
 class FlashPlugin:
     """Messages that outlive the response that produced them.
 
-    The cookie is signed rather than encrypted: its contents are strings the
-    app is about to show the user anyway, so there is nothing in it to hide.
-    The signature is there so that a message cannot be *written* by whoever
-    holds the browser — an unsigned flash cookie is a way to make a site
-    display any text an attacker likes, which is a phishing tool.
+    The cookie is signed rather than encrypted: it holds strings the app is
+    about to show the user anyway, so there is nothing to hide. The signature
+    stops whoever holds the browser from writing a message — an unsigned flash
+    cookie makes a site display any text an attacker likes, which is a phishing
+    tool.
     """
 
     name = "flash"
@@ -86,10 +84,10 @@ class FlashPlugin:
     def mount(self, setup: AppSetup) -> None:
         setup.add_middleware(_FlashMiddleware, plugin=self)
 
-    #: No `extend`. This plugin contributes no context key of its own — the
+    #: No `extend`. This plugin contributes no context key of its own: the
     #: cookie is queued into `fjkit.messages`, which the shell already renders,
     #: so a template never learns that a message arrived by cookie rather than
-    #: from the handler it is rendering. That is the point of layering the two:
+    #: from the handler it is rendering. That is the point of layering the two —
     #: one loop in the shell, not one per delivery mechanism.
 
     # ------------------------------------------------------------- app-facing
@@ -104,9 +102,9 @@ class FlashPlugin:
     ) -> None:
         """Queue a message for whatever page the browser lands on next.
 
-        Set on the response that redirects, not on the one that renders — a
-        message rendered into the page it was raised on does not need a cookie
-        to get there.
+        Set it on the response that redirects, not on the one that renders: a
+        message rendered into the page it was raised on needs no cookie to get
+        there.
         """
         self.set(response, [FlashMessage(title=title, text=text, category=category)])
 
@@ -163,11 +161,11 @@ class FlashPlugin:
 class _FlashMiddleware(BaseHTTPMiddleware):
     """Queue on the way in, clear on the way out — but only once it was shown.
 
-    "Shown" is `fjkit.messages.shown()`, which is set by *delivery*: a template
-    iterating the queue, or the queue being drained into an `HX-Trigger`. Not
-    by the request merely carrying the cookie — a page load fires more requests
-    than the page (an htmx poll, a prefetch), and any of them would otherwise
-    eat the message and leave the page it belonged to empty.
+    "Shown" is `fjkit.messages.shown()`, set by delivery: a template iterating
+    the queue, or the queue being drained into an `HX-Trigger`. Carrying the
+    cookie is not enough — a page load fires more requests than the page (an
+    htmx poll, a prefetch), and any of them would otherwise eat the message and
+    leave the page it belonged to empty.
     """
 
     def __init__(self, app: Any, *, plugin: FlashPlugin) -> None:
@@ -181,8 +179,8 @@ class _FlashMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
 
-        # Not if the handler set a *new* flash on its way out — that one is for
-        # the next page, and clearing it here would swallow the message.
+        # Skip the clear when the handler set a new flash on its way out: that
+        # one is for the next page, and clearing it here would swallow it.
         replaced = any(
             cookie.startswith(f"{self.plugin.cookie_name}=") for cookie in response.headers.getlist("set-cookie")
         )

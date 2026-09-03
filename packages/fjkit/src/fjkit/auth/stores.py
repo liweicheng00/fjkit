@@ -1,9 +1,8 @@
 """The two backends that ship, and an adapter for a blocking third.
 
 Neither imports a database driver. `RedisStore` takes a client the app already
-built, which keeps fjkit's runtime dependencies at two (CHARTER §7) and, as a
-side effect, works with Valkey, fakeredis, or anything else wearing the same
-four methods.
+built, which keeps fjkit's runtime dependencies at two (CHARTER §7) and also
+works with Valkey, fakeredis, or anything else exposing the same four methods.
 """
 
 from __future__ import annotations
@@ -19,13 +18,13 @@ __all__ = ["MemoryStore", "RedisStore", "SyncStore"]
 class MemoryStore:
     """A dict with expiry. Correct for one process, wrong for more than one.
 
-    `AuthPlugin` warns when it sees this under a production config, because the
-    symptom otherwise is "users get logged out at random" on a machine running
-    four workers, and nothing in the traceback points here.
+    `AuthPlugin` warns when it sees this under a production config. The symptom
+    otherwise is users logged out at random on a machine running four workers,
+    with nothing in the traceback pointing here.
 
-    No locking primitives: an event loop runs one task at a time between
-    awaits, and none of the methods below await anything, so the check-then-set
-    in `acquire_refresh_lock` cannot be interleaved.
+    No locking primitives: an event loop runs one task at a time between awaits,
+    and no method below awaits anything, so the check-then-set in
+    `acquire_refresh_lock` cannot be interleaved.
     """
 
     __slots__ = ("_items", "_locks")
@@ -64,7 +63,7 @@ class MemoryStore:
 
 
 class _AsyncRedis(Protocol):
-    """The four calls `RedisStore` makes. Structural, so no import is needed."""
+    """The client calls `RedisStore` makes. Structural, so no import is needed."""
 
     async def get(self, name: str) -> Any: ...
     async def set(self, name: str, value: Any, **kwargs: Any) -> Any: ...
@@ -72,14 +71,14 @@ class _AsyncRedis(Protocol):
 
 
 class RedisStore:
-    """Sessions in Redis, through a client the app owns.
+    """Store sessions in Redis, through a client the app owns.
 
-    Expects an *async* client — `redis.asyncio.Redis` or equivalent. A blocking
-    client belongs behind `SyncStore`, so that the threadpool hop is visible in
-    the app's wiring rather than hidden in here.
+    Expects an async client: `redis.asyncio.Redis` or equivalent. Put a blocking
+    client behind `SyncStore`, so the threadpool hop stays visible in the app's
+    wiring instead of hidden here.
 
-    The refresh lock is `SET NX EX`, which is the whole reason this store can be
-    shared by several workers while still refreshing a token exactly once.
+    The refresh lock is `SET NX EX`, which is what lets several workers share
+    this store and still refresh a token exactly once.
     """
 
     __slots__ = ("_client", "_prefix")
@@ -114,11 +113,11 @@ class RedisStore:
 
 
 class SyncStore:
-    """Runs a blocking store's five methods in the threadpool.
+    """Run a blocking store's five methods in the threadpool.
 
-    For a backend with no async driver — a synchronous Redis client, a database
-    session, a file. The hop costs a thread per call, which is why it is an
-    explicit wrapper and not something the plugin does for you when it notices.
+    For a backend with no async driver: a synchronous Redis client, a database
+    session, a file. The hop costs a thread per call, so it is an explicit
+    wrapper rather than something the plugin applies on its own.
     """
 
     __slots__ = ("_inner",)

@@ -1,12 +1,24 @@
 # fjkit
 
-**Build the interface where you build the routes.** fjkit is the UI layer FastAPI
-does not ship: pages, tables, forms, navigation, dark mode and htmx swaps,
-composed as Jinja macros in the same codebase as your handlers.
+fjkit is the UI layer FastAPI does not ship: pages, tables, forms, navigation,
+dark mode and htmx swaps, composed as Jinja macros in the same codebase as your
+handlers.
 
-Nothing here needs a front-end toolchain. The stylesheet is compiled when fjkit
+**Your app has no front-end build step.** The stylesheet is compiled when fjkit
 is released, not when your app runs, so your repo has no `package.json`, no
-`node_modules` and no Tailwind binary.
+`node_modules` and no Tailwind binary. Every other rule in fjkit protects that
+one.
+
+## Install
+
+Requires Python 3.13+. The runtime dependencies are `fastapi`, `jinja2` and
+`pydantic`, and `fastapi` already requires `pydantic`.
+
+```bash
+uv add fjkit
+```
+
+## A working page
 
 ```python
 from pathlib import Path

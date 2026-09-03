@@ -38,7 +38,7 @@ mount_fjkit(app, config)`,
   {
     file: "app/features/tasks/router.py",
     lang: "python",
-    why: "Routers read the request, call the service, name a template. The handler itself returns nothing but data — @render turns it into the page, and the return annotation is what FastAPI reads for response_model, so one declaration describes both the page and the JSON. Option lists and variant maps are built here: a template prints what it is handed.",
+    why: "Routers read the request, call the service and name a template. The handler returns data: @render turns it into the page, and FastAPI reads the return annotation for response_model, so one declaration describes both the page and the JSON. Option lists and variant maps are built here, because a template prints what it is handed.",
     code: `router = APIRouter(tags=["tasks"])
 
 # Built once, not rebuilt per render.
@@ -113,8 +113,8 @@ def tasks_page(service: ServiceDep) -> BoardResponse:
  *
  * Routes answer with the fragments build_data.py rendered through the real
  * macros, so what htmx swaps in is fjkit's own markup. The task list is the
- * "database": mutations change it, then every response re-renders the whole
- * board — which is the pattern the lesson is teaching.
+ * "database": a mutation changes it, then every response re-renders the whole
+ * board, which is the pattern the lesson teaches.
  */
 const STATUSES = [
   { name: "Todo", variant: "secondary" },
@@ -130,9 +130,9 @@ const seed = () => [
 ];
 
 /* Three lessons show a board, so each gets its own id and its own rows. Two
-   elements answering to #demo-board would make hx-target ambiguous — htmx takes
-   the first match in the document, which is the kind of bug this page is
-   supposed to teach you to avoid. */
+   elements answering to #demo-board would make hx-target ambiguous: htmx takes
+   the first match in the document, which is the bug this page teaches you to
+   avoid. */
 const BOARDS = { "demo-board": seed(), "swap-board": seed(), "live-board": seed() };
 
 function renderRow(task, options = {}) {
@@ -164,8 +164,8 @@ function renderBoard(id = "demo-board", rowOptions = null) {
 (function mockServer() {
   const { route } = window.__tMock;
 
-  //: Which board a request belongs to, and how its rows should be wired on the
-  //: way back — the mock equivalent of a route knowing what it is re-rendering.
+  //: Which board a request belongs to, and how to wire its rows on the way back
+  //: — the mock equivalent of a route knowing what it is re-rendering.
   const boardOf = (request) => (BOARDS[request.query.get("board")] ? request.query.get("board") : "demo-board");
   const rowOptions = (request) => ({
     target: request.query.get("target") || "closest tr",
@@ -193,8 +193,8 @@ function renderBoard(id = "demo-board", rowOptions = null) {
     const id = boardOf(request);
     const task = BOARDS[id].find((t) => t.id === Number(match[1]));
     if (task) task.status = Math.min(task.status + 1, STATUSES.length - 1);
-    // The same state, rendered at whichever granularity the caller asked for:
-    // one row for a row-level swap, the whole board for the fjkit pattern.
+    // The same state at whichever granularity the caller asked for: one row for
+    // a row-level swap, the whole board for the fjkit pattern.
     if (request.query.get("as") === "row" && task) return { text: renderRow(task, rowOptions(request)) };
     return { text: renderBoard(id) };
   });
@@ -210,8 +210,8 @@ function renderBoard(id = "demo-board", rowOptions = null) {
     const list = BOARDS["live-board"];
     const hits = q ? list.filter((t) => (t.title + t.owner).toLowerCase().includes(q)) : list;
     if (!hits.length) return { text: DATA.live.results_empty };
-    // Search results update themselves row by row, so a match can be advanced
-    // without redrawing the list.
+    // Search results update row by row, so a match can be advanced without
+    // redrawing the list.
     const options = { target: "closest tr", swap: "outerHTML", query: "?board=live-board&as=row" };
     return { text: fill(DATA.live.results, { __ROWS__: hits.map((t) => renderRow(t, options)).join("") }) };
   });
@@ -230,7 +230,7 @@ function renderBoard(id = "demo-board", rowOptions = null) {
   });
 })();
 
-/* ------------------------------------------------------------ 04 · exchange */
+/* ----------------------------------------------------------- 02 · exchange */
 (function exchange() {
   const log = $("#dg-log");
   const live = $("#dg-live");
@@ -278,8 +278,8 @@ function renderBoard(id = "demo-board", rowOptions = null) {
   log.innerHTML = '<p data-empty>Nothing sent yet. Every request on this page lands here.</p>';
   window.__tMock.onExchange(entry);
 
-  /* The diagram is driven by htmx's own events, so it cannot describe a step
-     the request did not actually take. */
+  /* The diagram is driven by htmx's own events, so it cannot describe a step the
+     request did not take. */
   document.body.addEventListener("htmx:beforeRequest", () => { light(1); label.textContent = "request sent"; });
   document.body.addEventListener("htmx:beforeSwap", () => { light(3); label.textContent = "fragment received"; });
   document.body.addEventListener("htmx:afterSwap", () => {
@@ -291,7 +291,7 @@ function renderBoard(id = "demo-board", rowOptions = null) {
   light(0);
 })();
 
-/* ------------------------------------------------------ 05 · target & swap */
+/* ------------------------------------------------------ 03 · target & swap */
 (function targets() {
   const controls = $("#swap-controls");
   const host = $("#swap-live");
@@ -360,11 +360,11 @@ function renderBoard(id = "demo-board", rowOptions = null) {
     reset,
   );
 
-  /* `field_row("three")` is the right component and this file cannot call it —
+  /* `field_row("three")` is the right component, and this file cannot call it:
      these controls are built in the browser, not by a template. Writing its
-     utility classes out by hand here would be the exact cheat this site says
-     it does not do, so the shape is an attribute and brand.css carries it as a
-     labelled gap. */
+     utility classes out by hand here would be the cheat this site says it does
+     not do, so the shape is an attribute and brand.css carries it as a labelled
+     gap. */
   const rowEl = document.createElement("div");
   rowEl.setAttribute("data-field-row", "");
   rowEl.append(
@@ -376,8 +376,8 @@ function renderBoard(id = "demo-board", rowOptions = null) {
 
   function render() {
     // A row-level target needs a row-shaped response; #swap-board needs the
-    // whole board. The mock server answers whichever the query asks for, the
-    // way a real route would branch on what it was asked to re-render.
+    // whole board. The mock server answers whichever the query asks for, the way
+    // a real route branches on what it was asked to re-render.
     const rowScoped = state.target !== "#swap-board";
     const query =
       `?board=swap-board${rowScoped
@@ -411,7 +411,7 @@ function renderBoard(id = "demo-board", rowOptions = null) {
   render();
 })();
 
-/* ---------------------------------------------------------- 06 · triggers */
+/* ---------------------------------------------------------- 04 · triggers */
 (function triggers() {
   const searchField = $("#demo-search-field");
   searchField.innerHTML = DATA.live.search;
@@ -444,13 +444,13 @@ function renderBoard(id = "demo-board", rowOptions = null) {
         <div hx-get="/demo/status" hx-trigger="load, every 2s" hx-swap="innerHTML"></div>`;
       htmx.process(pollHost);
     } else {
-      // Removing the element is how you stop a poll — there is no timer to clear.
+      // Removing the element stops a poll. There is no timer to clear.
       pollHost.innerHTML = '<p>Stopped. Removing the element ends the poll.</p>';
     }
   });
 })();
 
-/* ---------------------------------------------------------- 07 · partials */
+/* ---------------------------------------------------------- 05 · partials */
 (function liveBoard() {
   const form = $("#demo-form");
   const host = $("#demo-board-host");
@@ -519,7 +519,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
   update();
 })();
 
-/* ---------------------------------------------------------- 08 · patterns */
+/* ---------------------------------------------------------- 10 · patterns */
 const PATTERNS = [
   {
     name: "Search as you type",
@@ -663,7 +663,7 @@ def delete_task(service: ServiceDep, task_id: int,
     tag: 'hx-trigger="load delay:2s"',
     doc: { label: "docs/#polling", href: "https://htmx.org/docs/#polling" },
     when: "<b>A job, an import, a build.</b> Refresh while it runs, and stop when it finishes.",
-    caption: "Polling that ends when the work does: while the job runs the partial re-arms itself, and the finished render simply carries no hx-trigger, so the last response is the one that stopped asking. hx-trigger=“every 2s” never stops on its own — the server has to answer 286, htmx's stop-polling status, or something has to remove the element. Either shape costs one request per interval per open tab, so keep the handler cheap and the interval honest; past a couple of seconds, reach for SSE rather than a shorter one.",
+    caption: "Polling that ends when the work does: while the job runs the partial re-arms itself, and the finished render carries no hx-trigger, so the last response is the one that stopped asking. hx-trigger=“every 2s” never stops on its own — the server has to answer 286, htmx's stop-polling status, or something has to remove the element. Either shape costs one request per interval per open tab, so keep the handler cheap and the interval honest. Below a couple of seconds, reach for SSE instead.",
     files: [
       {
         label: "jobs/_job.html",
@@ -907,7 +907,7 @@ def owner_field(service: ServiceDep, project: int | None = None) -> OwnerFieldRe
     });
 
     // The file tabs belong to the pattern, so they are rebuilt with it rather
-    // than hidden and reshown.
+    // than hidden and shown again.
     tabs.replaceChildren(...pattern.files.map((file, i) => {
       const tab = document.createElement("button");
       tab.type = "button";
@@ -923,7 +923,7 @@ def owner_field(service: ServiceDep, project: int | None = None) -> OwnerFieldRe
     tag.textContent = pattern.tag;
     when.innerHTML = pattern.when;
     caption.textContent = pattern.caption;
-    // Where this shape is documented upstream — htmx's own page, not a
+    // Where this shape is documented upstream: htmx's own page, not a
     // restatement of it here.
     doc.href = pattern.doc.href;
     doc.textContent = `htmx.org/${pattern.doc.label} ↗`;
@@ -933,7 +933,7 @@ def owner_field(service: ServiceDep, project: int | None = None) -> OwnerFieldRe
   show(0, 0);
 })();
 
-/* -------------------------------------------------------------- 09 · knob */
+/* -------------------------------------------------------------- 11 · knob */
 (function knob() {
   const hue = $("#hue");
   const chroma = $("#chroma");
@@ -959,10 +959,10 @@ def owner_field(service: ServiceDep, project: int | None = None) -> OwnerFieldRe
     button.title = preset.name;
     button.setAttribute("aria-label", preset.name);
     button.setAttribute("aria-pressed", String(preset.h === 275 && preset.c === 19));
-    // On a swatch the colour *is* the content, so it has to cover `.btn`'s 1px
+    // On a swatch the colour is the content, so it has to cover `.btn`'s 1px
     // border as well. That border is transparent, and inside a button group
-    // every button keeps its right edge — so painting only the background left
-    // a hairline of card between each pair of swatches and around the strip.
+    // every button keeps its right edge, so painting only the background left a
+    // hairline of card between each pair of swatches and around the strip.
     const swatch = `oklch(0.52 ${preset.c / 100} ${preset.h})`;
     button.style.background = swatch;
     button.style.borderColor = swatch;
@@ -1049,7 +1049,7 @@ def owner_field(service: ServiceDep, project: int | None = None) -> OwnerFieldRe
   apply();
 })();
 
-/* ------------------------------------------------------------- 10 · check */
+/* ------------------------------------------------------------- 12 · check */
 const SAMPLES = {
   bad: `{# The way you'd write it in any other Tailwind project #}
 <div class="grid gap-6 lg:grid-cols-[1fr_19rem]">
@@ -1086,7 +1086,7 @@ const SAMPLES = {
 
   $("#vocab-count").textContent = `${allowed.size} component classes`;
 
-  /* Ported from fjkit/cli/check.py — same patterns, same messages. */
+  /* Ported from fjkit/cli/check.py: same patterns, same messages. */
   const COLOUR_CHECKS = [
     [/\b(?:bg|text|border|ring|outline|fill|stroke|from|via|to|divide|shadow|accent|caret|decoration)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/g,
       "Tailwind palette hue — name a role instead (primary / muted / destructive / success …)"],

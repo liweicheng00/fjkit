@@ -1,20 +1,20 @@
-"""A message shown to the person who made *this* request.
+"""A message shown to the person who made the current request.
 
 Three layers deep, and this is the middle one:
 
 1. **The surface** — `ui/feedback.html`'s `toaster()` region and `toast()`
-   macro. Already core: `ui/shell.html` renders the region on every page
+   macro. Already core: `ui/shell.html` renders the region on every page,
    whether or not anything is in it.
 2. **Getting a message onto this response** — here.
-3. **Surviving a redirect** — `fjkit.flash`, which needs a signing secret and
-   is therefore a plugin rather than core.
+3. **Surviving a redirect** — `fjkit.flash`, a plugin rather than core because
+   it needs a signing secret.
 
-The split matters because layer 3 is not a superset of layer 2. `FlashPlugin`
-writes a signed cookie, because a redirect replaces the page and the document
-that would have shown the message is gone before it arrives. But the reverse is
-just as true: for a response that is *not* a redirect, a cookie is the wrong
-tool — it is a round trip for a message that is about to be rendered anyway. So
-the two are layered rather than merged, and flash queues into this module.
+Layer 3 is not a superset of layer 2. `FlashPlugin` writes a signed cookie,
+because a redirect replaces the page and the document that would have shown the
+message is gone before it arrives. The reverse holds too: on a response that is
+not a redirect, a cookie is a round trip for a message about to be rendered
+anyway. So the two are layered rather than merged, and flash queues into this
+module.
 
     from fjkit import messages
 
@@ -26,13 +26,12 @@ never has to know which:
     full page render   ->  the shell renders it, straight into the toaster
     htmx swap          ->  `HX-Trigger`, and the shell's listener raises it
 
-`HX-Trigger` rather than markup because a fragment has no toaster in it: an
-htmx swap replaces one region, and the region a toast belongs in is somewhere
-else on the page. It also works on a response that htmx will not swap at all —
-htmx reads `HX-Trigger` in `handleAjaxResponse` *before* it consults
-`responseHandling` for the status code, so a 422 or a 500 can still raise a
-toast on the page the user is looking at. That is the whole delivery mechanism
-for `fjkit.errors`.
+`HX-Trigger` rather than markup, because a fragment carries no toaster: an htmx
+swap replaces one region, and the region a toast belongs in is elsewhere on the
+page. It also works on a response htmx will not swap at all — htmx reads
+`HX-Trigger` in `handleAjaxResponse` before it consults `responseHandling` for
+the status code, so a 422 or a 500 can still raise a toast on the page the user
+is looking at. That is the whole delivery mechanism for `fjkit.errors`.
 
 A message is consumed by being **iterated**, not by being looked at. See
 `_Queue`.
@@ -81,7 +80,7 @@ class Message:
     category: Category = "info"
 
     def as_detail(self) -> dict[str, str]:
-        """The shape Basecoat's toaster constructor takes.
+        """Return the shape Basecoat's toaster constructor takes.
 
         `text` is renamed to `description` here rather than in the dataclass:
         the field is called `text` everywhere in fjkit and in `toast()`, and a
@@ -95,16 +94,15 @@ class Message:
 
 
 def queue(request: Request | None) -> _Queue:
-    """This request's messages. Created on first use.
+    """Return this request's messages, creating the queue on first use.
 
-    Lazily rather than in middleware on purpose: core adds no middleware, so an
-    app that never raises a message pays nothing — not a stack frame, not an
+    Lazy rather than built in middleware: core adds no middleware, so an app
+    that never raises a message pays nothing — not a stack frame, not an
     attribute.
 
-    Tolerates having no request at all, and that is not defensiveness for its
-    own sake: the docs-site builder and the render benchmark drive the same
-    templates with `request=None`, and the shell reads this on every page. A
-    render with nowhere to put a message is a render that has none.
+    `request` may be `None`. The docs-site builder and the render benchmark
+    drive the same templates with `request=None`, and the shell reads this on
+    every page; a render with nowhere to put a message has none.
     """
     state = getattr(request, "state", None)
     if state is None:
@@ -122,17 +120,17 @@ def add(request: Request, title: str, text: str | None = None, *, category: Cate
 
 
 def extend(request: Request, messages: Sequence[Message]) -> None:
-    """Queue several at once — what `FlashPlugin` uses to hand over its cookie."""
+    """Queue several at once. `FlashPlugin` uses it to hand over its cookie."""
     queue(request).extend(messages)
 
 
 def shown(request: Request) -> bool:
     """Whether this request's messages actually reached the browser.
 
-    True once they have been iterated into a template, or serialised into an
+    True once they have been iterated into a template or serialised into an
     `HX-Trigger`. `FlashPlugin` reads it to decide whether to clear its cookie:
-    a message that was queued but never rendered has not been shown, and
-    clearing it would lose it.
+    a message queued but never rendered has not been shown, and clearing it
+    would lose it.
     """
     return bool(getattr(request.state, _SHOWN, False))
 
@@ -142,10 +140,10 @@ def trigger_header(request: Request, existing: str | None = None) -> str | None:
 
     Shaped as `{"fjkit:toast": {"messages": [...]}}`.
 
-    Merges rather than replaces. A handler may already have set `HX-Trigger` for
-    its own event, and dropping it because a toast happened to be queued would
-    be a bug that only shows up when both are in play. htmx accepts either a
-    bare event name or a JSON object, so a plain string is promoted to
+    Merges rather than replaces. A handler may already have set `HX-Trigger`
+    for its own event, and dropping it because a toast happened to be queued is
+    a bug that surfaces only when both are in play. htmx accepts a bare event
+    name as well as a JSON object, so a plain string is promoted to
     `{"<name>": null}` before ours is added.
     """
     pending = getattr(request.state, _SLOT, None)
@@ -168,7 +166,7 @@ def trigger_header(request: Request, existing: str | None = None) -> str | None:
     # `{"messages": [...]}` and not the bare list, because htmx unwraps the two
     # differently: a plain object becomes `event.detail`, while anything else —
     # an array included — is wrapped as `{value: …}`. Sending an object keeps
-    # the payload the shape the listener reads, instead of making the shell
+    # the payload in the shape the listener reads, rather than making the shell
     # depend on a rule inside a vendored file.
     events[TOAST_EVENT] = {"messages": [message.as_detail() for message in pending.drain()]}
     return json.dumps(events, separators=(",", ":"))
@@ -182,12 +180,12 @@ class _Queue:
     whether there is anything to show is not showing it.
 
     That distinction is load-bearing for `FlashPlugin`, which clears its cookie
-    only once the message actually reached a page. A page load fires more
-    requests than the page — an htmx poll, a prefetch — and "this request
-    carried the cookie" would let any of them eat the message. "A render
-    happened" is not enough either: an htmx swap renders a partial, and a
-    partial has no toaster in it. Django's messages framework draws the line in
-    the same place, for the same reason.
+    only once the message reached a page. A page load fires more requests than
+    the page — an htmx poll, a prefetch — and "this request carried the cookie"
+    would let any of them eat the message. "A render happened" is not enough
+    either: an htmx swap renders a partial, and a partial carries no toaster.
+    Django's messages framework draws the line in the same place, for the same
+    reason.
     """
 
     __slots__ = ("_messages", "_request")
@@ -203,9 +201,9 @@ class _Queue:
         self._messages.extend(messages)
 
     def drain(self) -> tuple[Message, ...]:
-        """Take them for delivery down a channel that is not a template.
+        """Take the messages for delivery down a channel that is not a template.
 
-        Emptying the queue is what stops a message being delivered twice when a
+        Emptying the queue stops a message being delivered twice when a
         response both carries an `HX-Trigger` and renders a toaster.
         """
         self._mark()

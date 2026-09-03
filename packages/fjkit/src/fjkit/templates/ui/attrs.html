@@ -1,15 +1,15 @@
 {#
-  attrs() — render pass-through HTML attributes from macro kwargs.
+  attrs(mapping) — renders pass-through HTML attributes from macro kwargs.
 
-  Underscores become dashes, so callers write Python-ish keywords and get HTML:
+  Underscores become dashes, so callers write Python keyword arguments:
 
       {{ button("Save", hx_post="/tasks", hx_target="#board") }}
       -> <button class="btn" hx-post="/tasks" hx-target="#board">Save</button>
 
-  `true` renders a bare boolean attribute, `none`/`false` render nothing.
-  This is the seam that keeps htmx out of the macro definitions: no component
-  needs to know an hx-* attribute exists, and adding a new one never requires
-  touching fjkit.
+  `true` renders a bare boolean attribute; `none` and `false` render nothing.
+
+  This seam keeps htmx out of the macro definitions: no component needs to know
+  an `hx-*` attribute exists, and adding one never changes fjkit.
 #}
 {%- macro attrs(mapping) -%}
 {%- for key, value in mapping.items() if value is not none and value is not false -%}

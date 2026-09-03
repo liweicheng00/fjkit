@@ -1,5 +1,4 @@
-"""Build the documentation site — five pages in two languages, and the site is
-a fjkit app.
+"""Build the documentation site: five pages in two languages, rendered by fjkit.
 
     uv run python packages/fjkit/docs/workbench/build.py
 
@@ -21,29 +20,28 @@ Output, all under `docs/` at the repo root, which is what GitHub Pages serves:
                      both languages, because only the prose is translated
 
 **Every link is relative.** GitHub Pages serves this from a project subpath
-(`https://…/fjkit/`), so an absolute `/assets/fjkit.css` would 404 there while
-working perfectly from a local server rooted at `docs/`. The English pages name
-`assets`, the Chinese pages in `zh/` name `../assets`, and `url_for` returns the
-hop between the two builds rather than a path from the root.
+(`https://…/fjkit/`), so an absolute `/assets/fjkit.css` 404s there while
+working from a local server rooted at `docs/`. The English pages name `assets`,
+the Chinese pages in `zh/` name `../assets`, and `url_for` returns the hop
+between the two builds rather than a path from the root.
 
-**The site is built the way the docs tell you to build one.** `base.html`
-extends `ui/shell.html`; the navigation is `sidebar` + `sidebar_link`; the
-sections are `page_header`, `section`, `card`, `table`, `grid` and `stack`. No
-utility classes, no hand-written chrome — `tests/test_docs_site.py` runs
-`fjkit check` over `templates/` and fails the build if any appears. When the
-kit cannot say something, that shows up here first, which is the point of
-eating your own cooking.
+The site is built the way the docs tell you to build one: `base.html` extends
+`ui/shell.html`; the navigation is `sidebar` + `sidebar_link`; the sections are
+`page_header`, `section`, `card`, `table`, `grid` and `stack`. No utility
+classes and no hand-written chrome — `tests/test_docs_site.py` runs
+`fjkit check` over `templates/` and fails the build if any appears. Whatever
+the kit cannot say shows up here first.
 
-Two adaptations turn a server-rendered app into a static site, and both use
-knobs `FjkitConfig` already has rather than a fork of the shell:
+Two adaptations turn a server-rendered app into a static site, both using knobs
+`FjkitConfig` already has rather than a fork of the shell:
 
-* `static_url="assets"` — so `fjkit_static('dist/fjkit-<pack>.css')` resolves to a
+* `static_url="assets"` — `fjkit_static('dist/fjkit-<pack>.css')` resolves to a
   path next to the page instead of to a mounted route. The static tree is
   copied under `assets/` with the same shape `mount_fjkit()` serves.
 * `globals={"url_for": …, "is_active": …}` — the kit's versions call
   `request.url_for`, and a build has no request. These take the same
-  `(request, name)` signature and read `request.route`, which is a plain object
-  the page's context supplies. Route *names* stay the currency, so `nav_links`
+  `(request, name)` signature and read `request.route`, a plain object the
+  page's context supplies. Route *names* stay the currency, so `nav_links`
   and `sidebar_link` work unmodified.
 
 Everything else is the package: the shell's `<head>`, its theme flash-guard,
@@ -74,8 +72,8 @@ ASSETS = HERE / "assets"
 DATA = HERE / "data.json"
 
 STATIC = PACKAGE / "static"
-#: The docs site is one build of one style pack — the default, so what a
-#: reader sees is what an app gets before it touches `FjkitConfig.style`.
+#: One build, one style pack — the default, so a reader sees what an app gets
+#: before it touches `FjkitConfig.style`.
 DOCS_STYLE = DEFAULT_STYLE
 CSS = STATIC / "dist" / f"fjkit-{DOCS_STYLE}.css"
 HTMX = STATIC / "vendor" / "htmx" / "htmx.min.js"
@@ -89,16 +87,15 @@ OUT_ASSETS = OUT / "assets"
 
 DEMO = REPO / "examples" / "fjkit-demo"
 
-#: The five pages, in reading order. Both the sidebar and `url_for` are built
-#: from this, so a page added here appears in the navigation of the others and
-#: becomes addressable by name without touching a template. The first entry is
-#: `index.html`, because that is what GitHub Pages serves to someone arriving
-#: with no idea what this is.
+#: The five pages, in reading order. The sidebar and `url_for` are both built
+#: from this, so a page added here appears in the others' navigation and becomes
+#: addressable by name without touching a template. The first entry is
+#: `index.html`, which is what GitHub Pages serves to someone arriving with no
+#: idea what this is.
 #:
 #: `en` and `zh` carry only what differs between the two builds — the label in
-#: the rail, the <title>, the meta description. Everything structural (route,
-#: file name, icon) is shared, so the two languages cannot drift into different
-#: navigations.
+#: the rail, the <title>, the meta description. Route, file name and icon are
+#: shared, so the two languages cannot drift into different navigations.
 PAGES = [
     {
         "route": "introduction",
@@ -211,12 +208,12 @@ PAGES = [
 
 ROUTES = {page["route"]: page["file"] for page in PAGES}
 
-#: The two builds. `dir` is where the pages land under `docs/` and `static` is
-#: what `fjkit_static` prefixes — one level up for the pages in `zh/`, because
-#: GitHub Pages serves plain files and every link on this site is relative.
-#: `templates` is the directory the page templates are read from, so English
-#: and Chinese share `base.html`, `_parts.html` and every `ui/` macro, and
-#: differ only in the prose.
+#: The two builds. `dir` is where the pages land under `docs/`; `static` is what
+#: `fjkit_static` prefixes — one level up for the pages in `zh/`, because GitHub
+#: Pages serves plain files and every link on this site is relative.
+#: `templates` is the directory the page templates are read from, so English and
+#: Chinese share `base.html`, `_parts.html` and every `ui/` macro, and differ
+#: only in the prose.
 LANGS = [
     {
         "code": "en",
@@ -241,8 +238,8 @@ LANGS = [
 LANG_BY_CODE = {lang["code"]: lang for lang in LANGS}
 
 #: The chrome around the prose: rail headings, the footer, and the label on the
-#: link to the other language. A page template never writes these, so a new
-#: page is translated by translating one file.
+#: link to the other language. A page template never writes these, so a new page
+#: is translated by translating one file.
 STRINGS = {
     "en": {
         "sidebar_label": "Documentation",
@@ -252,11 +249,8 @@ STRINGS = {
         "other_language": "中文",
         "footer_source": "source and issues",
         "github_label": "fjkit on GitHub",
-        #: Three fragments rather than one string with placeholders: the two
-        #: gaps are filled with `kbd()`, which yields Markup, and splitting the
-        #: sentence keeps the template free of `|safe`.
-        #: The request diagram's own labels. One SVG, two languages: the
-        #: geometry has no business being copied for a translation.
+        #: The request diagram's own labels. One SVG, two languages — copying
+        #: the geometry to translate it would leave two sets of coordinates.
         "diagram": {
             "alt": (
                 "A browser sends POST /tasks with HX-Request headers; the FastAPI route calls the "
@@ -273,6 +267,29 @@ STRINGS = {
             "response": '<div id="board">…</div> — a fragment, not a page',
             "swap": "swap: outerHTML",
         },
+        #: The shell diagram's labels. Block names, tag names and file names
+        #: stay out of here on purpose: they are code, and code is not
+        #: translated — only the notes beside them are.
+        "shell": {
+            "alt": (
+                "The skeleton ui/shell.html renders: a <head> carrying the title, the theme "
+                "flash-guard and the package's own stylesheet and scripts; a <body> holding the "
+                "optional sidebar block, a wrapper with header, main and footer, and the toaster. "
+                "The highlighted regions are the blocks an app fills."
+            ),
+            "file": "every page extends this",
+            "theme": "theme flash-guard — sets .dark before the first paint",
+            "head_note": "your own stylesheet and meta tags",
+            "sidebar_1": "empty by default.",
+            "sidebar_2": "fill it and the shell",
+            "sidebar_3": "grows a side column.",
+            "wrapper": "the content column",
+            "content_note": "your page — the only block most pages fill",
+            "toast_note": "always rendered, so a swap can still raise a message",
+        },
+        #: Three fragments rather than one string with placeholders: the two
+        #: gaps are filled with `kbd()`, which yields Markup, and splitting the
+        #: sentence keeps the template free of `|safe`.
         "footer_note": [
             "This site is a fjkit app: it extends ",
             " and passes ",
@@ -303,6 +320,23 @@ STRINGS = {
             "response": '<div id="board">…</div>——一段 fragment，不是一頁',
             "swap": "swap: outerHTML",
         },
+        "shell": {
+            "alt": (
+                "ui/shell.html 渲染出來的骨架：<head> 裡有標題、主題防閃爍腳本，"
+                "以及套件自己的 stylesheet 與腳本；<body> 裡有可選的 sidebar block、"
+                "包著 header／main／footer 的容器，還有 toaster。"
+                "標成品牌色的區塊，就是 app 自己要填的 block。"
+            ),
+            "file": "每一頁都 extends 這個",
+            "theme": "主題防閃爍——第一次繪製前就設好 .dark",
+            "head_note": "放你自己的 stylesheet 與 meta",
+            "sidebar_1": "預設是空的。",
+            "sidebar_2": "填了之後，外殼會",
+            "sidebar_3": "多長出一欄側欄。",
+            "wrapper": "內容欄",
+            "content_note": "你的頁面——多數頁面只填這一個 block",
+            "toast_note": "一直都在，所以一次 swap 也叫得出訊息",
+        },
         "footer_note": [
             "這個站本身就是一支 fjkit app：它 extends ",
             "，而且通過 ",
@@ -311,75 +345,9 @@ STRINGS = {
     },
 }
 
-#: Lesson 06 ("No HX-Request") quotes one route answering twice. Captured from
-#: the demo — `GET /tasks/board?status=doing`, with and without the header —
-#: rather than replayed during the build: the seeded rows carry timestamps, so a
-#: live capture would rewrite `docs/` on every run and make the built site
-#: unreviewable in a diff. `test_docs_site.py` checks that the two routes quoted
-#: here are still the ones the demo declares.
-NEGOTIATION = {
-    "route": """\
-@router.get("/tasks", name="tasks_page")
-@render("tasks/page.html", partial="tasks/_board.html")
-def tasks_page(service: ServiceDep, status: Status | None = None) -> BoardResponse:
-    # A page route: it names a page and a partial, so it always has markup
-    # waiting. A navigation gets the page; htmx gets the board.
-    return _board(service, status)
-
-
-@router.get("/tasks/board", name="tasks_board")
-@render("tasks/_board.html")
-def tasks_board(service: ServiceDep, status: Status | None = None) -> BoardResponse:
-    # A fragment route: it names only a partial. htmx gets the board, and
-    # anyone else gets BoardResponse as JSON — the API, at no extra cost.
-    return _board(service, status)""",
-    "json": """\
-$ curl -s localhost:8000/tasks/board?status=doing
-
-content-type: application/json
-vary: HX-Request
-
-{
-  "tasks": [
-    {
-      "id": 4,
-      "title": "Turn off auto_reload in the prod image",
-      "status": "doing",
-      "priority": "normal",
-      "owner": "kai",
-      "created_at": "2026-08-18T19:38:42.562805Z",
-      "status_variant": "info",
-      "priority_variant": "secondary"
-    }
-  ],
-  "stats": {"total": 8, "todo": 4, "doing": 2, "done": 2, "done_pct": 25},
-  "owners": ["kai", "mei"],
-  "active_status": "doing",
-  "filter_query": "?status=doing"
-}""",
-    "html": """\
-$ curl -s -H 'HX-Request: true' localhost:8000/tasks/board?status=doing
-
-content-type: text/html; charset=utf-8
-vary: HX-Request
-
-<div id="board">
-  <div class="grid gap-6 lg:grid-cols-[1fr_19rem]">
-    <form class="card" hx-post="/tasks" hx-target="#board" hx-swap="outerHTML">
-      ...
-    </form>
-    <table class="table">
-      <tr><td>Turn off auto_reload in the prod image</td>
-          <td><span class="badge" data-variant="info">Doing</span></td>
-      ...
-    </table>
-  </div>
-</div>""",
-}
-
-#: Copied preserving the path `mount_fjkit()` serves them under, so `fjkit_static`
-#: resolves the same string in the shell whether it is running in an app or
-#: being written to disk here.
+#: Copied under the path `mount_fjkit()` serves them from, so `fjkit_static`
+#: resolves the same string in the shell whether it runs in an app or writes to
+#: disk here.
 VENDORED = [
     (CSS, f"dist/fjkit-{DOCS_STYLE}.css", "uv run fjkit build-css"),
     (HTMX, "vendor/htmx/htmx.min.js", "uv run python packages/fjkit/scripts/vendor_ui.py"),
@@ -393,17 +361,19 @@ VENDORED = [
 
 
 def url_for(request, name: str, /, **path_params) -> str:
-    """Static-site stand-in for the kit's `url_for`.
+    """Resolve a docs route name to a link, standing in for the kit's `url_for`.
 
     Same signature, so `nav_links`, `sidebar_link` and `brand` are called
-    exactly as an app calls them. A name may carry a fragment — `learn#wiring`
-    — which is how the in-page rail addresses a section without a second
-    mechanism, and it may carry a language — `zh:learn` — which is how the
-    language switch addresses the same page in the other build.
+    exactly as an app calls them. `name` may carry a fragment — `learn#wiring`,
+    which is how the in-page rail addresses a section — and a language —
+    `zh:learn`, which is how the language switch addresses the same page in the
+    other build.
 
-    Every href this returns is **relative to the page being written**, because
-    GitHub Pages serves these files from a project subpath
-    (`/fjkit/`, not `/`) and an absolute `/learn.html` would leave the site.
+    Every href returned is **relative to the page being written**: GitHub Pages
+    serves these files from a project subpath (`/fjkit/`, not `/`), so an
+    absolute `/learn.html` leaves the site.
+
+    Raises `KeyError` for an unknown route or language.
     """
     lang_code, _, rest = name.rpartition(":")
     route, _, fragment = rest.partition("#")
@@ -425,10 +395,12 @@ def url_for(request, name: str, /, **path_params) -> str:
 
 
 def is_active(request, name: str) -> bool:
-    """True for the page being rendered. Section anchors are never active at
-    build time — the scroll-spy in common.js owns that, because which section
-    you are looking at is not something a static file can know. Neither is the
-    link to the other language: it always points somewhere you are not."""
+    """Report whether `name` is the page being rendered.
+
+    A section anchor is never active at build time: which section you are
+    looking at is the scroll-spy's to decide, in common.js. Neither is the link
+    to the other language, which always points somewhere you are not.
+    """
     if "#" in name or ":" in name:
         return False
     return getattr(request, "route", None) == name
@@ -440,8 +412,8 @@ def build() -> int:
             print(f"missing {path}\nGenerate it first:  {hint}", file=sys.stderr)
             return 2
 
-    # Renders every component preview through the real Environment. A subprocess
-    # so a failure in it is a failure here, with its own traceback.
+    # Renders every component preview through the real Environment. A subprocess,
+    # so a failure in it fails the build here with its own traceback.
     result = subprocess.run([sys.executable, str(HERE / "build_data.py")])
     if result.returncode != 0:
         return result.returncode
@@ -457,23 +429,23 @@ def build() -> int:
             shutil.copyfile(path, OUT_ASSETS / path.name)
 
     # The previews as a script rather than a fetch()ed .json: a page opened from
-    # the filesystem cannot fetch a sibling file, and the docs should survive
+    # the filesystem cannot fetch a sibling file, and the docs have to survive
     # being downloaded and read offline.
     data = json.dumps(json.loads(DATA.read_text(encoding="utf-8")), ensure_ascii=False, separators=(",", ":"))
     (OUT_ASSETS / "data.js").write_text(f"const DATA = {data};\n", encoding="utf-8")
 
     written = []
     for lang in LANGS:
-        # One Environment per language, because `static_url` is the only thing
-        # that differs and it is bound into `fjkit_static` when the Environment
-        # is built. The pages in `zh/` sit one directory deeper, so every asset
-        # they name has to climb back out.
+        # One Environment per language. `static_url` is the only difference, and
+        # it is bound into `fjkit_static` when the Environment is built. The
+        # pages in `zh/` sit one directory deeper, so every asset they name has
+        # to climb back out.
         env = build_environment(
             FjkitConfig(
                 template_dir=TEMPLATES,
                 static_url=lang["static"],
                 # Explicit, so the pack the shell links to and the file copied
-                # into `assets/dist/` are the same one word.
+                # into `assets/dist/` come from one word.
                 style=DOCS_STYLE,
                 auto_reload=False,
                 globals={"url_for": url_for, "is_active": is_active},
@@ -484,21 +456,20 @@ def build() -> int:
         strings = STRINGS[lang["code"]]
 
         for page in PAGES:
-            # The language's own label, title and description merged over the
+            # The language's label, title and description, merged over the
             # shared route data, so a template says `page.title` either way.
             merged = {k: v for k, v in page.items() if k not in LANG_BY_CODE} | page[lang["code"]]
             html = env.get_template(f"{lang['templates']}{page['route']}.html").render(
-                # Stands in for Starlette's Request. The macros only ever hand
-                # it back to `url_for`/`is_active`, so a route name and the
+                # Stands in for Starlette's Request. The macros only hand it
+                # back to `url_for`/`is_active`, so a route name and the
                 # language being written are all it needs.
                 request=SimpleNamespace(route=page["route"], lang=lang["code"]),
                 pages=[{k: v for k, v in p.items() if k not in LANG_BY_CODE} | p[lang["code"]] for p in PAGES],
                 page=merged,
                 lang=lang,
                 t=strings,
-                wire=NEGOTIATION,
                 # Already in this language and already flat: the Cheatsheet page
-                # loops and prints, and never picks a string of its own.
+                # loops and prints, and picks no string of its own.
                 sheet=cheatsheet.for_lang(lang["code"]),
             )
             out = out_dir / page["file"]
