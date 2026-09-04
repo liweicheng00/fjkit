@@ -388,6 +388,7 @@
     <input class="input" type="range" id="{{ field_id }}" name="{{ name }}"
            value="{{ value }}" min="{{ min }}" max="{{ max }}" step="{{ step }}"
            style="--slider-value: {{ filled }}%"
+           {%- if label and output %} oninput="this.parentElement.querySelector('output').value = this.value"{% endif %}
            {%- if error %} aria-invalid="true"{% endif %}
            {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
            {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>

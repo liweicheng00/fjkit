@@ -198,7 +198,10 @@ structure = {
 }
 
 # ---------------------------------------------------------------- table + form
-TABLE = '{% from "ui/table.html" import table, cell, row_actions %}'
+TABLE = (
+    '{% from "ui/table.html" import table, cell, row_actions, select_cell,'
+    ' select_count, pagination, page_size %}'
+)
 COLUMNS = (
     '[{"label": "Task"}, {"label": "Status"}, {"label": "Owner"}, '
     '{"label": "Points", "align": "end"}, {"width": "min"}]'
@@ -220,6 +223,27 @@ row_src = "".join(
     for title, status, variant, owner, points in ROWS
 )
 
+# 0.4's two additions to the same three rows. The sorted spec sorts on Task and
+# offers the other columns; the select spec puts the batch column in front of it.
+SORTED_COLUMNS = (
+    '[{"label": "Task", "sort": "asc", "sort_url": "/tasks?o=-title"}, '
+    '{"label": "Status", "sort_url": "/tasks?o=status"}, '
+    '{"label": "Owner", "sort_url": "/tasks?o=owner"}, '
+    '{"label": "Points", "align": "end", "sort_url": "/tasks?o=points"}, {"width": "min"}]'
+)
+SELECT_COLUMNS = '[{"select": true}, ' + COLUMNS[1:]
+select_row_src = "".join(
+    f"<tr>{{{{ select_cell({n}, label=\"Select {title}\") }}}}"
+    f"{{{{ cell('{title}', tone='strong') }}}}"
+    f"{{{{ cell(badge('{status}', variant='{variant}')) }}}}"
+    f"{{{{ cell('{owner}', tone='muted') }}}}"
+    f"{{{{ cell({points}, numeric=true, align='end') }}}}"
+    "{% call row_actions() %}"
+    f"{{{{ button('', variant='ghost', size='icon-xs', icon_name='trash', aria_label='Delete {title}') }}}}"
+    "{% endcall %}</tr>"
+    for n, (title, status, variant, owner, points) in enumerate(ROWS, start=1)
+)
+
 tables = {
     "filled": render(
         f"{TABLE}{DATA}{BUTTON}{{% call table({COLUMNS}, rows=[1, 2, 3]) %}}{row_src}{{% endcall %}}"
@@ -228,6 +252,44 @@ tables = {
         f'{TABLE}{{% call table({COLUMNS}, rows=[], empty_title="Nothing here", '
         f'empty_description="No task matches this filter.", empty_icon="list") %}}{{% endcall %}}'
     ),
+    "sorted": render(
+        f"{TABLE}{DATA}{BUTTON}"
+        f'{{% call table({SORTED_COLUMNS}, rows=[1, 2, 3], target="#board") %}}{row_src}{{% endcall %}}'
+    ),
+    "select": render(
+        f"{TABLE}{DATA}{BUTTON}"
+        '{% from "ui/layout.html" import row %}'
+        "{% call row(gap=2) %}{{ select_count() }}"
+        '{{ button("Archive selected", variant="secondary", size="xs", icon_name="archive") }}'
+        "{% endcall %}"
+        f"{{% call table({SELECT_COLUMNS}, rows=[1, 2, 3]) %}}"
+        f"{select_row_src}{{% endcall %}}"
+    ),
+}
+
+# ---------------------------------------------------------------- pagination
+# Five states rather than two number knobs: what the strip has to be judged on
+# is where it elides, and that only shows up at particular page numbers.
+PAGE_URL = '"/records?o=-updated"'
+pagination = {
+    "first": render(f"{TABLE}{{{{ pagination(1, 12, {PAGE_URL}, total=137, per_page=12) }}}}"),
+    "middle": render(f"{TABLE}{{{{ pagination(6, 12, {PAGE_URL}, total=137, per_page=12) }}}}"),
+    "last": render(f"{TABLE}{{{{ pagination(12, 12, {PAGE_URL}, total=137, per_page=12) }}}}"),
+    "few": render(f"{TABLE}{{{{ pagination(2, 3, {PAGE_URL}, total=31, per_page=12) }}}}"),
+    "plain": render(f'{TABLE}{{{{ pagination(6, 12, {PAGE_URL}, target="#records") }}}}'),
+}
+
+# ---------------------------------------------------------------- page size
+# Two previews, because the two paths differ in exactly one visible way: the
+# submit button. The htmx one keeps it inside `<noscript>`, so a reader looking
+# at "what it emits" sees the element that makes the control work with
+# scripting off — which is the whole argument for the macro being a form.
+page_sizes = {
+    "htmx": render(
+        f'{TABLE}{{{{ page_size("/records", 12, options=[12, 25, 50, 100], '
+        'keep={"o": "-updated"}, target="#records") }}'
+    ),
+    "plain": render(f'{TABLE}{{{{ page_size("/records", 25, options=[12, 25, 50, 100]) }}}}'),
 }
 
 FORM = (
@@ -577,6 +639,8 @@ OUT.write_text(
             "layouts": layouts,
             "structure": structure,
             "tables": tables,
+            "pagination": pagination,
+            "page_sizes": page_sizes,
             "forms": forms,
             "live": live,
             "gallery": gallery,

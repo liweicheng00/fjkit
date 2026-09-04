@@ -1752,3 +1752,226 @@ inline style（檢查器看不到）。
 另一半（滿版、無 header、無 nav）現在就能用 shell 的 block 做到，該 app 也已經做到。
 在只有一個真實呼叫點的時候多發一支 shell 變體，會多出一份要跟 `ui/shell.html` 同步的
 `<head>`。第二個頁面需要同一個形狀時再回來看這一節。
+
+---
+
+## 0.4 資料表：可排序表頭、分頁、批次選取（2026-09-04）
+
+路線圖 0.4 那一格的三項全部落地，`ui/table.html` 從 79 行變成 372 行。
+`examples/fjkit-demo` 多一個 **Records** 功能，那是這一版的驗收頁；
+`packages/fjkit-admin` 還不存在，它是下一輪的事（`goal/admin-investigation.md` §6 Phase 1）。
+
+### 一、三個 macro，一條共同的分工線
+
+| 新東西 | 形狀 |
+|---|---|
+| 可排序表頭 | 欄位規格多兩個鍵：`sort`（`asc`／`desc`／none）與 `sort_url` |
+| 分頁 | `pagination(page, pages, url, param, total, per_page, target, swap, push_url, window, label)` |
+| 批次選取 | 欄位規格的 `select: true`（表頭）＋ `select_cell`（資料列）＋ `select_count`（讀數）＋ `select_scripts` |
+
+**三者都不自己組網址。** `sort_url` 與 `pagination(url=…)` 都由路由給，理由是同一條：
+query string 歸路由管，因為只有它知道現在開著哪些篩選、哪個參數帶排序、
+點已排序的那一欄是要反轉而不是重新套用。macro 猜出來的答案在「一頁上有兩個篩選」
+時就是錯的。這條線在 demo 裡是 `features/records/schemas.py` 的 `columns()` 與
+`page_url()` 兩個純函式，測試直接讀它們。
+
+**三者都先是連結，才是 swap。** 每個表頭與每個頁碼都渲染真的 `href`，
+`target=` 才疊上 `hx-get`／`hx-target`／`hx-swap`／`hx-push-url`。
+排序與頁碼是一張清單裡最常被收進書籤、最常被貼給同事的兩件事，
+所以關掉 JavaScript 之後它們必須還在。`test_records.py` 兩邊都斷言
+每個 `hx-get` 旁邊的 `href` 帶著同一個網址。
+
+### 二、`aria-sort` 與箭頭由同一個值決定
+
+`_ARIA_SORT` 與 `_SORT_ICON` 兩張表都用 `sort` 當鍵。這支元件最常見的壞法是
+**箭頭朝上而 `aria-sort` 說 descending**——review 看不出來，畫面上是錯的。
+`test_the_arrow_and_aria_sort_say_the_same_thing` 對兩個方向各斷言一次。
+
+第三個狀態（可排序、但目前不是排序中的那一欄）不在任何一張表裡，
+落到 `aria-sort="none"` 加雙頭 chevron。沒有它，可排序的欄位跟固定的欄位
+在有人點下去之前長得一模一樣。
+
+### 三、`pagination` 在 `pages <= 1` 時不渲染
+
+跟 `table` 自己擁有空狀態同一個理由：只有一頁時那條「1」加兩個灰掉的箭頭
+什麼都沒說，而不這樣做的話每個呼叫端都要自己寫一次 `{% if pages > 1 %}`。
+
+走不動的那個箭頭渲染成 `disabled` 的 `<button>`，不是沒有 `href` 的 `<a>`。
+**沒有 `href` 的 anchor 完全不進 tab 順序**——箭頭會從鍵盤上消失，
+而不是告訴使用者它現在不能用。
+
+首末頁永遠顯示，中間跳號用省略號，所以九頁與九千頁的長度一樣。
+`test_the_strip_is_a_fixed_width_however_many_pages_there_are` 對 9,000 頁斷言
+只出現 7 個頁碼連結。
+
+### 四、`role="checkbox"` 是寫給 Basecoat 看的
+
+原生 `<input type="checkbox">` 的隱含 role 本來就是 checkbox，寫出來是多餘的——
+但 Basecoat 的 table 規則選在它上面：`[&:has([role=checkbox])]:pe-0`，
+用來把只放一個核取方塊那一欄的尾端內距拿掉。同一份 CSS 裡的
+`tr { data-[state=selected]:bg-muted }` 則是選到的列上色的來源，兩者都是
+上游已經預留給批次選取欄的位置，不是我們發明的約定。
+
+### 五、`js/select.js`——第四支自己寫的 JS，逐頁載入（§11 第 3 條，已取得裁決）
+
+2,252 bytes gzip，由 `select_scripts()` 逐頁載入，**不進 shell**，
+所以 §7「每頁預設載入」那條一個位元組都沒動。形狀跟 `reveal.js`／`multiselect.js`
+完全一樣：從 `document` 委派、狀態每次都從 DOM 讀、不快取任何東西。
+
+**為什麼非有不可**：表頭那顆核取方塊要顯示的第三個狀態是 `indeterminate`，
+那是一個**只有 DOM property、沒有對應 HTML 屬性**的狀態——伺服器渲染不出來。
+markup 能說的都讓 macro 說了，剩下的才在這裡。
+
+**選取是用 name 當鍵，不是用 table。** name 就是這些方塊送出去的欄位名，
+它本來就決定了哪些值會落進同一個請求；共用一個 name 的兩張表對伺服器來說是同一份選取，
+在這裡也就是同一份。要兩份獨立選取就給兩個 name，反正本來也得這樣。
+
+**兩個字串都寫在標記裡**（`data-fjkit-select-label`／`-zero`），
+所以這支 JS 裡一個英文字都沒有，翻譯頁面能翻譯它們。
+
+**swap 之後不做任何對帳**：新 markup 就是答案。`htmx:load` 掃一遍即可，
+而那件事本身也證明了不需要對帳——瀏覽器實測裡，排序 swap 之後讀數自動回到
+「None selected」、`indeterminate` 回到 false，因為那是一份全新的、沒有勾選的表格。
+
+### 六、demo 的驗收頁是新開的，不是改 Tasks
+
+Records 是一個新功能（`features/records/`＋`templates/records/`＋`test_records.py` 36 條），
+137 列、每頁 12 列、12 頁。**不改 Tasks 板是刻意的**：
+`test_parity.py` 對每個 board 探針比對 `hx_attrs`／`ids`／`row_count` 的完整清單，
+在既有頁面上加三個功能等於要動 `BOARD_HX_ATTRS` 與 baseline，
+而那份 baseline 守的正是「新功能不得讓語意內容倒退」。新路由沒有探針，一條都不用改。
+
+服務層三個決定，每一個都是「壞掉的時候看起來是對的」那一類：
+
+- **排序的 key 帶 `-id` 破平手。** 兩列 owner 相同時若在兩次請求之間互換位置，
+  分頁就會靜靜地漏掉一列、重複另一列。
+  `test_no_row_is_lost_or_repeated_across_the_pages` 走完 12 頁比對 137 個名字。
+- **頁碼在服務層夾住，並且回傳夾過的值。** `?page=900` 是過期書籤，不值得一個 404，
+  而用空表格回答它既沒給資料也沒給解釋。
+- **未知的 `o=` 退回預設順序，不是 422。** 同樣的理由：那是別人存的網址。
+
+批次動作用 `hx-include="[data-fjkit-select]"` 收選取。htmx 跟表單一樣會略過
+沒勾的核取方塊，所以沒有任何地方維護一份清單、也沒有隱藏欄位。
+
+### 七、CSS 體積
+
+量法照 `centered` 那次：把 `ui/table.html` 退回 HEAD 重建一次、再放回來重建一次。
+
+| 項目 | raw | gzip |
+|---|---|---|
+| 0.4 的 `ui/table.html`（八個包一致） | +166 | +46〜+52 |
+
+八個包現在 24.2–24.8 KB gzip，上限 28 KB。增量這麼小是因為新表頭與分頁條
+只用到 `btn`／`data-variant`／`data-size` 與十來個早就在裡面的 utility，
+真正新出現的只有 `-mx-2`、`px-1`、`justify-end` 這幾個。
+
+`js/select.js` 5,353 bytes raw／2,252 gzip，**不計入每頁預算**，理由見第五節。
+
+### 八、渲染回歸
+
+`bench/render_bench.py` 第 1 節（50 列的頁面）：1,448.5 → 1,449.5 µs，
+落在雜訊裡。新的 `_header` 是**每欄一次**，不是每列一次，熱迴圈沒被碰到。
+冷啟動（無 bytecode cache）220.9 → 234.9 ms，`table.html` 變成四倍長之後
+多的幾毫秒；暖 cache 15.5 → 16.0 ms。
+
+> 順帶一提：**BACKLOG 曾經提過的 data-driven table**（`table(columns, rows, fields)`
+> 由 macro 自己跑迴圈，用來回收元件化的熱迴圈成本）**這一版沒做**。
+> 使用者指定的是那三項，而 data-driven 是另一個題目——它會改變 `table` 的呼叫形狀，
+> 該有自己的一輪與自己的量測。
+
+### 九、文件站
+
+Components 的 Table 那一課從單一控制項變成兩個分頁（`table`／`pagination`）。
+`table` 的狀態選單多兩個值（sortable、batch select），`pagination` 有五個位置
+（首頁、中間、末頁、只有三頁、不給計數）——**五個狀態而不是兩個數字旋鈕**，
+因為這條分頁條要被檢查的是它在哪裡省略，而那只在特定頁碼上看得到。
+中英兩頁的散文都補了，cheatsheet 多四列（`select_cell`／`select_count`／
+`select_scripts`／`pagination`），`test_docs_site.py` 那兩條守門測試在補之前是紅的。
+
+### 十、瀏覽器實測（測試看不到的那一半）
+
+`select.js` 沒有任何測試會跑它。實測走過：表頭勾選整欄（12 列全中、
+讀數變「12 selected」、列上色）→ 取消一列（`indeterminate` 為 true、
+`checked` 為 false、讀數 11、該列取消上色）→ 點 Owner 表頭排序
+（URL push 成 `?o=owner`、列重排、選取隨新 markup 歸零）→ 勾兩列按 Archive
+（兩列變 Archived、排序與頁碼都留著、toast 顯示「Archived 2 of 2」）→
+點第 12 頁（5 列、「133–137 of 137」、Next 灰掉）→ 瀏覽器上一頁（回到第 1 頁且排序還在）。
+深淺兩色模式都看過，鍵盤 tab 到表頭連結時 focus 環清楚可見
+（`outline: oklch(0.52 0.19 275) solid 2px`，offset −2px）。Console 全程沒有錯誤。
+
+### 十一、補：每頁筆數控制項與列序號（2026-09-04，使用者指定）
+
+**`page_size(url, per_page, options, param, keep, target, …)`**，同樣在 `ui/table.html`。
+
+**它是一個 `<form method="get">`，而那就是整個設計。** 單獨一個 `<select>`
+在值變更時沒有任何辦法做出反應——瀏覽器沒有給它那個能力——所以這個選擇必須以
+「有人送出的一個請求」的形式抵達伺服器，而 form 就是負責送的那個元素。
+兩條路徑送出同一個請求：
+
+```
+target="#records"  ->  hx-get，由 select 自己的 change 觸發
+沒有 target        ->  一個普通的 GET，加一顆送出鈕
+```
+
+兩邊都產生 `GET /records?o=-updated&per_page=25`，因為 htmx 序列化一張表單的方式
+跟瀏覽器一樣。**沒有寫任何 JavaScript**（§11 第 3 條因此不適用）。
+
+`hx-trigger="change"` 是第一條路徑會動的原因：form 的預設 trigger 是它自己的 submit
+事件，而那條路上根本沒有人送出它；select 的 change 會冒泡到 form。
+
+**送出鈕在 htmx 那條路上包在 `<noscript>` 裡。** 開著腳本時它不渲染，select 自己就會作用；
+關掉腳本時它是唯一能作用的東西，而那時 htmx 也沒在跑、不會被它干擾。
+這是 `<noscript>` 剛好說出真正意思的少數場合。
+
+**`url` 不能帶 query string。** 原生的 GET 送出會用表單自己的欄位**取代整段 query**，
+所以放在 `action=` 裡的東西在那條路上會被安靜地丟掉——htmx 那條會留著，兩條路徑
+於是對「現在開著哪個篩選」講出不同答案。要活下來的東西一律放 `keep`，
+以 hidden 欄位傳遞，兩條路徑都會序列化它。
+
+**頁碼不在那些東西裡面。** 每頁 12 筆的第 12 頁，換成 50 筆之後是第 3 頁：
+那個數字在變更之後指的是別的東西，而唯一一定存在的頁是第一頁。
+所以 `keep` 收篩選與排序，永遠不收 `page`。
+
+**`per_page` 傳的是伺服器實際用的值，不是 query string 要求的值。**
+一個在 12 列的頁面上顯示 500 的控制項，正在對它唯一存在的目的說謊。
+
+#### demo 端：一個 view 設定散在所有連結上
+
+真正的工作不在那支 macro，在 `_query()`：**只出現在部分連結上的 view 設定，
+在有人用了其他那些連結的那一刻就會消失。** 所以每個表頭連結、每個頁碼連結、
+批次動作的 URL，全部都帶 `per_page`。排序不得重設每頁筆數，翻頁也不得。
+`test_the_size_survives_a_sort` 與 `test_the_size_survives_paging` 走遍所有連結逐一斷言，
+因為這種壞法是靜悄悄的：排序之後表格回到 12 列，沒有任何地方說為什麼。
+
+`PAGE_SIZES` 是白名單，也是上限。`?per_page=100000` 是一個 query 就把整張表渲染出來，
+而書籤不該有能力要求那件事。
+
+**控制項放在 `pagination` 外面**：`pagination` 在只有一頁時不渲染，而放進去的話，
+「產生一頁的那個尺寸」就會變成唯一一個進得去、出不來的設定。
+`test_the_control_is_reachable_at_every_size` 守著。
+
+#### 列序號：**沒有新增任何 macro**
+
+`{"label": "#", "width": "narrow", "align": "end"}` 加
+`cell(number, tone="muted", numeric=true, align="end")`——四個都是既有參數。
+`row_actions()` 存在是因為「靠右、緊湊的一格」在當時沒有辦法用參數表達；
+這裡有，所以照 §8 的拒絕標準（「只是把原生元素包一層，沒有補上任何東西」）不做。
+**一支再發明一次「淡色靠右數字」的 macro 只會是一個比 `cell` 更差的 `cell`。**
+
+真正需要寫下來的是算式：序號是 `offset + loop.index`，不是 `loop.index`。
+`loop.index` 每一頁都從 1 開始，十二頁就會全部編成 1 到 12——**而那在任何單獨一頁上
+都看不出有什麼不對**。`offset` 由路由算（`(page - 1) * size`），跟著實際用的尺寸走。
+`test_every_row_is_numbered_exactly_once_across_the_whole_table` 走完 12 頁比對 1..137。
+
+序號編的是**清單的順序**，不是紀錄的 id：按 owner 排序會把每一列重新編號。
+`test_the_number_is_the_position_not_the_id` 斷言第一列的號碼是 1 而它的 id 不是。
+
+#### 體積與驗證
+
+**CSS 零增量，byte-identical**：`flex items-center gap-2` 與 `select`／`label`／`btn`
+早就都在裡面（八個包都跟加這支 macro 之前一個位元組不差）。
+
+瀏覽器實測走過：選 50 → 50 列、「1–50 of 137」、URL push 成 `?o=name&per_page=50`、
+**排序還在**（hidden 欄位生效）；第 3 頁改成 25 → 回到第 1 頁（頁碼正確地沒有跟著走）；
+所有表頭連結與所有頁碼連結都帶 `per_page=25`；`<noscript>` 的按鈕在開著腳本時不可見。
+第 3 頁的序號是 25–36，與摘要一致。深淺兩色模式都看過，console 沒有錯誤。

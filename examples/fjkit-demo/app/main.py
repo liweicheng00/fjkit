@@ -24,6 +24,8 @@ from app.features.failures.router import router as failures_router
 from app.features.jobs.router import router as jobs_router
 from app.features.jobs.service import JobService
 from app.features.panels.router import router as panels_router
+from app.features.records.router import router as records_router
+from app.features.records.service import RecordService
 from app.features.search.router import router as search_router
 from app.features.tasks.router import router as tasks_router
 from app.features.tasks.service import TaskService
@@ -116,6 +118,7 @@ def build_plugins() -> tuple[FlashPlugin, AuthPlugin, ApiDocsPlugin, ChartsPlugi
 async def lifespan(app: FastAPI):
     app.state.tasks = TaskService()
     app.state.jobs = JobService()
+    app.state.records = RecordService()
     yield
 
 
@@ -131,6 +134,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(charts_router)
     app.include_router(tasks_router)
+    app.include_router(records_router)
     app.include_router(search_router)
     app.include_router(panels_router)
     app.include_router(jobs_router)

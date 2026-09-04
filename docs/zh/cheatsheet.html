@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788337205">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788519593">
   <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -291,11 +291,28 @@ fjkit
 <h3>ui/table.html</h3>      </div>
     </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
       <h4><code>table(columns, rows=none, empty_title=&#34;Nothing here&#34;,
-      empty_description=none, empty_icon=&#34;list&#34;)</code></h4><p>columns 是 dict 的清單——label，可選 align 或 width。傳了 rows，空資料的情況就歸 macro 管；傳 rows=none 則永遠自己渲染 body。</p>    </section><aside><span class="badge" data-variant="outline">區塊：資料列</span></aside>  </div>
+      empty_description=none, empty_icon=&#34;list&#34;, target=none,
+      swap=&#34;outerHTML&#34;, push_url=true, select_name=&#34;selected&#34;,
+      select_label=&#34;Select all rows&#34;)</code></h4><p>columns 是 dict 的清單——label，可選 align、width、sort、sort_url 或 select。傳了 rows，空資料的情況就歸 macro 管；傳 rows=none 則永遠自己渲染 body。有 sort_url 的欄位會變成可排序表頭，給了 target 那些連結就同時是 htmx swap。</p>    </section><aside><span class="badge" data-variant="outline">區塊：資料列</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>cell(value=none, tone=none, numeric=false, align=none)</code></h4><p>文字用 value，標記則省略 value 改用區塊。tone 是封閉查表，顏色傳不進來。</p>    </section><aside><span class="badge" data-variant="outline">區塊：儲存格內容（可省略）</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>row_actions()</code></h4><p>最後一格，靠右且緊湊。</p>    </section><aside><span class="badge" data-variant="outline">區塊：按鈕</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>select_cell(value, name=&#34;selected&#34;, checked=false, label=none)</code></h4><p>{&#34;select&#34;: true} 欄位在資料列這一半。就是一個普通的 checkbox 加普通的 name，所以選取結果照 selected=3&amp;selected=7 送出。要給 label——id 不是 label。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>select_count(name=&#34;selected&#34;, label=&#34;{n} selected&#34;,
+             zero=&#34;None selected&#34;)</code></h4><p>即時顯示選了幾列。兩個字串都寫在標記裡，所以翻譯頁面能翻譯它們。傳 zero=none 則在沒有選取時自己隱藏。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>select_scripts()</code></h4><p>載入 js/select.js：從表頭的核取方塊勾選整欄、顯示部分選取狀態、把選到的列上色。逐頁載入，不進 shell。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>page_size(url, per_page, options=(10, 25, 50, 100),
+          param=&#34;per_page&#34;, keep=none, target=none,
+          label=&#34;Rows per page&#34;, apply_label=&#34;Apply&#34;)</code></h4><p>一個 GET form，因為單獨一個 select 沒有辦法對變更做出反應。url 不能帶 query string——原生送出會把它整段丟掉——所以篩選要放在 keep，以 hidden 欄位傳遞，但絕不放頁碼。給了 target，select 自己就會套用，送出鈕只在沒有腳本時才渲染。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>pagination(page, pages, url, param=&#34;page&#34;, total=none,
+           per_page=none, target=none, swap=&#34;outerHTML&#34;,
+           push_url=true, window=1, label=&#34;Pagination&#34;)</code></h4><p>url 是清單的網址，不帶頁碼參數，頁碼由 macro 接上去。只有一頁或更少時不渲染。total 與 per_page 要一起給，才會出現「76–100 of 210」那一行。</p>    </section>  </div>
 </div></div>
   </div>
 </section></div>

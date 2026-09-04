@@ -21,7 +21,10 @@ LAYOUT = (
     '{% from "ui/layout.html" import stack, row, grid, split, centered, page_header,'
     " section, divider %}"
 )
-TABLE = '{% from "ui/table.html" import table, cell, row_actions %}'
+TABLE = (
+    '{% from "ui/table.html" import table, cell, row_actions, select_cell,'
+    ' select_count, select_scripts, pagination, page_size %}'
+)
 FORM = (
     '{% from "ui/form.html" import text_field, select_field, form, field_row,'
     ' textarea_field, checkbox_field, switch_field, radio_group, fieldset, form_scripts %}'
@@ -135,6 +138,15 @@ class TestTable:
         html = render(f"{TABLE}{{% call table({self.COLUMNS}) %}}x{{% endcall %}}")
         assert 'aria-label="Actions"' in html
 
+    def test_a_narrow_column_with_a_heading_keeps_it(self, render):
+        """`aria-label` replaces the text rather than adding to it, so labelling
+        every `width="min"` column would rename any that has a heading of its
+        own — a row-number column would read out as "Actions"."""
+        columns = '[{"label": "#", "width": "min", "align": "end"}]'
+        html = render(f"{TABLE}{{% call table({columns}) %}}x{{% endcall %}}")
+        assert "Actions" not in html
+        assert ">#</th>" in html
+
     def test_empty_rows_render_the_empty_state_instead_of_the_table(self, render):
         html = render(f"{TABLE}{{% call table({self.COLUMNS}, rows=[], empty_title='Nothing') %}}ROWS{{% endcall %}}")
         assert "Nothing" in html
@@ -152,6 +164,308 @@ class TestTable:
     def test_cell_rejects_arbitrary_tones_silently(self, render):
         html = render(f'{TABLE}{{{{ cell("x", tone="hotpink") }}}}')
         assert "hotpink" not in html
+
+class TestSortableHeaders:
+    """0.4. A sorted column has to say so twice — once to the eye, once to
+    `aria-sort` — and the two are keyed off one value so they cannot disagree.
+    """
+
+    SORTED = '[{"label": "Task", "sort": "asc", "sort_url": "/t?o=-title"}]'
+    SORTABLE = '[{"label": "Task", "sort_url": "/t?o=title"}]'
+    FIXED = '[{"label": "Task"}]'
+
+    def test_a_fixed_column_is_not_announced_as_sortable(self, render):
+        """`aria-sort` on a column that cannot be sorted tells a screen reader
+        to look for a control that is not there."""
+        html = render(f"{TABLE}{{% call table({self.FIXED}) %}}r{{% endcall %}}")
+        assert "aria-sort" not in html
+        assert "<a " not in html
+
+    def test_sort_url_is_what_makes_a_column_sortable(self, render):
+        html = render(f"{TABLE}{{% call table({self.SORTABLE}) %}}r{{% endcall %}}")
+        assert 'href="/t?o=title"' in html
+        assert 'aria-sort="none"' in html
+
+    @pytest.mark.parametrize(
+        ("state", "aria", "glyph"),
+        [("asc", "ascending", "m5 12 7-7 7 7"), ("desc", "descending", "m19 12-7 7-7-7")],
+    )
+    def test_the_arrow_and_aria_sort_say_the_same_thing(self, render, state, aria, glyph):
+        """The failure this guards is an arrow pointing up over a descending
+        sort: it looks fine in review and is wrong on the page."""
+        columns = f'[{{"label": "Task", "sort": "{state}", "sort_url": "/t"}}]'
+        html = render(f"{TABLE}{{% call table({columns}) %}}r{{% endcall %}}")
+        assert f'aria-sort="{aria}"' in html
+        assert glyph in html
+
+    def test_an_unsorted_column_still_shows_the_affordance(self, render):
+        """Without a glyph, a sortable column is indistinguishable from a fixed
+        one until somebody clicks it."""
+        html = render(f"{TABLE}{{% call table({self.SORTABLE}) %}}r{{% endcall %}}")
+        assert "m7 15 5 5 5-5" in html  # chevrons-up-down
+
+    def test_the_glyph_is_hidden_from_the_screen_reader(self, render):
+        """`aria-sort` has already said it; reading the icon too says
+        "ascending" twice."""
+        html = render(f"{TABLE}{{% call table({self.SORTED}) %}}r{{% endcall %}}")
+        header = html.split("<th ")[1].split("</th>")[0]
+        assert 'aria-hidden="true"' in header
+
+    def test_no_target_still_sorts(self, render):
+        """Sorting works with JavaScript off, and a sorted view is a URL."""
+        html = render(f"{TABLE}{{% call table({self.SORTED}) %}}r{{% endcall %}}")
+        assert 'href="/t?o=-title"' in html
+        assert "hx-get" not in html
+
+    def test_a_target_adds_the_swap_on_top_of_the_link(self, render):
+        html = render(f'{TABLE}{{% call table({self.SORTED}, target="#board") %}}r{{% endcall %}}')
+        assert 'href="/t?o=-title"' in html
+        assert 'hx-get="/t?o=-title"' in html
+        assert 'hx-target="#board"' in html
+        assert 'hx-swap="outerHTML"' in html
+
+    def test_the_swap_pushes_the_url_by_default(self, render):
+        """Otherwise the back button leaves the page and the address bar
+        describes a sort order nobody is looking at."""
+        html = render(f'{TABLE}{{% call table({self.SORTED}, target="#board") %}}r{{% endcall %}}')
+        assert 'hx-push-url="true"' in html
+        off = render(f'{TABLE}{{% call table({self.SORTED}, target="#b", push_url=false) %}}r{{% endcall %}}')
+        assert "hx-push-url" not in off
+
+    def test_an_empty_table_renders_no_headers_to_sort(self, render):
+        """The empty state replaces the table, so there is nothing to click."""
+        html = render(f"{TABLE}{{% call table({self.SORTED}, rows=[]) %}}r{{% endcall %}}")
+        assert "aria-sort" not in html
+
+
+class TestSelectColumn:
+    """0.4. The batch-selection column: a header box, a row box, and the
+    readout that says what a bulk action is about to reach."""
+
+    COLUMNS = '[{"select": true}, {"label": "Task"}]'
+
+    def test_the_select_column_renders_a_header_checkbox(self, render):
+        html = render(f"{TABLE}{{% call table({self.COLUMNS}) %}}r{{% endcall %}}")
+        assert 'type="checkbox"' in html
+        assert 'data-fjkit-select-all="selected"' in html
+
+    def test_the_header_checkbox_is_labelled(self, render):
+        """A bare checkbox in a header cell announces itself as "checkbox"."""
+        html = render(f"{TABLE}{{% call table({self.COLUMNS}) %}}r{{% endcall %}}")
+        assert 'aria-label="Select all rows"' in html
+
+    def test_the_checkbox_role_is_written_out_for_basecoat(self, render):
+        """Redundant on a native checkbox, and load-bearing: Basecoat's table
+        rules select on `[role=checkbox]` to drop the cell's trailing padding.
+        """
+        html = render(f"{TABLE}{{% call table({self.COLUMNS}) %}}r{{% endcall %}}")
+        assert 'role="checkbox"' in html
+        assert 'role="checkbox"' in render(f"{TABLE}{{{{ select_cell(7) }}}}")
+
+    def test_the_row_checkbox_posts_as_an_ordinary_repeated_field(self, render):
+        """`selected=3&selected=7` — a route reads it as `list[int]`, and
+        nothing here invents a wire format."""
+        html = render(f"{TABLE}{{{{ select_cell(7) }}}}")
+        assert 'name="selected"' in html
+        assert 'value="7"' in html
+
+    def test_the_name_is_the_key_that_joins_header_to_rows(self, render):
+        """Two selections on one page are two names, because the name is
+        already what decides what lands in one request."""
+        header = render(f'{TABLE}{{% call table([{{"select": true}}], select_name="ids") %}}r{{% endcall %}}')
+        row = render(f'{TABLE}{{{{ select_cell(7, name="ids") }}}}')
+        assert 'data-fjkit-select-all="ids"' in header
+        assert 'data-fjkit-select="ids"' in row
+
+    def test_a_row_checkbox_is_labelled_by_its_row(self, render):
+        html = render(f'{TABLE}{{{{ select_cell(7, label="Select Ship it") }}}}')
+        assert 'aria-label="Select Ship it"' in html
+
+    def test_an_unlabelled_row_checkbox_falls_back_to_the_value(self, render):
+        """Never unlabelled, even though an id is not a label."""
+        assert 'aria-label="Select 7"' in render(f"{TABLE}{{{{ select_cell(7) }}}}")
+
+    def test_a_row_the_server_already_picked_renders_checked(self, render):
+        assert " checked" in render(f"{TABLE}{{{{ select_cell(7, checked=true) }}}}")
+
+    def test_the_count_carries_both_strings_so_a_page_can_translate_them(self, render):
+        """`js/select.js` must not contain a word of English."""
+        html = render(f'{TABLE}{{{{ select_count(label="已選取 {{n}} 筆", zero="尚未選取") }}}}')
+        assert 'data-fjkit-select-label="已選取 {n} 筆"' in html
+        assert 'data-fjkit-select-zero="尚未選取"' in html
+        assert "尚未選取</span>" in html
+
+    def test_a_count_with_no_zero_text_hides_itself(self, render):
+        html = render(f"{TABLE}{{{{ select_count(zero=none) }}}}")
+        assert "hidden" in html
+        assert "data-fjkit-select-zero" not in html
+
+    def test_the_script_is_opted_into_per_page(self, render):
+        """CHARTER §7: the shell downloads htmx and Basecoat and nothing else."""
+        assert "js/select.js" in render(f"{TABLE}{{{{ select_scripts() }}}}")
+
+
+class TestPagination:
+    """0.4. The strip under a table."""
+
+    def test_one_page_renders_nothing(self, render):
+        """A strip reading "1" with both arrows greyed out tells the reader
+        nothing, and hiding it here saves every caller the same guard."""
+        assert render(f'{TABLE}{{{{ pagination(1, 1, "/r") }}}}').strip() == ""
+        assert render(f'{TABLE}{{{{ pagination(1, 0, "/r") }}}}').strip() == ""
+
+    def test_every_page_is_a_real_link(self, render):
+        """A paginated list has to survive JavaScript being off: page 4 of the
+        results is a thing people bookmark and send to each other."""
+        html = render(f'{TABLE}{{{{ pagination(1, 3, "/r") }}}}')
+        assert 'href="/r?page=2"' in html
+        assert "hx-get" not in html
+
+    def test_a_target_adds_the_swap_on_top(self, render):
+        html = render(f'{TABLE}{{{{ pagination(1, 3, "/r", target="#list") }}}}')
+        assert 'href="/r?page=2"' in html
+        assert 'hx-get="/r?page=2"' in html
+        assert 'hx-target="#list"' in html
+        assert 'hx-push-url="true"' in html
+
+    def test_an_existing_query_string_is_joined_with_an_ampersand(self, render):
+        html = render(f'{TABLE}{{{{ pagination(1, 3, "/r?status=open") }}}}')
+        assert "/r?status=open&amp;page=2" in html
+
+    def test_the_current_page_is_announced(self, render):
+        html = render(f'{TABLE}{{{{ pagination(2, 5, "/r") }}}}')
+        assert html.count('aria-current="page"') == 1
+        assert 'aria-current="page"' in html.split(">2<")[0].rsplit("<a", 1)[-1]
+
+    def test_the_page_number_is_clamped_to_the_range(self, render):
+        """`page` arrives from a query string. A strip built around page 900 of
+        9 renders links to nowhere and reports nothing."""
+        for page in (0, -3, 900):
+            html = render(f'{TABLE}{{{{ pagination({page}, 9, "/r") }}}}')
+            assert html.count('aria-current="page"') == 1
+
+    def test_a_dead_step_is_a_disabled_button_not_a_dead_link(self, render):
+        """An anchor with no href is skipped by the keyboard entirely, so the
+        arrow would vanish from tab order instead of announcing itself."""
+        first = render(f'{TABLE}{{{{ pagination(1, 5, "/r") }}}}')
+        assert "<button" in first.split("Previous")[0]
+        assert "disabled" in first.split("Previous")[0]
+        last = render(f'{TABLE}{{{{ pagination(5, 5, "/r") }}}}')
+        assert "disabled" in last.rsplit("Next", 1)[0].rsplit("<button", 1)[-1] + "x"
+
+    def test_the_steps_carry_rel(self, render):
+        html = render(f'{TABLE}{{{{ pagination(3, 5, "/r") }}}}')
+        assert 'rel="prev"' in html
+        assert 'rel="next"' in html
+
+    def test_the_strip_is_a_fixed_width_however_many_pages_there_are(self, render):
+        """First and last always show; the jump to the window is an ellipsis.
+        Nine thousand pages must not render nine thousand links."""
+        html = render(f'{TABLE}{{{{ pagination(500, 9000, "/r") }}}}')
+        assert html.count("…") == 2
+        assert len(re.findall(r"page=\d+", html)) == 7  # prev, 1, 499, 500, 501, 9000, next
+        assert "page=9000" in html and "page=1" in html
+
+    def test_no_ellipsis_when_the_window_already_reaches_the_end(self, render):
+        assert "…" not in render(f'{TABLE}{{{{ pagination(2, 3, "/r") }}}}')
+
+    def test_no_page_is_listed_twice(self, render):
+        """The first and last links are rendered outside the window, so a
+        window that overlaps them must not print them again."""
+        for page, pages in [(1, 2), (2, 3), (1, 4), (4, 4), (3, 5)]:
+            html = render(f'{TABLE}{{{{ pagination({page}, {pages}, "/r") }}}}')
+            numbers = re.findall(r'data-size="icon-sm"[^>]*>(\d+)<', html)
+            assert numbers == sorted(set(numbers), key=int), f"{page}/{pages}: {numbers}"
+
+    def test_the_summary_needs_both_halves(self, render):
+        """A range with no total, or a total with no page size, is a number
+        nobody can act on."""
+        assert "of 210" not in render(f'{TABLE}{{{{ pagination(4, 9, "/r", total=210) }}}}')
+        assert "of 210" not in render(f'{TABLE}{{{{ pagination(4, 9, "/r", per_page=25) }}}}')
+
+    def test_the_summary_counts_from_the_current_page(self, render):
+        html = render(f'{TABLE}{{{{ pagination(4, 9, "/r", total=210, per_page=25) }}}}')
+        assert "76–100 of 210" in html
+
+    def test_the_last_page_summary_stops_at_the_total(self, render):
+        """`9 × 25` is 225, and there are 210 rows."""
+        html = render(f'{TABLE}{{{{ pagination(9, 9, "/r", total=210, per_page=25) }}}}')
+        assert "201–210 of 210" in html
+
+    def test_the_strip_names_itself(self, render):
+        """Two navs on one page — the site's and this one — need telling apart."""
+        assert 'aria-label="Pagination"' in render(f'{TABLE}{{{{ pagination(2, 5, "/r") }}}}')
+
+
+class TestPageSize:
+    """0.4. The "Rows per page" control. A form, because a `<select>` cannot act
+    on its own change and the kit adds no script for it."""
+
+    CALL = '{{ page_size("/r", 25, options=[10, 25, 50]) }}'
+    HTMX = '{{ page_size("/r", 25, options=[10, 25, 50], target="#list") }}'
+
+    def test_it_is_a_get_form(self, render):
+        html = render(f"{TABLE}{self.CALL}")
+        assert '<form' in html and 'method="get"' in html and 'action="/r"' in html
+
+    def test_the_size_in_use_is_the_one_selected(self, render):
+        html = render(f"{TABLE}{self.CALL}")
+        assert '<option value="25" selected>' in html
+        assert '<option value="10">' in html
+
+    def test_the_options_are_the_callers(self, render):
+        """A closed list, so the control cannot offer a size the router would
+        refuse."""
+        assert '<option value="7"' in render(f'{TABLE}{{{{ page_size("/r", 7, options=[7]) }}}}')
+
+    def test_the_select_is_labelled_and_wired_to_its_label(self, render):
+        html = render(f"{TABLE}{self.CALL}")
+        assert re.search(r'for="([^"]+)"', html).group(1) in re.findall(r'id="([^"]+)"', html)
+
+    def test_both_strings_are_parameters(self, render):
+        """So a translated page translates them without touching the kit."""
+        html = render(f'{TABLE}{{{{ page_size("/r", 10, options=[10], label="每頁", apply_label="套用") }}}}')
+        assert "每頁" in html and "套用" in html
+
+    def test_without_a_target_the_button_is_the_only_way_to_apply(self, render):
+        html = render(f"{TABLE}{self.CALL}")
+        assert 'type="submit"' in html
+        assert "<noscript>" not in html
+        assert "hx-get" not in html
+
+    def test_with_a_target_the_select_applies_itself(self, render):
+        """`change`, not `submit`: a form's default trigger is its submit event
+        and on this path nothing ever submits it."""
+        html = render(f"{TABLE}{self.HTMX}")
+        assert 'hx-get="/r"' in html
+        assert 'hx-trigger="change"' in html
+        assert 'hx-target="#list"' in html
+        assert 'hx-push-url="true"' in html
+
+    def test_with_a_target_the_button_is_only_there_without_scripting(self, render):
+        """It has to exist — with JavaScript off the select cannot act — and it
+        must not show when htmx is running the change for you."""
+        html = render(f"{TABLE}{self.HTMX}")
+        assert html.count('type="submit"') == 1
+        assert re.search(r"<noscript>.*type=\"submit\".*</noscript>", html, re.S)
+
+    def test_kept_values_travel_as_hidden_fields(self, render):
+        """A native GET submit replaces the whole query string with the form's
+        fields, so anything only in `action=` is dropped on that path and kept
+        on the other — and the two would disagree about which filter is on."""
+        html = render(f'{TABLE}{{{{ page_size("/r", 10, options=[10], keep={{"o": "-updated"}}) }}}}')
+        assert '<input type="hidden" name="o" value="-updated">' in html
+
+    def test_a_none_in_keep_sends_no_field(self, render):
+        """An absent filter is absent, not an empty string the router then has
+        to tell apart from a real one."""
+        html = render(f'{TABLE}{{{{ page_size("/r", 10, options=[10], keep={{"q": none}}) }}}}')
+        assert "hidden" not in html
+
+    def test_the_url_carries_no_query_string_of_its_own(self, render):
+        """Nothing enforces this — it is the caller's to get right — so the
+        macro at least must not add one."""
+        assert 'action="/r"' in render(f"{TABLE}{self.CALL}")
 
 
 class TestForm:
@@ -1101,6 +1415,27 @@ class TestRangeField:
     def test_the_output_is_off_by_default(self, render):
         assert "<output" not in render(f'{RANGE}{{{{ range_field("v", "V") }}}}')
         assert "<output" in render(f'{RANGE}{{{{ range_field("v", "V", output=true) }}}}')
+
+    def test_the_output_tracks_the_thumb(self, render):
+        """Basecoat's range handler moves `--slider-value` and nothing else, and
+        no browser populates an `<output>` on its own.
+
+        Without this the number is right on first paint and then frozen — a
+        slider reading 50 with its thumb at the far end, which is worse than
+        printing no number at all.
+        """
+        html = render(f'{RANGE}{{{{ range_field("v", "V", output=true) }}}}')
+        assert "oninput=" in html
+        # The element, never the id: nothing from the template reaches a script.
+        assert "f-v" not in html.split("oninput=")[1].split(">")[0]
+
+    def test_no_handler_without_an_output_to_move(self, render):
+        """The per-page JS budget is the point: a slider that prints no number
+        emits no script. `output` with no label prints nothing either, because
+        the element lives inside the label — so it must not emit one and then
+        fail on a null."""
+        assert "oninput=" not in render(f'{RANGE}{{{{ range_field("v", "V") }}}}')
+        assert "oninput=" not in render(f'{RANGE}{{{{ range_field("v", output=true) }}}}')
 
     def test_an_error_marks_the_control_invalid(self, render):
         assert 'aria-invalid="true"' in render(f'{RANGE}{{{{ range_field("v", error="Too loud") }}}}')

@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788337205">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788519593">
   <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -294,11 +294,28 @@ fjkit
 <h3>ui/table.html</h3>      </div>
     </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
       <h4><code>table(columns, rows=none, empty_title=&#34;Nothing here&#34;,
-      empty_description=none, empty_icon=&#34;list&#34;)</code></h4><p>columns is a list of dicts — label, and optionally align or width. Passing rows lets the macro own the empty case; pass rows=none to always render the body yourself.</p>    </section><aside><span class="badge" data-variant="outline">block: the rows</span></aside>  </div>
+      empty_description=none, empty_icon=&#34;list&#34;, target=none,
+      swap=&#34;outerHTML&#34;, push_url=true, select_name=&#34;selected&#34;,
+      select_label=&#34;Select all rows&#34;)</code></h4><p>columns is a list of dicts — label, and optionally align, width, sort, sort_url or select. Passing rows lets the macro own the empty case; pass rows=none to always render the body yourself. A column with a sort_url becomes a sortable header, and target turns those links into htmx swaps.</p>    </section><aside><span class="badge" data-variant="outline">block: the rows</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>cell(value=none, tone=none, numeric=false, align=none)</code></h4><p>Pass value for text, or omit it and use a block for markup. tone is a closed lookup, so no colour can be passed through.</p>    </section><aside><span class="badge" data-variant="outline">block: the cell content (optional)</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>row_actions()</code></h4><p>The trailing cell, right-aligned and tight.</p>    </section><aside><span class="badge" data-variant="outline">block: the buttons</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>select_cell(value, name=&#34;selected&#34;, checked=false, label=none)</code></h4><p>The row half of a {&#34;select&#34;: true} column. An ordinary checkbox with an ordinary name, so the selection posts as selected=3&amp;selected=7. Give it a label: an id is not one.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>select_count(name=&#34;selected&#34;, label=&#34;{n} selected&#34;,
+             zero=&#34;None selected&#34;)</code></h4><p>The live readout of how many rows are picked. Both strings travel in the markup, so a translated page translates them. Pass zero=none and it hides while nothing is selected.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>select_scripts()</code></h4><p>Loads js/select.js, which ticks the column from the header box, shows the partial state and tints the picked rows. Per page, never the shell.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>page_size(url, per_page, options=(10, 25, 50, 100),
+          param=&#34;per_page&#34;, keep=none, target=none,
+          label=&#34;Rows per page&#34;, apply_label=&#34;Apply&#34;)</code></h4><p>A GET form, because a select on its own cannot act on a change. url must carry no query string — a native submit throws it away — so filters travel in keep as hidden fields. Never the page number. With a target the select applies itself and the submit button is only rendered without scripting.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>pagination(page, pages, url, param=&#34;page&#34;, total=none,
+           per_page=none, target=none, swap=&#34;outerHTML&#34;,
+           push_url=true, window=1, label=&#34;Pagination&#34;)</code></h4><p>url is the list&#39;s address without a page parameter; the macro appends one. Renders nothing when there is one page or fewer. Give total and per_page together for the &#34;76–100 of 210&#34; line.</p>    </section>  </div>
 </div></div>
   </div>
 </section></div>

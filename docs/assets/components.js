@@ -83,6 +83,74 @@ const FORM_JINJA = {
 {% endcall %}`,
 };
 
+const PAGE_STATE = {
+  "page 1 of 12": "first",
+  "page 6 of 12": "middle",
+  "page 12 of 12": "last",
+  "page 2 of 3": "few",
+  "no count": "plain",
+};
+
+const TABLE_STATE = {
+  "3 rows": "filled",
+  empty: "empty",
+  sortable: "sorted",
+  "batch select": "select",
+};
+
+const TABLE_JINJA = {
+  "3 rows": `{% from "ui/table.html" import table %}
+{% from "tasks/macros.html" import task_row %}
+
+{% call table(TASK_COLUMNS, rows=tasks,
+              empty_title="Nothing here",
+              empty_description="No task matches this filter.") %}
+  {% for task in tasks %}{{ task_row(request, task) }}{% endfor %}
+{% endcall %}`,
+
+  empty: `{% call table(TASK_COLUMNS, rows=[],
+              empty_title="Nothing here",
+              empty_description="No task matches this filter.",
+              empty_icon="list") %}{% endcall %}`,
+
+  sortable: `{# the router builds every sort_url, because it owns the query string #}
+{% set columns = [
+  {"label": "Task",   "sort": "asc", "sort_url": "/tasks?o=-title"},
+  {"label": "Status", "sort_url": "/tasks?o=status"},
+  {"label": "Owner",  "sort_url": "/tasks?o=owner"},
+] %}
+
+{% call table(columns, rows=tasks, target="#board") %}
+  {% for task in tasks %}{{ task_row(request, task) }}{% endfor %}
+{% endcall %}`,
+
+  "batch select": `{% from "ui/table.html" import table, select_cell, select_count, select_scripts %}
+
+{% call row(gap=2) %}
+  {{ select_count() }}
+  {{ button("Archive selected", variant="secondary", size="xs",
+            icon_name="archive",
+            hx_post=url_for(request, "records_archive"),
+            hx_include="[data-fjkit-select]",
+            hx_target="#records", hx_swap="outerHTML") }}
+{% endcall %}
+
+{% call table([{"select": true}, {"label": "Task"}], rows=tasks) %}
+  {% for task in tasks %}
+    <tr>{{ select_cell(task.id, label="Select " ~ task.title) }}…</tr>
+  {% endfor %}
+{% endcall %}
+
+{% block scripts %}{{ select_scripts() }}{% endblock %}`,
+};
+
+const TABLE_CAPTION = {
+  "3 rows": "Pass rows and the macro owns the empty case, so no caller repeats the if-rows-else branch. A repeated row is a macro call in your loop — {% include %} there is a template lookup plus a fresh context per iteration.",
+  empty: "The same call with nothing to show. The empty state is inside the macro, so a page cannot ship a table that renders as a lone header row.",
+  sortable: "A column becomes sortable by carrying a sort_url, and sort says which way it is going now. The arrow and aria-sort are keyed off that one value, so they cannot disagree. Every header is an href before it is a swap: sorting works with JavaScript off, and a sorted view is a URL you can send someone.",
+  "batch select": "{\"select\": true} is the header box, select_cell is the row box, and the name they share is the field the selection posts under — selected=3&selected=7, which is what a checkbox column has always sent. The action collects it with hx-include; nothing maintains a list. select_scripts() is what ticks the column, shows the partial state and tints the picked rows.",
+};
+
 const MACROS = {
   button: {
     label: "button",
@@ -204,20 +272,43 @@ const MACROS = {
   table: {
     label: "table",
     controls: [
-      { key: "state", type: "select", label: "rows", options: ["3 rows", "empty"], value: "3 rows" },
+      { key: "state", type: "select", label: "state", options: ["3 rows", "empty", "sortable", "batch select"], value: "3 rows" },
     ],
-    render: (p) => (p.state === "empty" ? DATA.tables.empty : DATA.tables.filled),
-    jinja: () => `{% from "ui/table.html" import table, cell, row_actions %}
-{% from "tasks/macros.html" import task_row %}
-
-{% call table(TASK_COLUMNS, rows=tasks,
-              empty_title="Nothing here",
-              empty_description="No task matches this filter.") %}
-  {% for task in tasks %}{{ task_row(request, task) }}{% endfor %}
-{% endcall %}`,
-    caption: "Pass rows and the macro owns the empty case, so no caller repeats the if-rows-else branch. A repeated row is a macro call in your loop — {% include %} there is a template lookup plus a fresh context per iteration.",
+    render: (p) => DATA.tables[TABLE_STATE[p.state]],
+    jinja: (p) => TABLE_JINJA[p.state],
+    caption: (p) => TABLE_CAPTION[p.state],
   },
 
+  pagination: {
+    label: "pagination",
+    controls: [
+      { key: "state", type: "select", label: "position", options: ["page 1 of 12", "page 6 of 12", "page 12 of 12", "page 2 of 3", "no count"], value: "page 6 of 12" },
+    ],
+    render: (p) => DATA.pagination[PAGE_STATE[p.state]],
+    jinja: (p) => (p.state === "no count"
+      ? `{{ pagination(page, pages, page_url, target="#records") }}`
+      : `{{ pagination(page, pages, page_url,
+              total=total, per_page=per_page) }}`),
+    caption: "url is the list's address without a page number; the macro appends one, so the router keeps ownership of the query string. It renders nothing at one page or fewer. Every number is a real href — a page number is something people bookmark — and target= adds the swap on top.",
+  },
+
+  page_size: {
+    label: "page_size",
+    controls: [
+      { key: "state", type: "select", label: "path", options: ["htmx swap", "plain GET"], value: "htmx swap" },
+    ],
+    render: (p) => DATA.page_sizes[p.state === "plain GET" ? "plain" : "htmx"],
+    jinja: (p) => (p.state === "plain GET"
+      ? `{{ page_size(url_for(request, "records_page"), per_page,
+              options=page_sizes) }}`
+      : `{{ page_size(url_for(request, "records_page"), per_page,
+              options=page_sizes,
+              keep={"o": sort},
+              target="#records") }}`),
+    caption: (p) => (p.state === "plain GET"
+      ? "No target, so the submit button is the only thing that can apply the choice, and it is always rendered. Same macro, same fields, an ordinary GET."
+      : "A form, because a select on its own has no way to act on a change — and scripting one is not on the table. hx-trigger=\"change\" is what fires it: a form's default trigger is its submit event, which nothing sends here. The submit button moves inside <noscript>, so it is absent while htmx is running and is the only control when it is not. url carries no query string, because a native GET submit replaces the whole query with the form's fields — so filters travel in keep as hidden fields, and the page number never does: it names a position, and changing the size moves every position."),
+  },
   form: {
     label: "form",
     controls: [
@@ -376,7 +467,9 @@ function playground(slug, keys) {
     setCode(jinjaEl, macro.jinja(params), "jinja");
     setCode(htmlEl, html.replace(/\n\s*\n/g, "\n"), "html");
     htmlEl.setAttribute("data-wrap", "");
-    caption.textContent = macro.caption;
+    /* A caption is a string for a macro whose knobs do not change what is
+       worth saying about it, and a function for one where they do. */
+    caption.textContent = typeof macro.caption === "function" ? macro.caption(params) : macro.caption;
   }
 
   update();
@@ -387,7 +480,7 @@ function playground(slug, keys) {
 playground("button", ["button", "button_group"]);
 playground("data", ["badge", "stat", "progress", "card"]);
 playground("form", ["form"]);
-playground("table", ["table"]);
+playground("table", ["table", "pagination", "page_size"]);
 
 /* ------------------------------------------------------- layout.html */
 (function layout() {

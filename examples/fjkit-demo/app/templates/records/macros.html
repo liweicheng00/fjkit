@@ -1,0 +1,32 @@
+{#
+  Feature-local macros for the Records table. `request` is a parameter, so this
+  file imports without context.
+#}
+{% from "ui/data.html" import badge %}
+{% from "ui/table.html" import cell, select_cell %}
+
+{#
+  One row. It opens with the selection cell, because a tick box that is not the
+  first thing in the row is a tick box people miss.
+
+  The label is the dataset's name and not its id. A column of boxes announces
+  itself as "checkbox, checkbox, checkbox" otherwise, and the row is the only
+  thing that tells them apart.
+
+  `number` is the row's place in the listing, counted from the page's offset —
+  not `loop.index`, which restarts at 1 on every page and would number all
+  twelve pages 1 to 12. It needs no macro of its own: a numbered cell is
+  `cell` with three of its existing parameters, and one that invented a fourth
+  spelling of muted right-aligned digits would be a worse `cell`.
+#}
+{% macro record_row(request, record, number) -%}
+  <tr>
+    {{ select_cell(record.id, label="Select " ~ record.name) }}
+    {{ cell(number, tone="muted", numeric=true, align="end") }}
+    {{ cell(record.name, tone="strong") }}
+    {{ cell(record.owner, tone="muted") }}
+    {{ cell(badge(record.stage.value | capitalize, variant=record.stage_variant)) }}
+    {{ cell(record.rows_label, numeric=true, align="end") }}
+    {{ cell(record.updated_label, tone="muted") }}
+  </tr>
+{%- endmacro %}

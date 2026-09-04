@@ -1,0 +1,24 @@
+{# The Records page: the shell, a title and the table partial. #}
+{% extends "base.html" %}
+{% from "ui/data.html" import kbd %}
+{% from "ui/layout.html" import page_header %}
+{% from "ui/table.html" import select_scripts %}
+
+{% block title %}Records{% endblock %}
+
+{% block content %}
+  {# A block assignment so the description can contain `kbd`. #}
+  {% set note %}
+    Sort, page, resize and batch-select over 137 rows. Every header and every
+    page number is a real link, and the size control is a real form — turn
+    JavaScript off and the page still works, because {{ kbd("?o=") }},
+    {{ kbd("?page=") }} and {{ kbd("?per_page=") }} are in the URL.
+  {% endset %}
+
+  {{ page_header("Records", note) }}
+
+  {% include "records/_table.html" %}
+{% endblock %}
+
+{# Ticks the column from the header box, and tints the rows it picks. #}
+{% block scripts %}{{ select_scripts() }}{% endblock %}

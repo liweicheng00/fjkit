@@ -1,0 +1,64 @@
+{#
+  The Records table: the toolbar, the table itself and the page strip. Returned
+  by GET /records for an htmx request and by POST /records/archive, and
+  embedded by records/page.html.
+
+  Everything that moves swaps this one element. `target="#records"` on the
+  table sends the sort links here, `pagination(target=…)` sends the page links
+  here, and the Archive button targets it too — so the three of them cannot
+  land in three different places, and a sort applied on page 4 comes back as a
+  whole table rather than a table with somebody else's strip under it.
+#}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import card %}
+{% from "ui/layout.html" import row, stack %}
+{% from "ui/table.html" import page_size, pagination, select_count, table %}
+{% from "records/macros.html" import record_row %}
+
+<div id="records">
+{% call stack(4) %}
+
+  {#
+    The toolbar, rendered into a variable and handed to the card as its header
+    actions. `select_count` fills itself in from the ticked boxes; the button
+    posts them.
+
+    `hx-include` is the whole of the wiring between the two: htmx omits an
+    unticked checkbox exactly as a form does, so the selector reads "the
+    selection" without anything having to maintain a list.
+  #}
+  {% set toolbar %}
+    {% call row(gap=2) %}
+      {{ select_count() }}
+      {{ button("Archive selected", variant="secondary", size="xs", icon_name="archive",
+                hx_post=action_url,
+                hx_include="[data-fjkit-select]",
+                hx_target="#records", hx_swap="outerHTML",
+                hx_disabled_elt="this") }}
+    {% endcall %}
+  {% endset %}
+
+  {% call card(total ~ " datasets", actions=toolbar, padded=false) %}
+    {% call table(columns, rows=records, target="#records",
+                  empty_title="Nothing here",
+                  empty_description="No dataset is in this view.",
+                  empty_icon="table") %}
+      {% for record in records %}{{ record_row(request, record, offset + loop.index) }}{% endfor %}
+    {% endcall %}
+  {% endcall %}
+
+  {#
+    The two controls that frame the list, at opposite ends of one row.
+
+    `page_size` is outside `pagination` on purpose. `pagination` renders
+    nothing at one page or fewer, and at 100 rows a page this list is one page
+    — a size control that disappeared at the size that produces one page would
+    be the only control on the page you cannot get back out of.
+  #}
+  {% call row(gap=4, justify="between") %}
+    {{ page_size(base_url, per_page, options=page_sizes, keep=keep, target="#records") }}
+    {{ pagination(page, pages, page_url, total=total, per_page=per_page, target="#records") }}
+  {% endcall %}
+
+{% endcall %}
+</div>

@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788337205">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788519593">
   <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -893,21 +893,44 @@ fjkit
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Table</h2><p class="text-muted-foreground text-sm">Pass rows and the macro owns the empty case.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Table</h2><p class="text-muted-foreground text-sm">A column spec, and the two controls a list needs around it.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         <code>columns</code> is a list of dicts — <code>label</code>, and optionally
-        <code>align</code> or <code>width</code> — and the macro tests <code>rows</code> to decide
-        whether to render your body or the empty state. That is why it takes rows it does not
-        iterate: no caller repeats the if-rows-else branch, and no page can ship a table that renders
-        as a lone header row.
+        <code>align</code>, <code>width</code>, <code>sort</code>, <code>sort_url</code> or
+        <code>select</code> — and the macro tests <code>rows</code> to decide whether to render your
+        body or the empty state. That is why it takes rows it does not iterate: no caller repeats the
+        if-rows-else branch, and no page can ship a table that renders as a lone header row.
       </p>
       <p>
         A repeated row is a macro call inside your loop. <code>{% include %}</code>
         there is a template lookup plus a fresh context per iteration, which is the difference the
         benchmark on the Learn page measures.
       </p>
+      <p>
+        A column carrying a <code>sort_url</code> becomes a sortable header, and
+        <code>pagination</code> goes under the table. Neither builds a URL: the router owns the query
+        string, because it is the only thing that knows which filters are on. Both render real
+        <code>href</code>s and take <code>target=</code> to add the htmx swap on top — an order and a
+        page number are the two things about a list that people bookmark, so both have to survive
+        JavaScript being off.
+      </p>
+      <p>
+        <code>{"select": true}</code> puts a batch-selection column in front of
+        the rest. It posts as the repeated field a checkbox column has always sent, and
+        <code>select_scripts()</code> is what ticks the whole column from the header box.
+      </p>
+      <p>
+        <code>page_size</code> is a <code>&lt;form method="get"&gt;</code>, and that is the design
+        rather than an implementation detail: a <code>&lt;select&gt;</code> on its own has no way to
+        act when its value changes, and the kit does not script one. Its <code>url</code> must carry
+        no query string, because a native GET submit replaces the whole query with the form's own
+        fields — so the filters travel in <code>keep</code> as hidden fields. The page number never
+        does. It names a position, and changing the size moves every position.
+      </p>
 </div>
-    <div class="card">          <div id="table-controls" data-controls></div>
+    <div class="card">          <div class="tabs" id="table-picker" data-picker>
+      <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
+    </div>
 
   </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>

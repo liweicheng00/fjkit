@@ -1,16 +1,18 @@
 {#
-  table(columns, rows, …) — the basic data table.
-
-  0.1 scope: structure, column specs, and the zero-row case. Sorting,
-  pagination and batch selection land in 0.4.
+  The data table: structure, sortable headers, batch selection and the
+  pagination that goes under it.
 
       {% call table(
-           columns=[{"label": "Task"}, {"label": "Owner"}, {"width": "min"}],
+           columns=[{"label": "Task", "sort": "asc", "sort_url": "/tasks?o=-title"},
+                    {"label": "Owner"},
+                    {"width": "min"}],
            rows=tasks,
+           target="#board",
            empty_title="Nothing here",
            empty_description="No task matches this filter.") %}
         {% for task in tasks %}{{ task_row(request, task) }}{% endfor %}
       {% endcall %}
+      {{ pagination(page, pages, url_for(request, "tasks_page"), target="#board") }}
 
   Passing `rows` gives the macro the empty case, so no caller repeats the
   "if there are rows … else …" branch. Pass `rows=none` to always render the
@@ -21,20 +23,67 @@
   gap widens linearly with row count.
 #}
 {% from "ui/attrs.html" import attrs %}
+{% from "ui/button.html" import button %}
 {% from "ui/data.html" import empty_state %}
+{% from "ui/icon.html" import icon %}
 
 {% set _ALIGN = {"start": "text-left", "center": "text-center", "end": "text-right"} %}
 {% set _WIDTH = {"min": "w-px", "narrow": "w-16", "auto": ""} %}
 
-{% macro table(columns, rows=none, empty_title="Nothing here", empty_description=none, empty_icon="list") -%}
+{#
+  `aria-sort` is what a screen reader reads out of the header; the glyph is
+  what everyone else reads. Both are keyed off one value, so they cannot
+  disagree — an arrow pointing up over `aria-sort="descending"` is the usual
+  way this component goes wrong.
+
+  A third state is in neither table: sortable, but not the column currently
+  sorted. It falls through to `aria-sort="none"` and the two-headed chevron.
+  Without that chevron a sortable column looks exactly like a fixed one.
+#}
+{% set _ARIA_SORT = {"asc": "ascending", "desc": "descending"} %}
+{% set _SORT_ICON = {"asc": "arrow-up", "desc": "arrow-down"} %}
+
+{#
+  table(columns, rows, …) — the <table> and its header row.
+
+  A column is a dict, and every key is optional:
+
+      label       header text
+      align       start | center | end
+      width       min | narrow | auto
+      sort        asc | desc | none      this column's current state
+      sort_url    where clicking the header goes; its presence is what makes
+                  the column sortable
+      select      true, for the batch-selection column
+
+  `sort_url` is a URL the caller built, not a column key the macro turns into
+  one. The router already owns the query string — it is the thing that knows
+  which parameter carries the order, what the other filters are, and that
+  clicking the sorted column reverses it rather than re-applying it. A macro
+  that guessed would be wrong on the first page with two filters on it.
+
+  `target` decides how the header links travel, and decides it once for the
+  whole table:
+
+      table(columns, target="#board")  ->  href + hx-get + hx-target + hx-swap
+      table(columns)                   ->  href
+
+  Both render an `<a href>`, so sorting works with JavaScript off and a sorted
+  view is a URL somebody can send to a colleague. `target` adds the swap on
+  top, and `hx-push-url` keeps the address bar honest about which one is shown
+  — without it the browser's back button leaves the page and the URL describes
+  a sort order nobody is looking at.
+#}
+{% macro table(columns, rows=none, empty_title="Nothing here", empty_description=none, empty_icon="list",
+               target=none, swap="outerHTML", push_url=true,
+               select_name="selected", select_label="Select all rows") -%}
   {% if rows is none or rows %}
     <div class="table-container">
       <table class="table"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
         <thead>
           <tr>
             {% for column in columns %}
-              <th class="{{ _WIDTH.get(column.get("width"), "") }} {{ _ALIGN.get(column.get("align"), "") }}"
-                  {%- if column.get("width") == "min" %} aria-label="Actions"{% endif %}>{{ column.get("label", "") }}</th>
+              {{- _header(column, target, swap, push_url, select_name, select_label) }}
             {% endfor %}
           </tr>
         </thead>
@@ -44,6 +93,64 @@
   {% else %}
     {{ empty_state(empty_title, empty_description, empty_icon) }}
   {% endif %}
+{%- endmacro %}
+
+{#
+  One `<th>`. Private, and not because the file is tidier that way: a header
+  cell is only ever correct in the company of the rest of its row, and a caller
+  who could reach this one would be able to build a table whose header count
+  and column count disagree.
+#}
+{% macro _header(column, target, swap, push_url, select_name, select_label) -%}
+  {%- if column.get("select") -%}
+    {#
+      `role="checkbox"` is the implicit role of the element already. It is
+      written out because Basecoat's table rules select on it —
+      `[&:has([role=checkbox])]:pe-0` — to take the trailing padding off a
+      column that holds nothing but a tick box.
+    #}
+    <th class="w-px">
+      <input class="input" type="checkbox" role="checkbox"
+             data-fjkit-select-all="{{ select_name }}" aria-label="{{ select_label }}">
+    </th>
+  {%- else -%}
+    {%- set sort = column.get("sort") -%}
+    {%- set sort_url = column.get("sort_url") -%}
+    <th class="{{ _WIDTH.get(column.get("width"), "") }} {{ _ALIGN.get(column.get("align"), "") }}"
+        {%- if sort_url %} aria-sort="{{ _ARIA_SORT.get(sort, "none") }}"{% endif %}
+        {#
+          An unlabelled cell is invisible to a screen reader reading out the
+          column of a focused button, so the actions column gets a name. Only
+          an unlabelled one: `aria-label` replaces the text rather than adding
+          to it, so a narrow column that does have a heading — a row number,
+          say — would be announced as "Actions" instead of as itself.
+        #}
+        {%- if column.get("width") == "min" and not column.get("label") %} aria-label="Actions"{% endif %}>
+      {%- if sort_url -%}
+        {#
+          `-mx-2` cancels the cell's own padding, so a sortable header's text
+          starts on the same pixel as a fixed one's. Without it a table reads
+          as two ragged columns of headings.
+        #}
+        <a class="-mx-2 inline-flex items-center gap-1 rounded-md px-2 py-1
+                  hover:text-foreground focus-visible:outline-ring focus-visible:-outline-offset-2 focus-visible:outline-2"
+           href="{{ sort_url }}"
+           {%- if target %} hx-get="{{ sort_url }}" hx-target="{{ target }}" hx-swap="{{ swap }}"
+           {%- if push_url %} hx-push-url="true"{% endif %}{% endif %}>
+          {{- column.get("label", "") }}
+          {#
+            aria-hidden: `aria-sort` on the cell has already said this, and a
+            screen reader that reads the glyph too says "ascending" twice.
+          #}
+          <span aria-hidden="true"{% if not sort %} class="text-muted-foreground"{% endif %}>
+            {{- icon(_SORT_ICON.get(sort, "chevrons-up-down"), 14) -}}
+          </span>
+        </a>
+      {%- else -%}
+        {{ column.get("label", "") }}
+      {%- endif -%}
+    </th>
+  {%- endif -%}
 {%- endmacro %}
 
 {#
@@ -67,6 +174,139 @@
 {%- endmacro %}
 
 {#
+  select_cell(value, name, checked, label) — the row half of the batch-selection
+  column, matching a `{"select": true}` header.
+
+      <tr{% if task.id in picked %} data-state="selected"{% endif %}>
+        {{ select_cell(task.id, label="Select " ~ task.title) }}
+        …
+      </tr>
+
+  It is an ordinary checkbox with an ordinary `name`, so the selection reaches
+  the server the way a checkbox group always has — `selected=3&selected=7` —
+  and a route reads it as `selected: list[int] = Query([])`. Nothing here
+  invents a wire format.
+
+  Delivering it is the caller's job: either the table sits inside a `form()`,
+  or a bulk-action button carries `hx_include="[data-fjkit-select]"`. One
+  attribute either way.
+
+  Always pass `label`. Without one, a column of tick boxes announces itself as
+  "checkbox, checkbox, checkbox", and the row is the only thing that tells them
+  apart. It falls back to the value, which is an id rather than a label.
+
+  `data-state="selected"` on the `<tr>` tints a picked row; Basecoat's table
+  rules carry it. `js/select.js` maintains it after the first click. Write it
+  yourself on a row the server renders as already picked.
+#}
+{% macro select_cell(value, name="selected", checked=false, label=none) -%}
+  <td class="w-px">
+    <input class="input" type="checkbox" role="checkbox"
+           name="{{ name }}" value="{{ value }}" data-fjkit-select="{{ name }}"
+           {%- if checked %} checked{% endif %}
+           aria-label="{{ label if label is not none else "Select " ~ value }}"
+           {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+  </td>
+{%- endmacro %}
+
+{#
+  select_scripts() — the script behind `{"select": true}` and `select_cell`.
+
+  Per page, never from the shell, for the reason `form_scripts()` and
+  `reveal_scripts()` are: CHARTER §7 budgets what a page downloads by default,
+  and the answer has to stay "htmx and Basecoat". A page with a batch-select
+  table is one page.
+
+  The row boxes work without it — they are checkboxes, and a form posts them.
+  It adds the header box that ticks and clears the column, the dash for a
+  partial selection, and the tint on picked rows.
+
+  A page that forgets it gets a header checkbox that ticks only itself, which
+  reads as a bug in the kit rather than a missing script.
+#}
+{% macro select_scripts() -%}
+  <script defer src="{{ fjkit_static("js/select.js") }}"></script>
+{%- endmacro %}
+
+{#
+  select_count(name, label, zero) — the live "3 selected" readout for a toolbar.
+
+  `js/select.js` writes the number, keyed by the same `name` the checkboxes
+  carry, so a page with two independent selections gets two independent counts.
+
+  Both strings travel in the markup, so the script contains no English. `{n}`
+  in `label` is where the number goes. `zero` stands there before anything is
+  picked; pass `none` and the readout hides itself instead, so a control that
+  only makes sense with a selection needs no second mechanism to hide it.
+
+  It needs `select_scripts()`. Without it the readout stays frozen on `zero`.
+#}
+{% macro select_count(name="selected", label="{n} selected", zero="None selected") -%}
+  <span class="text-muted-foreground text-sm"
+        data-fjkit-select-count="{{ name }}" data-fjkit-select-label="{{ label }}"
+        {%- if zero is not none %} data-fjkit-select-zero="{{ zero }}"{% else %} hidden{% endif %}
+        {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ zero if zero is not none }}</span>
+{%- endmacro %}
+
+{#
+  page_size(url, per_page, options, …) — the "Rows per page" control that sits
+  opposite `pagination`.
+
+      {{ page_size(url_for(request, "records_page"), per_page,
+                   options=[12, 25, 50, 100],
+                   keep={"o": sort}, target="#records") }}
+
+  A `<form method="get">`, because a `<select>` cannot act on its own change.
+  Both paths send the same request:
+
+      target="#records"  ->  hx-get, fired by the select's change event
+      no target          ->  an ordinary GET with a submit button
+
+  Both produce `GET {url}?o=-updated&per_page=25`: htmx serialises a form the
+  way a browser does. `hx-trigger="change"` fires the first one — a form's
+  default trigger is `submit`, and nothing submits it on that path.
+
+  The submit button sits inside `<noscript>` when there is a target. It is
+  absent while htmx runs and is the only working control when htmx does not, so
+  this macro ships no JavaScript.
+
+  `url` must carry no query string. A native GET submit replaces the whole
+  query with the form's fields, so anything in `action=` survives the htmx path
+  and vanishes on the other. Pass what must survive in `keep`; both paths
+  serialise it as hidden fields.
+
+  Never put the page number in `keep`. Page 12 of 12 at twelve rows is page 3
+  of 3 at fifty.
+
+  `per_page` is the size the server used, not the one the query string asked
+  for. The router has already clamped it to `options`.
+#}
+{% macro page_size(url, per_page, options=(10, 25, 50, 100), param="per_page", keep=none,
+                   target=none, swap="outerHTML", push_url=true,
+                   label="Rows per page", apply_label="Apply", id=none) -%}
+  {%- set field_id = id or ("f-" ~ param) -%}
+  <form class="flex items-center gap-2" method="get" action="{{ url }}"
+    {%- if target %} hx-get="{{ url }}" hx-target="{{ target }}" hx-swap="{{ swap }}" hx-trigger="change"
+      {%- if push_url %} hx-push-url="true"{% endif %}{% endif %}
+    {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- for name, value in (keep or {}).items() if value is not none %}
+      <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {%- endfor %}
+    <label class="label" for="{{ field_id }}">{{ label }}</label>
+    <select class="select" data-size="sm" id="{{ field_id }}" name="{{ param }}">
+      {%- for option in options %}
+        <option value="{{ option }}"{% if option == per_page %} selected{% endif %}>{{ option }}</option>
+      {%- endfor %}
+    </select>
+    {%- if target %}
+      <noscript>{{ button(apply_label, variant="outline", size="sm", type="submit") }}</noscript>
+    {%- else %}
+      {{ button(apply_label, variant="outline", size="sm", type="submit") }}
+    {%- endif %}
+  </form>
+{%- endmacro %}
+
+{#
   row_actions() — the trailing cell of per-row buttons.
 
   Right-aligned and tight, because a column of actions that drifts left of the
@@ -76,4 +316,112 @@
   <td>
     <div class="flex justify-end gap-1">{{ caller() }}</div>
   </td>
+{%- endmacro %}
+
+{#
+  pagination(page, pages, url, …) — the page strip that goes under a table.
+
+      {{ pagination(page, pages, url_for(request, "records_page"),
+                    total=total, per_page=per_page, target="#records") }}
+
+  `url` is the address of the list *without* a page parameter; the macro
+  appends one. Same division of labour as `sort_url` above: the router owns the
+  query string, because it is the only thing that knows which filters are on.
+  Passing a URL that already carries `page=` produces a link with two of them,
+  and which one wins is the framework's business, not this macro's.
+
+  `target` works exactly as it does on `table()`: every link is a real `href`,
+  and a target adds `hx-get` on top. A paginated list has to survive JavaScript
+  being off, because "page 4 of the results" is a thing people bookmark and
+  send to each other.
+
+  It renders **nothing** when there is one page or fewer. A strip reading "1"
+  with both arrows greyed out is chrome that says nothing, and the alternative
+  is every caller writing the same `{% if pages > 1 %}` around it — the same
+  reason `table()` owns its empty state.
+
+  `window` is how many pages sit either side of the current one. First and last
+  are always shown, and the jump between them and the window is an ellipsis, so
+  the strip is a fixed width whether there are nine pages or nine thousand.
+
+  `total` and `per_page` are optional and travel together: given both, the
+  strip grows the "1–25 of 312" line that tells a person whether paging further
+  is worth it. Given neither, the buttons sit alone at the trailing edge.
+#}
+{% macro pagination(page, pages, url, param="page", total=none, per_page=none,
+                    target=none, swap="outerHTML", push_url=true, window=1, label="Pagination") -%}
+  {%- if pages > 1 -%}
+    {#
+      Clamped rather than trusted. `page` arrives from a query string, and a
+      strip built around page 0 or page 900 of 9 renders links to nowhere with
+      no error anywhere.
+    #}
+    {%- set current = [[page, 1] | max, pages] | min -%}
+    {%- set lo = [2, current - window] | max -%}
+    {%- set hi = [pages - 1, current + window] | min -%}
+    {%- set summary = total is not none and per_page is not none -%}
+    <nav class="flex flex-wrap items-center gap-3 {{ "justify-between" if summary else "justify-end" }}"
+         aria-label="{{ label }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+      {%- if summary %}
+        <p class="text-muted-foreground text-sm">
+          {{- (current - 1) * per_page + 1 }}–{{ [current * per_page, total] | min }} of {{ total -}}
+        </p>
+      {%- endif %}
+      <div class="flex flex-wrap items-center gap-1">
+        {{- _step(current - 1, current > 1, "Previous", "chevron-left", "prev", url, param, target, swap, push_url) }}
+        {{- _page(1, current, url, param, target, swap, push_url) }}
+        {%- if lo > 2 %}{{ _gap() }}{% endif %}
+        {%- for n in range(lo, hi + 1) %}{{ _page(n, current, url, param, target, swap, push_url) }}{% endfor %}
+        {%- if hi < pages - 1 %}{{ _gap() }}{% endif %}
+        {{- _page(pages, current, url, param, target, swap, push_url) }}
+        {{- _step(current + 1, current < pages, "Next", "chevron-right", "next", url, param, target, swap, push_url) }}
+      </div>
+    </nav>
+  {%- endif -%}
+{%- endmacro %}
+
+{#
+  The three pieces a strip is made of. Private for the same reason `_header` is:
+  a page link is only meaningful inside the strip that counted the pages.
+#}
+{#
+  The htmx half of every link in the strip is `none` when there is no target,
+  and `attrs()` drops a `none`, so one call site covers both kinds of link
+  without a branch around the markup.
+#}
+{% macro _page(n, current, url, param, target, swap, push_url) -%}
+  {%- set href = url ~ ("&" if "?" in url else "?") ~ param ~ "=" ~ n -%}
+  {{ button(n, variant="secondary" if n == current else "ghost", size="icon-sm",
+            href=href,
+            aria_current="page" if n == current else none,
+            hx_get=href if target else none,
+            hx_target=target,
+            hx_swap=swap if target else none,
+            hx_push_url="true" if target and push_url else none) }}
+{%- endmacro %}
+
+{#
+  A step that has nowhere to go renders as a disabled `<button>`, not a dead
+  `<a>`. `href` is what makes an anchor focusable and clickable, and an anchor
+  without one is skipped by the keyboard entirely — so the arrow at the end of
+  the list would vanish from tab order instead of announcing that it is
+  unavailable.
+#}
+{% macro _step(n, enabled, label, icon_name, rel, url, param, target, swap, push_url) -%}
+  {%- if enabled -%}
+    {%- set href = url ~ ("&" if "?" in url else "?") ~ param ~ "=" ~ n -%}
+    {{ button(label, variant="ghost", size="sm", icon_name=icon_name,
+              icon_end=(rel == "next"), href=href, rel=rel,
+              hx_get=href if target else none,
+              hx_target=target,
+              hx_swap=swap if target else none,
+              hx_push_url="true" if target and push_url else none) }}
+  {%- else -%}
+    {{ button(label, variant="ghost", size="sm", icon_name=icon_name,
+              icon_end=(rel == "next"), disabled=true) }}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro _gap() -%}
+  <span class="text-muted-foreground px-1 text-sm" aria-hidden="true">…</span>
 {%- endmacro %}

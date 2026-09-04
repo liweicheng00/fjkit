@@ -311,13 +311,18 @@ GROUPS = [
                 "macros": [
                     _m(
                         'table(columns, rows=none, empty_title="Nothing here",\n'
-                        '      empty_description=none, empty_icon="list")',
+                        '      empty_description=none, empty_icon="list", target=none,\n'
+                        '      swap="outerHTML", push_url=true, select_name="selected",\n'
+                        '      select_label="Select all rows")',
                         block="rows",
-                        en="columns is a list of dicts — label, and optionally align or width. "
-                        "Passing rows lets the macro own the empty case; pass rows=none to always "
-                        "render the body yourself.",
-                        zh="columns 是 dict 的清單——label，可選 align 或 width。"
-                        "傳了 rows，空資料的情況就歸 macro 管；傳 rows=none 則永遠自己渲染 body。",
+                        en="columns is a list of dicts — label, and optionally align, width, "
+                        "sort, sort_url or select. Passing rows lets the macro own the empty "
+                        "case; pass rows=none to always render the body yourself. A column with "
+                        "a sort_url becomes a sortable header, and target turns those links into "
+                        "htmx swaps.",
+                        zh="columns 是 dict 的清單——label，可選 align、width、sort、sort_url 或 select。"
+                        "傳了 rows，空資料的情況就歸 macro 管；傳 rows=none 則永遠自己渲染 body。"
+                        "有 sort_url 的欄位會變成可排序表頭，給了 target 那些連結就同時是 htmx swap。",
                     ),
                     _m(
                         "cell(value=none, tone=none, numeric=false, align=none)",
@@ -332,6 +337,53 @@ GROUPS = [
                         block="buttons",
                         en="The trailing cell, right-aligned and tight.",
                         zh="最後一格，靠右且緊湊。",
+                    ),
+                    _m(
+                        'select_cell(value, name="selected", checked=false, label=none)',
+                        en="The row half of a {\"select\": true} column. An ordinary checkbox with "
+                        "an ordinary name, so the selection posts as selected=3&selected=7. Give "
+                        "it a label: an id is not one.",
+                        zh="{\"select\": true} 欄位在資料列這一半。就是一個普通的 checkbox 加普通的 name，"
+                        "所以選取結果照 selected=3&selected=7 送出。要給 label——id 不是 label。",
+                    ),
+                    _m(
+                        'select_count(name="selected", label="{n} selected",\n'
+                        '             zero="None selected")',
+                        en="The live readout of how many rows are picked. Both strings travel in "
+                        "the markup, so a translated page translates them. Pass zero=none and it "
+                        "hides while nothing is selected.",
+                        zh="即時顯示選了幾列。兩個字串都寫在標記裡，所以翻譯頁面能翻譯它們。"
+                        "傳 zero=none 則在沒有選取時自己隱藏。",
+                    ),
+                    _m(
+                        "select_scripts()",
+                        en="Loads js/select.js, which ticks the column from the header box, shows "
+                        "the partial state and tints the picked rows. Per page, never the shell.",
+                        zh="載入 js/select.js：從表頭的核取方塊勾選整欄、顯示部分選取狀態、"
+                        "把選到的列上色。逐頁載入，不進 shell。",
+                    ),
+                    _m(
+                        'page_size(url, per_page, options=(10, 25, 50, 100),\n'
+                        '          param="per_page", keep=none, target=none,\n'
+                        '          label="Rows per page", apply_label="Apply")',
+                        en="A GET form, because a select on its own cannot act on a change. url must "
+                        "carry no query string — a native submit throws it away — so filters travel "
+                        "in keep as hidden fields. Never the page number. With a target the select "
+                        "applies itself and the submit button is only rendered without scripting.",
+                        zh="一個 GET form，因為單獨一個 select 沒有辦法對變更做出反應。"
+                        "url 不能帶 query string——原生送出會把它整段丟掉——所以篩選要放在 keep，"
+                        "以 hidden 欄位傳遞，但絕不放頁碼。給了 target，select 自己就會套用，"
+                        "送出鈕只在沒有腳本時才渲染。",
+                    ),
+                    _m(
+                        'pagination(page, pages, url, param="page", total=none,\n'
+                        '           per_page=none, target=none, swap="outerHTML",\n'
+                        '           push_url=true, window=1, label="Pagination")',
+                        en="url is the list's address without a page parameter; the macro appends "
+                        "one. Renders nothing when there is one page or fewer. Give total and "
+                        "per_page together for the \"76–100 of 210\" line.",
+                        zh="url 是清單的網址，不帶頁碼參數，頁碼由 macro 接上去。只有一頁或更少時不渲染。"
+                        "total 與 per_page 要一起給，才會出現「76–100 of 210」那一行。",
                     ),
                 ],
             },

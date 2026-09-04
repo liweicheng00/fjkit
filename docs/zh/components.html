@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788337205">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788519593">
   <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -874,10 +874,11 @@ fjkit
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Table</h2><p class="text-muted-foreground text-sm">把 rows 傳進去，空狀態由 macro 處理。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Table</h2><p class="text-muted-foreground text-sm">一份欄位規格，以及一張清單需要的那兩個控制項。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        <code>columns</code> 是一串 dict：<code>label</code>，需要時再加 <code>align</code> 或
-        <code>width</code>。<code>rows</code> 則決定這支 macro 要渲染你的內容還是空狀態。
+        <code>columns</code> 是一串 dict：<code>label</code>，需要時再加 <code>align</code>、
+        <code>width</code>、<code>sort</code>、<code>sort_url</code> 或 <code>select</code>。
+        <code>rows</code> 則決定這支 macro 要渲染你的內容還是空狀態。
         它收下一份自己並不迭代的 rows 就是為了這件事：呼叫端不必重寫 if-rows-else，
         也不會有頁面出貨一張只剩表頭的表格。
       </p>
@@ -886,8 +887,29 @@ fjkit
         <code>{% include %}</code> 等於每一輪多一次模板查找與一份新的 context，
         那正是「上手」那一頁的 benchmark 量到的差距。
       </p>
+      <p>
+        帶了 <code>sort_url</code> 的欄位會變成可排序表頭，<code>pagination</code> 則放在表格底下。
+        兩者都不自己組網址：query string 歸路由管，因為只有它知道現在開著哪些篩選。
+        兩者渲染的都是真的 <code>href</code>，再由 <code>target=</code> 疊上 htmx swap——
+        排序與頁碼是一張清單裡最常被收進書籤的兩件事，所以關掉 JavaScript 也必須還在。
+      </p>
+      <p>
+        <code>{"select": true}</code> 會在最前面加一欄批次選取。
+        它送出的就是核取方塊欄位一直以來送出的那種重複欄位，
+        而 <code>select_scripts()</code> 負責讓表頭那一格勾選整欄。
+      </p>
+      <p>
+        <code>page_size</code> 是一個 <code>&lt;form method="get"&gt;</code>，
+        這是設計本身而不是實作細節：單獨一個 <code>&lt;select&gt;</code>
+        在值變更時沒有任何辦法做出反應，而這個 kit 不會替它寫一段腳本。
+        它的 <code>url</code> 不能帶 query string，因為原生的 GET 送出會用表單自己的欄位
+        取代整段 query——所以篩選要放進 <code>keep</code>，以 hidden 欄位傳遞。
+        頁碼永遠不放：它指的是一個位置，而改變每頁筆數會讓每一個位置都不一樣。
+      </p>
 </div>
-    <div class="card">          <div id="table-controls" data-controls></div>
+    <div class="card">          <div class="tabs" id="table-picker" data-picker>
+      <nav role="tablist" aria-label="Component" aria-orientation="horizontal"></nav>
+    </div>
 
   </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>

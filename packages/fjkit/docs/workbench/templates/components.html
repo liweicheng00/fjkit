@@ -458,24 +458,45 @@
   {% endcall %}
 
   {# ============================================================== 12 #}
-  {% set c13 %}Pass rows and the macro owns the empty case.{% endset %}
+  {% set c13 %}A column spec, and the two controls a list needs around it.{% endset %}
   {% call lesson("table", "12", "Table", c13) %}
     {% call prose() %}
       <p>
         <code>columns</code> is a list of dicts — <code>label</code>, and optionally
-        <code>align</code> or <code>width</code> — and the macro tests <code>rows</code> to decide
-        whether to render your body or the empty state. That is why it takes rows it does not
-        iterate: no caller repeats the if-rows-else branch, and no page can ship a table that renders
-        as a lone header row.
+        <code>align</code>, <code>width</code>, <code>sort</code>, <code>sort_url</code> or
+        <code>select</code> — and the macro tests <code>rows</code> to decide whether to render your
+        body or the empty state. That is why it takes rows it does not iterate: no caller repeats the
+        if-rows-else branch, and no page can ship a table that renders as a lone header row.
       </p>
       <p>
         A repeated row is a macro call inside your loop. <code>{% raw %}{% include %}{% endraw %}</code>
         there is a template lookup plus a fresh context per iteration, which is the difference the
         benchmark on the Learn page measures.
       </p>
+      <p>
+        A column carrying a <code>sort_url</code> becomes a sortable header, and
+        <code>pagination</code> goes under the table. Neither builds a URL: the router owns the query
+        string, because it is the only thing that knows which filters are on. Both render real
+        <code>href</code>s and take <code>target=</code> to add the htmx swap on top — an order and a
+        page number are the two things about a list that people bookmark, so both have to survive
+        JavaScript being off.
+      </p>
+      <p>
+        <code>{% raw %}{"select": true}{% endraw %}</code> puts a batch-selection column in front of
+        the rest. It posts as the repeated field a checkbox column has always sent, and
+        <code>select_scripts()</code> is what ticks the whole column from the header box.
+      </p>
+      <p>
+        <code>page_size</code> is a <code>&lt;form method="get"&gt;</code>, and that is the design
+        rather than an implementation detail: a <code>&lt;select&gt;</code> on its own has no way to
+        act when its value changes, and the kit does not script one. Its <code>url</code> must carry
+        no query string, because a native GET submit replaces the whole query with the form's own
+        fields — so the filters travel in <code>keep</code> as hidden fields. The page number never
+        does. It names a position, and changing the size moves every position.
+      </p>
     {% endcall %}
 
-    {{ playground("table", tabbed=false) }}
+    {{ playground("table") }}
   {% endcall %}
 
   {# ============================================================== 13 #}
