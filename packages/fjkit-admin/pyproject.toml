@@ -1,0 +1,46 @@
+[project]
+name = "fjkit-admin"
+version = "0.1.0.dev0"
+description = "A Django-style admin for FastAPI: SQLAlchemy models, rendered with fjkit, swapped with htmx"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [{ name = "liweicheng00" }]
+keywords = ["fastapi", "admin", "sqlalchemy", "htmx", "jinja2", "fjkit", "crud"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Typing :: Typed",
+]
+
+# Two, and the second is the whole reason this is a separate distribution:
+# fjkit is the UI layer and carries no data-layer dependency (CHARTER §1).
+# SQLModel is not listed. A `table=True` class is an ordinary mapped class,
+# so nothing here needs to import it; see `fjkit_admin.schema`.
+dependencies = [
+    "fjkit",
+    "sqlalchemy>=2.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.10.0",
+    "pytest>=9.1.1",
+    "sqlmodel>=0.0.42",
+]
+
+[tool.uv.sources]
+fjkit = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fjkit_admin"]
+
+[tool.hatch.build]
+artifacts = ["src/fjkit_admin/templates/**/*"]

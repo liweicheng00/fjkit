@@ -1,0 +1,28 @@
+{# The admin index: one card per registered model. #}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import card, empty_state %}
+{% from "ui/layout.html" import grid, page_header, row, stack %}
+
+<div id="{{ region }}">
+{% if swap %}<title>{{ title }} · {{ admin_title }}</title>{% endif %}
+{% call stack(4) %}
+  {{ page_header(admin_title, index_description) }}
+
+  {% if models %}
+    {% call grid(cols=3) %}
+      {% for entry in models %}
+        {% call card(entry.label | capitalize, entry.count_label) %}
+          {% call row(gap=2) %}
+            {{ button("Open", variant="secondary", size="sm", href=entry.url, icon_name=entry.icon) }}
+            {% if entry.can_add %}
+              {{ button("Add", variant="outline", size="sm", href=entry.add_url, icon_name="plus") }}
+            {% endif %}
+          {% endcall %}
+        {% endcall %}
+      {% endfor %}
+    {% endcall %}
+  {% else %}
+    {{ empty_state("No models registered", "Pass views=(…) to AdminPlugin, each a ModelAdmin subclass.", "table") }}
+  {% endif %}
+{% endcall %}
+</div>

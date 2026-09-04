@@ -2019,3 +2019,43 @@ CSS 一個位元組都沒改。八個包仍然全部在 wheel 裡（1,852 KB，�
 
 **不可逆的部分**：`fjkit-style-*` 這八個 PyPI 名字沒有註冊，日後想恢復時可能已
 被他人取走。
+
+## fjkit-admin 0.1：Django 風格的後台，第二顆發行版（2026-09-04，使用者指定）
+
+**放哪裡**：`packages/fjkit-admin/`，workspace 的第二個發行版，不進 fjkit 的 wheel。
+理由是 §1 那句「fjkit 不碰資料層」——admin 帶著 `sqlalchemy>=2.0` 這個 runtime 依賴，
+而 fjkit 的依賴清單仍然是三個。同一個 repo 而不是另一個 repo：fjkit 還沒發佈，
+兩邊一起改（0.4 的 macro 與它的第一個消費者）在一個 workspace 裡是一個 commit 一次測試。
+
+**形狀照 `ApiDocsPlugin`**：`AdminPlugin(session_factory, views=…, url=, base_template=,
+dependencies=, home_url=)`。自己的 router、自己的 `templates/admin/` 命名空間（app 可遮蔽）、
+`base_template` 決定住在誰的外殼裡。`ModelAdmin` 用 Django 的字：`list_display`／`search_fields`／
+`list_filter`／`ordering`／`list_per_page`／`fields`／`readonly_fields`／`actions`，
+hook 是 `get_queryset`／`has_*_permission`／`save_model`／`delete_model`／`label_for`。
+每個選項都有從 mapper 推出來的預設值，所以 `class TaskAdmin(ModelAdmin, model=Task): pass`
+就是一張能用的列表和表單。
+
+**一個區域，所有 swap 都換它**：`#admin-main`。排序、翻頁、搜尋、篩選、存檔成功、批次動作
+全部 outerHTML 換掉同一個元素；列表 partial 與表單 partial 都渲染成這個 id，
+所以「存完回到列表」不需要第二個 target，只需要 `HX-Push-Url`。swap 回應帶一個 `<title>`，
+htmx 會套用，分頁的標題才不會停在「Add task」。
+
+**表單不需要 WTForms**：`schema.py` 用 `pydantic.create_model` 從 `ColumnInfo` 造出 body model，
+`create`／`update` 的 handler 簽名直接宣告它。被退回就是 FastAPI 自己的 422，
+`errors.js` 把訊息寫到同名欄位下面——admin 這邊一行錯誤呈現都沒寫。
+規則：nullable 或有 default 的欄位 `T | None = None`（空字串先轉 `None`）；必填字串
+`min_length=1`；checkbox 缺席即 `False`。SQLModel `table=True` 的類別走同一條 mapper 路徑，
+另外在送出時呼叫它自己的 `model_validate`，因為 table model 建構時不驗證。
+
+**模板零 `class=`**：五支模板只呼叫 `ui/*` 的 macro。這不是潔癖——`fjkit.css` 的 `@source`
+在 fjkit 建置時就封閉了，wheel 外的套件多寫一個 utility 就是一個沒有樣式的元素，而且不會報錯。
+`test_no_template_writes_a_class_attribute` 與 `assert_templates_clean` 兩條一起守。
+
+**數字**：42 條新測試（套件 37 + demo 5），全套 1,417 條全綠；`ruff check`／`ruff format` 乾淨；
+`fjkit check` 對 admin 模板 0 違規；CSS 零增量（沒有動 fjkit 的任何檔案）。
+瀏覽器實測走過：搜尋 swap、篩選、表頭排序、翻頁（URL push 帶 `o`／`per_page`／`page`）、
+新增表單、必填欄位退回（紅字在欄位下、輸入保留）、存檔成功後列表 + toast、變更表單含唯讀欄位。
+
+**0.1 沒做的**：async session（`async_sessionmaker` 直接拒絕並說明）、inline formset、檔案上傳、
+FK 的伺服器端搜尋（等 `combobox` 那題）、`fieldsets`／`list_editable`／`date_hierarchy`、
+文件站的頁面。批次動作的 `hx-confirm` 是原生 `confirm()`，瀏覽器自動化碰不了，只有測試走過。

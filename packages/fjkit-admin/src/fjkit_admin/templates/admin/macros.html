@@ -1,0 +1,47 @@
+{#
+  The two repeated pieces: a table row and a form field. Both take everything
+  as a prepared dict, so this file imports without context and decides
+  nothing — the router already did.
+#}
+{% from "ui/data.html" import link %}
+{% from "ui/form.html" import select_field, switch_field, text_field, textarea_field %}
+{% from "ui/table.html" import cell, select_cell %}
+
+{% macro admin_row(entry, select) -%}
+  <tr>
+    {% if select %}{{ select_cell(entry.pk, label="Select " ~ entry.label) }}{% endif %}
+    {% for c in entry.cells %}
+      {% if c.href %}
+        {% call cell(numeric=c.numeric, align=c.align) %}{{ link(c.text, c.href) }}{% endcall %}
+      {% else %}
+        {{ cell(c.text, tone=c.tone, numeric=c.numeric, align=c.align) }}
+      {% endif %}
+    {% endfor %}
+  </tr>
+{%- endmacro %}
+
+{#
+  `widget` is a closed name from `fjkit_admin.options.WIDGETS`. Each maps to
+  one fjkit field macro; the `type=` values below are the HTML input types
+  the browser gives a native control for.
+#}
+{% set _INPUT_TYPES = {
+  "text": "text", "email": "email", "url": "url", "password": "password",
+  "number": "number", "date": "date", "datetime": "datetime-local", "time": "time",
+} %}
+
+{% macro admin_field(f) -%}
+  {% if f.readonly %}
+    {{ text_field(f.name, label=f.label, value=f.value, hint=f.hint, disabled=true) }}
+  {% elif f.widget == "boolean" %}
+    {{ switch_field(f.name, label=f.label, checked=f.checked, hint=f.hint) }}
+  {% elif f.widget == "textarea" %}
+    {{ textarea_field(f.name, label=f.label, value=f.value, required=f.required, hint=f.hint, maxlength=f.maxlength) }}
+  {% elif f.widget in ("enum", "select") %}
+    {{ select_field(f.name, label=f.label, options=f.options, selected=f.selected, blank=f.blank, hint=f.hint,
+                    required=f.required) }}
+  {% else %}
+    {{ text_field(f.name, label=f.label, value=f.value, type=_INPUT_TYPES.get(f.widget, "text"),
+                  required=f.required, hint=f.hint, maxlength=f.maxlength, step=f.step) }}
+  {% endif %}
+{%- endmacro %}

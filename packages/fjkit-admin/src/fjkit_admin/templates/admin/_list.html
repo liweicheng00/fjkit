@@ -1,0 +1,88 @@
+{#
+  The list: toolbar, table and page strip, in one element every swap replaces.
+
+  The search box and the filter selects sit in a real `<form method="get">`.
+  Each control fires its own `hx-get` and includes the whole form, so a search
+  keeps the filters and a filter keeps the search; with JavaScript off, Enter
+  in the box submits the same query the long way round. The order and page
+  size ride along as hidden fields; the page number does not, because a new
+  search starts on page one.
+
+  Bulk actions post the ticked boxes with `hx-include="[data-fjkit-select]"`,
+  exactly as the demo's Records page does.
+#}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import card %}
+{% from "ui/form.html" import field_row, form, select_field, text_field %}
+{% from "ui/layout.html" import page_header, row, stack %}
+{% from "ui/table.html" import page_size, pagination, select_count, table %}
+{% from "admin/macros.html" import admin_row %}
+
+<div id="{{ region }}">
+{% if swap %}<title>{{ title }} · {{ admin_title }}</title>{% endif %}
+{% call stack(4) %}
+
+  {% call page_header(view.verbose_name_plural | capitalize) %}
+    {% if can_add %}
+      {{ button("Add " ~ view.verbose_name, variant="primary", icon_name="plus", href=urls.add) }}
+    {% endif %}
+  {% endcall %}
+
+  {% if search.enabled or filters %}
+    {% call form(action=urls.list, method="get", card=false) %}
+      {% for name, value in hidden %}
+        <input type="hidden" name="{{ name }}" value="{{ value }}">
+      {% endfor %}
+      {#
+        A grid, not a `row`: every control here is a block-level `.field`, and
+        a flex row of blocks stacks them. `field_row` is the kit's answer for
+        fields side by side; four columns holds a search box and three filters
+        on one line and wraps the rest.
+      #}
+      {% call field_row("four") %}
+        {% if search.enabled %}
+          {{ text_field("q", label="Search", value=search.q, type="search", placeholder=search.placeholder,
+                        hx_get=urls.list, hx_trigger="input changed delay:300ms, search",
+                        hx_target="#" ~ region, hx_swap="outerHTML", hx_push_url="true",
+                        hx_include="closest form") }}
+        {% endif %}
+        {% for filter in filters %}
+          {{ select_field(filter.name, label=filter.label, options=filter.options, selected=filter.selected,
+                          blank=filter.blank,
+                          hx_get=urls.list, hx_target="#" ~ region, hx_swap="outerHTML", hx_push_url="true",
+                          hx_include="closest form") }}
+        {% endfor %}
+        <noscript>{{ button("Apply", variant="outline", type="submit") }}</noscript>
+      {% endcall %}
+    {% endcall %}
+  {% endif %}
+
+  {% set toolbar %}
+    {% call row(gap=2) %}
+      {{ select_count() }}
+      {% for action in actions %}
+        {{ button(action.description, variant=action.variant, size="xs",
+                  hx_post=action.url, hx_include="[data-fjkit-select]",
+                  hx_target="#" ~ region, hx_swap="outerHTML",
+                  hx_confirm=action.confirm, hx_disabled_elt="this") }}
+      {% endfor %}
+    {% endcall %}
+  {% endset %}
+
+  {% call card(total ~ " " ~ (view.verbose_name if total == 1 else view.verbose_name_plural),
+               actions=toolbar if actions else none, padded=false) %}
+    {% call table(columns, rows=rows, target="#" ~ region,
+                  empty_title="No " ~ view.verbose_name_plural,
+                  empty_description=empty_description,
+                  empty_icon="table") %}
+      {% for entry in rows %}{{ admin_row(entry, select) }}{% endfor %}
+    {% endcall %}
+  {% endcall %}
+
+  {% call row(gap=4, justify="between") %}
+    {{ page_size(urls.list, per_page, options=page_sizes, keep=keep, target="#" ~ region) }}
+    {{ pagination(page, pages, page_url, total=total, per_page=per_page, target="#" ~ region) }}
+  {% endcall %}
+
+{% endcall %}
+</div>

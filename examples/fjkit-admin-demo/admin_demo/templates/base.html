@@ -1,0 +1,21 @@
+{#
+  The demo's shell. The admin fills the `sidebar` block itself, so this base
+  only names the site and adds the theme toggle; an app with its own sidebar
+  keeps it on every page but the admin's.
+#}
+{% extends "ui/shell.html" %}
+{% from "ui/nav.html" import brand, theme_toggle %}
+
+{% block site_title %}fjkit-admin demo{% endblock %}
+
+{% block brand %}
+  {{ brand("fjkit-admin demo", "/", icon_name="shield-check") }}
+{% endblock %}
+
+{% block header_actions %}
+  {{ theme_toggle() }}
+{% endblock %}
+
+{% block footer %}
+  fjkit {{ fjkit_version.fjkit }} · FastAPI {{ fjkit_version.fastapi }} · htmx {{ fjkit_version.htmx }}
+{% endblock %}

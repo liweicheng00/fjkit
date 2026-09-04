@@ -21,6 +21,11 @@ packages/fjkit/        the package — this is the product
 examples/fjkit-demo/        the demo app — a workspace member, depends on fjkit
   app/                 main.py, features/<name>/, templates/<name>/
   tests/               routes, htmx contract, parity, conventions
+packages/fjkit-admin/  a second distribution: Django-style admin over SQLAlchemy, built on fjkit
+  src/fjkit_admin/     plugin (routes), options (ModelAdmin), introspect, schema, queries
+  src/fjkit_admin/templates/admin/   page, _index, _list, _form, macros — zero class attributes
+  tests/               routes, vocabulary gate, introspection, SQLModel
+examples/fjkit-admin-demo/  the admin demo — SQLite, two models, one AdminPlugin
 bench/                 render_bench.py — guards the performance claims
 docs/                  the published site (5 pages × 2 languages, built) + the evaluations
 CHARTER.md             mission, scope, architecture decisions, quality budgets
@@ -31,7 +36,8 @@ goal/                  untracked: ROADMAP.md (version scope), OPERATING.md
 
 ```bash
 uv run fastapi dev examples/fjkit-demo/app/main.py    # the demo
-uv run pytest                                    # kit suite + demo suite
+uv run fastapi dev examples/fjkit-admin-demo/admin_demo/main.py   # the admin demo
+uv run pytest                                    # kit suite + admin suite + both demos
 uv run ruff check
 uv run fjkit check examples/fjkit-demo/app/templates  # closed-vocabulary gate
 uv run python bench/render_bench.py              # performance

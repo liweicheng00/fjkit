@@ -1,0 +1,40 @@
+{#
+  The add and change form, in the same element the list renders into.
+
+  It posts JSON to a route whose body is the view's generated model, so a
+  rejected submit is FastAPI's own 422 and `js/errors.js` writes each message
+  under the control whose `name` matches. Nothing here knows about errors.
+
+  A successful save answers with the list and `HX-Push-Url`, so the region
+  becomes the list and the address bar agrees.
+#}
+{% from "ui/button.html" import button %}
+{% from "ui/form.html" import form %}
+{% from "ui/layout.html" import page_header, row, stack %}
+{% from "admin/macros.html" import admin_field %}
+
+<div id="{{ region }}">
+{% if swap %}<title>{{ title }} · {{ admin_title }}</title>{% endif %}
+{% call stack(4) %}
+
+  {% call page_header(form_title, obj_label if is_change else none) %}
+    {% if can_delete %}
+      {{ button("Delete", variant="destructive", icon_name="trash-2",
+                hx_delete=urls.delete, hx_confirm=delete_confirm,
+                hx_target="#" ~ region, hx_swap="outerHTML") }}
+    {% endif %}
+  {% endcall %}
+
+  {% call form(action=urls.submit, target="#" ~ region, encoding="json",
+               hx_disabled_elt="find button[type=submit]") %}
+    {% call stack(4) %}
+      {% for field in fields %}{{ admin_field(field) }}{% endfor %}
+      {% call row(gap=2) %}
+        {{ button("Save", variant="primary", type="submit") }}
+        {{ button("Cancel", variant="ghost", href=urls.list) }}
+      {% endcall %}
+    {% endcall %}
+  {% endcall %}
+
+{% endcall %}
+</div>

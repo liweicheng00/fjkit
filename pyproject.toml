@@ -23,17 +23,19 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-# Every package's suite and the demo's run together, so `uv run pytest` is the
-# one command that covers everything.
+# Every package's suite and both demos' run together, so `uv run pytest` is
+# the one command that covers everything.
 testpaths = [
     "packages/fjkit/tests",
     "packages/fjkit-charts/tests",
     "packages/fjkit-apidocs/tests",
+    "packages/fjkit-admin/tests",
     "examples/fjkit-demo/tests",
+    "examples/fjkit-admin-demo/tests",
 ]
-# The demo's own package root, so its tests import `app.*` exactly as the demo
-# does — no path juggling inside the test files.
-pythonpath = ["examples/fjkit-demo"]
+# Each demo's own package root, so their tests import `app.*` and `admin_demo.*`
+# exactly as the demos do — no path juggling inside the test files.
+pythonpath = ["examples/fjkit-demo", "examples/fjkit-admin-demo"]
 addopts = "-q"
 
 [tool.ruff]

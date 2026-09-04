@@ -1,0 +1,50 @@
+{#
+  The admin page: the shell, the model sidebar and one partial.
+
+  `base_template` is a variable, as it is in `apidocs/page.html`: the kit's
+  shell by default, or the app's `base.html` when `AdminPlugin(base_template=…)`
+  names it, so the admin sits inside the app's chrome without this file
+  knowing anything about it.
+
+  `partial` is `admin/_index.html`, `admin/_list.html` or `admin/_form.html`,
+  the same file an htmx request gets on its own. The page includes it rather
+  than repeating its markup, so the two cannot drift.
+#}
+{% extends base_template %}
+
+{% from "ui/button.html" import button %}
+{% from "ui/form.html" import form_scripts %}
+{% from "ui/nav.html" import brand %}
+{% from "ui/sidebar.html" import sidebar, sidebar_group, sidebar_link %}
+{% from "ui/table.html" import select_scripts %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block site_title %}{{ admin_title }}{% endblock %}
+
+{% block sidebar %}
+  {%- set mark %}{{ brand(admin_title, index_url, icon_name="shield-check") }}{% endset %}
+  {%- set exit %}
+    {% if home_url %}{{ button(home_label, variant="ghost", size="sm", href=home_url, icon_name="arrow-left") }}{% endif %}
+  {%- endset %}
+  {% call sidebar(header=mark, footer=exit if home_url else none, label="Models") %}
+    {% call sidebar_group("Models") %}
+      {% for entry in nav %}
+        {{ sidebar_link(request, entry.route, entry.label, icon_name=entry.icon) }}
+      {% endfor %}
+    {% endcall %}
+  {% endcall %}
+{% endblock %}
+
+{% block content %}
+  {% include partial %}
+{% endblock %}
+
+{#
+  Both scripts on every admin page: the forms post JSON, and the list's
+  header checkbox ticks its column. Each is fjkit's own, opted in per page as
+  CHARTER §7 asks.
+#}
+{% block scripts %}
+  {{ form_scripts() }}
+  {{ select_scripts() }}
+{% endblock %}
