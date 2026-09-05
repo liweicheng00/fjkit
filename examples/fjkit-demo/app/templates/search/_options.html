@@ -1,0 +1,15 @@
+{#
+  The combobox listbox, and the whole of it: `hx-swap="innerHTML"` on
+  `#c-jump-listbox` replaces these rows and nothing around them.
+
+  No shell, no card, no wrapper. A wrapper here would be swapped *inside* the
+  listbox, and Basecoat looks for `[role="option"]` among the listbox's own
+  children — an extra `<div>` makes every option invisible to it.
+
+  An empty result is an empty response. `data-empty` on the listbox already
+  carries the message, and a row saying "no results" would be a selectable
+  option that selects nothing.
+#}
+{% for value, label in options %}
+  <div role="option" data-value="{{ value }}">{{ label }}</div>
+{%- endfor %}

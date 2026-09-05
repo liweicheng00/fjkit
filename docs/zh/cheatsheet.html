@@ -428,7 +428,8 @@ fjkit
       <h4><code>combobox(name, options=(), selected=none, id=none,
          placeholder=&#34;Select…&#34;, empty=&#34;No results found.&#34;,
          label=none, multiple=false, close_on_select=false,
-         visible_label=none, hint=none, error=none)</code></h4><p>加了篩選框的 select_menu。multiple=true 的規則相同，visible_label 也相同。</p>    </section>  </div>
+         visible_label=none, hint=none, error=none,
+         search=none, search_param=&#34;q&#34;, search_delay=250)</code></h4><p>加了篩選框的 select_menu。multiple=true 的規則相同，visible_label 也相同。search=&lt;url&gt; 把篩選交給伺服器：路由收到 ?q=&lt;輸入的字&gt;，只回傳 option 列。要在選定後做事，請在 root 上聽 change——hx_trigger=&#34;change target:#&lt;id&gt;&#34;——Basecoat 是在那裡送出這個事件的。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>multiselect_scripts()</code></h4><p>放在頁面裡。少了它，multiple=true 會送出一個 JSON 字串，而不是重複的欄位。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>

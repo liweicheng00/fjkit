@@ -12,6 +12,7 @@
 {% from "ui/feedback.html" import spinner %}
 {% from "ui/form.html" import field_row, form, text_field %}
 {% from "ui/layout.html" import page_header, row, split, stack %}
+{% from "ui/overlay.html" import combobox %}
 
 {% block title %}Search{% endblock %}
 
@@ -46,6 +47,35 @@
         {% endcall %}
       {% endcall %}
     {% endcall %}
+
+    {#
+      The same search, asked the other way round. The box above searches as you
+      type and replaces the table; this one searches as you type and replaces
+      its own listbox, so the answer is ten titles to choose between rather than
+      the whole result set.
+
+      Named `jump`, not `q`. Two elements named `q` on this page would both be
+      selected by the `hx-include` every fragment endpoint uses, and the second
+      one wins by document order — a bug with no error and no symptom except a
+      panel querying something nobody typed.
+
+      Picking is what runs the search: Basecoat dispatches its own `change` on
+      the root — not on the hidden input, which is the guess the markup invites
+      and which never fires — and `hx-vals` reads the picked title off that
+      input and sends it as `q`, so the reply lands in the same region the box
+      above targets. `target:` filters out the native `change` that bubbles out
+      of the text box on blur, which would otherwise repeat the request.
+    #}
+    {{ combobox("jump", visible_label="Jump to a task",
+                placeholder="Type a title",
+                empty="No task has that in its title.",
+                hint="Ten at a time, chosen by the server — the board holds more than a listbox should.",
+                search=url_for(request, "search_options"),
+                hx_get=url_for(request, "search_page"),
+                hx_trigger="change target:#c-jump",
+                hx_target="#search-matches", hx_swap="outerHTML",
+                hx_push_url="true", hx_indicator="#search-busy",
+                hx_vals='js:{"q": this.querySelector("input[type=hidden]").value}') }}
 
     {# First paint: `oob` is false and `selected` is unset. #}
     {% with oob = false %}

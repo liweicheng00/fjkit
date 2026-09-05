@@ -164,6 +164,20 @@ class Fragment(BaseModel):
         return f"{self.rendered_at:%H:%M:%S}.{self.rendered_at.microsecond // 1000:03d}"
 
 
+class OptionsResponse(BaseModel):
+    """The combobox's listbox: option rows and nothing else.
+
+    Not a `Fragment`. Every other partial on the search page carries a render
+    stamp because the page's whole point is showing which regions an action
+    reached; a listbox is inside one region and reached by its own request, so
+    there is nothing to disambiguate.
+    """
+
+    #: `(value, label)` — the same shape `combobox(options=…)` takes, so the
+    #: first paint and the swapped reply are built by the same macro call.
+    options: list[tuple[str, str]]
+
+
 class MatchesResponse(Fragment):
     """The results table: the in-band reply to both a query and a pick."""
 

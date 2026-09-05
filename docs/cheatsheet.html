@@ -431,7 +431,8 @@ fjkit
       <h4><code>combobox(name, options=(), selected=none, id=none,
          placeholder=&#34;Select…&#34;, empty=&#34;No results found.&#34;,
          label=none, multiple=false, close_on_select=false,
-         visible_label=none, hint=none, error=none)</code></h4><p>select_menu with a filter box. Same multiple=true rule, same visible_label.</p>    </section>  </div>
+         visible_label=none, hint=none, error=none,
+         search=none, search_param=&#34;q&#34;, search_delay=250)</code></h4><p>select_menu with a filter box. Same multiple=true rule, same visible_label. search=&lt;url&gt; moves the filter to the server: the route is asked ?q=&lt;typed&gt; and answers with option rows only. To act on a pick, listen for change on the root — hx_trigger=&#34;change target:#&lt;id&gt;&#34; — because that is where Basecoat dispatches it.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>multiselect_scripts()</code></h4><p>Per page. Without it, multiple=true posts one JSON string instead of repeated fields.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>

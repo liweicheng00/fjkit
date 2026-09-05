@@ -630,10 +630,17 @@ GROUPS = [
                         "combobox(name, options=(), selected=none, id=none,\n"
                         '         placeholder=\"Select…\", empty="No results found.",\n'
                         "         label=none, multiple=false, close_on_select=false,\n"
-                        "         visible_label=none, hint=none, error=none)",
+                        "         visible_label=none, hint=none, error=none,\n"
+                        '         search=none, search_param="q", search_delay=250)',
                         en="select_menu with a filter box. Same multiple=true rule, same "
-                        "visible_label.",
-                        zh="加了篩選框的 select_menu。multiple=true 的規則相同，visible_label 也相同。",
+                        "visible_label. search=<url> moves the filter to the server: the route is "
+                        "asked ?q=<typed> and answers with option rows only. To act on a pick, "
+                        "listen for change on the root — hx_trigger=\"change target:#<id>\" — "
+                        "because that is where Basecoat dispatches it.",
+                        zh="加了篩選框的 select_menu。multiple=true 的規則相同，visible_label 也相同。"
+                        "search=<url> 把篩選交給伺服器：路由收到 ?q=<輸入的字>，只回傳 option 列。"
+                        "要在選定後做事，請在 root 上聽 change——hx_trigger=\"change target:#<id>\""
+                        "——Basecoat 是在那裡送出這個事件的。",
                     ),
                     _m(
                         "multiselect_scripts()",

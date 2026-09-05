@@ -1584,6 +1584,58 @@ class TestOverlayStartingState:
         assert 'aria-haspopup="listbox"' in render(f'{OVERLAY}{{{{ select_menu("t", [("a", "A")]) }}}}')
 
 
+class TestComboboxServerSearch:
+    def test_search_turns_off_basecoat_s_own_filter(self, render):
+        """Both filters running means Basecoat re-filters the server's rows
+        against the same box and hides every one that matched on a field the
+        label does not print."""
+        html = render(f'{OVERLAY}{{{{ combobox("owner", search="/owners") }}}}')
+        assert 'data-filter="manual"' in html
+
+    def test_no_search_leaves_the_client_filter_alone(self, render):
+        html = render(f'{OVERLAY}{{{{ combobox("owner", options=[("a", "A")]) }}}}')
+        assert "data-filter" not in html
+        assert "hx-get" not in html
+
+    def test_the_reply_replaces_the_listbox_and_nothing_else(self, render):
+        html = render(f'{OVERLAY}{{{{ combobox("owner", search="/owners") }}}}')
+        assert 'hx-get="/owners"' in html
+        assert 'hx-target="#c-owner-listbox"' in html
+        assert 'hx-swap="innerHTML"' in html
+
+    def test_the_refresh_sits_on_the_root_because_the_event_bubbles(self, render):
+        """`htmx:afterSwap` fires on the listbox. The input is its sibling, so
+        an attribute there would never see it; the root is its ancestor."""
+        html = render(f'{OVERLAY}{{{{ combobox("owner", search="/owners") }}}}')
+        root, _, rest = html.partition('<input type="text"')
+        assert 'hx-on::after-swap="this.refresh()"' in root
+        assert "after-swap" not in rest
+
+    def test_the_typed_text_travels_in_hx_vals_not_in_a_name(self, render):
+        """A named visible input inside a form is submitted with it, and this
+        box holds a label while the hidden input holds the value."""
+        html = render(f'{OVERLAY}{{{{ combobox("owner", search="/owners") }}}}')
+        visible, _, _ = html.partition('<input type="hidden"')
+        assert 'hx-vals=\'js:{"q": this.value}\'' in visible
+        assert 'role="combobox"' in visible and "name=" not in visible
+
+    def test_the_query_parameter_is_the_caller_s(self, render):
+        html = render(f'{OVERLAY}{{{{ combobox("owner", search="/owners", search_param="term") }}}}')
+        assert '"term": this.value' in html
+
+    def test_the_options_request_never_becomes_a_history_entry(self, render):
+        """htmx attributes inherit. A caller who puts `hx-push-url` on the root
+        would otherwise get one history entry per keystroke, and the back button
+        would walk the letters of a word."""
+        html = render(f'{OVERLAY}{{{{ combobox("owner", search="/owners", hx_push_url="true") }}}}')
+        visible, _, _ = html.partition('<input type="hidden"')
+        assert 'hx-push-url="false"' in visible
+
+    def test_changed_and_a_delay_keep_one_word_to_one_request(self, render):
+        html = render(f'{OVERLAY}{{{{ combobox("owner", search="/owners", search_delay=400) }}}}')
+        assert 'hx-trigger="input changed delay:400ms"' in html
+
+
 class TestMenuItem:
     def test_a_plain_item_is_a_menuitem(self, render):
         assert 'role="menuitem"' in render(f'{OVERLAY}{{{{ menu_item("Profile") }}}}')

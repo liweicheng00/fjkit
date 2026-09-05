@@ -310,9 +310,44 @@
   Basecoat's JS renders it, and a blank one leaves a filtered-to-nothing list
   looking broken.
 
-  Filtering is client-side over the options rendered here. Server-side search
-  is a different component: an `input` with `hx-get` and a listbox swapped by
-  the response.
+  Filtering is client-side over the options rendered here, until `search` is
+  given a URL. Then it is the server's: the input carries `hx-get`, the reply
+  replaces the listbox, and the root carries `data-filter="manual"`, which is
+  the switch in Basecoat's own JS that stops it filtering a second time. Both
+  halves of that are load-bearing. Without the swap there is nothing new to
+  show; without `manual`, Basecoat re-filters the server's rows against the
+  same box and hides every one that matched on a field the label does not
+  print — search by email, list by name, see nothing.
+
+  The route is handed `?<search_param>=<what was typed>` and returns option
+  rows and nothing else:
+
+      <div role="option" data-value="7">Ada Lovelace</div>
+
+  which is what `innerHTML` on the listbox expects. It is a fragment, so it
+  extends no shell, and the empty result is an empty response — `data-empty`
+  already draws the message.
+
+  The visible input is deliberately not given a `name`, because a named input
+  inside a `<form>` is submitted with it, and the box holds a label while the
+  hidden input holds the value. So the typed text reaches the route through
+  `hx-vals` instead of through the element's own value.
+
+  `refresh()` is Basecoat's, put on the root when it initialises, and it is
+  what re-reads the options after a swap. Nothing calls it for us: htmx fires
+  `htmx:afterSwap` on the listbox, and it reaches the root by bubbling, which
+  is why the attribute is on the root and not on the input that made the
+  request.
+
+  To act on a pick — with or without `search` — listen on the root:
+
+      hx_trigger="change target:#c-jump"
+
+  Basecoat dispatches its own `change` on the root, not on the hidden input,
+  carrying `detail.value`. The markup does not say so, and the obvious guess
+  (`change from:find input[type=hidden]`) silently never fires. `target:` is
+  worth the characters because a native `change` bubbles out of the text box on
+  blur as well, and without the filter a pick costs two identical requests.
 
   `multiple` works here too, and reads better than on `select_menu`: Basecoat
   wraps the text input in a `.combobox-chips` div and renders one chip per
@@ -327,7 +362,8 @@
   paragraph an ordinary field has.
 #}
 {% macro combobox(name, options=(), selected=none, id=none, placeholder="Select…", empty="No results found.", label=none,
-                  multiple=false, close_on_select=false, visible_label=none, hint=none, error=none) -%}
+                  multiple=false, close_on_select=false, visible_label=none, hint=none, error=none,
+                  search=none, search_param="q", search_delay=250) -%}
   {%- set field_id = id or ("c-" ~ name) -%}
   {# Same three parameters as `select_menu`, same rule — see its comment. #}
   {%- set as_field = visible_label is not none or hint is not none or error is not none -%}
@@ -342,6 +378,8 @@
   {%- endif %}
   <div id="{{ field_id }}" class="combobox"
        {%- if multiple and close_on_select %} data-close-on-select="true"{% endif %}
+       {%- if search %} data-filter="manual"
+       hx-on::after-swap="this.refresh()"{% endif %}
        {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     {#
       Empty when `multiple`: this input is the filter box, not the display. The
@@ -356,6 +394,24 @@
              a competing set of suggestions.
            #}
            autocomplete="off" autocorrect="off" spellcheck="false"
+           {#
+             `changed` so arrow keys and Tab do not re-ask for what is already
+             on screen, and a delay so a typed word is one request rather than
+             one per letter.
+           #}
+           {#
+             `hx-push-url="false"` because htmx attributes inherit, and a
+             caller who put `hx-push-url` on the root — to make picking an
+             option a history entry, which is a reasonable thing to want —
+             would otherwise have every keystroke's options request push
+             `…/options?q=cac` as well. The back button would then walk the
+             letters of a word instead of the searches.
+           #}
+           {%- if search %} hx-get="{{ search }}"
+           hx-trigger="input changed delay:{{ search_delay }}ms"
+           hx-target="#{{ field_id }}-listbox" hx-swap="innerHTML"
+           hx-push-url="false"
+           hx-vals='js:{"{{ search_param }}": this.value}'{% endif %}
            aria-autocomplete="list" aria-expanded="false" aria-controls="{{ field_id }}-listbox"
            {%- if label and not visible_label %} aria-label="{{ label }}"{% endif %}
            {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}

@@ -27,6 +27,7 @@ from app.features.tasks.schemas import (
     DetailResponse,
     FacetsResponse,
     MatchesResponse,
+    OptionsResponse,
     RelatedResponse,
     SearchResponse,
     StatsResponse,
@@ -96,6 +97,26 @@ def search_page(service: ServiceDep, q: str = "") -> SearchResponse:
         owners=service.owner_facets(matches),
         priorities=service.priority_facets(matches),
     )
+
+
+@router.get("/search/options", name="search_options")
+@render("search/_options.html")
+def search_options(service: ServiceDep, q: str = "") -> OptionsResponse:
+    """Answer the jump combobox with the titles matching what has been typed.
+
+    The listbox holds ten rows at most, and the board holds 137. That is the
+    reason this is a server-side search and not `combobox(options=…)`: the
+    client-side filter can only narrow what the page already downloaded, so
+    filling it would mean shipping every title to every visitor to show ten.
+
+    The cap is here and not in the template, because a template that renders
+    only part of what it was handed is a template with a business rule in it.
+
+    `data-value` is the title rather than the id: picking one re-runs the page
+    search with that exact string, so the value the combobox carries has to be
+    something `search_page` can read as a query.
+    """
+    return OptionsResponse(options=[(task.title, task.title) for task in service.search(q)[:10]])
 
 
 # --------------------------------------------------------------------------- #
