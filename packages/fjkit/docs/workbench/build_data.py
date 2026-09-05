@@ -451,6 +451,7 @@ DESCRIPTIONS = (
 )
 TABS = '{% from "ui/tabs.html" import tabs, tab_panel %}'
 RANGE = '{% from "ui/form.html" import range_field, input_group_field %}'
+UPLOAD = '{% from "ui/form.html" import file_field %}{% from "ui/data.html" import progress %}'
 
 gallery = {
     # -- the six that were owed a rendered example before this batch
@@ -479,6 +480,16 @@ gallery = {
         f"{CONTENT}{{% call item_list() %}}"
         '{% call item("Closed vocabulary") %}Every class an app may write.{% endcall %}'
         '{% call item("Prebuilt CSS") %}Compiled when fjkit is released.{% endcall %}'
+        "{% endcall %}"
+    ),
+    #: The field and the bar together, because neither is the upload on its
+    #: own: the bar is moved by `form(progress="#…")`, which needs a form and a
+    #: request and so cannot be shown in a static cell.
+    "file_field": render(
+        f"{UPLOAD}{LAYOUT}{{% call stack(3) %}}"
+        '{{ file_field("report", label="Import a file", accept=".csv,.tsv",'
+        '                hint="A rejected form comes back with this box empty.") }}'
+        '{{ progress(0, label="Upload", id="gallery-upload-bar") }}'
         "{% endcall %}"
     ),
     #: Shown in the `rows` layout, because the difference between the two

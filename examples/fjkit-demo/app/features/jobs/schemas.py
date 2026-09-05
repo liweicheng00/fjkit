@@ -26,6 +26,21 @@ class JobStart(BaseModel):
     kind: JobKind = JobKind.EXPORT
 
 
+class UploadResponse(BaseModel):
+    """What arrived. The demo stores nothing — the point is proving the bytes
+    reached the route, which a urlencoded form would not have managed."""
+
+    filename: str
+    size: int
+    content_type: str
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def size_label(self) -> str:
+        """Bytes as KB once there are enough of them to read."""
+        return f"{self.size / 1024:,.1f} KB" if self.size >= 1024 else f"{self.size} bytes"
+
+
 #: Job state -> badge variant.
 STATE_VARIANT: dict[JobState, str] = {
     JobState.QUEUED: "outline",

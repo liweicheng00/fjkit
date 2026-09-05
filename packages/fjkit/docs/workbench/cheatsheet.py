@@ -262,7 +262,13 @@ GROUPS = [
                         en="items is a list of (label, value) pairs.",
                         zh="items 是 (label, value) 的序對清單。",
                     ),
-                    _m("progress(value, label=none)", en="value is 0–100.", zh="value 是 0–100。"),
+                    _m(
+                        "progress(value, label=none, id=none)",
+                        en="value is 0–100. id makes the bar addressable, which is what "
+                        "form(progress=…) needs to move it during an upload.",
+                        zh="value 是 0–100。id 讓這條 bar 可以被指到，form(progress=…) "
+                        "在上傳過程中就是靠它更新。",
+                    ),
                     _m(
                         'empty_state(title, description=none, icon_name="sparkle")',
                         en="table renders this for you when rows is empty — pass empty_title and "
@@ -417,10 +423,15 @@ GROUPS = [
                 "macros": [
                     _m(
                         'form(action=none, method="post", target=none, swap="outerHTML",\n'
-                        '     reset_on_success=false, card=true, encoding="urlencoded")',
+                        '     reset_on_success=false, card=true, encoding="urlencoded",\n'
+                        "     progress=none)",
                         block="fields",
                         en="target and swap are the htmx pair. encoding=\"json\" posts JSON, and "
-                        "then the page needs form_scripts().",
+                        "then the page needs form_scripts(); encoding=\"multipart\" is what an "
+                        "upload needs, and it is written for the htmx path and the native one "
+                        "because a browser with scripting off submits this form too. progress is "
+                        "a selector for a progress() bar — htmx reports what it has sent and the "
+                        "macro writes the number into all three places a bar carries it.",
                         zh='target 與 swap 是 htmx 那一組。encoding="json" 會送出 JSON，'
                         "這時頁面需要 form_scripts()。",
                     ),
@@ -443,11 +454,29 @@ GROUPS = [
                     ),
                     _m(
                         'text_field(name, label=none, value="", placeholder="", type="text",\n'
-                        "           required=false, hint=none, error=none, id=none)"
+                        "           required=false, hint=none, error=none, id=none)",
+                        en="type is where dates live: date, time, datetime-local, month and week "
+                        "are native inputs, and there is no date_field because a macro around one "
+                        "would add a name and nothing else. min/max/step ride in as attributes. "
+                        "Not file — an upload cannot be restored from value after a 422.",
+                        zh="日期就在 type 裡：date、time、datetime-local、month、week 都是原生 "
+                        "input，沒有 date_field，因為包一層只多一個名字。min/max/step 當一般屬性傳。"
+                        "不含 file——422 之後沒辦法用 value 還原已選的檔案。",
                     ),
                     _m(
                         'textarea_field(name, label=none, value="", placeholder="", rows=none,\n'
                         "               required=false, hint=none, error=none, id=none)"
+                    ),
+                    _m(
+                        "file_field(name, label=none, accept=none, multiple=false,\n"
+                        "           required=false, hint=none, error=none, id=none)",
+                        en="No value parameter: a browser will not let a page refill a file input, "
+                        "so a 422 redraw comes back with this box empty and every other field "
+                        "still typed in. The form needs encoding=\"multipart\" or the route is "
+                        "handed the file's name as a string.",
+                        zh="沒有 value 參數：瀏覽器不允許頁面替 file input 填回內容，"
+                        "所以 422 重畫時這一格是空的，其他欄位仍保留輸入。表單必須加 "
+                        "encoding=\"multipart\"，否則路由收到的是檔名字串。",
                     ),
                     _m(
                         "select_field(name, label=none, options=(), selected=none, id=none,\n"

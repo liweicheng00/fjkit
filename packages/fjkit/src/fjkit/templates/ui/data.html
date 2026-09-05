@@ -98,15 +98,28 @@
 {%- endmacro %}
 
 {# progress(value, label) — value is 0-100. #}
-{% macro progress(value, label=none) -%}
-  <div class="space-y-1.5">
+{#
+  `id` makes the bar addressable, which is what `form(progress=…)` needs: an
+  upload's percentage arrives in the browser, so something has to write it into
+  markup the server rendered once at zero.
+
+  The three hooks below are that contract. A bar has three places the same
+  number is written — the width, `aria-valuenow`, and the printed percentage —
+  and moving one without the others is worse than moving none: a bar that fills
+  while the label still reads 0%, or fills for a sighted reader while a screen
+  reader is still told nothing has happened. They are `data-*` rather than more
+  ids because there is one of each per bar, and an id per part would have to be
+  derived from `id` and kept in step at both ends.
+#}
+{% macro progress(value, label=none, id=none) -%}
+  <div class="space-y-1.5"{% if id %} id="{{ id }}"{% endif %}>
     {% if label %}
       <div class="text-muted-foreground flex justify-between text-xs">
-        <span>{{ label }}</span><span class="tabular-nums">{{ value }}%</span>
+        <span>{{ label }}</span><span class="tabular-nums" data-progress-value>{{ value }}%</span>
       </div>
     {% endif %}
     <div class="progress" role="progressbar" aria-valuenow="{{ value }}" aria-valuemin="0" aria-valuemax="100">
-      <span style="width: {{ value }}%"></span>
+      <span style="width: {{ value }}%" data-progress-bar></span>
     </div>
   </div>
 {%- endmacro %}

@@ -4,10 +4,17 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
 from fjkit import render
 
-from app.features.jobs.schemas import KIND_OPTIONS, JobDetailResponse, JobResponse, JobsResponse, JobStart
+from app.features.jobs.schemas import (
+    KIND_OPTIONS,
+    JobDetailResponse,
+    JobResponse,
+    JobsResponse,
+    JobStart,
+    UploadResponse,
+)
 from app.features.jobs.service import JobService
 
 router = APIRouter(tags=["jobs"])
@@ -42,6 +49,29 @@ def start_job(
     job = service.create(payload.kind)
     background.add_task(service.run, job.id)
     return _jobs(service)
+
+
+@router.post("/jobs/upload", name="jobs_upload")
+@render("jobs/_upload.html")
+async def upload_file(file: UploadFile) -> UploadResponse:
+    """Accept the uploaded file and report what arrived.
+
+    `async def`, unlike every rendering handler in this demo: reading an
+    `UploadFile` is awaited, and the threadpool rule in CLAUDE.md is about
+    handlers whose work is rendering. This one's work is the read.
+
+    Nothing is stored. The demo exists to show that the bytes arrived, which is
+    exactly what a form missing `encoding="multipart"` gets wrong — that form
+    posts the file's name as a string and this route would report 0 bytes.
+
+    Declared before `/jobs/{job_id}`, like `jobs_clear`: a literal path segment
+    loses to a path parameter declared ahead of it.
+    """
+    return UploadResponse(
+        filename=file.filename or "unnamed",
+        size=len(await file.read()),
+        content_type=file.content_type or "unknown",
+    )
 
 
 @router.delete("/jobs/finished", name="jobs_clear")

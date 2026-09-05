@@ -27,7 +27,8 @@ TABLE = (
 )
 FORM = (
     '{% from "ui/form.html" import text_field, select_field, form, field_row,'
-    ' textarea_field, checkbox_field, switch_field, radio_group, fieldset, form_scripts %}'
+    ' textarea_field, checkbox_field, switch_field, radio_group, fieldset, form_scripts,'
+    ' file_field %}'
 )
 FEEDBACK = '{% from "ui/feedback.html" import spinner %}'
 FEEDBACK_DIALOG = '{% from "ui/feedback.html" import dialog %}'
@@ -1229,6 +1230,129 @@ class TestItemList:
             f'{CODE}{{% set body %}}<em>emphasis</em>{{% endset %}}{{{{ item("t", body) }}}}'
         )
         assert "<em>emphasis</em>" in html
+
+
+class TestFileUpload:
+    def test_multipart_is_written_for_both_paths(self, render):
+        """htmx reads `hx-encoding` and a browser reads `enctype`. Neither has
+        heard of the other, and the wrong one loses the file silently — a
+        urlencoded POST sends its name."""
+        html = render(
+            f'{FORM}{{% call form(action="/up", target="#r", encoding="multipart") %}}x{{% endcall %}}'
+        )
+        assert 'hx-encoding="multipart/form-data"' in html
+        assert 'enctype="multipart/form-data"' in html
+
+    def test_multipart_survives_with_no_target(self, render):
+        """The no-JS path is the one that has to keep working: `json` is
+        dropped without a target, and `multipart` must not be."""
+        html = render(f'{FORM}{{% call form(action="/up", encoding="multipart") %}}x{{% endcall %}}')
+        assert 'enctype="multipart/form-data"' in html
+
+    def test_no_encoding_writes_neither(self, render):
+        html = render(f'{FORM}{{% call form(action="/up", target="#r") %}}x{{% endcall %}}')
+        assert "multipart" not in html
+
+    def test_progress_guards_against_an_unknown_length(self, render):
+        """Without `lengthComputable`, `total` is 0, the division is NaN, and
+        the bar paints full and stays there."""
+        html = render(
+            f'{FORM}{{% call form(action="/up", target="#r", progress="#bar") %}}x{{% endcall %}}'
+        )
+        assert "hx-on::xhr:progress=" in html
+        assert "event.detail.lengthComputable" in html
+        assert "document.querySelector('#bar')" in html
+
+    def test_progress_moves_all_three_places_the_number_is_written(self, render):
+        """A bar that fills beside a label reading 0%, or fills while a screen
+        reader is still told it is empty, is worse than one that never moves."""
+        html = render(
+            f'{FORM}{{% call form(action="/up", target="#r", progress="#bar") %}}x{{% endcall %}}'
+        )
+        assert "[data-progress-bar]" in html
+        assert "[data-progress-value]" in html
+        assert "setAttribute('aria-valuenow', p)" in html
+
+    def test_no_progress_adds_no_handler(self, render):
+        html = render(f'{FORM}{{% call form(action="/up", target="#r") %}}x{{% endcall %}}')
+        assert "xhr:progress" not in html
+
+    def test_the_field_is_a_native_file_input(self, render):
+        html = render(f'{FORM}{{{{ file_field("doc", label="Report") }}}}')
+        assert 'type="file"' in html and 'name="doc"' in html
+        assert 'for="f-doc"' in html and 'id="f-doc"' in html
+
+    def test_accept_and_multiple_reach_the_input(self, render):
+        html = render(f'{FORM}{{{{ file_field("docs", accept=".pdf,.csv", multiple=true) }}}}')
+        assert 'accept=".pdf,.csv"' in html
+        assert " multiple" in html
+
+    def test_the_field_never_carries_a_value(self, render):
+        """A browser refuses to let a page set a file input's value, so a 422
+        redraw comes back empty. The macro takes no `value` at all rather than
+        accepting one it cannot honour."""
+        html = render(f'{FORM}{{{{ file_field("doc") }}}}')
+        assert "value=" not in html
+
+    def test_hint_and_error_wire_up_like_every_other_field(self, render):
+        html = render(f'{FORM}{{{{ file_field("doc", hint="PDF only", error="Too large") }}}}')
+        assert 'aria-describedby="f-doc-hint"' in html
+        assert 'aria-invalid="true"' in html
+
+
+class TestProgressHooks:
+    """The three hooks `form(progress=…)` writes into. They are a contract
+    between two files, so they are pinned from both ends."""
+
+    def test_the_bar_is_addressable(self, render):
+        html = render(f'{CODE.replace("code_block", "progress")}{{{{ progress(0, id="upload-bar") }}}}')
+        assert 'id="upload-bar"' in html
+
+    def test_no_id_leaves_the_wrapper_bare(self, render):
+        html = render(f'{CODE.replace("code_block", "progress")}{{{{ progress(40) }}}}')
+        assert "id=" not in html
+
+    def test_every_part_the_handler_writes_to_is_marked(self, render):
+        html = render(
+            f'{CODE.replace("code_block", "progress")}{{{{ progress(40, label="Upload") }}}}'
+        )
+        assert "data-progress-bar" in html
+        assert "data-progress-value" in html
+        assert 'aria-valuenow="40"' in html
+
+
+class TestNativeInputTypes:
+    """`type` is the whole of the kit's answer to dates. There is no
+    `date_field`, so these are the tests that say the answer exists."""
+
+    @pytest.mark.parametrize(
+        "type_",
+        ["date", "time", "datetime-local", "month", "week", "number", "email", "search"],
+    )
+    def test_the_type_reaches_the_input(self, render, type_):
+        html = render(f'{FORM}{{{{ text_field("due", type="{type_}") }}}}')
+        assert f'type="{type_}"' in html
+
+    def test_a_date_keeps_the_field_shape(self, render):
+        """Label, hint and control wired by id — a date is a field like any
+        other, which is the reason it needs no macro of its own."""
+        html = render(f'{FORM}{{{{ text_field("due", label="Due", hint="Any weekday", type="date") }}}}')
+        assert 'for="f-due"' in html and 'id="f-due"' in html
+        assert 'aria-describedby="f-due-hint"' in html
+
+    def test_range_attributes_ride_in_as_attributes(self, render):
+        """`min` and `max` are not parameters — narrowing a date range is the
+        same mechanism as any other HTML attribute."""
+        html = render(
+            f'{FORM}{{{{ text_field("due", type="date", **{{"min": "2026-01-01", "max": "2026-12-31"}}) }}}}'
+        )
+        assert 'min="2026-01-01"' in html and 'max="2026-12-31"' in html
+
+    def test_a_date_value_round_trips(self, render):
+        """What a 422 redraw depends on: the value comes back in the wire
+        format, not in the browser's display format."""
+        html = render(f'{FORM}{{{{ text_field("due", type="date", value="2026-09-05") }}}}')
+        assert 'value="2026-09-05"' in html
 
 
 class TestDescriptionList:

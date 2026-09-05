@@ -767,6 +767,22 @@ const SHOWCASE = {
     caption: "A list of things. clamp=false lets a description run past two lines — Basecoat clamps by default, which is right for a feed and wrong for a reference. For facts about one thing, use description_list below.",
   },
 
+  file_field: {
+    html: () => DATA.gallery.file_field,
+    jinja: `{% from "ui/form.html" import form, field_row, file_field %}
+{% from "ui/data.html" import progress %}
+
+{% call form(action=url_for(request, "upload"), target="#result",
+             encoding="multipart", progress="#bar") %}
+  {% call field_row("field-and-button") %}
+    {{ file_field("report", label="Import a file", accept=".csv,.tsv") }}
+    {{ button("Upload", variant="primary", type="submit") }}
+  {% endcall %}
+  {{ progress(0, label="Upload", id="bar") }}
+{% endcall %}`,
+    caption: "encoding=\"multipart\" is not optional — without it the route is handed the file's name as a string, and the POST succeeds having saved nothing. progress names the bar; htmx reports what it has sent and the form macro writes the number into the width, aria-valuenow and the printed percentage. No JavaScript file is added. file_field takes no value: a browser will not let a page refill a file input, so a 422 redraw returns this box empty while every other field keeps what was typed.",
+  },
+
   description_list: {
     html: () => DATA.gallery.description_list,
     jinja: `{% from "ui/data.html" import description_list, description_item %}

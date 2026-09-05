@@ -263,7 +263,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>metric_group(items, cols=3)</code></h4><p>items is a list of (label, value) pairs.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>progress(value, label=none)</code></h4><p>value is 0–100.</p>    </section>  </div>
+      <h4><code>progress(value, label=none, id=none)</code></h4><p>value is 0–100. id makes the bar addressable, which is what form(progress=…) needs to move it during an upload.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>empty_state(title, description=none, icon_name=&#34;sparkle&#34;)</code></h4><p>table renders this for you when rows is empty — pass empty_title and empty_description instead of writing the branch.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -333,7 +333,8 @@ fjkit
 <h3>ui/form.html</h3>      </div>
     </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
       <h4><code>form(action=none, method=&#34;post&#34;, target=none, swap=&#34;outerHTML&#34;,
-     reset_on_success=false, card=true, encoding=&#34;urlencoded&#34;)</code></h4><p>target and swap are the htmx pair. encoding=&#34;json&#34; posts JSON, and then the page needs form_scripts().</p>    </section><aside><span class="badge" data-variant="outline">block: the fields</span></aside>  </div>
+     reset_on_success=false, card=true, encoding=&#34;urlencoded&#34;,
+     progress=none)</code></h4><p>target and swap are the htmx pair. encoding=&#34;json&#34; posts JSON, and then the page needs form_scripts(); encoding=&#34;multipart&#34; is what an upload needs, and it is written for the htmx path and the native one because a browser with scripting off submits this form too. progress is a selector for a progress() bar — htmx reports what it has sent and the macro writes the number into all three places a bar carries it.</p>    </section><aside><span class="badge" data-variant="outline">block: the fields</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>form_scripts()</code></h4><p>Per page, not in the shell — this is what encoding=&#34;json&#34; needs.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -342,10 +343,13 @@ fjkit
       <h4><code>fieldset(legend=none, hint=none)</code></h4><p>A named group inside a form, with the legend the group needs.</p>    </section><aside><span class="badge" data-variant="outline">block: the fields</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>text_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;, type=&#34;text&#34;,
-           required=false, hint=none, error=none, id=none)</code></h4>    </section>  </div>
+           required=false, hint=none, error=none, id=none)</code></h4><p>type is where dates live: date, time, datetime-local, month and week are native inputs, and there is no date_field because a macro around one would add a name and nothing else. min/max/step ride in as attributes. Not file — an upload cannot be restored from value after a 422.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>textarea_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;, rows=none,
                required=false, hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>file_field(name, label=none, accept=none, multiple=false,
+           required=false, hint=none, error=none, id=none)</code></h4><p>No value parameter: a browser will not let a page refill a file input, so a 422 redraw comes back with this box empty and every other field still typed in. The form needs encoding=&#34;multipart&#34; or the route is handed the file&#39;s name as a string.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>select_field(name, label=none, options=(), selected=none, id=none,
              blank=none, hint=none, error=none)</code></h4><p>options is a list of (value, label) pairs.</p>    </section>  </div>

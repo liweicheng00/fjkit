@@ -79,6 +79,12 @@
   had just typed into. Keeping what was typed is how a rejected form comes
   back, and this parameter is what guards it.
 #}
+{#
+  `json` is an htmx extension and `multipart` is not — it is a property of the
+  request, which is why the two leave by different doors and there is no single
+  table. `multipart` also has to work with JavaScript off, so it is the one
+  encoding that reaches the native path as well.
+#}
 {% set _ENCODINGS = {"urlencoded": none, "json": "json-enc"} %}
 
 {#
@@ -101,7 +107,7 @@
 } %}
 {% set _NATIVE_METHODS = {"get": "get", "post": "post", "put": "post", "patch": "post", "delete": "post"} %}
 
-{% macro form(action=none, method="post", target=none, swap="outerHTML", reset_on_success=false, card=true, encoding="urlencoded") -%}
+{% macro form(action=none, method="post", target=none, swap="outerHTML", reset_on_success=false, card=true, encoding="urlencoded", progress=none) -%}
   {#
     Only on the htmx path: `hx-ext` is an instruction to htmx, and a form
     without a target is submitted by the browser, which has never heard of it.
@@ -120,7 +126,29 @@
     #}
     {%- if target %} hx-target="{{ target }}" hx-swap="{{ swap }}" hx-disinherit="hx-target hx-swap"{% endif %}
     {%- if extension %} hx-ext="{{ extension }}"{% endif %}
+    {#
+      Both spellings, because a multipart form has to post either way: htmx
+      reads `hx-encoding` and a browser submitting natively reads `enctype`,
+      and neither has heard of the other. Getting this wrong loses the file
+      rather than erroring — a urlencoded POST sends the file's *name*.
+    #}
+    {%- if encoding == "multipart" %} hx-encoding="multipart/form-data" enctype="multipart/form-data"{% endif %}
     {%- if reset_on_success %} hx-on::after-request="if (event.detail.successful) this.reset()"{% endif %}
+    {#
+      `progress` is a selector for a `progress()` bar, and this is the only
+      JavaScript that makes an upload bar move. It is written here rather than
+      left to the caller for three reasons. `hx-on::xhr:progress` cannot be
+      passed through `**kwargs` in any readable way. `lengthComputable` is
+      false when the body has no known length, and reading `total` then divides
+      by zero and paints `NaN` — a bar that jumps to full and stays there. And
+      a bar writes the same number in three places, so updating one of them is
+      worse than updating none: a filled bar beside a label reading 0%, or a
+      filled bar that a screen reader is still told is empty.
+
+      It is an inline attribute, so no file is added and §4.2's per-page budget
+      is unchanged.
+    #}
+    {%- if progress %} hx-on::xhr:progress="if (event.detail.lengthComputable) { const p = Math.round(event.detail.loaded / event.detail.total * 100), b = document.querySelector('{{ progress }}'); b.querySelector('[role=progressbar]').setAttribute('aria-valuenow', p); b.querySelector('[data-progress-bar]').style.width = p + '%'; const n = b.querySelector('[data-progress-value]'); if (n) n.textContent = p + '%'; }"{% endif %}
     {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     {% if card %}<section>{{ caller() }}</section>{% else %}{{ caller() }}{% endif %}
   </form>
@@ -170,7 +198,36 @@
   </div>
 {%- endmacro %}
 
-{# text_field(name, label, …) — label + control + hint, wired together by id. #}
+{#
+  text_field(name, label, …) — label + control + hint, wired together by id.
+
+  `type` is the whole of fjkit's answer to dates, times and numbers, and there
+  is no `date_field` next to this one on purpose. `type="date"` is a native
+  `<input>`: the calendar, the keyboard handling, the locale-correct display of
+  a value that still travels as `YYYY-MM-DD`, and the screen-reader announcement
+  are all the browser's, in every browser this kit supports. A macro wrapping it
+  would add a name and nothing else, which is the case CHARTER §2.3 rejects, and
+  a scripted picker would trade all of that for a control whose accessibility
+  fjkit then owns — §2.4's first row.
+
+  The types that behave as a field here:
+
+      text  email  password  url  tel  search  number
+      date  time   datetime-local  month  week
+
+  `min`, `max` and `step` are not parameters; they reach the input through
+  `**kwargs` like any other attribute, so a date range is
+  `text_field("due", type="date", min="2026-01-01")`.
+
+  `file` is deliberately not in that list. An upload is not a value the field
+  round-trips — `value=""` cannot restore it after a 422 — and it needs
+  `form(encoding="multipart")` to reach the server at all.
+
+  Not an enumeration in code. Narrowing `type` to a list would turn every new
+  input type HTML gains into a fjkit release, and the failure it would prevent
+  — a typo'd type — is one the browser already handles by falling back to
+  `text`.
+#}
 {% macro text_field(name, label=none, value="", placeholder="", type="text", required=false, hint=none, error=none, id=none) -%}
   {%- set field_id = id or ("f-" ~ name) -%}
   <div class="field">
@@ -200,6 +257,48 @@
   no JS at all, and it posts the same repeated field. It stops scaling at about
   a dozen options, which is where the two above start.
 #}
+{#
+  file_field(name, label, …) — the one field `text_field` will not do.
+
+  `type="file"` is excluded from `text_field` because a file input breaks the
+  contract every other field on this page keeps: `value` cannot restore it. A
+  browser will not let a page set a file input's value — that would let a site
+  post a file nobody chose — so a 422 redraw comes back with the box empty
+  while every other field still holds what was typed. That is not a bug this
+  macro can fix; it is why the macro exists to say so.
+
+  What follows for a route: validate the file first, or accept that a rejected
+  submit asks for it again. `hint` is where to put that sentence for the person
+  filling the form in.
+
+  The form has to carry `encoding="multipart"`. Without it the request is
+  urlencoded and the server is handed the file's *name* as a string — a
+  successful POST that saved nothing, with no error anywhere.
+
+  `accept` is a filter in the file picker and nothing more. Every browser lets
+  a determined person pick something else, so the route validates the type
+  again; this only saves the honest majority from choosing a file that was
+  never going to work.
+
+  `multiple` posts the field repeatedly, which FastAPI reads as
+  `list[UploadFile]`. Singular is `UploadFile`, and the two signatures are not
+  interchangeable.
+#}
+{% macro file_field(name, label=none, accept=none, multiple=false, required=false, hint=none, error=none, id=none) -%}
+  {%- set field_id = id or ("f-" ~ name) -%}
+  <div class="field">
+    {% if label %}<label class="label" for="{{ field_id }}">{{ label }}</label>{% endif %}
+    <input class="input" type="file" id="{{ field_id }}" name="{{ name }}"
+           {%- if accept %} accept="{{ accept }}"{% endif %}
+           {%- if multiple %} multiple{% endif %}
+           {%- if required %} required{% endif %}
+           {%- if error %} aria-invalid="true"{% endif %}
+           {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
+           {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {{ _message(field_id, hint, error) }}
+  </div>
+{%- endmacro %}
+
 {% macro select_field(name, label=none, options=(), selected=none, id=none, blank=none, hint=none, error=none) -%}
   {%- set field_id = id or ("f-" ~ name) -%}
   <div class="field">

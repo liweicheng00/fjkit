@@ -260,7 +260,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>metric_group(items, cols=3)</code></h4><p>items 是 (label, value) 的序對清單。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>progress(value, label=none)</code></h4><p>value 是 0–100。</p>    </section>  </div>
+      <h4><code>progress(value, label=none, id=none)</code></h4><p>value 是 0–100。id 讓這條 bar 可以被指到，form(progress=…) 在上傳過程中就是靠它更新。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>empty_state(title, description=none, icon_name=&#34;sparkle&#34;)</code></h4><p>rows 是空的時候 table 會替你渲染它——傳 empty_title 與 empty_description，不要自己寫那個分支。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -330,7 +330,8 @@ fjkit
 <h3>ui/form.html</h3>      </div>
     </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
       <h4><code>form(action=none, method=&#34;post&#34;, target=none, swap=&#34;outerHTML&#34;,
-     reset_on_success=false, card=true, encoding=&#34;urlencoded&#34;)</code></h4><p>target 與 swap 是 htmx 那一組。encoding=&#34;json&#34; 會送出 JSON，這時頁面需要 form_scripts()。</p>    </section><aside><span class="badge" data-variant="outline">區塊：欄位</span></aside>  </div>
+     reset_on_success=false, card=true, encoding=&#34;urlencoded&#34;,
+     progress=none)</code></h4><p>target 與 swap 是 htmx 那一組。encoding=&#34;json&#34; 會送出 JSON，這時頁面需要 form_scripts()。</p>    </section><aside><span class="badge" data-variant="outline">區塊：欄位</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>form_scripts()</code></h4><p>放在頁面裡，不在外殼——encoding=&#34;json&#34; 需要的就是它。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -339,10 +340,13 @@ fjkit
       <h4><code>fieldset(legend=none, hint=none)</code></h4><p>表單裡一個具名的群組，附上該群組需要的 legend。</p>    </section><aside><span class="badge" data-variant="outline">區塊：欄位</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>text_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;, type=&#34;text&#34;,
-           required=false, hint=none, error=none, id=none)</code></h4>    </section>  </div>
+           required=false, hint=none, error=none, id=none)</code></h4><p>日期就在 type 裡：date、time、datetime-local、month、week 都是原生 input，沒有 date_field，因為包一層只多一個名字。min/max/step 當一般屬性傳。不含 file——422 之後沒辦法用 value 還原已選的檔案。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>textarea_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;, rows=none,
                required=false, hint=none, error=none, id=none)</code></h4>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>file_field(name, label=none, accept=none, multiple=false,
+           required=false, hint=none, error=none, id=none)</code></h4><p>沒有 value 參數：瀏覽器不允許頁面替 file input 填回內容，所以 422 重畫時這一格是空的，其他欄位仍保留輸入。表單必須加 encoding=&#34;multipart&#34;，否則路由收到的是檔名字串。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>select_field(name, label=none, options=(), selected=none, id=none,
              blank=none, hint=none, error=none)</code></h4><p>options 是 (value, label) 的序對清單。</p>    </section>  </div>

@@ -1,0 +1,21 @@
+{#
+  What arrived. The reply to `jobs_upload`, and the target the upload form
+  swaps — so the region exists on first paint holding nothing, and a swap
+  replaces it rather than appending a second one.
+
+  A `card`, not an `alert` with the facts in its block. An alert's block is its
+  actions slot: Basecoat lays that out as a row beside the message, so a
+  description list put there renders alongside the title rather than under it.
+#}
+{% from "ui/data.html" import card, description_list, description_item %}
+
+<div id="upload-result">
+  {%- if filename is defined %}
+    {% call card("Received " ~ filename, "Nothing was stored — the route read the bytes and dropped them.") %}
+      {% call description_list() %}
+        {{ description_item("Size", size_label) }}
+        {{ description_item("Content type", content_type) }}
+      {% endcall %}
+    {% endcall %}
+  {%- endif %}
+</div>

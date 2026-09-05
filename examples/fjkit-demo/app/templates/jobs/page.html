@@ -1,9 +1,9 @@
 {# The jobs page: the shell, a title, the start form and the job list. #}
 {% extends "base.html" %}
 {% from "ui/button.html" import button %}
-{% from "ui/data.html" import badge, item, item_list, kbd %}
+{% from "ui/data.html" import badge, item, item_list, kbd, progress %}
 {% from "ui/feedback.html" import spinner %}
-{% from "ui/form.html" import form, field_row, form_scripts, select_field %}
+{% from "ui/form.html" import form, field_row, file_field, form_scripts, select_field %}
 {% from "ui/layout.html" import page_header, row, stack %}
 {% from "ui/overlay.html" import drawer, drawer_trigger %}
 
@@ -37,6 +37,34 @@
         {% endcall %}
       {% endcall %}
     {% endcall %}
+
+    {#
+      The other kind of POST on this page, and the one the form above cannot
+      make. `encoding="json"` has nothing to say about a `File`, so an upload
+      needs `multipart` — written for both paths, because a browser with
+      scripting off submits this form too.
+
+      `progress` names the bar. htmx reports every chunk it sends as
+      `htmx:xhr:progress`, and the id is all the macro needs to turn that into
+      a number; nothing on this page writes the arithmetic.
+
+      The bar starts at zero and is not hidden between uploads. A control that
+      appears only while it is working gives a person nothing to aim at, and
+      one that vanishes on completion removes the only evidence the upload
+      finished.
+    #}
+    {% call form(action=url_for(request, "jobs_upload"), target="#upload-result",
+                 encoding="multipart", progress="#upload-bar",
+                 hx_disabled_elt="find button[type=submit]") %}
+      {% call field_row("field-and-button") %}
+        {{ file_field("file", label="Import a file",
+                      hint="Nothing is stored. A rejected form comes back with this box empty — a browser will not let a page refill it.") }}
+        {{ button("Upload", variant="primary", type="submit", icon_name="upload") }}
+      {% endcall %}
+      {{ progress(0, label="Upload", id="upload-bar") }}
+    {% endcall %}
+
+    {% include "jobs/_upload.html" %}
 
     {% include "jobs/_jobs.html" %}
   {% endcall %}
