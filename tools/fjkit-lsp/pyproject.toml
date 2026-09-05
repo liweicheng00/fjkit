@@ -1,0 +1,21 @@
+# A development tool, not a distribution: it is never published, so it carries
+# no licence files or classifiers. It is a workspace member so that `uv run
+# fjkit-lsp` works from the repository root with no separate environment — the
+# same reason the demos are members. Nothing in `packages/` depends on it.
+[project]
+name = "fjkit-lsp"
+version = "0.1.0"
+description = "A language server that links fjkit routes, response models and Jinja templates."
+requires-python = ">=3.13"
+dependencies = ["pygls>=2.0"]
+
+[project.scripts]
+fjkit-lsp = "fjkit_lsp.__main__:main"
+
+# hatchling, as everywhere else in this repository.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fjkit_lsp"]

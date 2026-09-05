@@ -1,0 +1,17 @@
+{
+  // fjkit-lsp: definition / references / hover between routes, models, templates
+  // and htmx events, in .html and .py files. The client is the repository's own
+  // extension — build and install it once:
+  //
+  //     uv sync
+  //     uv run python tools/fjkit-vscode/build.py
+  //     code   --install-extension tools/fjkit-vscode/dist/fjkit-vscode-*.vsix
+  //     cursor --install-extension tools/fjkit-vscode/dist/fjkit-vscode-*.vsix
+  //
+  // It finds the server at .venv/bin/fjkit-lsp by itself; nothing to configure.
+  // Templates are `html` so that one language id covers them whether or not a
+  // Jinja grammar is installed.
+  "files.associations": {
+    "**/templates/**/*.html": "html"
+  }
+}

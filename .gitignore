@@ -32,3 +32,6 @@ packages/fjkit/docs/workbench/data.json
 
 # Agent worktrees — embedded checkouts, never part of a commit.
 .claude/worktrees/
+
+# The built editor extension; `tools/fjkit-vscode/build.py` recreates it.
+tools/fjkit-vscode/dist/

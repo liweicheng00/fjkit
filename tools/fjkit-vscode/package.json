@@ -1,0 +1,35 @@
+{
+  "name": "fjkit-vscode",
+  "displayName": "fjkit",
+  "description": "Navigate between FastAPI routes, response models, Jinja templates and htmx events in a fjkit app.",
+  "version": "0.1.0",
+  "publisher": "fjkit",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/liweicheng00/fjkit" },
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages"],
+  "keywords": ["fastapi", "jinja", "htmx", "fjkit", "lsp"],
+  "activationEvents": [
+    "onLanguage:html",
+    "onLanguage:jinja-html",
+    "onLanguage:jinja",
+    "onLanguage:python"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "fjkit.restartServer", "title": "fjkit: Restart language server" }
+    ],
+    "configuration": {
+      "title": "fjkit",
+      "properties": {
+        "fjkit.lsp.command": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "markdownDescription": "The language server to run, as a command and its arguments; a relative command resolves against the workspace folder. Empty: `.venv/bin/fjkit-lsp` (`.venv\\Scripts\\fjkit-lsp.exe` on Windows), which `uv sync` creates."
+        }
+      }
+    }
+  }
+}

@@ -5,7 +5,8 @@
 # repository, so nothing at the top level should look like an installable app.
 
 [tool.uv.workspace]
-members = ["packages/*", "examples/*"]
+# `tools/fjkit-vscode` is the editor extension — JavaScript, not a member.
+members = ["packages/*", "examples/*", "tools/fjkit-lsp"]
 
 # Declared once, workspace-wide: the demos resolve the four published packages
 # to the local ones rather than to PyPI.
@@ -33,6 +34,8 @@ testpaths = [
     "packages/fjkit-admin/tests",
     "examples/fjkit-demo/tests",
     "examples/fjkit-admin-demo/tests",
+    "tools/fjkit-lsp/tests",
+    "tools/fjkit-vscode/tests",
 ]
 # Each demo's own package root, so their tests import `app.*` and `admin_demo.*`
 # exactly as the demos do — no path juggling inside the test files.
