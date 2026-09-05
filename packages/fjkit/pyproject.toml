@@ -6,6 +6,13 @@ readme = "README.md"
 requires-python = ">=3.13"
 authors = [{ name = "liweicheng00" }]
 
+# PEP 639: an SPDX expression, not a `License ::` classifier — the two cannot
+# both be present, and the classifier form is deprecated. `LICENSE` is resolved
+# against this directory, not the repo root, so the file is duplicated there;
+# a build backend cannot reach above the package it is building.
+license = "MIT"
+license-files = ["LICENSE"]
+
 # Discovery metadata. The name carries no search surface — "fjkit" is not a word
 # anyone types — so every term someone would actually search for has to live
 # here, in the description, or in the README's first paragraph. That is the

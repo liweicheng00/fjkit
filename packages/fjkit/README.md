@@ -86,3 +86,7 @@ uv run fjkit check app/templates
 **[Docs](https://liweicheng00.github.io/fjkit/)**
 
 Status: pre-release, under active development.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
