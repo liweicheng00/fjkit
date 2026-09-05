@@ -273,6 +273,16 @@ GROUPS = [
                     _m('bullet_list(tone="muted")', block="list_item()"),
                     _m("list_item()", block="text"),
                     _m("item_list()", block="item()"),
+                    _m("description_list(layout=\"rows\")", block="description_item()"),
+                    _m(
+                        "description_item(term, value=none)",
+                        block="value",
+                        optional=True,
+                        en="A native <dl>: the value is announced as the definition of its term. "
+                        "item_list is a list of things; this is a list of facts about one.",
+                        zh="原生的 <dl>：值會被朗讀成該詞條的定義。item_list 是一串東西的清單，"
+                        "這個是同一個東西的一串事實。",
+                    ),
                     _m(
                         "item(title, description=none, icon_name=none, actions=none,\n"
                         "     href=none, clamp=true)",

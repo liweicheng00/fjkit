@@ -1061,6 +1061,7 @@ class TestShellSidebarSlot:
 
 TABS = '{% from "ui/tabs.html" import tabs, tab_panel %}'
 CODE = '{% from "ui/data.html" import code_block, item_list, item %}'
+DL = '{% from "ui/data.html" import description_list, description_item %}'
 GROUP = '{% from "ui/button.html" import button, button_group %}'
 
 FILE_ITEMS = '[{"id": "a", "label": "main.py"}, {"id": "b", "label": "router.py"}]'
@@ -1228,6 +1229,55 @@ class TestItemList:
             f'{CODE}{{% set body %}}<em>emphasis</em>{{% endset %}}{{{{ item("t", body) }}}}'
         )
         assert "<em>emphasis</em>" in html
+
+
+class TestDescriptionList:
+    def test_every_pair_is_wrapped_so_a_row_survives_the_grid(self, render):
+        """A grid over bare `<dt>`/`<dd>` children lays them out in document
+        order, which puts the second term under the first value."""
+        html = render(
+            f'{DL}{{% call description_list() %}}'
+            f'{{{{ description_item("Status", "Active") }}}}'
+            f'{{% endcall %}}'
+        )
+        assert '<dl class="description-list"' in html
+        assert "<div>\n    <dt>Status</dt>\n    <dd>Active</dd>\n  </div>" in html
+
+    @pytest.mark.parametrize("layout", ["rows", "stacked"])
+    def test_renders_every_layout(self, render, layout):
+        html = render(
+            f'{DL}{{% call description_list(layout="{layout}") %}}x{{% endcall %}}'
+        )
+        assert f'data-layout="{layout}"' in html
+
+    def test_an_unknown_layout_falls_back_rather_than_emitting_it(self, render):
+        """`data-layout` selects a CSS rule. An unrecognised value would match
+        none of them and lay the list out with the wrapper's defaults, which
+        looks like the stacked layout and is not it."""
+        html = render(f'{DL}{{% call description_list(layout="sideways") %}}x{{% endcall %}}')
+        assert 'data-layout="rows"' in html
+
+    def test_value_accepts_markup(self, render):
+        html = render(
+            f'{DL}{{% set body %}}<em>on</em>{{% endset %}}'
+            f'{{{{ description_item("Status", body) }}}}'
+        )
+        assert "<em>on</em>" in html
+
+    def test_the_body_carries_the_value_when_the_parameter_is_absent(self, render):
+        html = render(
+            f'{DL}{{% call description_item("Notes") %}}<p>two lines</p>{{% endcall %}}'
+        )
+        assert "<dd><p>two lines</p></dd>" in html
+
+    def test_attrs_reach_both_macros(self, render):
+        html = render(
+            f'{DL}{{% call description_list(id="facts") %}}'
+            f'{{{{ description_item("Owner", "Ada", **{{"data-row": "owner"}}) }}}}'
+            f'{{% endcall %}}'
+        )
+        assert 'id="facts"' in html
+        assert 'data-row="owner"' in html
 
 
 class TestButtonGroupOrientation:

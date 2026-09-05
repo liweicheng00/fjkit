@@ -316,6 +316,35 @@
   .item[data-clamp="false"] p {
     @apply line-clamp-none;
   }
+
+  /* A description list is a native <dl>, and the browser's own stylesheet gives
+   * every <dd> a 40px inline-start margin. Tailwind's preflight — which would
+   * have removed it — is not loaded here, so without this rule every value sits
+   * one indent to the right of the term above it. That is the whole reason the
+   * layout lives in CSS rather than in a class string on the macro. */
+  .description-list {
+    @apply grid gap-3;
+  }
+
+  .description-list > div {
+    @apply grid gap-1;
+  }
+
+  .description-list dt {
+    @apply text-muted-foreground text-sm;
+  }
+
+  .description-list dd {
+    @apply text-foreground m-0 text-sm;
+  }
+
+  /* `rows` puts the term beside its value once there is width for two columns,
+   * and stacks below that — a phone has no room for a label column that does
+   * not shrink. `stacked` never pairs them, which is what a narrow card wants
+   * at any width. */
+  .description-list[data-layout="rows"] > div {
+    @apply sm:grid-cols-[minmax(0,12rem)_1fr] sm:items-baseline sm:gap-4;
+  }
 }
 
 /* ---------------------------------------------------------------------------

@@ -764,7 +764,19 @@ const SHOWCASE = {
   {% call item("Closed vocabulary") %}Every class an app may write.{% endcall %}
   {% call item("Prebuilt CSS") %}Compiled when fjkit is released.{% endcall %}
 {% endcall %}`,
-    caption: "A definition list in a card. clamp=false lets a description run past two lines — Basecoat clamps by default, which is right for a feed and wrong for a reference.",
+    caption: "A list of things. clamp=false lets a description run past two lines — Basecoat clamps by default, which is right for a feed and wrong for a reference. For facts about one thing, use description_list below.",
+  },
+
+  description_list: {
+    html: () => DATA.gallery.description_list,
+    jinja: `{% from "ui/data.html" import description_list, description_item %}
+
+{% call description_list() %}
+  {{ description_item("Status", badge("Active", "success")) }}
+  {{ description_item("Owner", "Ada Lovelace") }}
+  {% call description_item("Notes") %}<p>Two lines fit here without a clamp.</p>{% endcall %}
+{% endcall %}`,
+    caption: "A native <dl>, so each value is announced as the definition of its term — the relationship item_list does not carry. layout=\"rows\" puts the term beside the value once there is room for two columns; layout=\"stacked\" keeps it above at every width.",
   },
 
   alert: {

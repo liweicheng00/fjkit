@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788519593">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788584469">
   <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -269,6 +269,10 @@ fjkit
       <h4><code>list_item()</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：文字</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>item_list()</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：item() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>description_list(layout=&#34;rows&#34;)</code></h4>    </section><aside><span class="badge" data-variant="outline">區塊：description_item() 呼叫</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>description_item(term, value=none)</code></h4><p>原生的 &lt;dl&gt;：值會被朗讀成該詞條的定義。item_list 是一串東西的清單，這個是同一個東西的一串事實。</p>    </section><aside><span class="badge" data-variant="outline">區塊：value 呼叫（可省略）</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>item(title, description=none, icon_name=none, actions=none,
      href=none, clamp=true)</code></h4><p>clamp=false 讓說明超過兩行——定義列表需要，動態列表不需要。</p>    </section>  </div>

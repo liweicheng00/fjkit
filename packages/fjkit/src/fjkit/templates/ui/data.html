@@ -245,6 +245,48 @@
 {%- endmacro %}
 
 {#
+  description_list(layout) / description_item(term, value) — term-and-value pairs.
+
+  A native `<dl>`, so a screen reader announces each value as the definition of
+  the term beside it. `item_list` covers most of what this is used for and does
+  not carry that relationship: it is a list of things, and this is a list of
+  facts about one thing.
+
+  Every pair is wrapped in a `<div>` — permitted inside `<dl>` since HTML 5.2,
+  and required here, because a grid over bare `<dt>`/`<dd>` children lays them
+  out in document order and cannot keep a pair on one row.
+
+      {% call description_list() %}
+        {{ description_item("Status", badge("Active", "success")) }}
+        {{ description_item("Owner", task.owner) }}
+      {% endcall %}
+
+  `value` may be markup, like `item`'s `description`, so a row can hold a badge
+  or a link without the caller reaching for `|safe`. Where the value is longer
+  than one expression, `{% call description_item("Notes") %}…{% endcall %}` puts
+  it in the body instead; `value` wins if both are given.
+
+  Two layouts, and the difference is only where the term sits. `rows` moves it
+  beside the value once the viewport is wide enough for two columns. `stacked`
+  keeps it above at every width, which is what a card too narrow for a label
+  column needs. Neither is a class the caller writes — see `fjkit.css`, where
+  the `<dd>` margin reset that both depend on also lives.
+#}
+{% set _DL_LAYOUTS = ("rows", "stacked") %}
+
+{% macro description_list(layout="rows") -%}
+  <dl class="description-list" data-layout="{{ layout if layout in _DL_LAYOUTS else "rows" }}"
+      {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ caller() }}</dl>
+{%- endmacro %}
+
+{% macro description_item(term, value=none) -%}
+  <div{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    <dt>{{ term }}</dt>
+    <dd>{{ value if value is not none else caller() }}</dd>
+  </div>
+{%- endmacro %}
+
+{#
   avatar(name, src, size, badge_tone, badge_icon)
 
   `name` is required and `src` is not: the initials are what the image falls

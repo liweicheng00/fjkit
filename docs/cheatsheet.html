@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788519593">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788584469">
   <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -272,6 +272,10 @@ fjkit
       <h4><code>list_item()</code></h4>    </section><aside><span class="badge" data-variant="outline">block: the text</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>item_list()</code></h4>    </section><aside><span class="badge" data-variant="outline">block: item() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>description_list(layout=&#34;rows&#34;)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: description_item() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>description_item(term, value=none)</code></h4><p>A native &lt;dl&gt;: the value is announced as the definition of its term. item_list is a list of things; this is a list of facts about one.</p>    </section><aside><span class="badge" data-variant="outline">block: value calls (optional)</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>item(title, description=none, icon_name=none, actions=none,
      href=none, clamp=true)</code></h4><p>clamp=false lets a description run past two lines — what a definition needs and a feed does not.</p>    </section>  </div>

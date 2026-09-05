@@ -445,6 +445,10 @@ OVERLAY = (
 NAV = '{% from "ui/nav.html" import brand, nav_links, theme_toggle, breadcrumb %}'
 AVATARS = '{% from "ui/data.html" import avatar, avatar_group %}'
 CONTENT = '{% from "ui/data.html" import code_block, item_list, item %}'
+DESCRIPTIONS = (
+    '{% from "ui/data.html" import description_list, description_item %}'
+    '{% from "ui/data.html" import badge %}'
+)
 TABS = '{% from "ui/tabs.html" import tabs, tab_panel %}'
 RANGE = '{% from "ui/form.html" import range_field, input_group_field %}'
 
@@ -475,6 +479,17 @@ gallery = {
         f"{CONTENT}{{% call item_list() %}}"
         '{% call item("Closed vocabulary") %}Every class an app may write.{% endcall %}'
         '{% call item("Prebuilt CSS") %}Compiled when fjkit is released.{% endcall %}'
+        "{% endcall %}"
+    ),
+    #: Shown in the `rows` layout, because the difference between the two
+    #: layouts is only visible where there is width for a second column, and
+    #: the display cell has it.
+    "description_list": render(
+        f"{DESCRIPTIONS}{{% call description_list() %}}"
+        '{{ description_item("Status", badge("Active", "success")) }}'
+        '{{ description_item("Owner", "Ada Lovelace") }}'
+        '{% call description_item("Notes") %}<p>Two lines fit here without a clamp.</p>'
+        "{% endcall %}"
         "{% endcall %}"
     ),
     # -- the batch that closes the Basecoat gap
