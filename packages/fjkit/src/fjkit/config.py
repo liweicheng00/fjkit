@@ -62,10 +62,8 @@ class FjkitConfig:
     #: geometry (control heights, radii, borders, shadows) and never the class
     #: names or tokens a template writes.
     #:
-    #: `"auto"` defers to whatever `uv add "fjkit[nova]"` installed, and falls
-    #: back to the default pack when that is nothing — so an app that never
-    #: heard of style packs keeps the stylesheet it always had. Naming a pack
-    #: here always wins over what is installed. See `fjkit.styles`.
+    #: `"auto"` is the default pack, so an app that never heard of style packs
+    #: keeps the stylesheet it always had. See `fjkit.styles`.
     #:
     #: Deliberately not a per-request value. Two packs on one page would send
     #: two full stylesheets over the wire and let one silently lose the cascade,

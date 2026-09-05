@@ -6,25 +6,11 @@
 
 [tool.uv.workspace]
 members = ["packages/*", "examples/*"]
-# The style markers are distributions to publish, not parts of the dev
-# environment. A workspace installs every member, and installing all eight
-# markers at once is exactly the ambiguity `fjkit.styles` refuses to guess
-# its way out of — so they are excluded and reached by path below instead.
-exclude = ["packages/fjkit-style-*"]
 
 # Declared once, workspace-wide: the demo resolves `fjkit` to the local package
-# rather than to PyPI. The style markers are listed too, so `uv add "fjkit[nova]"`
-# resolves inside the workspace instead of looking for them on PyPI.
+# rather than to PyPI.
 [tool.uv.sources]
 fjkit = { workspace = true }
-fjkit-style-vega = { path = "packages/fjkit-style-vega" }
-fjkit-style-nova = { path = "packages/fjkit-style-nova" }
-fjkit-style-maia = { path = "packages/fjkit-style-maia" }
-fjkit-style-lyra = { path = "packages/fjkit-style-lyra" }
-fjkit-style-mira = { path = "packages/fjkit-style-mira" }
-fjkit-style-luma = { path = "packages/fjkit-style-luma" }
-fjkit-style-sera = { path = "packages/fjkit-style-sera" }
-fjkit-style-rhea = { path = "packages/fjkit-style-rhea" }
 
 [dependency-groups]
 dev = [

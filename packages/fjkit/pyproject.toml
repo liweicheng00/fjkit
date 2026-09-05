@@ -73,25 +73,6 @@ Documentation = "https://liweicheng00.github.io/fjkit/"
 Repository = "https://github.com/liweicheng00/fjkit"
 Issues = "https://github.com/liweicheng00/fjkit/issues"
 
-# Install-time style selection:  uv add "fjkit[nova]"
-#
-# Each extra pulls in a marker distribution — one entry point, no CSS, because
-# all eight stylesheets are already inside this wheel. An extra can only add
-# another distribution; it cannot change a byte of the one it belongs to, so a
-# marker is the only thing that can carry the choice through an install.
-#
-# Not pinned to fjkit's version: there is nothing in a marker to keep in step.
-# `FjkitConfig(style=...)` does the same job in code and always wins.
-[project.optional-dependencies]
-vega = ["fjkit-style-vega>=0.1"]
-nova = ["fjkit-style-nova>=0.1"]
-maia = ["fjkit-style-maia>=0.1"]
-lyra = ["fjkit-style-lyra>=0.1"]
-mira = ["fjkit-style-mira>=0.1"]
-luma = ["fjkit-style-luma>=0.1"]
-sera = ["fjkit-style-sera>=0.1"]
-rhea = ["fjkit-style-rhea>=0.1"]
-
 [project.scripts]
 fjkit = "fjkit.cli:main"
 

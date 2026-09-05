@@ -1975,3 +1975,47 @@ target="#records"  ->  hx-get，由 select 自己的 change 觸發
 **排序還在**（hidden 欄位生效）；第 3 頁改成 25 → 回到第 1 頁（頁碼正確地沒有跟著走）；
 所有表頭連結與所有頁碼連結都帶 `per_page=25`；`<noscript>` 的按鈕在開著腳本時不可見。
 第 3 頁的序號是 25–36，與摘要一致。深淺兩色模式都看過，console 沒有錯誤。
+
+---
+
+## 移除 marker 套件：`fjkit[nova]` 收回（2026-09-05）
+
+上面「`uv add "fjkit[nova]"`——安裝時選包」那一節留了一句「第二階段真的要發佈前
+確認一次」。PyPI 帳號開好、要發佈了，這裡是那次確認的結果：**不發**，八個 marker
+一併刪除。
+
+八個 `packages/fjkit-style-<pack>/` 從來就不含 CSS——每個 wheel 1,459 bytes，
+一個 entry point。所以刪掉它們省下的是 12 KB，體積不是理由。真正的理由是發佈面：
+
+| | 之前 | 之後 |
+|---|---|---|
+| 要上傳的 distribution | 9 | 1 |
+| 要佔用的 PyPI 名字 | 9 | 1 |
+| 要維護的版本流 | 9 | 1 |
+| 上傳順序 | marker 先、fjkit 後（漏了 `fjkit[nova]` 會解析失敗） | 無 |
+
+換一句話說，八個 PyPI 名字與八條版本流，買的是 `FjkitConfig(style="nova")`
+已經能講的同一個字。0.1.0 之前收掉，比發出去之後再收要便宜。
+
+### 跟著消失的東西
+
+`resolve_style` 剩一行（`"auto"` → `DEFAULT_STYLE`）。連帶刪掉的還有
+`installed_packs()`、`ENTRY_POINT_GROUP`，以及「裝了兩個就報錯、不猜」那段——
+那段防的是「頁面長相取決於 metadata 掃描順序」，marker 沒了，風險也沒了，
+是乾淨的移除，不留債。`fjkit.styles` 保留為薄模組而沒有併進 `templating.py`：
+`mounting.py` 也 import `resolve_style`，併進去會多一條 `mounting → templating`
+的相依。
+
+`test_style_packs.py` 刪掉七個測試（marker 解析、extras 宣告、entry point 拼字）。
+留下的六個才是這一版真正在守的東西：八個包都 build 得出來且在體積預算內、
+shell link 的是設定的那個、八個包 emit 的 class 集合完全相同。
+`uv run pytest` 1357 passed。
+
+### 沒動的
+
+CSS 一個位元組都沒改。八個包仍然全部在 wheel 裡（1,852 KB，壓縮後 198 KB，
+佔下載量 20%——`static/vendor` 的 463 KB 才是大宗）。換包仍然是一個 config 值
+加一次重開，仍然不用改任何 template。少掉的只有「安裝時選」這一條路徑。
+
+**不可逆的部分**：`fjkit-style-*` 這八個 PyPI 名字沒有註冊，日後想恢復時可能已
+被他人取走。

@@ -246,32 +246,6 @@ dependencies = [
     { name = "pydantic" },
 ]
 
-[package.optional-dependencies]
-luma = [
-    { name = "fjkit-style-luma" },
-]
-lyra = [
-    { name = "fjkit-style-lyra" },
-]
-maia = [
-    { name = "fjkit-style-maia" },
-]
-mira = [
-    { name = "fjkit-style-mira" },
-]
-nova = [
-    { name = "fjkit-style-nova" },
-]
-rhea = [
-    { name = "fjkit-style-rhea" },
-]
-sera = [
-    { name = "fjkit-style-sera" },
-]
-vega = [
-    { name = "fjkit-style-vega" },
-]
-
 [package.dev-dependencies]
 build = [
     { name = "pytailwindcss" },
@@ -280,18 +254,9 @@ build = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "fjkit-style-luma", marker = "extra == 'luma'", directory = "packages/fjkit-style-luma" },
-    { name = "fjkit-style-lyra", marker = "extra == 'lyra'", directory = "packages/fjkit-style-lyra" },
-    { name = "fjkit-style-maia", marker = "extra == 'maia'", directory = "packages/fjkit-style-maia" },
-    { name = "fjkit-style-mira", marker = "extra == 'mira'", directory = "packages/fjkit-style-mira" },
-    { name = "fjkit-style-nova", marker = "extra == 'nova'", directory = "packages/fjkit-style-nova" },
-    { name = "fjkit-style-rhea", marker = "extra == 'rhea'", directory = "packages/fjkit-style-rhea" },
-    { name = "fjkit-style-sera", marker = "extra == 'sera'", directory = "packages/fjkit-style-sera" },
-    { name = "fjkit-style-vega", marker = "extra == 'vega'", directory = "packages/fjkit-style-vega" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "pydantic", specifier = ">=2.9" },
 ]
-provides-extras = ["vega", "nova", "maia", "lyra", "mira", "luma", "sera", "rhea"]
 
 [package.metadata.requires-dev]
 build = [{ name = "pytailwindcss", specifier = ">=0.3.1" }]
@@ -326,46 +291,6 @@ dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },
 ]
-
-[[package]]
-name = "fjkit-style-luma"
-version = "0.1.0"
-source = { directory = "packages/fjkit-style-luma" }
-
-[[package]]
-name = "fjkit-style-lyra"
-version = "0.1.0"
-source = { directory = "packages/fjkit-style-lyra" }
-
-[[package]]
-name = "fjkit-style-maia"
-version = "0.1.0"
-source = { directory = "packages/fjkit-style-maia" }
-
-[[package]]
-name = "fjkit-style-mira"
-version = "0.1.0"
-source = { directory = "packages/fjkit-style-mira" }
-
-[[package]]
-name = "fjkit-style-nova"
-version = "0.1.0"
-source = { directory = "packages/fjkit-style-nova" }
-
-[[package]]
-name = "fjkit-style-rhea"
-version = "0.1.0"
-source = { directory = "packages/fjkit-style-rhea" }
-
-[[package]]
-name = "fjkit-style-sera"
-version = "0.1.0"
-source = { directory = "packages/fjkit-style-sera" }
-
-[[package]]
-name = "fjkit-style-vega"
-version = "0.1.0"
-source = { directory = "packages/fjkit-style-vega" }
 
 [[package]]
 name = "h11"
