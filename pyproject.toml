@@ -7,12 +7,13 @@
 [tool.uv.workspace]
 members = ["packages/*", "examples/*"]
 
-# Declared once, workspace-wide: the demo resolves the three published packages
+# Declared once, workspace-wide: the demos resolve the four published packages
 # to the local ones rather than to PyPI.
 [tool.uv.sources]
 fjkit = { workspace = true }
 fjkit-charts = { workspace = true }
 fjkit-apidocs = { workspace = true }
+fjkit-admin = { workspace = true }
 
 [dependency-groups]
 dev = [

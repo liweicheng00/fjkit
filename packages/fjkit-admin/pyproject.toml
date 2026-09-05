@@ -3,6 +3,11 @@ name = "fjkit-admin"
 version = "0.1.0.dev0"
 description = "A Django-style admin for FastAPI: SQLAlchemy models, rendered with fjkit, swapped with htmx"
 readme = "README.md"
+# PEP 639: an SPDX string plus the file, never a `License ::` classifier — the
+# two cannot coexist. The glob is relative to this directory, so the file is a
+# copy: a build backend cannot read above its own project root.
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.13"
 authors = [{ name = "liweicheng00" }]
 keywords = ["fastapi", "admin", "sqlalchemy", "htmx", "jinja2", "fjkit", "crud"]
@@ -42,5 +47,7 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/fjkit_admin"]
 
+# The templates ship inside the wheel; `.gitignore` patterns would otherwise
+# keep them out. `Typing :: Typed` above is backed by `src/fjkit_admin/py.typed`.
 [tool.hatch.build]
 artifacts = ["src/fjkit_admin/templates/**/*"]
