@@ -18,6 +18,8 @@
   {"id": "write",    "num": "07", "title": "The flash plugin"},
   {"id": "errors",   "num": "08", "title": "When a form is rejected"},
   {"id": "apidocs",  "num": "09", "title": "The API console"},
+  {"id": "charts",   "num": "10", "title": "Charts"},
+  {"id": "admin",    "num": "11", "title": "The admin"},
 ] %}
 
 {% block content %}
@@ -623,7 +625,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
     {% call prose() %}
       <p>
         It is also the kit's worked example of section 03's <code>add_template_dir()</code>. The
-        console's templates live beside its code, in <code>fjkit/apidocs/templates/apidocs/</code>,
+        console's templates live beside its code, in <code>fjkit_apidocs/templates/apidocs/</code>,
         and <code>extend()</code> hands that directory to the loader. The inner <code>apidocs/</code>
         keeps the names at <code>apidocs/page.html</code>, which lets your app replace any one of them
         by writing <code>templates/apidocs/&lt;name&gt;.html</code> of its own — the app's directory is
@@ -636,6 +638,151 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
       ("a call is capped", "64 KB of body and 30 seconds, both arguments. The console is a reading tool, not a load generator"),
       ("form bodies become fields", "an Annotated[str, Form()] route gets one input per field rather than a text box, so nobody is asked to hand-write urlencoding. A JSON body stays a single editable example, prefilled from the schema"),
       ("nothing on the page can read the credential", "signing in is a form your app defines, not a box to paste a token into — which is the same property that makes the cookie worth having"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 10 #}
+  {% set t10 %}Python decides the shape of the figure. The browser decides its chrome.{% endset %}
+  {% call lesson("charts", "10", "Charts", t10, tag="fjkit_charts") %}
+    {% call prose() %}
+      <p>
+        Basecoat has a <code>chart</code> component and the kit does not ship it, because a chart is
+        the one component that cannot be markup and tokens: something has to turn numbers into paths,
+        and that something is 1.1&nbsp;MB of JavaScript. Making it a plugin is what keeps that number
+        off every page that draws nothing.
+      </p>
+      <p>
+        Registering it gives an app the <code>chart</code> macro, the theming bridge, the Plotly
+        bundle and the two <code>&lt;script&gt;</code> lines that load them. Nothing to download and
+        nothing to mount: the bundle ships inside this wheel and is served from the plugin's own
+        static mount.
+      </p>
+    {% endcall %}
+
+    {{ code("uv add fjkit-charts", label="shell") }}
+
+    {{ code("from fjkit_charts import ChartsPlugin
+
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        The router builds one <code>Chart</code> per figure and the page draws them. There is nothing
+        in between: no chart endpoint, no JSON the browser fetches, no client state.
+      </p>
+    {% endcall %}
+
+    {{ files([
+      {"id": "charts-router", "label": "router.py", "lang": "python", "source": "from fjkit_charts import Chart, figure_of
+
+Chart(
+    id=\"by-owner\",
+    title=\"Workload\",
+    summary=\"Ana holds 5 of the 12 open tasks.\",
+    figure=figure_of(go.Figure(...)),
+)",
+       "note": "figure_of() drops Plotly's default template on the way through — 7,621 bytes carrying 111 colour literals — and validates the rest, so a trace the browser cannot draw fails here rather than rendering an empty box. It duck-types on to_plotly_json(), so plotly stays out of the kit's dependencies and a plain dict also works."},
+      {"id": "charts-page", "label": "charts/page.html", "lang": "jinja", "source": "{% from \"charts/macros.html\" import chart, chart_scripts %}
+
+{% for item in charts %}{{ chart(item) }}{% endfor %}
+
+{% block scripts %}{{ chart_scripts() }}{% endblock %}",
+       "note": "chart_scripts() is called by the page, never by the shell. A plugin may not inject markup into ui/shell.html, and this is the case that rule was written for: a hook letting this one add a <script> to every page would put 1.1 MB on the login screen."},
+    ]) }}
+
+    {{ defs("The division of labour", [
+      ("the traces, and what they mean", "Python, in Chart.figure. The service that computed the numbers is the only thing that knows which of them is a bar"),
+      ("axis text, grid lines, tick colour, the gaps between pie slices", "the browser. charts.js resolves them from the live tokens on every draw, because Plotly's defaults are a dark grey on a light grey — a chart drawn for a white page, on a page that may be dark. A theme toggle is a redraw"),
+      ("the series colours", "Plotly's own palette, and the theme does not touch them. The figure carries no colour at all: a hex code there would fail the rule fjkit check applies to templates, and be wrong in one of the two schemes"),
+      ("the height", "Chart.height, applied by the same script that draws. A style=\"\" attribute in the markup is the other way an app starts writing CSS"),
+      ("the text alternative", "Chart.summary, written from the same numbers the traces were built from. Plotly's SVG is a thousand unlabelled <path> elements, so the caption is what a screen reader gets — and without JavaScript it is the whole content"),
+    ]) }}
+
+    {{ defs("What each argument decides", [
+      ("url=\"/_fjkit-charts\"", "where this plugin's own assets are served. Keep it outside config.static_url: Starlette matches the first mount whose prefix fits, so a path nested inside the kit's static mount is swallowed by it and 404s against a directory that does not hold these files"),
+      ("plotly_url=", "serve Plotly from somewhere other than the copy in the wheel — a path your app already serves, or a URL. The default is the vendored bundle under this plugin's own url, cache-stamped like every other kit asset"),
+    ]) }}
+
+    {{ defs("Worth knowing before you reach for it", [
+      ("summary is a required field", "not a keyword someone forgets. A chart with no text alternative is invisible to a screen reader, and the macro cannot invent the sentence"),
+      ("the basic bundle, not the full one", "scatter, bar and pie. plotly.js-dist-min is 4.85 MB of 3D, maps, financial and statistical traces most dashboards never draw, and picking the bundle is the only size knob Plotly offers without a build step"),
+      ("being in a wheel is not being on a page", "which distribution holds the bundle decides what an install carries; §7 budgets what a page downloads. An app that never draws a chart installs neither"),
+      ("the pin lives with the bytes", "PLOTLY_VERSION is in fjkit_charts and scripts/vendor_plotly.py fetches it. The kit no longer knows Plotly exists"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 11 #}
+  {% set t11 %}Register a model; get the list, the form and the routes between them.{% endset %}
+  {% call lesson("admin", "11", "The admin", t11, tag="fjkit_admin") %}
+    {% call prose() %}
+      <p>
+        Section 02 of the charter puts an admin generator outside the kit, and the reason is the one
+        thing it cannot do without: read your schema. fjkit imports no ORM and is not going to. That
+        rules the feature out of <em>this</em> wheel; it does not rule it out.
+      </p>
+      <p>
+        So <code>fjkit-admin</code> is shaped like the API console above. It owns a URL prefix, ships
+        its templates under its own <code>admin/</code> namespace so an app can shadow any one of
+        them, renders inside whatever <code>base_template</code> names, and gates every route through
+        <code>dependencies</code>. What it adds on top is the data layer the kit must not carry: a
+        <code>sessionmaker</code>, and the SQLAlchemy models its views register.
+      </p>
+    {% endcall %}
+
+    {{ code("uv add fjkit-admin", label="shell") }}
+
+    {{ code("from fjkit_admin import AdminPlugin, ModelAdmin, action
+
+
+class TaskAdmin(ModelAdmin, model=Task):
+    list_display = (\"title\", \"status\", \"project\", \"due\")
+    search_fields = (\"title\", \"notes\")
+    list_filter = (\"status\", \"project\")
+    ordering = (\"-created\",)
+
+    @action(\"Mark done\", confirm=\"Mark the selected tasks done?\")
+    def mark_done(self, request, session, tasks):
+        for task in tasks:
+            task.done = True
+        return f\"{len(tasks)} marked done\"
+
+
+admin = AdminPlugin(SessionLocal, views=(TaskAdmin,), base_template=\"base.html\")
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, admin)))", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        That is a list with search, filters, sortable headers, pagination and bulk actions, plus the
+        add, change and delete forms — all of it the kit's own macros, and none of it a route you
+        wrote.
+      </p>
+      <p>
+        One region carries the whole screen. <code>#admin-main</code> is the target of every swap: a
+        sort, a page, a search, a saved form and a bulk action all replace it. The list partial and
+        the form partial render into that same id, which is why a saved form comes back as the list
+        with no second target declared anywhere — and why the admin ships no JavaScript of its own.
+      </p>
+    {% endcall %}
+
+    {{ defs("What each argument decides", [
+      ("session_factory", "a sessionmaker, or any callable returning a Session usable as a context manager. One session per request. An async_sessionmaker is refused at construction, with a message, rather than half-working per request"),
+      ("views=", "the ModelAdmin subclasses to register, in sidebar order"),
+      ("base_template=", "what the page extends. The kit's shell by default, or your own base.html so the admin sits inside the app's chrome. The admin fills the shell's sidebar block with its model list, so a base that fills it too loses its own navigation here — home_url is the way back"),
+      ("dependencies=", "put on every route the plugin adds, typically (Depends(auth.required),). That is the whole of the gating; empty means the admin is public"),
+      ("url=\"/admin\"", "where it lives. Absolute, and not /"),
+    ]) }}
+
+    {{ defs("The options keep Django's names", [
+      ("the list", "list_display, list_display_links, search_fields, list_filter, ordering, sortable_by, list_per_page, page_sizes, empty_value_display"),
+      ("the form", "fields, exclude, readonly_fields, labels, help_texts, widgets"),
+      ("the behaviour", "@action for a bulk action and @display to name a method column; get_queryset, has_view/add/change/delete_permission, save_model, delete_model, label_for"),
+    ]) }}
+
+    {{ defs("Worth knowing before you reach for it", [
+      ("it composes ui/* and writes no class", "the stylesheet's @source paths reach only inside this repository, so a plugin distributed separately can add no utility to fjkit's CSS. The admin is the proof that the closed vocabulary is enough to build a whole application on"),
+      ("SQLModel registers like anything else", "a table=True class is a mapped class, and its own validators run on submit through model_validate"),
+      ("two dependencies", "fjkit and sqlalchemy>=2.0"),
+      ("one async handler, on purpose", "it reads the body htmx posts from the checkbox column, with parse_qs, which keeps python-multipart off the dependency list. Every handler that renders is def, so Starlette runs it in the threadpool"),
     ]) }}
   {% endcall %}
 

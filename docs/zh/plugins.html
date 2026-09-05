@@ -86,6 +86,14 @@ fjkit
     <a href="plugins.html#apidocs">      <span>09 · API 主控台</span>
     </a>
   </li>
+        <li>
+    <a href="plugins.html#charts">      <span>10 · 圖表</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#admin">      <span>11 · admin</span>
+    </a>
+  </li>
 </ul>
   </div>
 <div role="group" aria-label="語言"><h3>語言</h3>    <ul>      <li>
@@ -790,7 +798,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
 
 <div class="flex flex-col gap-3">      <p>
         它同時是第 03 節 <code>add_template_dir()</code> 在 kit 裡的實例。主控台的模板與它的程式碼
-        放在一起，在 <code>fjkit/apidocs/templates/apidocs/</code>，由 <code>extend()</code> 把那個
+        放在一起，在 <code>fjkit_apidocs/templates/apidocs/</code>，由 <code>extend()</code> 把那個
         目錄交給 loader。裡面那層 <code>apidocs/</code> 讓模板名維持 <code>apidocs/page.html</code>，
         所以你的 app 只要寫一份自己的 <code>templates/apidocs/&lt;名稱&gt;.html</code>
         就能換掉其中任何一支，因為 app 的目錄排在最前面被搜。
@@ -804,6 +812,176 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
       <h4>一次呼叫有上限</h4><p>body 64 KB、逾時 30 秒，兩個都是參數。主控台是讀 API 的工具，不是壓測工具</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>form body 會拆成欄位</h4><p>一條 Annotated[str, Form()] 的路由拿到的是一欄一個輸入框，而不是一個文字框，不必自己手寫 urlencoding。JSON body 則是一份可編輯的範例，內容由 schema 預先填好</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>這一頁上沒有任何東西讀得到憑證</h4><p>登入是你的 app 定義的表單，不是一個貼 token 的框，性質與那顆 cookie 相同</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="charts">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+<span class="badge" data-variant="secondary">fjkit_charts</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">圖表</h2><p class="text-muted-foreground text-sm">圖形的形狀由 Python 決定，圖形的外裝由瀏覽器決定。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Basecoat 有 <code>chart</code> 元件，kit 沒有把它包進來。圖表是唯一一個沒辦法只靠 markup
+        與 token 完成的元件：總得有東西把數字變成路徑，而那個東西是 1.1&nbsp;MB 的 JavaScript。
+        把它做成 plugin，就是為了讓不畫圖的頁面不必付這個數字。
+      </p>
+      <p>
+        註冊之後，app 會得到 <code>chart</code> macro、主題橋接、Plotly bundle，以及載入它們的兩行
+        <code>&lt;script&gt;</code>。不用下載也不用另外掛載：bundle 就在這個 wheel 裡，由 plugin
+        自己的 static mount 提供。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="shell" data-lang="python">uv add fjkit-charts</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">from fjkit_charts import ChartsPlugin
+
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        router 每一張圖建一個 <code>Chart</code>，頁面把它們畫出來。中間沒有東西：沒有圖表端點、
+        沒有瀏覽器去抓的 JSON、沒有 client 狀態。
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="charts-router"
+                aria-selected="true">router.py</button>
+        <button type="button" role="tab" aria-controls="charts-page"
+                aria-selected="false">charts/page.html</button>
+    </nav><div id="charts-router" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">from fjkit_charts import Chart, figure_of
+
+Chart(
+    id=&#34;by-owner&#34;,
+    title=&#34;工作量&#34;,
+    summary=&#34;12 件未結案任務中，Ana 佔 5 件。&#34;,
+    figure=figure_of(go.Figure(...)),
+)</pre>
+
+<footer>figure_of() 會在轉換途中丟掉 Plotly 的預設 template——7,621 bytes、111 個顏色字面值——再驗證其餘部分，所以瀏覽器畫不出來的 trace 在這裡就失敗，而不是渲染出一個空框。它以 to_plotly_json() 做 duck-typing，因此 plotly 不會進 kit 的依賴，傳一個純 dict 也可以。</footer></div><div id="charts-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="charts/page.html" data-lang="jinja">{% from &#34;charts/macros.html&#34; import chart, chart_scripts %}
+
+{% for item in charts %}{{ chart(item) }}{% endfor %}
+
+{% block scripts %}{{ chart_scripts() }}{% endblock %}</pre>
+
+<footer>chart_scripts() 由頁面呼叫，不由 shell 呼叫。plugin 不得把 markup 注入 ui/shell.html，而這正是那條規則要擋的情況：一個讓它在每頁加 &lt;script&gt; 的 hook，會把 1.1 MB 放到登入畫面上。</footer></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>誰負責什麼</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>trace，以及它們代表什麼</h4><p>Python，寫在 Chart.figure。只有算出這些數字的 service 知道其中哪一個該是長條</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>軸標文字、格線、刻度顏色、圓餅切片之間的間隙</h4><p>瀏覽器。charts.js 每次繪製時從當下的 token 解析出來，因為 Plotly 的預設是淺灰底上的深灰字——一張為白底畫的圖，卻可能落在深色頁面上。切換主題就是重畫一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>series 的顏色</h4><p>Plotly 自己的色盤，主題不動它。figure 本身完全不帶顏色：寫死色碼會違反 fjkit check 對模板的同一條規則，而且在兩種配色其中之一必定是錯的</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>高度</h4><p>Chart.height，由負責繪製的同一支腳本套用。在 markup 裡寫 style=&#34;&#34; 是 app 開始自己寫 CSS 的另一條路</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>替代文字</h4><p>Chart.summary，用建 trace 的同一批數字寫出來。Plotly 的 SVG 是上千個沒有標籤的 &lt;path&gt;，所以螢幕閱讀器讀到的是這句 caption；沒有 JavaScript 時，它就是全部的內容</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>每個參數決定什麼</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>url=&#34;/_fjkit-charts&#34;</h4><p>這個 plugin 自己的資產放在哪。要放在 config.static_url 之外：Starlette 比對的是第一個前綴吻合的 mount，所以巢狀在 kit static mount 底下的路徑會被它吃掉，然後對一個沒有這些檔案的目錄回 404</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>plotly_url=</h4><p>改從別處提供 Plotly，而不是用 wheel 裡那一份——你的 app 已經在服務的某個路徑，或一個 URL。預設是 plugin 自己 url 底下的 vendored bundle，跟其他 kit 資產一樣帶快取戳記</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>動手之前值得知道</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>summary 是必填欄位</h4><p>不是一個會被忘掉的關鍵字。沒有替代文字的圖表對螢幕閱讀器等於不存在，而 macro 沒辦法替你把那句話寫出來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>用的是 basic bundle，不是完整版</h4><p>只有 scatter、bar 與 pie。plotly.js-dist-min 是 4.85 MB 的 3D、地圖、金融與統計 trace，多數儀表板一個都不畫；而在沒有 build step 的前提下，選 bundle 是 Plotly 給的唯一一個體積旋鈕</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>在 wheel 裡不等於在頁面上</h4><p>bundle 放在哪個 distribution，決定一次安裝帶進什麼；§7 管的是一個頁面下載什麼。從不畫圖的 app 兩者都不付</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>版本 pin 跟著 bytes 走</h4><p>PLOTLY_VERSION 在 fjkit_charts 裡，由 scripts/vendor_plotly.py 抓取。kit 已經不知道 Plotly 的存在</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="admin">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
+<span class="badge" data-variant="secondary">fjkit_admin</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">admin</h2><p class="text-muted-foreground text-sm">註冊一個 model，就得到列表、表單，以及它們之間的路由。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        charter 第 02 節把 admin 產生器放在 kit 之外，理由是它少不了的那件事：讀你的 schema。
+        fjkit 不 import 任何 ORM，將來也不會。那排除的是「這個 wheel 做這件事」，不是「這件事不該有人做」。
+      </p>
+      <p>
+        所以 <code>fjkit-admin</code> 的形狀跟上一節的 API 主控台一樣：它擁有一段 URL 前綴、
+        把模板放在自己的 <code>admin/</code> 命名空間下讓 app 可以逐一覆蓋、在
+        <code>base_template</code> 指定的模板裡渲染，並用 <code>dependencies</code> 擋住每一條路由。
+        它多出來的是 kit 不能帶的資料層：一個 <code>sessionmaker</code>，以及它的 view 註冊的
+        SQLAlchemy model。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="shell" data-lang="python">uv add fjkit-admin</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">from fjkit_admin import AdminPlugin, ModelAdmin, action
+
+
+class TaskAdmin(ModelAdmin, model=Task):
+    list_display = (&#34;title&#34;, &#34;status&#34;, &#34;project&#34;, &#34;due&#34;)
+    search_fields = (&#34;title&#34;, &#34;notes&#34;)
+    list_filter = (&#34;status&#34;, &#34;project&#34;)
+    ordering = (&#34;-created&#34;,)
+
+    @action(&#34;標記完成&#34;, confirm=&#34;要把選取的任務標記為完成嗎？&#34;)
+    def mark_done(self, request, session, tasks):
+        for task in tasks:
+            task.done = True
+        return f&#34;已標記 {len(tasks)} 件&#34;
+
+
+admin = AdminPlugin(SessionLocal, views=(TaskAdmin,), base_template=&#34;base.html&#34;)
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, admin)))</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        這樣就有一個帶搜尋、篩選、可排序表頭、分頁與批次動作的列表，以及新增、修改、刪除三種表單。
+        全部由 kit 自己的 macro 渲染，沒有一條路由是你寫的。
+      </p>
+      <p>
+        整個畫面由一個區塊承載。<code>#admin-main</code> 是每一次 swap 的 target：排序、換頁、搜尋、
+        存檔後的表單與批次動作，全都替換它。列表 partial 與表單 partial 渲染進同一個 id，
+        所以表單存檔後會直接以列表的形式回來，任何地方都不需要宣告第二個 target——
+        也因此 admin 自己不出貨任何 JavaScript。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>每個參數決定什麼</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>session_factory</h4><p>一個 sessionmaker，或任何回傳可當 context manager 使用的 Session 的 callable。一個請求一個 session。傳 async_sessionmaker 會在建構時被拒絕並附上訊息，而不是每個請求半殘</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>views=</h4><p>要註冊的 ModelAdmin 子類別，順序即側欄順序</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>base_template=</h4><p>這一頁 extend 什麼。預設是 kit 的 shell，也可以給你自己的 base.html，讓 admin 坐在 app 的框架裡。admin 會用它的 model 清單填掉 shell 的 sidebar block，所以一個同樣要填 sidebar 的 base 會在這裡失去自己的導覽——home_url 是回去的路</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>dependencies=</h4><p>加在 plugin 新增的每一條路由上，通常是 (Depends(auth.required),)。擋住 admin 的手段只有這一個；留空就是公開的</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>url=&#34;/admin&#34;</h4><p>admin 住在哪。要絕對路徑，且不能是 /</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>選項沿用 Django 的名字</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>列表</h4><p>list_display、list_display_links、search_fields、list_filter、ordering、sortable_by、list_per_page、page_sizes、empty_value_display</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>表單</h4><p>fields、exclude、readonly_fields、labels、help_texts、widgets</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>行為</h4><p>@action 定義批次動作、@display 為方法欄位命名；get_queryset、has_view/add/change/delete_permission、save_model、delete_model、label_for</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>動手之前值得知道</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>它只組合 ui/*，不寫任何 class</h4><p>stylesheet 的 @source 路徑只到得了這個 repository 裡面，所以獨立發佈的 plugin 沒辦法為 fjkit 的 CSS 增加任何 utility。admin 因此也是一個證明：封閉詞彙表足以撐起一整個應用程式</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>SQLModel 跟其他 model 一樣註冊</h4><p>table=True 的類別就是一個 mapped class，送出時它自己的 validator 會透過 model_validate 執行</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>兩個依賴</h4><p>fjkit 與 sqlalchemy&gt;=2.0</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>刻意留下一個 async handler</h4><p>它要讀 htmx 從勾選欄位送出的 body，用 parse_qs 讀，因此 python-multipart 不必進依賴清單。其餘負責渲染的 handler 都是 def，交給 Starlette 丟到 threadpool</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>

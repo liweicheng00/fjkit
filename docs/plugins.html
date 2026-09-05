@@ -86,6 +86,14 @@ fjkit
     <a href="plugins.html#apidocs">      <span>09 · The API console</span>
     </a>
   </li>
+        <li>
+    <a href="plugins.html#charts">      <span>10 · Charts</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html#admin">      <span>11 · The admin</span>
+    </a>
+  </li>
 </ul>
   </div>
 <div role="group" aria-label="Language"><h3>Language</h3>    <ul>      <li>
@@ -818,7 +826,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
 
 <div class="flex flex-col gap-3">      <p>
         It is also the kit's worked example of section 03's <code>add_template_dir()</code>. The
-        console's templates live beside its code, in <code>fjkit/apidocs/templates/apidocs/</code>,
+        console's templates live beside its code, in <code>fjkit_apidocs/templates/apidocs/</code>,
         and <code>extend()</code> hands that directory to the loader. The inner <code>apidocs/</code>
         keeps the names at <code>apidocs/page.html</code>, which lets your app replace any one of them
         by writing <code>templates/apidocs/&lt;name&gt;.html</code> of its own — the app's directory is
@@ -833,6 +841,180 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
       <h4>a call is capped</h4><p>64 KB of body and 30 seconds, both arguments. The console is a reading tool, not a load generator</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>form bodies become fields</h4><p>an Annotated[str, Form()] route gets one input per field rather than a text box, so nobody is asked to hand-write urlencoding. A JSON body stays a single editable example, prefilled from the schema</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>nothing on the page can read the credential</h4><p>signing in is a form your app defines, not a box to paste a token into — which is the same property that makes the cookie worth having</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="charts">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+<span class="badge" data-variant="secondary">fjkit_charts</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Charts</h2><p class="text-muted-foreground text-sm">Python decides the shape of the figure. The browser decides its chrome.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Basecoat has a <code>chart</code> component and the kit does not ship it, because a chart is
+        the one component that cannot be markup and tokens: something has to turn numbers into paths,
+        and that something is 1.1&nbsp;MB of JavaScript. Making it a plugin is what keeps that number
+        off every page that draws nothing.
+      </p>
+      <p>
+        Registering it gives an app the <code>chart</code> macro, the theming bridge, the Plotly
+        bundle and the two <code>&lt;script&gt;</code> lines that load them. Nothing to download and
+        nothing to mount: the bundle ships inside this wheel and is served from the plugin's own
+        static mount.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="shell" data-lang="python">uv add fjkit-charts</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">from fjkit_charts import ChartsPlugin
+
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        The router builds one <code>Chart</code> per figure and the page draws them. There is nothing
+        in between: no chart endpoint, no JSON the browser fetches, no client state.
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="charts-router"
+                aria-selected="true">router.py</button>
+        <button type="button" role="tab" aria-controls="charts-page"
+                aria-selected="false">charts/page.html</button>
+    </nav><div id="charts-router" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">from fjkit_charts import Chart, figure_of
+
+Chart(
+    id=&#34;by-owner&#34;,
+    title=&#34;Workload&#34;,
+    summary=&#34;Ana holds 5 of the 12 open tasks.&#34;,
+    figure=figure_of(go.Figure(...)),
+)</pre>
+
+<footer>figure_of() drops Plotly&#39;s default template on the way through — 7,621 bytes carrying 111 colour literals — and validates the rest, so a trace the browser cannot draw fails here rather than rendering an empty box. It duck-types on to_plotly_json(), so plotly stays out of the kit&#39;s dependencies and a plain dict also works.</footer></div><div id="charts-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="charts/page.html" data-lang="jinja">{% from &#34;charts/macros.html&#34; import chart, chart_scripts %}
+
+{% for item in charts %}{{ chart(item) }}{% endfor %}
+
+{% block scripts %}{{ chart_scripts() }}{% endblock %}</pre>
+
+<footer>chart_scripts() is called by the page, never by the shell. A plugin may not inject markup into ui/shell.html, and this is the case that rule was written for: a hook letting this one add a &lt;script&gt; to every page would put 1.1 MB on the login screen.</footer></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The division of labour</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>the traces, and what they mean</h4><p>Python, in Chart.figure. The service that computed the numbers is the only thing that knows which of them is a bar</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>axis text, grid lines, tick colour, the gaps between pie slices</h4><p>the browser. charts.js resolves them from the live tokens on every draw, because Plotly&#39;s defaults are a dark grey on a light grey — a chart drawn for a white page, on a page that may be dark. A theme toggle is a redraw</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the series colours</h4><p>Plotly&#39;s own palette, and the theme does not touch them. The figure carries no colour at all: a hex code there would fail the rule fjkit check applies to templates, and be wrong in one of the two schemes</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the height</h4><p>Chart.height, applied by the same script that draws. A style=&#34;&#34; attribute in the markup is the other way an app starts writing CSS</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the text alternative</h4><p>Chart.summary, written from the same numbers the traces were built from. Plotly&#39;s SVG is a thousand unlabelled &lt;path&gt; elements, so the caption is what a screen reader gets — and without JavaScript it is the whole content</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What each argument decides</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>url=&#34;/_fjkit-charts&#34;</h4><p>where this plugin&#39;s own assets are served. Keep it outside config.static_url: Starlette matches the first mount whose prefix fits, so a path nested inside the kit&#39;s static mount is swallowed by it and 404s against a directory that does not hold these files</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>plotly_url=</h4><p>serve Plotly from somewhere other than the copy in the wheel — a path your app already serves, or a URL. The default is the vendored bundle under this plugin&#39;s own url, cache-stamped like every other kit asset</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Worth knowing before you reach for it</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>summary is a required field</h4><p>not a keyword someone forgets. A chart with no text alternative is invisible to a screen reader, and the macro cannot invent the sentence</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the basic bundle, not the full one</h4><p>scatter, bar and pie. plotly.js-dist-min is 4.85 MB of 3D, maps, financial and statistical traces most dashboards never draw, and picking the bundle is the only size knob Plotly offers without a build step</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>being in a wheel is not being on a page</h4><p>which distribution holds the bundle decides what an install carries; §7 budgets what a page downloads. An app that never draws a chart installs neither</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the pin lives with the bytes</h4><p>PLOTLY_VERSION is in fjkit_charts and scripts/vendor_plotly.py fetches it. The kit no longer knows Plotly exists</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="admin">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
+<span class="badge" data-variant="secondary">fjkit_admin</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">The admin</h2><p class="text-muted-foreground text-sm">Register a model; get the list, the form and the routes between them.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        Section 02 of the charter puts an admin generator outside the kit, and the reason is the one
+        thing it cannot do without: read your schema. fjkit imports no ORM and is not going to. That
+        rules the feature out of <em>this</em> wheel; it does not rule it out.
+      </p>
+      <p>
+        So <code>fjkit-admin</code> is shaped like the API console above. It owns a URL prefix, ships
+        its templates under its own <code>admin/</code> namespace so an app can shadow any one of
+        them, renders inside whatever <code>base_template</code> names, and gates every route through
+        <code>dependencies</code>. What it adds on top is the data layer the kit must not carry: a
+        <code>sessionmaker</code>, and the SQLAlchemy models its views register.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="shell" data-lang="python">uv add fjkit-admin</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">from fjkit_admin import AdminPlugin, ModelAdmin, action
+
+
+class TaskAdmin(ModelAdmin, model=Task):
+    list_display = (&#34;title&#34;, &#34;status&#34;, &#34;project&#34;, &#34;due&#34;)
+    search_fields = (&#34;title&#34;, &#34;notes&#34;)
+    list_filter = (&#34;status&#34;, &#34;project&#34;)
+    ordering = (&#34;-created&#34;,)
+
+    @action(&#34;Mark done&#34;, confirm=&#34;Mark the selected tasks done?&#34;)
+    def mark_done(self, request, session, tasks):
+        for task in tasks:
+            task.done = True
+        return f&#34;{len(tasks)} marked done&#34;
+
+
+admin = AdminPlugin(SessionLocal, views=(TaskAdmin,), base_template=&#34;base.html&#34;)
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, admin)))</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        That is a list with search, filters, sortable headers, pagination and bulk actions, plus the
+        add, change and delete forms — all of it the kit's own macros, and none of it a route you
+        wrote.
+      </p>
+      <p>
+        One region carries the whole screen. <code>#admin-main</code> is the target of every swap: a
+        sort, a page, a search, a saved form and a bulk action all replace it. The list partial and
+        the form partial render into that same id, which is why a saved form comes back as the list
+        with no second target declared anywhere — and why the admin ships no JavaScript of its own.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What each argument decides</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>session_factory</h4><p>a sessionmaker, or any callable returning a Session usable as a context manager. One session per request. An async_sessionmaker is refused at construction, with a message, rather than half-working per request</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>views=</h4><p>the ModelAdmin subclasses to register, in sidebar order</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>base_template=</h4><p>what the page extends. The kit&#39;s shell by default, or your own base.html so the admin sits inside the app&#39;s chrome. The admin fills the shell&#39;s sidebar block with its model list, so a base that fills it too loses its own navigation here — home_url is the way back</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>dependencies=</h4><p>put on every route the plugin adds, typically (Depends(auth.required),). That is the whole of the gating; empty means the admin is public</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>url=&#34;/admin&#34;</h4><p>where it lives. Absolute, and not /</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The options keep Django&#39;s names</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>the list</h4><p>list_display, list_display_links, search_fields, list_filter, ordering, sortable_by, list_per_page, page_sizes, empty_value_display</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the form</h4><p>fields, exclude, readonly_fields, labels, help_texts, widgets</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the behaviour</h4><p>@action for a bulk action and @display to name a method column; get_queryset, has_view/add/change/delete_permission, save_model, delete_model, label_for</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Worth knowing before you reach for it</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>it composes ui/* and writes no class</h4><p>the stylesheet&#39;s @source paths reach only inside this repository, so a plugin distributed separately can add no utility to fjkit&#39;s CSS. The admin is the proof that the closed vocabulary is enough to build a whole application on</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>SQLModel registers like anything else</h4><p>a table=True class is a mapped class, and its own validators run on submit through model_validate</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>two dependencies</h4><p>fjkit and sqlalchemy&gt;=2.0</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>one async handler, on purpose</h4><p>it reads the body htmx posts from the checkbox column, with parse_qs, which keeps python-multipart off the dependency list. Every handler that renders is def, so Starlette runs it in the threadpool</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>
