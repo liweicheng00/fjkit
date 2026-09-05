@@ -97,7 +97,7 @@ def test_the_page_is_the_only_one_that_loads_plotly(client):
 
 
 def test_the_vendored_bundle_is_actually_served(client):
-    response = client.get("/_fjkit/vendor/plotly/plotly-basic.min.js")
+    response = client.get("/_fjkit-charts/assets/vendor/plotly/plotly-basic.min.js")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith(("text/javascript", "application/javascript"))
 

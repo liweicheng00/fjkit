@@ -1,10 +1,10 @@
-"""Wire contracts for the charts page. Re-exports `Chart` and `figure_of` from `fjkit.charts`."""
+"""Wire contracts for the charts page. Re-exports `Chart` and `figure_of` from `fjkit_charts`."""
 
 from __future__ import annotations
 
 from enum import StrEnum
 
-from fjkit.charts import Chart, PlotlyFigure, figure_of
+from fjkit_charts import Chart, PlotlyFigure, figure_of
 from pydantic import BaseModel
 
 __all__ = [

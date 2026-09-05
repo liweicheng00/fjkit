@@ -9,6 +9,8 @@ resolution-markers = [
 [manifest]
 members = [
     "fjkit",
+    "fjkit-apidocs",
+    "fjkit-charts",
     "fjkit-demo",
 ]
 
@@ -243,7 +245,6 @@ source = { editable = "packages/fjkit" }
 dependencies = [
     { name = "fastapi" },
     { name = "jinja2" },
-    { name = "pydantic" },
 ]
 
 [package.dev-dependencies]
@@ -255,11 +256,36 @@ build = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "pydantic", specifier = ">=2.9" },
 ]
 
 [package.metadata.requires-dev]
 build = [{ name = "pytailwindcss", specifier = ">=0.3.1" }]
+
+[[package]]
+name = "fjkit-apidocs"
+version = "0.1.0.dev0"
+source = { editable = "packages/fjkit-apidocs" }
+dependencies = [
+    { name = "fjkit" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "fjkit", editable = "packages/fjkit" }]
+
+[[package]]
+name = "fjkit-charts"
+version = "0.1.0.dev0"
+source = { editable = "packages/fjkit-charts" }
+dependencies = [
+    { name = "fjkit" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fjkit", editable = "packages/fjkit" },
+    { name = "pydantic", specifier = ">=2.9" },
+]
 
 [[package]]
 name = "fjkit-demo"
@@ -268,6 +294,8 @@ source = { virtual = "examples/fjkit-demo" }
 dependencies = [
     { name = "fastapi", extra = ["standard"] },
     { name = "fjkit" },
+    { name = "fjkit-apidocs" },
+    { name = "fjkit-charts" },
     { name = "plotly" },
 ]
 
@@ -282,6 +310,8 @@ dev = [
 requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.141.1" },
     { name = "fjkit", editable = "packages/fjkit" },
+    { name = "fjkit-apidocs", editable = "packages/fjkit-apidocs" },
+    { name = "fjkit-charts", editable = "packages/fjkit-charts" },
     { name = "plotly", specifier = ">=6.9.0" },
 ]
 

@@ -4,10 +4,13 @@ version = "0.1.0"
 description = "The fjkit demo — a task board with htmx swaps, and the kit's acceptance test"
 requires-python = ">=3.13"
 
-# `plotly` builds the charts page's figures; fjkit itself does not require it.
+# `plotly` builds the charts page's figures; `fjkit-charts` duck-types on
+# `to_plotly_json()` and does not require it.
 dependencies = [
     "fastapi[standard]>=0.141.1",
     "fjkit",
+    "fjkit-apidocs",
+    "fjkit-charts",
     "plotly>=6.9.0",
 ]
 
@@ -18,6 +21,8 @@ dev = [
     "pytest-asyncio>=1.4.0",
 ]
 
-# fjkit is resolved from the workspace, not PyPI.
+# Resolved from the workspace, not PyPI.
 [tool.uv.sources]
 fjkit = { workspace = true }
+fjkit-charts = { workspace = true }
+fjkit-apidocs = { workspace = true }

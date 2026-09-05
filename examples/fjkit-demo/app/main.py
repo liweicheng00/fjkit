@@ -10,10 +10,10 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fjkit import FjkitConfig, FlashPlugin, Message, mount_fjkit
-from fjkit.apidocs import ApiDocsPlugin, FlowField, SessionFlow
 from fjkit.auth import AuthPlugin, CookieSpec, MemoryStore
-from fjkit.charts import ChartsPlugin
 from fjkit.vendored import STYLE_PACKS
+from fjkit_apidocs import ApiDocsPlugin, FlowField, SessionFlow
+from fjkit_charts import ChartsPlugin
 
 from app.features.auth.router import protected as auth_protected_router
 from app.features.auth.router import router as auth_router

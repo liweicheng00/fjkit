@@ -16,13 +16,13 @@ import pytest
 from fastapi import Body, Depends, FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, PluginWarning, mount_fjkit, render
-from fjkit.apidocs import ApiDocsPlugin, FlowError, HeaderFlow, NoFlow, SessionFlow
-from fjkit.apidocs import spec as specmod
-from fjkit.apidocs.plugin import DETAIL_ID, RESULT_ID, SESSION_ID, TEMPLATE_DIR
 from fjkit.auth import AuthPlugin, CookieSpec, NoCsrf
 from fjkit.auth.types import Session
 from fjkit.cli.vocabulary import component_classes, emitted_classes
 from fjkit.config import STATIC_DIR
+from fjkit_apidocs import ApiDocsPlugin, FlowError, HeaderFlow, NoFlow, SessionFlow
+from fjkit_apidocs import spec as specmod
+from fjkit_apidocs.plugin import DETAIL_ID, RESULT_ID, SESSION_ID, TEMPLATE_DIR
 from pydantic import BaseModel
 from pydantic import Field as PydanticField
 
@@ -427,7 +427,7 @@ def test_the_console_asks_for_the_model_and_a_route_mode_still_overrules_it(tmp_
     assert client.get("/board").text == "<p>page from the model</p>"
     # Reachable only by hand-posting, but it prevents a stack overflow rather
     # than a wrong answer, so it is checked directly.
-    from fjkit.apidocs import console
+    from fjkit_apidocs import console
 
     app = client.app
     request = Request({"type": "http", "method": "POST", "path": "/x", "headers": [], "app": app})
@@ -479,7 +479,7 @@ def test_an_app_with_no_auth_never_imports_the_auth_module():
         import sys
         from fastapi import FastAPI
         from fjkit import FjkitConfig, mount_fjkit
-        from fjkit.apidocs import ApiDocsPlugin
+        from fjkit_apidocs import ApiDocsPlugin
 
         app = FastAPI()
         mount_fjkit(app, FjkitConfig(plugins=(ApiDocsPlugin(),), auto_reload=False))
@@ -581,7 +581,7 @@ def test_a_flow_error_is_the_way_to_refuse_without_leaking():
         label = "Picky"
 
         def state(self, request):
-            from fjkit.apidocs import FlowState
+            from fjkit_apidocs import FlowState
 
             return FlowState(signed_in=False, headline="Nope", fields=())
 
@@ -953,14 +953,14 @@ def test_a_handler_that_raises_is_reported_on_the_page_and_logged_in_full(caplog
         warnings.simplefilter("ignore", PluginWarning)
         mount_fjkit(app, FjkitConfig(plugins=(ApiDocsPlugin(),), auto_reload=False))
 
-    with caplog.at_level("ERROR", logger="fjkit.apidocs.console"):
+    with caplog.at_level("ERROR", logger="fjkit_apidocs.console"):
         reply = TestClient(app).post("/api-docs/try/boom_boom_get")
 
     assert reply.status_code == 200  # the docs page survives its subject
     assert "ZeroDivisionError" in reply.text
-    assert "fjkit.apidocs.console" in reply.text  # where to go for the rest
+    assert "fjkit_apidocs.console" in reply.text  # where to go for the rest
 
-    record = next(r for r in caplog.records if r.name == "fjkit.apidocs.console")
+    record = next(r for r in caplog.records if r.name == "fjkit_apidocs.console")
     assert record.exc_info is not None
     assert "ZeroDivisionError" in caplog.text
     # The frames, not just the summary: that is the point of logging it.
@@ -1180,10 +1180,18 @@ def test_every_class_in_the_console_s_templates_exists_in_the_stylesheet():
     # These files live in the plugin's own directory, and the scan below passes
     # trivially if they are moved again and this test is not.
     assert templates, f"no console templates under {TEMPLATE_DIR / 'apidocs'}"
-    source = (STATIC_DIR / "src" / "fjkit.css").read_text(encoding="utf-8")
-    assert '@source "../../apidocs/templates";' in source, (
-        "fjkit.css no longer scans the console's templates — every utility class "
-        "in them would be missing from the built stylesheet"
+    # Resolved, not matched as a string: since the 0.1 split the path reaches
+    # out of fjkit's own package into this one, and a literal would go stale the
+    # next time either end moves while still passing.
+    stylesheet = STATIC_DIR / "src" / "fjkit.css"
+    source = stylesheet.read_text(encoding="utf-8")
+    scanned = {
+        (stylesheet.parent / m.group(1)).resolve() for m in re.finditer(r'@source "([^"]+)"', source)
+    }
+    assert TEMPLATE_DIR.resolve() in scanned, (
+        f"fjkit.css no longer scans the console's templates ({TEMPLATE_DIR}) — every "
+        f"utility class in them would be missing from the built stylesheet, and "
+        f"Tailwind reports nothing when a @source path does not exist. Scanned: {sorted(scanned)}"
     )
 
     unknown: set[str] = set()

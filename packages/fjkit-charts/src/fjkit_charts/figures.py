@@ -16,7 +16,7 @@ unchangeable without a redeploy.
 rule: `#1F77B4` is a legal `str`, so no schema stops a colour arriving through
 it. The guard is a test that scans the rendered figure JSON, which does not care
 which field the bytes came from. `ChartsPlugin` ships that test as
-`fjkit.charts.assert_no_colour_in`, so an app gets it in one line.
+`fjkit_charts.assert_no_colour_in`, so an app gets it in one line.
 
 **plotly is not a dependency of fjkit.** `figure_of` takes anything with a
 `to_plotly_json()`, which is its whole required surface. An app that builds
@@ -161,7 +161,7 @@ _COLOUR = re.compile(
 def assert_no_colour_in(charts: Any) -> None:
     """Raise if any figure carries a colour. For an app's own test suite.
 
-        from fjkit.charts import assert_no_colour_in
+        from fjkit_charts import assert_no_colour_in
 
         def test_the_figures_carry_no_colour(client):
             assert_no_colour_in(build_my_charts())

@@ -481,7 +481,7 @@ def _mode(request: Request, override: RenderMode | None) -> RenderMode:
     """Pick the mode: decorator argument, then `SCOPE_RENDER_MODE`, then the app
     default.
 
-    Only in-process code can set the scope key (`fjkit.apidocs.console` does).
+    Only in-process code can set the scope key (`fjkit_apidocs.console` does).
     Resolved per request, because the decorator runs before the app has a
     config.
     """

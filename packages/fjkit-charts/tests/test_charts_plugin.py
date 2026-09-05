@@ -1,4 +1,4 @@
-"""`fjkit.charts` — the plugin, the figure models, and the colour rule.
+"""`fjkit_charts` — the plugin, the figure models, and the colour rule.
 
 These lock down what an app cannot check for itself: the 1.1 MB bundle is in
 the wheel and served, only the page that asks for it loads it, and a colour
@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from fastapi import FastAPI
 from fjkit import FjkitConfig, build_environment, mount_fjkit
-from fjkit.charts import (
+from fjkit_charts import (
     PLOTLY_FILENAME,
     PLOTLY_VERSION,
     Chart,
@@ -150,10 +150,10 @@ class TestPlugin:
         html = env.from_string('{% from "charts/macros.html" import chart %}{{ chart(item) }}').render(item=a_chart())
         assert 'class="card"' in html and "Workload" in html
 
-    def test_scripts_load_the_vendored_plotly_from_the_kit_mount(self):
+    def test_scripts_load_the_vendored_plotly_from_the_plugins_own_mount(self):
         env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), auto_reload=False))
         html = env.from_string('{% from "charts/macros.html" import chart_scripts %}{{ chart_scripts() }}').render()
-        assert f"/_fjkit/vendor/plotly/{PLOTLY_FILENAME}" in html
+        assert f"/_fjkit-charts/assets/vendor/plotly/{PLOTLY_FILENAME}" in html
         # Both stamped, for the reason every kit asset is: `StaticFiles` sends
         # no `Cache-Control`, so a browser may keep a script whose lifetime it
         # was never told.
@@ -170,14 +170,17 @@ class TestPlugin:
         env = build_environment(FjkitConfig(plugins=(plugin,), auto_reload=False))
         html = env.from_string('{% from "charts/macros.html" import chart_scripts %}{{ chart_scripts() }}').render()
         assert "https://example.test/plotly.js" in html
-        assert "_fjkit/vendor" not in html
+        assert "vendor/plotly" not in html
 
-    def test_the_vendored_plotly_is_served_by_mount_fjkit(self):
+    def test_the_vendored_plotly_is_served_by_the_plugins_mount(self):
+        """The bundle moved out of the kit's `static/vendor/` when charts became
+        their own distribution. One mount now serves both files this plugin
+        ships, so an app that never registers it serves neither."""
         from fastapi.testclient import TestClient
 
         app = FastAPI()
         mount_fjkit(app, FjkitConfig(plugins=(ChartsPlugin(),)))
-        body = TestClient(app).get(f"/_fjkit/vendor/plotly/{PLOTLY_FILENAME}")
+        body = TestClient(app).get(f"/_fjkit-charts/assets/vendor/plotly/{PLOTLY_FILENAME}")
         assert body.status_code == 200
         assert f"v{PLOTLY_VERSION}" in body.text[:2000]
 
@@ -191,14 +194,53 @@ class TestPlugin:
         assert "Plotly.react" in body.text
 
 
-def test_the_kit_ships_exactly_the_whitelisted_plotly():
-    """CHARTER §7 whitelists the JavaScript the wheel may carry, and Plotly's
-    basic bundle is on it: one copy, at the pinned version, under the kit's own
-    `static/vendor/` where `scripts/vendor_ui.py` writes it."""
-    import fjkit
+def test_this_package_ships_exactly_the_whitelisted_plotly():
+    """CHARTER §7 whitelists the JavaScript a wheel may carry, and Plotly's
+    basic bundle is on it: one copy, at the pinned version, under this package's
+    own `static/vendor/` where `scripts/vendor_plotly.py` writes it."""
+    import fjkit_charts
 
-    root = Path(fjkit.__file__).parent
+    root = Path(fjkit_charts.__file__).parent
     bundles = list(root.rglob("plotly*.js"))
     assert bundles == [root / "static" / "vendor" / "plotly" / PLOTLY_FILENAME]
     assert f"v{PLOTLY_VERSION}" in bundles[0].read_text(encoding="utf-8")[:2000]
-    assert (root / "charts" / "static" / "charts.js").stat().st_size < 20_000
+    assert (root / "static" / "charts.js").stat().st_size < 20_000
+
+
+def test_the_kit_no_longer_carries_plotly():
+    """The whole point of the split: `pip install fjkit` stops downloading a
+    1.1 MB bundle that only a charts page loads."""
+    import fjkit
+
+    assert list(Path(fjkit.__file__).parent.rglob("plotly*.js")) == []
+
+
+def test_this_package_never_imports_the_plotly_library():
+    """Plotly's JavaScript ships here; Plotly's Python does not.
+
+    `figure_of` is duck-typed on `to_plotly_json()`, so an app that builds
+    figures with `plotly.py` declares it itself and an app that builds them by
+    hand installs nothing extra. A single `import plotly` here would make the
+    20 MB library a runtime dependency of every install of this package, and
+    the only visible symptom would be a slower `uv sync`.
+    """
+    import ast
+
+    import fjkit_charts
+
+    banned = {"plotly", "pandas", "numpy", "matplotlib"}
+    root = Path(fjkit_charts.__file__).parent
+    offenders = []
+    for path in root.rglob("*.py"):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [node.module or ""]
+            else:
+                continue
+            for name in names:
+                if name.split(".")[0] in banned:
+                    offenders.append(f"{path.relative_to(root)}: {name}")
+
+    assert not offenders, f"a charting library must not be imported: {offenders}"

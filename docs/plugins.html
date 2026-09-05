@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788584469">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788592493">
   <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -726,7 +726,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 
 <div id="apidocs">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
-<span class="badge" data-variant="secondary">fjkit.apidocs</span></div><section class="flex flex-col gap-6">
+<span class="badge" data-variant="secondary">fjkit_apidocs</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">The API console</h2><p class="text-muted-foreground text-sm">Sign in on the page, and every call below goes out as you.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
@@ -744,7 +744,17 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
         are the ones you already wrote rather than a second implementation living in a docs page.
       </p>
 </div>
-    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">docs = ApiDocsPlugin(title=&#34;Board API&#34;, home_url=&#34;/&#34;)
+<div class="flex flex-col gap-3">      <p>
+        The console is its own distribution — an app that renders pages has no reason to carry a
+        replacement for Swagger UI — so it is one install away:
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="shell" data-lang="python">uv add fjkit-apidocs</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">from fjkit_apidocs import ApiDocsPlugin
+
+docs = ApiDocsPlugin(title=&#34;Board API&#34;, home_url=&#34;/&#34;)
 
 mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
 
@@ -766,7 +776,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
           <tr>
 <th class=" ">Question</th>
 <th class=" ">Swagger UI</th>
-<th class=" ">fjkit.apidocs</th>
+<th class=" ">fjkit_apidocs</th>
           </tr>
         </thead>
         <tbody>        <tr>

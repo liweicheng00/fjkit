@@ -5,9 +5,12 @@ download, and the shell's footer reads them to report what is loaded. The footer
 therefore cannot drift from the bytes on disk.
 
 These pins are also CHARTER §7's whitelist of client-side JavaScript: what is
-listed here, and nothing else, may ship inside the wheel. Two of them reach
-every page. The others do not, which is why each is a separate pin — see
-`HTMX_JSON_ENC_VERSION` and `PLOTLY_VERSION`.
+listed here, and nothing else, may ship inside this wheel. Two of them reach
+every page; `HTMX_JSON_ENC_VERSION` does not, which is why it is a separate pin.
+
+Plotly is whitelisted by §7 too, but pinned in `fjkit_charts` rather than here:
+the bundle ships in that distribution, and a kit that cannot serve the bytes
+should not claim to know their version.
 """
 
 from __future__ import annotations
@@ -28,17 +31,6 @@ HTMX_VERSION = "2.0.10"
 #: stay "htmx and Basecoat", so 1,012 bytes that only some forms need cannot go
 #: in the shell.
 HTMX_JSON_ENC_VERSION = "2.0.3"
-
-#: Plotly's basic bundle — scatter, bar and pie — drawn by `fjkit.charts`. The
-#: full `plotly.js-dist-min` is 4.85 MB of 3D, maps, financial and statistical
-#: traces most dashboards never draw; the basic one is 1.1 MB, and picking the
-#: bundle is the only size knob Plotly offers without a build step.
-#:
-#: **No page loads it unless that page asks for it** — `chart_scripts()`, the
-#: same per-page opt-in as `form_scripts()`. It lives in the wheel because
-#: CHARTER §7 whitelists it (2026-08-26): an app that draws charts gets the
-#: bytes by installing fjkit, with nothing to download, vendor or mount itself.
-PLOTLY_VERSION = "3.7.0"
 
 
 #: The Basecoat style packs vendored alongside each other under

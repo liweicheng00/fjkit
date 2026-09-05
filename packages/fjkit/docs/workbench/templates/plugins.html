@@ -544,7 +544,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
 
   {# ============================================================== 09 #}
   {% set t09 %}Sign in on the page, and every call below goes out as you.{% endset %}
-  {% call lesson("apidocs", "09", "The API console", t09, tag="fjkit.apidocs") %}
+  {% call lesson("apidocs", "09", "The API console", t09, tag="fjkit_apidocs") %}
     {% call prose() %}
       <p>
         Swagger UI's Authorize dialog can express only what an OpenAPI document can describe: an API
@@ -562,7 +562,18 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
       </p>
     {% endcall %}
 
-    {{ code("docs = ApiDocsPlugin(title=\"Board API\", home_url=\"/\")
+    {% call prose() %}
+      <p>
+        The console is its own distribution — an app that renders pages has no reason to carry a
+        replacement for Swagger UI — so it is one install away:
+      </p>
+    {% endcall %}
+
+    {{ code("uv add fjkit-apidocs", label="shell") }}
+
+    {{ code("from fjkit_apidocs import ApiDocsPlugin
+
+docs = ApiDocsPlugin(title=\"Board API\", home_url=\"/\")
 
 mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="app/main.py") }}
 
@@ -577,7 +588,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
     {% endcall %}
 
     {% call stage("The half Swagger cannot do", "Both read the same /openapi.json. They differ after that.") %}
-      {% call table([{"label": "Question"}, {"label": "Swagger UI"}, {"label": "fjkit.apidocs"}]) %}
+      {% call table([{"label": "Question"}, {"label": "Swagger UI"}, {"label": "fjkit_apidocs"}]) %}
         <tr>
           {{ cell("Signing in", tone="strong") }}
           {{ cell("the four schemes the document can describe") }}

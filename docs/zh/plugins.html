@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788584469">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788592493">
   <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -701,7 +701,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 
 <div id="apidocs">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
-<span class="badge" data-variant="secondary">fjkit.apidocs</span></div><section class="flex flex-col gap-6">
+<span class="badge" data-variant="secondary">fjkit_apidocs</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">API 主控台</h2><p class="text-muted-foreground text-sm">在這一頁登入，底下每一次呼叫都以你的身分送出。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
@@ -717,7 +717,17 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
         token 換發、撤銷與 Origin 檢查因此用的是你已經寫好的那一份，而不是文件頁裡的第二實作。
       </p>
 </div>
-    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">docs = ApiDocsPlugin(title=&#34;Board API&#34;, home_url=&#34;/&#34;)
+<div class="flex flex-col gap-3">      <p>
+        主控台是獨立的 distribution——只渲染頁面的 app 沒有理由背一套 Swagger UI 的替代品——
+        所以要多裝一個套件：
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="shell" data-lang="python">uv add fjkit-apidocs</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">from fjkit_apidocs import ApiDocsPlugin
+
+docs = ApiDocsPlugin(title=&#34;Board API&#34;, home_url=&#34;/&#34;)
 
 mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
 
@@ -738,7 +748,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
           <tr>
 <th class=" ">問題</th>
 <th class=" ">Swagger UI</th>
-<th class=" ">fjkit.apidocs</th>
+<th class=" ">fjkit_apidocs</th>
           </tr>
         </thead>
         <tbody>        <tr>

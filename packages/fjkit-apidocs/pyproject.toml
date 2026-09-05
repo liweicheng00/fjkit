@@ -1,0 +1,51 @@
+# The API reference and console as their own distribution. Unlike `fjkit-charts`
+# this is not a size decision — it is 56 KB over the wire. It is split because
+# an API console is a different product from a UI kit: an app that renders pages
+# has no reason to carry a replacement for Swagger UI, and the two will not
+# release in step.
+#
+# The import package is `fjkit_apidocs` for the same reason `fjkit_charts` is:
+# `fjkit` is a regular package, so a second distribution cannot write into it.
+[project]
+name = "fjkit-apidocs"
+version = "0.1.0.dev0"
+description = "API reference and in-process console for FastAPI, in place of Swagger UI — a fjkit plugin"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [{ name = "liweicheng00" }]
+license = "MIT"
+license-files = ["LICENSE"]
+
+keywords = ["fastapi", "openapi", "api-documentation", "swagger", "fjkit", "jinja2", "htmx", "server-rendered"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Software Development :: Documentation",
+    "Typing :: Typed",
+]
+
+# `fjkit.auth` is reached through `sys.modules` rather than imported, so the
+# sign-in panel is wired only when the app already registered `AuthPlugin`.
+# That is a runtime lookup inside fjkit, not a second dependency.
+dependencies = ["fjkit"]
+
+[project.urls]
+Homepage = "https://liweicheng00.github.io/fjkit/"
+Documentation = "https://liweicheng00.github.io/fjkit/"
+Repository = "https://github.com/liweicheng00/fjkit"
+Issues = "https://github.com/liweicheng00/fjkit/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fjkit_apidocs"]
+
+[tool.hatch.build]
+artifacts = ["src/fjkit_apidocs/templates/**/*"]

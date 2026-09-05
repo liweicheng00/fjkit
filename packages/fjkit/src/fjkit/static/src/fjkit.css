@@ -22,12 +22,22 @@
  * enforces that. */
 @import "tailwindcss" source(none);
 @source "../../templates";
-/* A plugin that ships templates keeps them beside its own code, so each one
- * adds a line here. Omitting a line is not a build error: the templates render
- * with every utility class in them absent from the stylesheet, which looks like
- * a broken page and reports nothing. `tests/test_apidocs.py` holds this one. */
-@source "../../apidocs/templates";
-@source "../../charts/templates";
+/* First-party plugins ship templates in their own distribution, so each one
+ * adds a line here — and the path leaves this package, because since the 0.1
+ * split `fjkit-apidocs` and `fjkit-charts` are siblings under `packages/`.
+ *
+ * Omitting a line is not a build error, and neither is a path that no longer
+ * exists: Tailwind scans nothing and says nothing, the templates render with
+ * every utility class in them missing from the stylesheet, and the page is
+ * quietly broken. `test_apidocs.py` holds these two paths for that reason.
+ *
+ * This only resolves inside this repository, which is where `fjkit build-css`
+ * is ever run — a released wheel carries the stylesheet already built. The
+ * limit it implies is real and deliberate: a plugin outside this repo cannot
+ * add a class to fjkit's stylesheet, so it must compose `ui/*` macros and write
+ * no utility class of its own. `fjkit-admin` is the worked example. */
+@source "../../../../../fjkit-apidocs/src/fjkit_apidocs/templates";
+@source "../../../../../fjkit-charts/src/fjkit_charts/templates";
 @source "../vendor/basecoat/js";
 
 /* Basecoat ships Tailwind source CSS: @apply rules plus the shadcn token

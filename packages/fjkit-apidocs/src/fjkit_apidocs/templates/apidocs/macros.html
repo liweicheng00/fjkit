@@ -194,7 +194,7 @@
 
   A `select` when the schema named an enum or a boolean, a number box when it
   said integer, a text box otherwise. `param.control` decides that in
-  `fjkit.apidocs.spec`, and it is a closed lookup there for the reason the
+  `fjkit_apidocs.spec`, and it is a closed lookup there for the reason the
   variants above are: the value lands in `type="…"`, where an unrecognised one
   degrades differently in every browser.
 
@@ -314,7 +314,7 @@
   Swagger's Example Value / Schema toggle exists because the two answer
   different questions: the example says what to send, the schema says what is
   allowed, and the second is needed the moment the first stops working. `shape`
-  arrives already flattened one level from `fjkit.apidocs.spec`, so this only
+  arrives already flattened one level from `fjkit_apidocs.spec`, so this only
   chooses between a table, a link, and the raw JSON for a shape that is
   neither.
 #}

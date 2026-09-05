@@ -1,7 +1,7 @@
 """API reference and console for a fjkit app, in place of Swagger UI.
 
     from fjkit import FjkitConfig, mount_fjkit
-    from fjkit.apidocs import ApiDocsPlugin
+    from fjkit_apidocs import ApiDocsPlugin
     from fjkit.auth import AuthPlugin
 
     auth = AuthPlugin(secret=…, source=MyOIDCSource(), trusted_origins=[…])
@@ -30,8 +30,8 @@ Shadow any template by dropping a file of the same name into the app's own
 
 from __future__ import annotations
 
-from fjkit.apidocs.console import Recorded
-from fjkit.apidocs.flows import (
+from fjkit_apidocs.console import Recorded
+from fjkit_apidocs.flows import (
     AuthFlow,
     FlowError,
     FlowField,
@@ -40,8 +40,8 @@ from fjkit.apidocs.flows import (
     NoFlow,
     SessionFlow,
 )
-from fjkit.apidocs.plugin import ApiDocsPlugin
-from fjkit.apidocs.spec import (
+from fjkit_apidocs.plugin import ApiDocsPlugin
+from fjkit_apidocs.spec import (
     Field,
     Model,
     Operation,

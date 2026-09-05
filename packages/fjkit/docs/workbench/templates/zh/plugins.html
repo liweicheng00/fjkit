@@ -519,7 +519,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
 
   {# ============================================================== 09 #}
   {% set t09 %}在這一頁登入，底下每一次呼叫都以你的身分送出。{% endset %}
-  {% call lesson("apidocs", "09", "API 主控台", t09, tag="fjkit.apidocs") %}
+  {% call lesson("apidocs", "09", "API 主控台", t09, tag="fjkit_apidocs") %}
     {% call prose() %}
       <p>
         Swagger UI 的 <em>Authorize</em> 只能表達 OpenAPI 文件描述得出來的東西：API key、HTTP scheme、
@@ -535,7 +535,18 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
       </p>
     {% endcall %}
 
-    {{ code("docs = ApiDocsPlugin(title=\"Board API\", home_url=\"/\")
+    {% call prose() %}
+      <p>
+        主控台是獨立的 distribution——只渲染頁面的 app 沒有理由背一套 Swagger UI 的替代品——
+        所以要多裝一個套件：
+      </p>
+    {% endcall %}
+
+    {{ code("uv add fjkit-apidocs", label="shell") }}
+
+    {{ code("from fjkit_apidocs import ApiDocsPlugin
+
+docs = ApiDocsPlugin(title=\"Board API\", home_url=\"/\")
 
 mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="app/main.py") }}
 
@@ -549,7 +560,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
     {% endcall %}
 
     {% call stage("Swagger 做不到的那一半", "兩邊讀的是同一份 /openapi.json，差別從那之後才開始。") %}
-      {% call table([{"label": "問題"}, {"label": "Swagger UI"}, {"label": "fjkit.apidocs"}]) %}
+      {% call table([{"label": "問題"}, {"label": "Swagger UI"}, {"label": "fjkit_apidocs"}]) %}
         <tr>
           {{ cell("怎麼登入", tone="strong") }}
           {{ cell("文件描述得出來的那四種") }}

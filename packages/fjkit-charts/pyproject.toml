@@ -1,0 +1,64 @@
+# Charts as their own distribution, so an app that draws none does not install
+# Plotly. The bundle is 1.1 MB — 365 KB over the wire — and was 37% of what
+# `pip install fjkit` downloaded while it lived in the kit's wheel.
+#
+# The import package is `fjkit_charts`, not `fjkit_charts`: `fjkit/__init__.py`
+# exists, so `fjkit` is a regular package and a second distribution cannot
+# legally write into its directory. Making `fjkit` a PEP 420 namespace package
+# would cost that `__init__.py`. The underscore is the cheaper answer, and it
+# was free to take before 0.1.0 reached PyPI.
+[project]
+name = "fjkit-charts"
+version = "0.1.0.dev0"
+description = "Server-rendered Plotly charts for fjkit — a plugin, no front-end build"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [{ name = "liweicheng00" }]
+license = "MIT"
+license-files = ["LICENSE"]
+
+keywords = ["fastapi", "jinja2", "fjkit", "plotly", "charts", "dashboard", "server-rendered", "no-build"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: User Interfaces",
+    "Typing :: Typed",
+]
+
+# `pydantic` came across with `figures.py`, which was its only importer in the
+# kit: `PlotlyFigure` is a model an app embeds in its own `response_model`.
+#
+# `plotly` the Python package is deliberately absent. `figures.py` duck-types on
+# `to_plotly_json()`, so an app that builds figures by hand needs nothing extra
+# and an app that uses `plotly` declares it itself.
+dependencies = [
+    "fjkit",
+    "pydantic>=2.9",
+]
+
+[project.urls]
+Homepage = "https://liweicheng00.github.io/fjkit/"
+Documentation = "https://liweicheng00.github.io/fjkit/"
+Repository = "https://github.com/liweicheng00/fjkit"
+Issues = "https://github.com/liweicheng00/fjkit/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fjkit_charts"]
+
+[tool.hatch.build]
+# The Plotly bundle and the theming bridge ship inside the wheel — that is what
+# keeps "nothing to download" true for a page that draws charts.
+artifacts = [
+    "src/fjkit_charts/templates/**/*",
+    "src/fjkit_charts/static/**/*",
+]

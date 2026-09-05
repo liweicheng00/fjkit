@@ -34,7 +34,6 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 from fastapi import Request, Response
-
 from fjkit.signing import sign_text, unsign_text
 
 if TYPE_CHECKING:

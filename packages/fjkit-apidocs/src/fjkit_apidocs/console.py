@@ -31,7 +31,6 @@ from typing import Any
 from urllib.parse import urlencode
 
 from fastapi import Request
-
 from fjkit.rendering import SCOPE_RENDER_MODE
 
 __all__ = ["Recorded", "RecursionRefused", "call"]
@@ -71,7 +70,7 @@ _DEPTH_KEY = "fjkit_apidocs_depth"
 #: `ZeroDivisionError: division by zero` and no file, no line, no frames. The
 #: panel serves the person reading the page; this serves the same person ten
 #: seconds later, reading the log.
-_log = logging.getLogger("fjkit.apidocs.console")
+_log = logging.getLogger("fjkit_apidocs.console")
 
 
 class RecursionRefused(RuntimeError):

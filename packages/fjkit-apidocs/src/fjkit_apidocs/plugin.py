@@ -18,8 +18,8 @@ token — matches none of those, and Swagger's console could not send one anyway
 it runs in JavaScript, and the credential is deliberately out of JavaScript's
 reach. So this console does not run in the browser. It replays the request
 through the app in-process, forwarding the caller's own cookie
-(`fjkit.apidocs.console`). Sign-in is a Python object the app supplies
-(`fjkit.apidocs.flows`), the piece Swagger has no room for.
+(`fjkit_apidocs.console`). Sign-in is a Python object the app supplies
+(`fjkit_apidocs.flows`), the piece Swagger has no room for.
 
 **What it is not.** It reads `/openapi.json` rather than replacing it. Client
 generators, contract tests and other tools keep using the document, which stays
@@ -39,12 +39,12 @@ from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse
-from starlette.datastructures import UploadFile
-
-from fjkit.apidocs import console, spec
-from fjkit.apidocs.flows import AuthFlow, FlowError, HeaderFlow, NoFlow, SessionFlow
 from fjkit.plugins import AppSetup, EnvSetup
 from fjkit.templating import get_templates
+from starlette.datastructures import UploadFile
+
+from fjkit_apidocs import console, spec
+from fjkit_apidocs.flows import AuthFlow, FlowError, HeaderFlow, NoFlow, SessionFlow
 
 __all__ = ["ApiDocsPlugin"]
 

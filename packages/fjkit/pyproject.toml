@@ -57,19 +57,14 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-# Three, since 0.3, and the third was a decision rather than a drift
-# (CHARTER.md §7, §11.2). `pydantic` is declared because `fjkit/errors.py`
-# imports `ValidationError` and `fjkit/charts/figures.py` builds models an app
-# embeds in its own `response_model`.
-#
-# It costs nothing to install: `fastapi` requires `pydantic>=2.9.0` with no
-# extra marker, so it is already there and already imported by the time
-# `import fjkit` returns. Declaring it says so, rather than relying on a
-# transitive edge and a duck-typed `.errors()` to keep this list at two.
+# Back to two. `pydantic` was the third from 0.3 (CHARTER.md §7, §11.2) and it
+# left with `figures.py` when charts became `fjkit-charts` — that module was its
+# only importer. The kit itself never imports pydantic and says so out loud:
+# `rendering.py` duck-types rather than isinstance, and `errors.py` takes
+# `RequestValidationError` from `fastapi.exceptions`.
 dependencies = [
     "fastapi>=0.115",
     "jinja2>=3.1.6",
-    "pydantic>=2.9",
 ]
 
 # These become the sidebar links on the PyPI project page. Without them the page
@@ -100,8 +95,5 @@ packages = ["src/fjkit"]
 # wheel — that is what makes "no build step" true for consumers.
 artifacts = [
     "src/fjkit/templates/**/*",
-    "src/fjkit/apidocs/templates/**/*",
-    "src/fjkit/charts/templates/**/*",
-    "src/fjkit/charts/static/**/*",
     "src/fjkit/static/**/*",
 ]

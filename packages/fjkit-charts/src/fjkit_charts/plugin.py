@@ -4,8 +4,8 @@
 
 That gives an app the `chart` macro, the theming bridge, the Plotly bundle and
 the two `<script>` lines that load them. Nothing to download, nothing to mount:
-Plotly ships in the wheel beside htmx and Basecoat, one of the scripts CHARTER
-§7 whitelists, and is served from the kit's own static mount like the rest.
+Plotly ships inside this wheel — one of the scripts CHARTER §7 whitelists — and
+is served from this plugin's own static mount.
 
 **The division of labour.** Python decides the shape of the figure; the browser
 decides its chrome. Axis text, grid lines, tick colour, the gaps between pie
@@ -21,19 +21,19 @@ basic bundle is 1.1 MB, so a hook letting this plugin put a `<script>` on every
 page would put it on the login screen. Instead the page that draws charts calls
 `chart_scripts()` in its own `{% block scripts %}` and no other page pays. Being
 in the wheel changes what an install contains, not what a page downloads, and §7
-budgets the download.
+budgets the download. Which distribution the bundle lives in decides the first
+of those: an app that never draws a chart does not install `fjkit-charts` and
+never carries the 1.1 MB at all.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from fjkit.config import STATIC_DIR as KIT_STATIC_DIR
 from fjkit.plugins import AppSetup, EnvSetup
 from fjkit.templating import static_url
-from fjkit.vendored import PLOTLY_VERSION
 
-__all__ = ["ChartsPlugin"]
+__all__ = ["PLOTLY_VERSION", "ChartsPlugin"]
 
 #: This plugin's own templates. Named `templates/charts/` so template names are
 #: `charts/…`, matching how `apidocs` does it.
@@ -43,10 +43,19 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 #: ships of its own.
 STATIC_DIR = Path(__file__).parent / "static"
 
-#: The Plotly build this plugin is written against. The version is pinned in
-#: `fjkit.vendored` with the other whitelisted scripts, and
-#: `scripts/vendor_ui.py` puts the bytes under the kit's `static/vendor/plotly/`.
+#: Plotly's basic bundle — scatter, bar and pie. The full `plotly.js-dist-min`
+#: is 4.85 MB of 3D, maps, financial and statistical traces most dashboards
+#: never draw; the basic one is 1.1 MB, and picking the bundle is the only size
+#: knob Plotly offers without a build step.
+#:
+#: The pin lives here rather than in `fjkit.vendored` because the bytes do:
+#: `scripts/vendor_plotly.py` writes them under this package's own
+#: `static/vendor/plotly/`, and the kit no longer knows Plotly exists.
+PLOTLY_VERSION = "3.7.0"
+
 PLOTLY_FILENAME = "plotly-basic.min.js"
+
+#: Relative to this plugin's `assets` mount, not the kit's static mount.
 PLOTLY_PATH = f"vendor/plotly/{PLOTLY_FILENAME}"
 PLOTLY_URL = f"https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@{PLOTLY_VERSION}/{PLOTLY_FILENAME}"
 
@@ -61,7 +70,7 @@ class ChartsPlugin:
         not hold this plugin's files.
     :param plotly_url: serve Plotly from somewhere other than the copy in the
         wheel — a path your app already serves, or a URL. The default is the
-        vendored bundle under `config.static_url`, cache-stamped like every
+        vendored bundle under this plugin's own `url`, cache-stamped like every
         other kit asset.
     """
 
@@ -76,8 +85,8 @@ class ChartsPlugin:
     # ---------------------------------------------------------------- plugin
 
     def mount(self, setup: AppSetup) -> None:
-        # Only the bridge. Plotly already sits behind `mount_fjkit`'s own static
-        # mount, which serves the whole of the kit's `static/`.
+        # The bridge and the bundle both. `STATIC_DIR` holds `charts.js` beside
+        # `vendor/plotly/`, so one mount serves everything this plugin ships.
         setup.mount_static(f"{self.url}/assets", STATIC_DIR)
 
     def extend(self, setup: EnvSetup) -> None:
@@ -95,9 +104,5 @@ class ChartsPlugin:
         assets = static_url(f"{self.url}/assets", STATIC_DIR, auto_reload=setup.config.auto_reload)
         setup.add_global("fjkit_charts_script", lambda: assets("charts.js"))
 
-        if self.plotly_url is not None:
-            plotly = self.plotly_url
-        else:
-            kit = static_url(setup.config.static_url, KIT_STATIC_DIR, auto_reload=setup.config.auto_reload)
-            plotly = kit(PLOTLY_PATH)
+        plotly = self.plotly_url if self.plotly_url is not None else assets(PLOTLY_PATH)
         setup.add_global("fjkit_charts_plotly", lambda: plotly)
