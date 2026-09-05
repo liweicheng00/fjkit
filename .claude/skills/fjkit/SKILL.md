@@ -210,7 +210,7 @@ that is meant to be an optimisation.
   JSON, and the reply is a 422 whose message is about the body not being an
   object. No field is named, so nothing turns red and the toast is addressed to
   a developer. `form_scripts()` is per page for the same reason
-  `chart_scripts()` is: CHARTER §7 budgets what every page loads by default.
+  `chart_scripts()` is: CHARTER §4 budgets what every page loads by default.
 - **A form that clears itself when it is rejected.** `htmx:afterRequest` fires
   whether the request succeeded or not, so any `hx-on::after-request` that
   resets or navigates must test `event.detail.successful` first.
@@ -219,7 +219,7 @@ that is meant to be an optimisation.
 
 `packages/fjkit/` is the package. `examples/fjkit-demo` is the demo, and it is
 also the acceptance test. A component is done when it meets the ten-point
-definition in `CHARTER.md` §6. That definition requires:
+definition in `CHARTER.md` §5. That definition requires:
 
 - closed enumerations, and no class-string parameter
 - `**attrs` pass-through
@@ -246,4 +246,4 @@ Stop and ask the user before you do any of these:
 - change a published macro signature
 - add hand-written JavaScript
 - add npm, `package.json` or `node_modules`
-- relax a budget in `CHARTER.md` §7
+- relax a budget in `CHARTER.md` §4

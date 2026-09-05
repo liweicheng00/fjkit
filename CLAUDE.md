@@ -22,8 +22,9 @@ examples/fjkit-demo/        the demo app — a workspace member, depends on fjki
   app/                 main.py, features/<name>/, templates/<name>/
   tests/               routes, htmx contract, parity, conventions
 bench/                 render_bench.py — guards the performance claims
-docs/                  the published site (3 pages × 2 languages, built) + the evaluations
-CHARTER.md             mission, architecture decisions, roadmap, authority limits
+docs/                  the published site (5 pages × 2 languages, built) + the evaluations
+CHARTER.md             mission, scope, architecture decisions, quality budgets
+goal/                  untracked: ROADMAP.md (version scope), OPERATING.md
 ```
 
 ## Commands
@@ -58,8 +59,9 @@ An app author runs none of the second group. That asymmetry is the product.
 |---|---|
 | How do I build a page with fjkit? | `.claude/skills/fjkit/SKILL.md`, then <https://liweicheng00.github.io/fjkit/> |
 | What does this macro accept? | its signature comment in `packages/fjkit/src/fjkit/templates/ui/*.html` |
-| Should this feature exist? What is next? | `CHARTER.md` §8, §9 |
-| What am I allowed to do without asking? | `CHARTER.md` §0, §11 |
+| Should this feature exist? | `CHARTER.md` §2 |
+| What is next? | `goal/ROADMAP.md` — untracked, and the only document here that expires |
+| What am I allowed to do without asking? | `CHARTER.md` §6, then `goal/OPERATING.md` §1 |
 | What did the benchmarks actually measure? | `docs/jinja-performance.md` |
 
 Read the authority rather than restating it here. This file is loaded on every
