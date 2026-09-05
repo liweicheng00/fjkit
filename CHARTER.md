@@ -110,7 +110,7 @@ entered without one. All four must hold:
    belongs in the app.
 4. **It ships switched off.** A subsystem is a plugin. An app that does not
    register it imports nothing — measured: after `mount_fjkit`, `sys.modules`
-   contains no `fjkit.charts`.
+   contains no `fjkit_charts`.
 
 **On URLs.** A plugin owns a URL only when the thing it provides *is* a page.
 `ChartsPlugin` owns none, because a chart is something on one of the app's
@@ -141,8 +141,8 @@ added because JSON might want it.
 | Kept | Why it passes |
 |---|---|
 | `fjkit.auth` | Cookie ⇄ token transport and CSRF. `TokenSource` and `SessionStore` are seams the app fills; the kit never sees a credential's meaning. |
-| `fjkit.apidocs` | A page, replacing Swagger UI. It owns `/api-docs` under §2.3. |
-| `fjkit.charts` | The `chart()` macro, the asset loader, and the figure contract. Data, service and route stay in the app — 370 of the demo's 517 chart lines. |
+| `fjkit-apidocs` | A page, replacing Swagger UI. It owns `/api-docs` under §2.3. Its own distribution. |
+| `fjkit-charts` | The `chart()` macro, the asset loader, and the figure contract. Data, service and route stay in the app — 370 of the demo's 517 chart lines. Its own distribution. |
 | Four `.js` files fjkit wrote | See §4.2. |
 
 ---
@@ -164,7 +164,7 @@ and human approval.
 | A8 | **Repeated components are macros, never `{% include %}` in a loop.** | Measured 20–30% slower, degrading linearly with row count. |
 | A9 | **The return annotation is the route's only contract.** The handler returns a response model; `@render` spreads that same model into the template context. OpenAPI and the template are fed by one declaration. Display values use `@computed_field`. | Two contracts always disagree. |
 | A10 | **All eight style packs ship in the wheel; the pack is a config value.** `FjkitConfig(style=…)`, and nothing else. Install-time selection (`uv add "fjkit[nova]"`, eight marker distributions) was built, then withdrawn before 0.1.0 and never published. | The budget is per page and a page loads one. The markers cost eight PyPI names and eight version streams to carry one word the config already says; the ambiguity they created — appearance depending on metadata scan order — is a bug that cannot even be bisected, and removing them removed it. |
-| A11 | **Third-party front-end assets in the wheel are a whitelist (§4); every asset is loaded by an explicit page.** Two separate claims. **(1)** Only whitelisted bundles enter the wheel: `htmx.org`, `htmx-ext-json-enc`, `basecoat-css`, `plotly.js-basic-dist-min`. Each is pinned in `fjkit/vendored.py`, downloaded by `scripts/vendor_ui.py`, committed to `static/vendor/`, and served by `mount_fjkit`'s static mount. **(2)** A plugin's own assets live with the plugin in the wheel, because the §4 ceiling governs *what a page downloads by default*, not what files exist. A plugin still may not inject markup into the shell; assets arrive through a macro the page calls in `{% block scripts %}`, and must degrade when a third-party asset is absent. | "No build" promises that *you* need not build, not that nobody may load anything. Naming the load per page is stricter than a shell hook any plugin could use to add a `<script>` to every page. Moving a plugin's 3 KB to another wheel is bookkeeping, not restraint — that page downloads it either way. |
+| A11 | **Third-party front-end assets in the wheel are a whitelist (§4); every asset is loaded by an explicit page.** Two separate claims. **(1)** Only whitelisted bundles enter the wheel: `htmx.org`, `htmx-ext-json-enc`, `basecoat-css`. Each is pinned in `fjkit/vendored.py`, downloaded by `scripts/vendor_ui.py`, committed to `static/vendor/`, and served by `mount_fjkit`'s static mount. A plugin shipped as its own distribution pins, vendors and serves its own. **(2)** A plugin's own assets live with the plugin in the wheel, because the §4 ceiling governs *what a page downloads by default*, not what files exist. A plugin still may not inject markup into the shell; assets arrive through a macro the page calls in `{% block scripts %}`, and must degrade when a third-party asset is absent. | "No build" promises that *you* need not build, not that nobody may load anything. Naming the load per page is stricter than a shell hook any plugin could use to add a `<script>` to every page. |
 
 Five architecture diagrams — package boundary, template resolution, build
 timing, render path, gate loop — are in `docs/architecture.md`. That file is
@@ -184,8 +184,8 @@ The CSS budget is **per page**: eight packs ship, a page loads one.
 |---|---|---|
 | `fjkit-<pack>.css`, gzip — **the governed number** | ≤ 28 KB | 24.3–24.9 KB across eight packs (vega 24.7) |
 | `fjkit-<pack>.css`, uncompressed — blowout guard | ≤ 260 KB | 219.1–237.2 KB (sera smallest, nova largest) |
-| fjkit runtime dependencies | `fastapi`, `jinja2`, `pydantic`. A fourth needs an RFC | 3 |
-| Third-party JS permitted in the wheel — **whitelist** | Only what `fjkit/vendored.py` pins: `htmx.org`, `htmx-ext-json-enc`, `basecoat-css` (with `all.min.js`), `plotly.js-basic-dist-min`. Adding one edits this cell (A11) | 4 |
+| fjkit runtime dependencies | `fastapi`, `jinja2`. A third needs an RFC | 2 |
+| Third-party JS permitted in the wheel — **whitelist** | Only what `fjkit/vendored.py` pins: `htmx.org`, `htmx-ext-json-enc`, `basecoat-css` (with `all.min.js`). Adding one edits this cell (A11) | 3 |
 | Single-page render regression | No more than 10% slower than the previous version | Threshold definition still open |
 
 **Why gzip and not raw.** CSS compresses about 10:1, and the user downloads the
@@ -224,7 +224,7 @@ totalling 517 bytes — theme anti-flash, and the listener that turns an
 | `reveal.js` | `ui/form.html` | 2,506 / 1,280 |
 | `select.js` | `ui/table.html` | 5,353 / 2,252 |
 | `multiselect.js` | `ui/overlay.html` | 5,459 / 2,470 |
-| `charts.js` | `chart_scripts()` | 8,953 / 3,822 |
+| `charts.js` | `chart_scripts()` | 8,953 / 3,822, in `fjkit-charts` |
 | `json-enc.js` | `form_scripts()` | vendored |
 
 **Adding a file fjkit wrote requires a named reason why no-JS is worse, and its
@@ -302,22 +302,14 @@ minor versions.
 ## 7. Settled, kept here to avoid re-arguing
 
 - **Charts are a plugin, and users can get one.** Basecoat's `chart` is not
-  shipped; `fjkit.charts` is. The plugin owns the `chart()` macro, the asset
+  shipped; `fjkit-charts` is. The plugin owns the `chart()` macro, the asset
   macros, `charts.js`, and the figure contract (`PlotlyFigure`, `figure_of()`).
   The app owns the data, the service and the URL.
-- **`fjkit.charts` lives inside the fjkit wheel** (`822891b`). A separate
-  `fjkit-charts` distribution was proposed and rejected on measurement: of its
-  three arguments, two were factually wrong and one was a tie. `plotly` is not
-  and never was a fjkit dependency — `figure_of()` needs only an object with
-  `to_plotly_json()`. `apidocs`, `auth` and `charts` are the same kind of
-  thing: in the wheel, inert until registered. An app that draws no charts pays
-  13,979 compressed bytes.
-- **`pydantic` is the third runtime dependency.** Declared, not avoided.
-  `field_errors()` reads `.errors()` and its `loc`/`msg` — that is pydantic's
-  contract, and not importing it removes the declaration, not the coupling.
-  Install cost is zero: `importlib.metadata.requires("fastapi")` lists
-  `pydantic>=2.9.0` with no extra marker. The narrower rule that replaced the
-  old exemption: **nothing in the kit may import a plotting library.**
+- **Nothing in the kit may import a plotting library.** What is left of the
+  older exemption that let `figures.py` import pydantic to hold the figure
+  contract. That module left with `fjkit-charts`, and the kit's dependency
+  list is two: `rendering.py` duck-types, and `errors.py` takes
+  `RequestValidationError` from fastapi.
 - **Form errors are handled by a global exception handler**, not by dependency
   injection. Three designs were compared; the constraint that decided it was
   *change nothing about how FastAPI is normally written*. `Annotated[str, Form()]`,
