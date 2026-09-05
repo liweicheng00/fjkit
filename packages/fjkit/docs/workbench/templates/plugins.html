@@ -14,12 +14,10 @@
   {"id": "extend",   "num": "03", "title": "extend(): Jinja, and every render"},
   {"id": "rules",    "num": "04", "title": "Order, collisions, and limits"},
   {"id": "auth",     "num": "05", "title": "The auth plugin"},
-  {"id": "messages", "num": "06", "title": "Messages: three layers"},
-  {"id": "write",    "num": "07", "title": "The flash plugin"},
-  {"id": "errors",   "num": "08", "title": "When a form is rejected"},
-  {"id": "apidocs",  "num": "09", "title": "The API console"},
-  {"id": "charts",   "num": "10", "title": "Charts"},
-  {"id": "admin",    "num": "11", "title": "The admin"},
+  {"id": "write",    "num": "06", "title": "The flash plugin"},
+  {"id": "apidocs",  "num": "07", "title": "The API console"},
+  {"id": "charts",   "num": "08", "title": "Charts"},
+  {"id": "admin",    "num": "09", "title": "The admin"},
 ] %}
 
 {% block content %}
@@ -132,7 +130,7 @@ mount_fjkit(app, config)", label="app/main.py") }}
         is a startup error naming both.
       </p>
       <p>
-        <code>add_template_dir()</code> is how a plugin that ships UI ships it; section 09 is the
+        <code>add_template_dir()</code> is how a plugin that ships UI ships it; section 07 is the
         worked example. One thing goes with it: the Tailwind build scans an explicit list of
         directories in <code>fjkit.css</code>, so a plugin inside the kit adds its template directory
         to that list. Miss it and nothing fails — the templates render, every utility class in them is
@@ -267,106 +265,8 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))", label="app/ma
   {% endcall %}
 
   {# ============================================================== 06 #}
-  {% set t06 %}One message, three layers — and only the top one needs a secret.{% endset %}
-  {% call lesson("messages", "06", "Messages: three layers", t06, tag="fjkit.messages") %}
-    {% call prose() %}
-      <p>
-        Showing a line of text to the person who made this request is not one feature but three,
-        stacked: the surface that draws it, the way it gets onto a response, and the way it survives
-        a redirect. Only the last needs a signing secret, which is why one of them is a plugin and
-        the other two are not.
-      </p>
-    {% endcall %}
-
-    {% call stage("The three layers", "Two of them are core, because neither of them needs anything from you.") %}
-      {% call table([{"label": "Layer"}, {"label": "Where it lives"}, {"label": "Core or plugin"}]) %}
-        <tr>
-          {{ cell("the surface", tone="strong") }}
-          {{ cell("ui/feedback.html's toaster region, drawn by ui/shell.html on every page whether or not anything is in it") }}
-          {{ cell(badge("core", variant="secondary")) }}
-        </tr>
-        <tr>
-          {{ cell("onto this response", tone="strong") }}
-          {{ cell("fjkit.messages — messages.add(request, …), from a route, a service or an exception handler") }}
-          {{ cell(badge("core", variant="secondary")) }}
-        </tr>
-        <tr>
-          {{ cell("past a redirect", tone="strong") }}
-          {{ cell("fjkit.flash — a short-lived signed cookie, section 07") }}
-          {{ cell(badge("plugin", variant="info")) }}
-        </tr>
-      {% endcall %}
-    {% endcall %}
-
-    {{ code("from fjkit import messages
-
-messages.add(request, \"Saved\", category=\"success\")
-messages.add(request, \"Could not save\", \"The title is required.\", category=\"error\")", label="anywhere that has the request") }}
-
-    {% call prose() %}
-      <p>
-        No plugin, no secret, no configuration — which is the point of drawing the line here. Signing
-        a cookie needs a secret, and requiring one from every app, including one with no forms and
-        nothing to say, would end <code>mount_fjkit(app)</code> working with no config at all.
-        Everything that does not need a secret is core.
-      </p>
-      <p>
-        The third layer is not a superset of the second either. A redirect replaces the page, so the
-        document that would have shown the message is gone before the response arrives, and a cookie
-        is the only thing that crosses. On a response that is not a redirect, that same cookie is a
-        round trip for a message about to be rendered anyway. So the two are layered rather than
-        merged: <code>FlashPlugin</code> queues into <code>fjkit.messages</code>, and the shell has
-        one loop instead of one per delivery mechanism.
-      </p>
-    {% endcall %}
-
-    {% call stage("How it reaches the browser", "@render picks the channel. The caller never has to know which.") %}
-      {% call table([{"label": "What the response is"}, {"label": "The channel"}, {"label": "What draws it"}]) %}
-        <tr>
-          {{ cell("a full page render", tone="strong") }}
-          {{ cell("the context") }}
-          {{ cell("the shell's toaster region, straight into the markup") }}
-        </tr>
-        <tr>
-          {{ cell("a fragment, an htmx swap", tone="strong") }}
-          {{ cell(badge("HX-Trigger", variant="info")) }}
-          {{ cell("the shell's listener, which turns the event back into a toast") }}
-        </tr>
-      {% endcall %}
-    {% endcall %}
-
-    {% call prose() %}
-      <p>
-        A header rather than markup, because a fragment has no toaster in it: an htmx swap replaces
-        one region, and the region a toast belongs in is elsewhere on the page. It also works on a
-        response htmx will not swap at all. htmx reads <code>HX-Trigger</code> in
-        <code>handleAjaxResponse</code> <strong>before</strong> it consults
-        <code>responseHandling</code> for the status code, so a 422 or a 500 can still raise a toast
-        on the page the person is looking at. That is the entire delivery mechanism for section 08.
-      </p>
-    {% endcall %}
-
-    {% set consumed %}
-      a template that loops over the queue marks it delivered; asking whether there is anything to
-      show does not, because that is not showing it. Section 07 depends on the distinction
-    {% endset %}
-    {% set category_note %}
-      <code>info</code>, <code>success</code>, <code>warning</code>, <code>error</code> — a meaning,
-      not a colour. <code>toast()</code> maps each to an icon and a timeout and
-      <code>fjkit.css</code> maps each to a role token, so "error is red" is decided once and
-      survives a rebrand
-    {% endset %}
-    {{ defs("Worth knowing", [
-      ("fjkit_messages() is a global, not a context key", "so a route passes nothing in, and a page that has never heard of messages still shows one"),
-      ("consumed by being iterated", consumed),
-      ("HX-Trigger is merged, not replaced", "a handler that set an event of its own keeps it — dropping it because a toast happened to be queued is a bug that only appears when both are in play"),
-      ("category", category_note),
-    ]) }}
-  {% endcall %}
-
-  {# ============================================================== 07 #}
-  {% set t07 %}A message that outlives the response that raised it.{% endset %}
-  {% call lesson("write", "07", "The flash plugin", t07, tag="fjkit.flash") %}
+  {% set t06 %}A message that outlives the response that raised it.{% endset %}
+  {% call lesson("write", "06", "The flash plugin", t06, tag="fjkit.flash") %}
     {% call prose() %}
       <p>
         A redirect loses a message. <code>HX-Trigger</code> names an event for the page to fire, and
@@ -398,7 +298,8 @@ config = FjkitConfig(template_dir=…, plugins=(flash, auth))", label="app/main.
         It has no Jinja side: no <code>extend()</code>, and not one context key of its own. The cookie
         is queued into <code>fjkit.messages</code> from middleware, so a template never learns that a
         message arrived by cookie rather than from the handler it is rendering. That is what the
-        layering in section 06 buys — one loop in the shell, not one per delivery mechanism.
+        <a href="{{ url_for(request, "learn#messages") }}">layering the Learn page describes</a>
+        buys — one loop in the shell, not one per delivery mechanism.
       </p>
       <p>
         The interesting half is when the cookie is cleared: once
@@ -438,115 +339,9 @@ if carried and messages.shown(request):
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 08 #}
-  {% set t08 %}A rejected form used to be a screen of JSON. Now it says what was wrong, under the field, and no route asked for that.{% endset %}
-  {% call lesson("errors", "08", "When a form is rejected", t08, tag="fjkit.errors") %}
-    {% call prose() %}
-      <p>
-        FastAPI answers a rejected form with <code>{"detail":[{"type":"missing",…}]}</code> and a
-        422. For an API that is right. For a page it is nothing: htmx does not swap a 4xx, so the
-        person filling the form watches nothing happen, and a plain POST lands them on a screen of
-        JSON.
-      </p>
-      <p>
-        The fix is to notice what that reply already is. It names every field that failed, under the
-        string the form posted it as, with a message a person can read — and the form is still on the
-        page, with everything the person typed still in its controls. Nothing has to be rendered
-        again, remembered, or rebuilt. So <code>mount_fjkit()</code> sends the 422 back as it is, and
-        one script the shell loads, <code>js/errors.js</code>, writes each message under its field.
-        Every handler keeps the signature FastAPI wrote for it, and no route names a template for its
-        rejected state, because there is nothing to render.
-      </p>
-    {% endcall %}
-
-    {% call stage("What each caller gets", "The same question @render asks about the wire, asked about a submit that was refused.") %}
-      {% call table([{"label": "Who asked"}, {"label": "Answer"}, {"label": "Why"}]) %}
-        <tr>
-          {{ cell("htmx", tone="strong") }}
-          {{ cell(badge("FastAPI's 422, drawn by the page", variant="info")) }}
-          {{ cell("the form is still there; the script writes each message under the control its loc names, and what was typed stays put") }}
-        </tr>
-        <tr>
-          {{ cell("a browser navigation", tone="strong") }}
-          {{ cell(badge("422 and a page", variant="info")) }}
-          {{ cell("a plain <form method=\"post\"> has left the page, so errors/page.html is rendered through your own shell") }}
-        </tr>
-        <tr>
-          {{ cell("a script, curl, a service", tone="strong") }}
-          {{ cell(badge("FastAPI's own reply", variant="outline")) }}
-          {{ cell("— byte for byte, with the status it always had. The same bytes as the first row; only the reader differs") }}
-        </tr>
-      {% endcall %}
-    {% endcall %}
-
-    {% call prose() %}
-      <p>
-        The last row is the one worth saying out loud. A caller that did not ask for markup keeps
-        <code>{"detail": …}</code>, because turning an API's error into an HTML page would be a worse
-        bug than the one this fixes. The first row is the same bytes, which is the whole design: an
-        endpoint that is also somebody's API has one error contract, and the page reads it the way
-        any other client would.
-      </p>
-      <p>
-        That asks one thing of a route, and it is what FastAPI already asks:
-      </p>
-    {% endcall %}
-
-    {{ files([
-      {"id": "invalid-route", "label": "router.py", "lang": "python", "source": "@router.post(\"/tasks\", name=\"tasks_create\")
-@render(\"tasks/_board.html\")
-def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
-    service.create(payload)
-    return _board(service)",
-       "note": "The model is the signature. Its fields, its limits and its OpenAPI schema are one declaration, and a rejected one is FastAPI's to report — under body, with the field's name."},
-      {"id": "invalid-form", "label": "_new_task.html", "lang": "jinja", "source": "{% call form(action=url_for(request, \"tasks_create\"), target=\"#board\",
-             reset_on_success=true, encoding=\"json\", id=\"new-task\") %}
-  {{ text_field(\"title\", label=\"New task\", required=true) }}
-  {{ select_field(\"priority\", label=\"Priority\", options=priority_options,
-                  selected=\"normal\") }}
-{% endcall %}",
-       "note": "One form, written once, with nothing about errors in it. The script finds each control by name and the paragraph under it by aria-describedby — the wiring every field macro already does."},
-    ]) }}
-
-    {% call prose() %}
-      <p>
-        Keeping what was typed costs nothing, because nothing touches it. The old answer to a 422 was
-        to render the form again with the values echoed back, and it worked until a field held more
-        than one value, or the form needed something only the handler that never ran could have built.
-        Both problems disappear when the form is not rendered again.
-      </p>
-      <p>
-        A message with no field to land on — a whole-model rule, a body that could not be parsed, a
-        bad path segment — is raised as a toast, through the event <code>fjkit.messages</code> uses.
-        The next request from the same form clears what the last one said, so an accepted resubmit
-        leaves no stale rejection on screen.
-      </p>
-    {% endcall %}
-
-    {% set model_error %}
-      left to travel, on purpose. It has the same shape as a rejected form and is not one: it is
-      equally what <code>Task(**row)</code> failing three layers down in a service looks like, and
-      drawing a bug as a friendly message hides it behind an apology about a field nobody filled in.
-      Declare the model in the signature and FastAPI raises the request-scoped error that is handled
-    {% endset %}
-    {% set unexpected %}
-      off by default, and that default is the useful one: in development a traceback in the terminal
-      beats a tidy apology in the browser. <code>FjkitConfig.for_production()</code> turns it on,
-      with the other two dev-only knobs. The 422 handler is installed either way, because a rejected
-      form is not a bug
-    {% endset %}
-    {{ defs("The rest of the surface", [
-      ("a ValidationError your own code raised", model_error),
-      ("catch_unexpected_errors", unexpected),
-      ("unexpected_error", "the words that toast says. Leave it and the kit says <em>Something went wrong</em>; set a <code>Message</code> to change them once, or a callable <code>(request, exc) -&gt; Message</code> to pick them per exception. Choose the words from the exception — never put <code>str(exc)</code> in them, that is the inside of your app"),
-      ("errors/page.html", "the page a failed navigation lands on. Replace it by writing a file at the same path in your own template directory — the same shadowing fjkit eject uses, so there is no separate custom-error-page mechanism to learn"),
-      ("js/errors.js", "the third and last file every page loads, after htmx and Basecoat. It listens to htmx:beforeSwap, so a 422 that is not FastAPI's list — a route answering with markup of its own — is left alone"),
-    ]) }}
-  {% endcall %}
-
-  {# ============================================================== 09 #}
-  {% set t09 %}Sign in on the page, and every call below goes out as you.{% endset %}
-  {% call lesson("apidocs", "09", "The API console", t09, tag="fjkit_apidocs") %}
+  {# ============================================================== 07 #}
+  {% set t07 %}Sign in on the page, and every call below goes out as you.{% endset %}
+  {% call lesson("apidocs", "07", "The API console", t07, tag="fjkit_apidocs") %}
     {% call prose() %}
       <p>
         Swagger UI's Authorize dialog can express only what an OpenAPI document can describe: an API
@@ -641,9 +436,9 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 10 #}
-  {% set t10 %}Python decides the shape of the figure. The browser decides its chrome.{% endset %}
-  {% call lesson("charts", "10", "Charts", t10, tag="fjkit_charts") %}
+  {# ============================================================== 08 #}
+  {% set t08 %}Python decides the shape of the figure. The browser decides its chrome.{% endset %}
+  {% call lesson("charts", "08", "Charts", t08, tag="fjkit_charts") %}
     {% call prose() %}
       <p>
         Basecoat has a <code>chart</code> component and the kit does not ship it, because a chart is
@@ -711,9 +506,9 @@ Chart(
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 11 #}
-  {% set t11 %}Register a model; get the list, the form and the routes between them.{% endset %}
-  {% call lesson("admin", "11", "The admin", t11, tag="fjkit_admin") %}
+  {# ============================================================== 09 #}
+  {% set t09 %}Register a model; get the list, the form and the routes between them.{% endset %}
+  {% call lesson("admin", "09", "The admin", t09, tag="fjkit_admin") %}
     {% call prose() %}
       <p>
         Section 02 of the charter puts an admin generator outside the kit, and the reason is the one

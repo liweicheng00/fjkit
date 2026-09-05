@@ -17,9 +17,9 @@
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
   <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
   <script defer src="../assets/js/errors.js?v=1788369088"></script>
-  <meta name="description" content="不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。">
+  <meta name="description" content="不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。">
   <meta property="og:title" content="學會 fjkit">
-  <meta property="og:description" content="不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。">
+  <meta property="og:description" content="不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。">
   <meta property="og:type" content="article">
   <script src="../assets/mock-server.js?v=0.1.0.dev0"></script>
 </head>
@@ -87,11 +87,19 @@ fjkit
     </a>
   </li>
         <li>
-    <a href="learn.html#knob">      <span>10 · 換品牌：品牌 token 與狀態 token</span>
+    <a href="learn.html#messages">      <span>10 · 訊息：三層</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#gate">      <span>11 · fjkit check：封閉詞彙表</span>
+    <a href="learn.html#errors">      <span>11 · 表單被退回的時候</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#knob">      <span>12 · 換品牌：品牌 token 與狀態 token</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#gate">      <span>13 · fjkit check：封閉詞彙表</span>
     </a>
   </li>
 </ul>
@@ -123,7 +131,8 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">在寫路由的地方，把介面一起寫完</h1>
-<p class="text-muted-foreground text-sm">    十一課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 失敗的指令。
+<p class="text-muted-foreground text-sm">    十三課：一支 fjkit app 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、換品牌怎麼換，
+    以及那個會讓 build 失敗的指令。
     底下每個示範都會實際執行。
 </p>    </div>
   </div>
@@ -1034,8 +1043,244 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 </section></div></div>
 <hr class="border-border">
 
-<div id="knob">
+<div id="messages">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+<span class="badge" data-variant="secondary">fjkit.messages</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">訊息：三層</h2><p class="text-muted-foreground text-sm">一則訊息，三層——而且只有最上面那層需要 secret。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        「給發出這次請求的人看一行字」由三層組成：畫出它的元件、讓它搭上這個回應的方法，
+        以及讓它活過一次轉址的方法。只有最後一層需要簽章用的 secret，
+        所以三層裡只有它是 plugin，另外兩層在核心。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>三層</h3><p>其中兩層在核心，因為它們不需要任何設定。</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+<th class=" ">層</th>
+<th class=" ">住在哪裡</th>
+<th class=" ">核心還是 plugin</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">元件</td>
+          <td class="">ui/feedback.html 的 toaster 區域，由 ui/shell.html 在每一頁畫出來——裡面有沒有東西都畫</td>
+          <td class=""><span class="badge" data-variant="secondary">核心</span></td>
+        </tr>
+        <tr>
+          <td class="font-medium">搭上這個回應</td>
+          <td class="">fjkit.messages——messages.add(request, …)，路由、service、exception handler 都可以叫</td>
+          <td class=""><span class="badge" data-variant="secondary">核心</span></td>
+        </tr>
+        <tr>
+          <td class="font-medium">跨過一次轉址</td>
+          <td class="">fjkit.flash——一個短命的簽名 cookie，
+            <a href="plugins.html#write">在「外掛」那一頁</a></td>
+          <td class=""><span class="badge" data-variant="info">plugin</span></td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="任何拿得到 request 的地方" data-lang="python">from fjkit import messages
+
+messages.add(request, &#34;Saved&#34;, category=&#34;success&#34;)
+messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;, category=&#34;error&#34;)</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        不需要 plugin、secret 或任何設定，這條線就是為此劃的。簽一顆 cookie 需要 secret；
+        要求每一支 app 都準備一個（包括沒有表單、也沒有訊息要顯示的 app），等於讓
+        <code>mount_fjkit(app)</code> 不再零設定可跑。不需要 secret 的都留在核心。
+      </p>
+      <p>
+        第三層也不是第二層的超集合。轉址會換掉整頁，本來要顯示訊息的那份文件在回應抵達前
+        就不存在了，唯一跨得過去的只有 cookie。但對不是轉址的回應來說，同一顆 cookie 是
+        錯的工具：一則馬上就要渲染出來的訊息不必多跑一趟。所以兩者是疊起來而不是合而為一：
+        <code>FlashPlugin</code> 把 cookie 排進 <code>fjkit.messages</code>，shell 裡因此只有一個
+        迴圈，而不是每種送達方式各一個。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>它怎麼到瀏覽器</h3><p>通道由 @render 決定，呼叫端從頭到尾不需要知道是哪一條。</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+<th class=" ">這個回應是什麼</th>
+<th class=" ">走哪條通道</th>
+<th class=" ">誰把它畫出來</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">整頁渲染</td>
+          <td class="">context</td>
+          <td class="">shell 的 toaster 區域，直接寫進 markup</td>
+        </tr>
+        <tr>
+          <td class="font-medium">一段 fragment，一次 htmx swap</td>
+          <td class=""><span class="badge" data-variant="info">HX-Trigger</span></td>
+          <td class="">shell 裡那支監聽器，把事件變回一個 toast</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        走標頭而不是 markup，因為 fragment 裡沒有 toaster：一次 htmx swap 換掉的是一個區域，
+        而 toast 該待的區域在頁面上的別處。它也能用在 htmx 不會 swap 的回應上：htmx 在
+        <code>handleAjaxResponse</code> 裡讀 <code>HX-Trigger</code> 的時機，早於它查
+        <code>responseHandling</code> 決定這個狀態碼要不要換內容，所以一個 422 或 500 照樣能在
+        使用者正在看的那一頁上跳出 toast。第 11 節整套送達機制就是這個。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>值得知道的幾件事</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>fjkit_messages() 是 global，不是 context key</h4><p>路由不用傳任何東西，一份從沒聽過 messages 的模板照樣顯示得出來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>靠被迭代來消耗</h4><p>      有模板迭代過那個佇列才算送達；只查詢「裡面有沒有東西」不算，因為那不是把它顯示出來。
+      flash plugin 整個依賴這個區別
+</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>HX-Trigger 是合併，不是覆蓋</h4><p>handler 自己設的事件會留著。只因為排了一個 toast 就把它丟掉，是那種兩邊同時出現才會現形的 bug</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>category</h4><p>      <code>info</code>、<code>success</code>、<code>warning</code>、<code>error</code> 是意義，
+      不是顏色。<code>toast()</code> 把每一種對到一個圖示與一段停留時間，<code>fjkit.css</code>
+      把每一種對到一個角色 token，所以「錯誤是紅的」只決定一次，而且撐得過換品牌
+</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="errors">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
+<span class="badge" data-variant="secondary">fjkit.errors</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">表單被退回的時候</h2><p class="text-muted-foreground text-sm">表單被退回時，錯誤標在欄位下面，不再是一整頁 JSON，而且不需要任何一條路由要求。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        FastAPI 對一份被退回的表單回的是 <code>{"detail":[{"type":"missing",…}]}</code> 加一個 422。
+        對 API 來說這正確，對一頁畫面來說等於什麼都沒有：htmx 預設不會 swap 4xx，
+        所以正在填表單的人看到的是按了沒反應，而一般的 POST 會把他丟到一整頁 JSON 上。
+      </p>
+      <p>
+        解法是利用那個回應原本就有的內容。它點名每個失敗的欄位，用的正是表單送出時的名字，
+        訊息也是給人讀的；而表單還在頁面上，使用者打過的每一個字都還在控制項裡。
+        沒有東西需要重新渲染、記住或重建。
+      </p>
+      <p>
+        所以 <code>mount_fjkit()</code> 把 422 原封不動送回去，由 shell 載入的一支 script
+        <code>js/errors.js</code> 把每則訊息寫到它的欄位下面。每個 handler 的簽名還是 FastAPI 寫的那個，
+        也沒有任何一條路由要替「被退回」這個狀態指名模板，因為沒有東西要渲染。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>每種呼叫端拿到什麼</h3><p>@render 決定線上格式的那個問題，換到一次被拒絕的送出上再問一次。</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+<th class=" ">誰在問</th>
+<th class=" ">回什麼</th>
+<th class=" ">為什麼</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="font-medium">htmx</td>
+          <td class=""><span class="badge" data-variant="info">FastAPI 的 422，由頁面畫出來</span></td>
+          <td class="">表單還在原地；script 把每則訊息寫到 loc 指名的控制項下面，打過的字不動</td>
+        </tr>
+        <tr>
+          <td class="font-medium">瀏覽器導覽</td>
+          <td class=""><span class="badge" data-variant="info">422 加一頁畫面</span></td>
+          <td class="">一般的 &lt;form method=&#34;post&#34;&gt; 已經離開那一頁了，所以用你自己的 shell 渲染 errors/page.html</td>
+        </tr>
+        <tr>
+          <td class="font-medium">腳本、curl、另一個服務</td>
+          <td class=""><span class="badge" data-variant="outline">FastAPI 原本的回應</span></td>
+          <td class="">一個位元組都不動，狀態碼也是原本那個。與第一列是同樣的位元組，差別只在誰在讀</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        最後那一列值得講明白。沒有要 markup 的呼叫端拿到的還是 <code>{"detail": …}</code>，
+        因為把一個 API 的錯誤變成一頁 HTML，會是比這裡要修的問題更糟的 bug。
+        第一列是同樣的位元組，這正是整個設計：一個同時也是別人 API 的端點只有一份錯誤契約，
+        頁面讀它的方式跟其他客戶端一樣。
+      </p>
+      <p>
+        這對一條路由只有一項要求，而且 FastAPI 本來就在要求：
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="invalid-route"
+                aria-selected="true">router.py</button>
+        <button type="button" role="tab" aria-controls="invalid-form"
+                aria-selected="false">_new_task.html</button>
+    </nav><div id="invalid-route" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.post(&#34;/tasks&#34;, name=&#34;tasks_create&#34;)
+@render(&#34;tasks/_board.html&#34;)
+def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
+    service.create(payload)
+    return _board(service)</pre>
+
+<footer>模型就是簽名。它的欄位、限制與 OpenAPI schema 是同一份宣告，被退回時由 FastAPI 回報，放在 body 底下，帶著欄位的名字。</footer></div><div id="invalid-form" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="_new_task.html" data-lang="jinja">{% call form(action=url_for(request, &#34;tasks_create&#34;), target=&#34;#board&#34;,
+             reset_on_success=true, encoding=&#34;json&#34;, id=&#34;new-task&#34;) %}
+  {{ text_field(&#34;title&#34;, label=&#34;New task&#34;, required=true) }}
+  {{ select_field(&#34;priority&#34;, label=&#34;Priority&#34;, options=priority_options,
+                  selected=&#34;normal&#34;) }}
+{% endcall %}</pre>
+
+<footer>一份表單，寫一次，裡面沒有任何關於錯誤的東西。script 用 name 找到控制項，用 aria-describedby 找到它下面那個段落，兩者都是每個欄位 macro 本來就接好的線。</footer></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        保留使用者填過的內容是零成本的，因為沒有東西碰到它。以前對 422 的做法是重畫表單、
+        把值回填進去，這行得通，直到某個欄位有多個值，或表單需要某樣只有那個沒跑過的
+        handler 才建得出來的東西。表單不再重畫，這兩個問題一起消失。
+      </p>
+      <p>
+        沒有欄位可以落腳的訊息——模型層級的規則、解析不了的 body、壞掉的路徑片段——會透過
+        <code>fjkit.messages</code> 用的同一個事件升成一個 toast。同一份表單的下一次送出會清掉上一次的訊息，
+        所以一次被接受的重送不會把過期的退回留在畫面上。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>其餘的介面</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>你自己的程式碼丟出的 ValidationError</h4><p>      刻意不接住它。它跟一份被退回的表單長得一樣，但它不是：它同樣可能是 service 裡三層深的
+      <code>Task(**row)</code> 失敗，而把一個 bug 畫成一句親切的訊息，等於用「某個沒人填過的欄位」
+      的道歉把它藏起來。把模型宣告在簽名上，FastAPI 就會丟出會被接住的那種 request 層級錯誤
+</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>catch_unexpected_errors</h4><p>      預設是關的，而這個預設有用：開發時終端機裡的一份 traceback，勝過瀏覽器裡一句得體的
+      道歉。<code>FjkitConfig.for_production()</code> 會把它打開，連同另外兩個只在開發時有意義的
+      開關。422 那個 handler 一律安裝，因為被退回的表單不是 bug
+</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>unexpected_error</h4><p>那則 toast 的內容。不設就是 kit 自己的一句 &lt;em&gt;Something went wrong&lt;/em&gt;；給一個 &lt;code&gt;Message&lt;/code&gt; 就整批換掉，給一個 &lt;code&gt;(request, exc) -&amp;gt; Message&lt;/code&gt; 的函式就能依例外種類挑句子。用例外挑句子，不要把 &lt;code&gt;str(exc)&lt;/code&gt; 放進去，那是你 app 的內部</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>errors/page.html</h4><p>導覽失敗時落到的那一頁。在自己的模板目錄放一個同路徑的檔案就能換掉，用的是與 fjkit eject 相同的遮蔽機制，所以沒有另一套「自訂錯誤頁」要學</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>js/errors.js</h4><p>每一頁載入的第三個、也是最後一個檔案，排在 htmx 與 Basecoat 之後。它聽 htmx:beforeSwap，所以不是 FastAPI 清單的 422——某條路由自己回了 markup——會被放過</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="knob">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
 <span class="badge" data-variant="secondary">theming</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">換品牌：品牌 token 與狀態 token</h2><p class="text-muted-foreground text-sm">換品牌是一個 CSS 變數。狀態顏色不跟著變。</p>      </div>
@@ -1110,7 +1355,7 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 <hr class="border-border">
 
 <div id="gate">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">13</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">fjkit check：封閉詞彙表</h2><p class="text-muted-foreground text-sm">被強制執行的慣例，勝過只寫在文件裡的慣例。</p>      </div>

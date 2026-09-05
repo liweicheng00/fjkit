@@ -127,14 +127,15 @@ PAGES = [
             "title": "Learn fjkit",
             "description": (
                 "Build a FastAPI interface without a front-end toolchain: how the kit is wired, what "
-                "htmx actually sends, a brand knob that repaints the page, and the vocabulary checker."
+                "htmx actually sends, what a rejected form does, a brand knob that repaints the "
+                "page, and the vocabulary checker."
             ),
         },
         "zh": {
             "label": "上手",
             "title": "學會 fjkit",
             "description": (
-                "不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、"
+                "不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、"
                 "一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。"
             ),
         },

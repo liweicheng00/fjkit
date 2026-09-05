@@ -20,15 +20,18 @@
   {"id": "broadcast","num": "07", "title": "一個 id，好幾份 fragment：HX-Trigger"},
   {"id": "pending",  "num": "08", "title": "請求進行中的那段時間"},
   {"id": "patterns", "num": "09", "title": "九種 htmx 模式，以及對應的 handler"},
-  {"id": "knob",     "num": "10", "title": "換品牌：品牌 token 與狀態 token"},
-  {"id": "gate",     "num": "11", "title": "fjkit check：封閉詞彙表"},
+  {"id": "messages", "num": "10", "title": "訊息：三層"},
+  {"id": "errors",   "num": "11", "title": "表單被退回的時候"},
+  {"id": "knob",     "num": "12", "title": "換品牌：品牌 token 與狀態 token"},
+  {"id": "gate",     "num": "13", "title": "fjkit check：封閉詞彙表"},
 ] %}
 
 {% block content %}
 {% call stack(8) %}
 
   {% set intro %}
-    十一課：一支 fjkit app 怎麼接、htmx 實際送出什麼、換品牌怎麼換，以及那個會讓 build 失敗的指令。
+    十三課：一支 fjkit app 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、換品牌怎麼換，
+    以及那個會讓 build 失敗的指令。
     底下每個示範都會實際執行。
   {% endset %}
   {{ page_header("在寫路由的地方，把介面一起寫完", intro) }}
@@ -809,8 +812,204 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
   {% endcall %}
 
   {# ============================================================== 10 #}
-  {% set t10 %}換品牌是一個 CSS 變數。狀態顏色不跟著變。{% endset %}
-  {% call lesson("knob", "10", "換品牌：品牌 token 與狀態 token", t10, tag="theming") %}
+  {% set t10 %}一則訊息，三層——而且只有最上面那層需要 secret。{% endset %}
+  {% call lesson("messages", "10", "訊息：三層", t10, tag="fjkit.messages") %}
+    {% call prose() %}
+      <p>
+        「給發出這次請求的人看一行字」由三層組成：畫出它的元件、讓它搭上這個回應的方法，
+        以及讓它活過一次轉址的方法。只有最後一層需要簽章用的 secret，
+        所以三層裡只有它是 plugin，另外兩層在核心。
+      </p>
+    {% endcall %}
+
+    {% call stage("三層", "其中兩層在核心，因為它們不需要任何設定。") %}
+      {% call table([{"label": "層"}, {"label": "住在哪裡"}, {"label": "核心還是 plugin"}]) %}
+        <tr>
+          {{ cell("元件", tone="strong") }}
+          {{ cell("ui/feedback.html 的 toaster 區域，由 ui/shell.html 在每一頁畫出來——裡面有沒有東西都畫") }}
+          {{ cell(badge("核心", variant="secondary")) }}
+        </tr>
+        <tr>
+          {{ cell("搭上這個回應", tone="strong") }}
+          {{ cell("fjkit.messages——messages.add(request, …)，路由、service、exception handler 都可以叫") }}
+          {{ cell(badge("核心", variant="secondary")) }}
+        </tr>
+        <tr>
+          {{ cell("跨過一次轉址", tone="strong") }}
+          {% set flash_cell %}fjkit.flash——一個短命的簽名 cookie，
+            <a href="{{ url_for(request, "plugins#write") }}">在「外掛」那一頁</a>{% endset %}
+          {{ cell(flash_cell) }}
+          {{ cell(badge("plugin", variant="info")) }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {{ code("from fjkit import messages
+
+messages.add(request, \"Saved\", category=\"success\")
+messages.add(request, \"Could not save\", \"The title is required.\", category=\"error\")", label="任何拿得到 request 的地方") }}
+
+    {% call prose() %}
+      <p>
+        不需要 plugin、secret 或任何設定，這條線就是為此劃的。簽一顆 cookie 需要 secret；
+        要求每一支 app 都準備一個（包括沒有表單、也沒有訊息要顯示的 app），等於讓
+        <code>mount_fjkit(app)</code> 不再零設定可跑。不需要 secret 的都留在核心。
+      </p>
+      <p>
+        第三層也不是第二層的超集合。轉址會換掉整頁，本來要顯示訊息的那份文件在回應抵達前
+        就不存在了，唯一跨得過去的只有 cookie。但對不是轉址的回應來說，同一顆 cookie 是
+        錯的工具：一則馬上就要渲染出來的訊息不必多跑一趟。所以兩者是疊起來而不是合而為一：
+        <code>FlashPlugin</code> 把 cookie 排進 <code>fjkit.messages</code>，shell 裡因此只有一個
+        迴圈，而不是每種送達方式各一個。
+      </p>
+    {% endcall %}
+
+    {% call stage("它怎麼到瀏覽器", "通道由 @render 決定，呼叫端從頭到尾不需要知道是哪一條。") %}
+      {% call table([{"label": "這個回應是什麼"}, {"label": "走哪條通道"}, {"label": "誰把它畫出來"}]) %}
+        <tr>
+          {{ cell("整頁渲染", tone="strong") }}
+          {{ cell("context") }}
+          {{ cell("shell 的 toaster 區域，直接寫進 markup") }}
+        </tr>
+        <tr>
+          {{ cell("一段 fragment，一次 htmx swap", tone="strong") }}
+          {{ cell(badge("HX-Trigger", variant="info")) }}
+          {{ cell("shell 裡那支監聽器，把事件變回一個 toast") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        走標頭而不是 markup，因為 fragment 裡沒有 toaster：一次 htmx swap 換掉的是一個區域，
+        而 toast 該待的區域在頁面上的別處。它也能用在 htmx 不會 swap 的回應上：htmx 在
+        <code>handleAjaxResponse</code> 裡讀 <code>HX-Trigger</code> 的時機，早於它查
+        <code>responseHandling</code> 決定這個狀態碼要不要換內容，所以一個 422 或 500 照樣能在
+        使用者正在看的那一頁上跳出 toast。第 11 節整套送達機制就是這個。
+      </p>
+    {% endcall %}
+
+    {% set consumed %}
+      有模板迭代過那個佇列才算送達；只查詢「裡面有沒有東西」不算，因為那不是把它顯示出來。
+      flash plugin 整個依賴這個區別
+    {% endset %}
+    {% set category_note %}
+      <code>info</code>、<code>success</code>、<code>warning</code>、<code>error</code> 是意義，
+      不是顏色。<code>toast()</code> 把每一種對到一個圖示與一段停留時間，<code>fjkit.css</code>
+      把每一種對到一個角色 token，所以「錯誤是紅的」只決定一次，而且撐得過換品牌
+    {% endset %}
+    {{ defs("值得知道的幾件事", [
+      ("fjkit_messages() 是 global，不是 context key", "路由不用傳任何東西，一份從沒聽過 messages 的模板照樣顯示得出來"),
+      ("靠被迭代來消耗", consumed),
+      ("HX-Trigger 是合併，不是覆蓋", "handler 自己設的事件會留著。只因為排了一個 toast 就把它丟掉，是那種兩邊同時出現才會現形的 bug"),
+      ("category", category_note),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 11 #}
+  {% set t11 %}表單被退回時，錯誤標在欄位下面，不再是一整頁 JSON，而且不需要任何一條路由要求。{% endset %}
+  {% call lesson("errors", "11", "表單被退回的時候", t11, tag="fjkit.errors") %}
+    {% call prose() %}
+      <p>
+        FastAPI 對一份被退回的表單回的是 <code>{"detail":[{"type":"missing",…}]}</code> 加一個 422。
+        對 API 來說這正確，對一頁畫面來說等於什麼都沒有：htmx 預設不會 swap 4xx，
+        所以正在填表單的人看到的是按了沒反應，而一般的 POST 會把他丟到一整頁 JSON 上。
+      </p>
+      <p>
+        解法是利用那個回應原本就有的內容。它點名每個失敗的欄位，用的正是表單送出時的名字，
+        訊息也是給人讀的；而表單還在頁面上，使用者打過的每一個字都還在控制項裡。
+        沒有東西需要重新渲染、記住或重建。
+      </p>
+      <p>
+        所以 <code>mount_fjkit()</code> 把 422 原封不動送回去，由 shell 載入的一支 script
+        <code>js/errors.js</code> 把每則訊息寫到它的欄位下面。每個 handler 的簽名還是 FastAPI 寫的那個，
+        也沒有任何一條路由要替「被退回」這個狀態指名模板，因為沒有東西要渲染。
+      </p>
+    {% endcall %}
+
+    {% call stage("每種呼叫端拿到什麼", "@render 決定線上格式的那個問題，換到一次被拒絕的送出上再問一次。") %}
+      {% call table([{"label": "誰在問"}, {"label": "回什麼"}, {"label": "為什麼"}]) %}
+        <tr>
+          {{ cell("htmx", tone="strong") }}
+          {{ cell(badge("FastAPI 的 422，由頁面畫出來", variant="info")) }}
+          {{ cell("表單還在原地；script 把每則訊息寫到 loc 指名的控制項下面，打過的字不動") }}
+        </tr>
+        <tr>
+          {{ cell("瀏覽器導覽", tone="strong") }}
+          {{ cell(badge("422 加一頁畫面", variant="info")) }}
+          {{ cell("一般的 <form method=\"post\"> 已經離開那一頁了，所以用你自己的 shell 渲染 errors/page.html") }}
+        </tr>
+        <tr>
+          {{ cell("腳本、curl、另一個服務", tone="strong") }}
+          {{ cell(badge("FastAPI 原本的回應", variant="outline")) }}
+          {{ cell("一個位元組都不動，狀態碼也是原本那個。與第一列是同樣的位元組，差別只在誰在讀") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        最後那一列值得講明白。沒有要 markup 的呼叫端拿到的還是 <code>{"detail": …}</code>，
+        因為把一個 API 的錯誤變成一頁 HTML，會是比這裡要修的問題更糟的 bug。
+        第一列是同樣的位元組，這正是整個設計：一個同時也是別人 API 的端點只有一份錯誤契約，
+        頁面讀它的方式跟其他客戶端一樣。
+      </p>
+      <p>
+        這對一條路由只有一項要求，而且 FastAPI 本來就在要求：
+      </p>
+    {% endcall %}
+
+    {{ files([
+      {"id": "invalid-route", "label": "router.py", "lang": "python", "source": "@router.post(\"/tasks\", name=\"tasks_create\")
+@render(\"tasks/_board.html\")
+def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
+    service.create(payload)
+    return _board(service)",
+       "note": "模型就是簽名。它的欄位、限制與 OpenAPI schema 是同一份宣告，被退回時由 FastAPI 回報，放在 body 底下，帶著欄位的名字。"},
+      {"id": "invalid-form", "label": "_new_task.html", "lang": "jinja", "source": "{% call form(action=url_for(request, \"tasks_create\"), target=\"#board\",
+             reset_on_success=true, encoding=\"json\", id=\"new-task\") %}
+  {{ text_field(\"title\", label=\"New task\", required=true) }}
+  {{ select_field(\"priority\", label=\"Priority\", options=priority_options,
+                  selected=\"normal\") }}
+{% endcall %}",
+       "note": "一份表單，寫一次，裡面沒有任何關於錯誤的東西。script 用 name 找到控制項，用 aria-describedby 找到它下面那個段落，兩者都是每個欄位 macro 本來就接好的線。"},
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        保留使用者填過的內容是零成本的，因為沒有東西碰到它。以前對 422 的做法是重畫表單、
+        把值回填進去，這行得通，直到某個欄位有多個值，或表單需要某樣只有那個沒跑過的
+        handler 才建得出來的東西。表單不再重畫，這兩個問題一起消失。
+      </p>
+      <p>
+        沒有欄位可以落腳的訊息——模型層級的規則、解析不了的 body、壞掉的路徑片段——會透過
+        <code>fjkit.messages</code> 用的同一個事件升成一個 toast。同一份表單的下一次送出會清掉上一次的訊息，
+        所以一次被接受的重送不會把過期的退回留在畫面上。
+      </p>
+    {% endcall %}
+
+    {% set model_error %}
+      刻意不接住它。它跟一份被退回的表單長得一樣，但它不是：它同樣可能是 service 裡三層深的
+      <code>Task(**row)</code> 失敗，而把一個 bug 畫成一句親切的訊息，等於用「某個沒人填過的欄位」
+      的道歉把它藏起來。把模型宣告在簽名上，FastAPI 就會丟出會被接住的那種 request 層級錯誤
+    {% endset %}
+    {% set unexpected %}
+      預設是關的，而這個預設有用：開發時終端機裡的一份 traceback，勝過瀏覽器裡一句得體的
+      道歉。<code>FjkitConfig.for_production()</code> 會把它打開，連同另外兩個只在開發時有意義的
+      開關。422 那個 handler 一律安裝，因為被退回的表單不是 bug
+    {% endset %}
+    {{ defs("其餘的介面", [
+      ("你自己的程式碼丟出的 ValidationError", model_error),
+      ("catch_unexpected_errors", unexpected),
+      ("unexpected_error", "那則 toast 的內容。不設就是 kit 自己的一句 <em>Something went wrong</em>；給一個 <code>Message</code> 就整批換掉，給一個 <code>(request, exc) -&gt; Message</code> 的函式就能依例外種類挑句子。用例外挑句子，不要把 <code>str(exc)</code> 放進去，那是你 app 的內部"),
+      ("errors/page.html", "導覽失敗時落到的那一頁。在自己的模板目錄放一個同路徑的檔案就能換掉，用的是與 fjkit eject 相同的遮蔽機制，所以沒有另一套「自訂錯誤頁」要學"),
+      ("js/errors.js", "每一頁載入的第三個、也是最後一個檔案，排在 htmx 與 Basecoat 之後。它聽 htmx:beforeSwap，所以不是 FastAPI 清單的 422——某條路由自己回了 markup——會被放過"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 12 #}
+  {% set t12 %}換品牌是一個 CSS 變數。狀態顏色不跟著變。{% endset %}
+  {% call lesson("knob", "12", "換品牌：品牌 token 與狀態 token", t12, tag="theming") %}
     {% call prose() %}
       <p>
         拖動色相滑桿，編輯的是 <code>:root</code> 上的 <code>--primary</code>，
@@ -884,9 +1083,9 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 11 #}
-  {% set t11 %}被強制執行的慣例，勝過只寫在文件裡的慣例。{% endset %}
-  {% call lesson("gate", "11", "fjkit check：封閉詞彙表", t11) %}
+  {# ============================================================== 13 #}
+  {% set t13 %}被強制執行的慣例，勝過只寫在文件裡的慣例。{% endset %}
+  {% call lesson("gate", "13", "fjkit check：封閉詞彙表", t13) %}
     {% call prose() %}
       <p>
         <code>fjkit check</code> 讀模板，拒絕兩種東西：顏色字面值，以及元件詞彙表以外的 class。
