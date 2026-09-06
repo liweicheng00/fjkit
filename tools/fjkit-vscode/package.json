@@ -6,6 +6,7 @@
   "publisher": "fjkit",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/liweicheng00/fjkit" },
+  "icon": "icon.png",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Programming Languages"],
   "keywords": ["fastapi", "jinja", "htmx", "fjkit", "lsp"],

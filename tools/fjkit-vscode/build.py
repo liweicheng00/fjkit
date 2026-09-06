@@ -19,9 +19,17 @@ from xml.sax.saxutils import escape
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-#: What goes into the archive, besides the manifest and the licence.
+#: What goes into the archive, besides the manifest, the licence and the icon.
+#: The icon is named by package.json rather than listed here, because the
+#: manifest has to point at the same file and one source avoids the two drifting.
 FILES = ("package.json", "extension.js", "README.md")
-CONTENT_TYPES = {"json": "application/json", "js": "application/javascript", "md": "text/markdown", "txt": "text/plain"}
+CONTENT_TYPES = {
+    "json": "application/json",
+    "js": "application/javascript",
+    "md": "text/markdown",
+    "txt": "text/plain",
+    "png": "image/png",
+}
 
 
 def manifest(pkg: dict) -> str:
@@ -36,6 +44,16 @@ def manifest(pkg: dict) -> str:
         "Microsoft.VisualStudio.Services.Links.Source": pkg["repository"]["url"],
         "Microsoft.VisualStudio.Services.GitHubFlavoredMarkdown": "true",
     }
+    assets = [
+        ("Code.Manifest", "package.json"),
+        ("Services.Content.Details", "README.md"),
+        ("Services.Content.License", "LICENSE"),
+    ]
+    # A gallery entry with no icon gets a grey placeholder, so this is the one
+    # asset whose absence is visible to everyone browsing and to nobody testing.
+    if icon := pkg.get("icon"):
+        assets.append(("Services.Icons.Default", icon))
+
     lines = [
         '<?xml version="1.0" encoding="utf-8"?>',
         '<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011"'
@@ -57,11 +75,7 @@ def manifest(pkg: dict) -> str:
         "  <Assets>",
         *[
             f'    <Asset Type="Microsoft.VisualStudio.{kind}" Path="extension/{file}" Addressable="true"/>'
-            for kind, file in (
-                ("Code.Manifest", "package.json"),
-                ("Services.Content.Details", "README.md"),
-                ("Services.Content.License", "LICENSE"),
-            )
+            for kind, file in assets
         ],
         "  </Assets>",
         "</PackageManifest>",
@@ -88,6 +102,8 @@ def build(out_dir: Path) -> Path:
         for name in FILES:
             z.write(HERE / name, f"extension/{name}")
         z.write(ROOT / "LICENSE", "extension/LICENSE")
+        if icon := pkg.get("icon"):
+            z.write(HERE / icon, f"extension/{icon}")
     return out
 
 

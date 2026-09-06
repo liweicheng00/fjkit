@@ -1,13 +1,40 @@
-# A development tool, not a distribution: it is never published, so it carries
-# no licence files or classifiers. It is a workspace member so that `uv run
-# fjkit-lsp` works from the repository root with no separate environment — the
-# same reason the demos are members. Nothing in `packages/` depends on it.
+# Published, since the editor client shipped. `fjkit-vscode` starts
+# `.venv/bin/fjkit-lsp` in the user's own workspace, so the extension is inert
+# unless this is installable from PyPI — an editor client and a language server
+# are one product delivered as two artefacts, and only one of them has an
+# installer. It stays a workspace member as well, so `uv run fjkit-lsp` still
+# works from the repository root. Nothing in `packages/` depends on it.
 [project]
 name = "fjkit-lsp"
 version = "0.1.0"
 description = "A language server that links fjkit routes, response models and Jinja templates."
+readme = "README.md"
 requires-python = ">=3.13"
+authors = [{ name = "liweicheng00" }]
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = ["pygls>=2.0"]
+
+# `Topic :: Software Development :: Documentation` is wrong and there is no
+# classifier for a language server, so the closest true statements are the
+# editor and the interpreter. Verified against
+# `https://pypi.org/pypi?:action=list_classifiers`.
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Text Editors :: Integrated Development Environments (IDE)",
+    "Topic :: Text Processing :: Markup :: HTML",
+]
+
+# The extension's own page links back here, so a reader who arrives from Open
+# VSX can find the server, and one who arrives from PyPI can find the client.
+[project.urls]
+Homepage = "https://liweicheng00.github.io/fjkit/"
+Repository = "https://github.com/liweicheng00/fjkit"
+Issues = "https://github.com/liweicheng00/fjkit/issues"
 
 [project.scripts]
 fjkit-lsp = "fjkit_lsp.__main__:main"
