@@ -145,12 +145,6 @@ class AdminPlugin:
     # --------------------------------------------------------------- plugin
 
     def mount(self, setup: AppSetup) -> None:
-        taken = next((r for r in setup.app.routes if getattr(r, "path", None) == self.url), None)
-        if taken is not None:
-            setup.warn(
-                f"{self.url} is already routed by {getattr(taken, 'name', taken)!r}. Starlette matches the "
-                "first route that fits, so the admin index will never render. Pass a different `url=`."
-            )
         setup.include_router(self._router())
 
     def extend(self, setup: EnvSetup) -> None:

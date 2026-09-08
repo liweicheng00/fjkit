@@ -294,7 +294,7 @@ mount_fjkit(app, config)</pre>
       vocabulary would leave through it. A plugin that ships UI ships templates, and they pass
       <code>fjkit check</code> like everything else.
 </p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>depend on another plugin</h4><p>order is the order you wrote; there is no resolution step, because nothing has needed one yet</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>reach a sibling it did not declare</h4><p>a plugin that reads another says so — uses = (&#34;flash&#34;,) — and gets it from setup.plugin(&#34;flash&#34;), or None when the app registered none. An undeclared lookup is a startup error, and so is a sibling listed after the plugin that uses it. Order is still the order you wrote: the host checks it and never reorders</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>open a connection at startup</h4><p>no lifespan hook — a plugin takes a client the app already built, which is why RedisStore has a client parameter</p>    </section>  </div></div></div>
   </div>
 
@@ -421,16 +421,18 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">flash = FlashPlugin(secret=os.environ[&#34;FJKIT_SECRET&#34;])
-auth = AuthPlugin(secret=…, trusted_origins=…, flash=flash)
+auth = AuthPlugin(secret=…, trusted_origins=…)
 
 config = FjkitConfig(template_dir=…, plugins=(flash, auth))</pre>
 
 
 <div class="flex flex-col gap-3">      <p>
-        <code>auth</code> is handed the flash rather than importing it. Neither plugin depends on the
-        other: auth works without one, and a route that just saved something wants
-        <code>flash.add(response, "Saved")</code> with no session in sight. The app connects them,
-        for the same reason there is no dependency resolution in section 04.
+        <code>auth</code> declares <code>uses = ("flash",)</code> and takes whichever plugin is
+        registered under that name, which is why <code>flash</code> is listed first. Pass
+        <code>flash=</code> to hand it one configured differently from the one your routes use; an
+        explicit argument outranks the lookup. The dependency runs one way and is optional: auth
+        works without a flash, and a route that just saved something wants
+        <code>flash.add(response, "Saved")</code> with no session in sight.
       </p>
       <p>
         It has no Jinja side: no <code>extend()</code>, and not one context key of its own. The cookie
@@ -517,8 +519,8 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
 
 <div class="flex flex-col gap-3">      <p>
         That is the whole of the wiring. No route to write, no template to render, no static file to
-        serve: the plugin brings its own router and templates, and finds the <code>AuthPlugin</code>
-        in the same <code>plugins</code> tuple to wire the sign-in panel to. Pass <code>flow=</code>
+        serve: the plugin brings its own router and templates, declares <code>uses = ("auth",)</code>,
+        and wires the sign-in panel to whatever the app registered under that name. Pass <code>flow=</code>
         instead when the app authenticates some other way, and
         <code>FastAPI(docs_url=None, redoc_url=None)</code> when you want only this one.
       </p>

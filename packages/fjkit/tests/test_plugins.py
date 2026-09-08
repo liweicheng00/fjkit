@@ -203,3 +203,56 @@ def test_a_plugin_can_add_middleware_and_a_route():
 
     assert response.json() == {"ok": "yes"}
     assert response.headers["x-plugin"] == "stamping"
+
+
+class Uses:
+    """A plugin that declares a sibling and records what the lookup returned."""
+
+    name = "user"
+    uses = ("provider",)
+
+    def __init__(self) -> None:
+        self.found: object = "unset"
+
+    def mount(self, setup: AppSetup) -> None:
+        self.found = setup.plugin("provider")
+
+
+def test_a_declared_sibling_is_handed_over_and_an_absent_one_is_none():
+    provider, user = Recording("provider"), Uses()
+    app_with(provider, user)
+    assert user.found is provider
+
+    alone = Uses()
+    app_with(alone)
+    assert alone.found is None
+
+
+def test_a_sibling_listed_after_its_user_is_refused():
+    with pytest.raises(ValueError, match="List 'provider' before 'user'"):
+        app_with(Uses(), Recording("provider"))
+
+
+def test_an_undeclared_lookup_is_refused():
+    class Sneaky:
+        name = "sneaky"
+
+        def mount(self, setup: AppSetup) -> None:
+            setup.plugin("provider")
+
+    with pytest.raises(ValueError, match="without declaring it"):
+        app_with(Recording("provider"), Sneaky())
+
+
+def test_a_router_on_a_taken_path_is_reported_at_startup():
+    class Docs:
+        name = "docs"
+
+        def mount(self, setup: AppSetup) -> None:
+            router = APIRouter(prefix="/docs")
+            router.add_api_route("", lambda: {"ok": True}, methods=["GET"])
+            setup.include_router(router)
+
+    with pytest.warns(PluginWarning, match="/docs is already routed"):
+        config = FjkitConfig(plugins=(Docs(),))
+        mount_fjkit(FastAPI(docs_url="/docs"), config)

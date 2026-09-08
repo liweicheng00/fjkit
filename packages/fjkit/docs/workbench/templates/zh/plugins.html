@@ -171,7 +171,7 @@ mount_fjkit(app, config)", label="app/main.py") }}
     {% endset %}
     {{ defs("plugin 做不到的事", [
       ("注入 markup", no_markup),
-      ("依賴另一個 plugin", "順序就是你寫的順序，沒有解析步驟，因為目前沒有東西需要"),
+      ("讀取沒宣告的同伴", "要讀別的 plugin 就先宣告——uses = (\"flash\",)——再用 setup.plugin(\"flash\") 拿；app 沒註冊時拿到 None。沒宣告就查是啟動錯誤，被用的 plugin 排在使用者後面也是。順序仍然是你寫的順序：host 只檢查，不重排"),
       ("在啟動時開連線", "沒有 lifespan hook。plugin 收的是 app 已經建好的 client，RedisStore 有一個 client 參數就是這個原因"),
     ]) }}
   {% endcall %}
@@ -270,16 +270,16 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))", label="app/ma
     {% endcall %}
 
     {{ code("flash = FlashPlugin(secret=os.environ[\"FJKIT_SECRET\"])
-auth = AuthPlugin(secret=…, trusted_origins=…, flash=flash)
+auth = AuthPlugin(secret=…, trusted_origins=…)
 
 config = FjkitConfig(template_dir=…, plugins=(flash, auth))", label="app/main.py") }}
 
     {% call prose() %}
       <p>
-        app 把 flash 交給 <code>auth</code>，<code>auth</code> 不自己 import 它。兩個 plugin 互不依賴：
-        auth 沒有 flash 也能跑，而一條剛存好資料的路由要的是
-        <code>flash.add(response, "Saved")</code>，跟 session 無關。把它們接起來的是 app，
-        理由與第 04 節沒有相依解析相同。
+        <code>auth</code> 宣告 <code>uses = ("flash",)</code>，拿的是註冊在這個名字下的那個 plugin，
+        所以 <code>flash</code> 要排在前面。要給它一個跟路由用的不同設定的 flash，就傳
+        <code>flash=</code>；明確傳入的參數優先於查詢。這條依賴是單向且選用的：auth 沒有 flash
+        也能跑，而一條剛存好資料的路由要的是 <code>flash.add(response, "Saved")</code>，跟 session 無關。
       </p>
       <p>
         它在 Jinja 那一側沒有任何東西：沒有 <code>extend()</code>，也沒有自己的 context key。
@@ -359,7 +359,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
     {% call prose() %}
       <p>
         接線到此結束。不用寫路由、不用渲染模板、不用服務靜態檔：plugin 自己帶路由與模板，
-        並從同一個 <code>plugins</code> tuple 裡找出 <code>AuthPlugin</code> 接上登入面板。
+        並宣告 <code>uses = ("auth",)</code>，把登入面板接到 app 註冊在這個名字下的那個 plugin。
         app 用別的方式認證時傳 <code>flow=</code>；只想留這一頁時，設
         <code>FastAPI(docs_url=None, redoc_url=None)</code>。
       </p>

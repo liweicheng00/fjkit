@@ -16,6 +16,14 @@ Both are optional. A plugin that only puts a value in every template writes
 only `extend`. Hiding the split would be friendlier right up until someone's
 `mount` silently never ran.
 
+A plugin that reads a sibling declares it — `uses = ("flash",)` — and reaches
+it only through `setup.plugin("flash")`. The declaration is checked the way
+`provides=` is: a lookup the plugin never declared, and a sibling listed after
+the plugin that uses it, are both startup errors naming the plugin. The host
+never reorders. `FjkitConfig.plugins` is the order middleware wraps in, and that
+stays the app's to decide; what the host adds is a check that the order the
+app wrote is one the plugins can live with.
+
 A plugin deliberately **cannot** inject markup into the shell. Such a hook
 would let any plugin put a `<script>` on every page, and both "no build step in
 the app" and the closed vocabulary would leave through it.
@@ -68,9 +76,16 @@ class Plugin(Protocol):
     `name` identifies the plugin rather than labelling it: it detects duplicate
     registration, names the `request.state` field the plugin owns, and appears
     in the error when two plugins claim one global or context key.
+
+    `uses` names the siblings this plugin may read through `setup.plugin()`.
+    Every entry is optional — a name nobody registered comes back as `None` —
+    but a registered one must be listed before its user. Declaring rather than
+    scanning is what lets the dependency be read off the class and checked at
+    startup, instead of found by reading the body of `mount`.
     """
 
     name: str
+    uses: tuple[str, ...] = ()
 
     def mount(self, setup: AppSetup) -> None:
         """App construction. Optional."""
@@ -84,29 +99,54 @@ class AppSetup:
 
     A pass-through to FastAPI rather than a wrapper with opinions, except that
     everything it does is attributed to the plugin, so a misbehaving one is
-    named in the traceback rather than found by elimination.
+    named in the traceback rather than found by elimination. The app itself is
+    not exposed: what a plugin can do is this list, and a plugin that needs
+    more asks for a method here rather than reaching around it.
     """
 
-    __slots__ = ("app", "config", "_name")
+    __slots__ = ("_app", "config", "_name", "_plugins")
 
-    def __init__(self, app: FastAPI, config: FjkitConfig, name: str) -> None:
-        self.app = app
+    def __init__(self, app: FastAPI, config: FjkitConfig, name: str, plugins: Mapping[str, Plugin]) -> None:
+        self._app = app
         self.config = config
         self._name = name
+        self._plugins = plugins
 
     def add_middleware(self, cls: type, /, **options: Any) -> None:
         """Starlette runs middleware in reverse registration order, so a plugin
         listed later in `FjkitConfig.plugins` wraps the earlier ones."""
-        self.app.add_middleware(cls, **options)
+        self._app.add_middleware(cls, **options)
 
     def add_exception_handler(self, exc: type[Exception] | int, handler: Callable) -> None:
-        self.app.add_exception_handler(exc, handler)
+        self._app.add_exception_handler(exc, handler)
 
     def include_router(self, router: APIRouter) -> None:
-        self.app.include_router(router)
+        """Add the plugin's routes, warning first if their prefix is already
+        routed.
+
+        Starlette matches the first route that fits, so a plugin mounted under
+        a path the app or FastAPI already claimed — `/docs`, say — would never
+        render and never say why. Every plugin with a router needs this check
+        and none of them should have to remember it.
+        """
+        prefix = router.prefix
+        if prefix:
+            taken = next((r for r in self._app.routes if getattr(r, "path", None) == prefix), None)
+            if taken is not None:
+                self.warn(
+                    f"{prefix} is already routed by {getattr(taken, 'name', taken)!r}. Starlette matches "
+                    "the first route that fits, so the routes this plugin adds there will never be "
+                    "reached. Pass a different `url=`, or remove the route that holds it."
+                )
+        self._app.include_router(router)
 
     def mount_static(self, url: str, directory: Path) -> None:
-        self.app.mount(url, StaticFiles(directory=directory), name=f"fjkit_{self._name}_static")
+        self._app.mount(url, StaticFiles(directory=directory), name=f"fjkit_{self._name}_static")
+
+    def plugin(self, name: str) -> Plugin | None:
+        """A sibling this plugin declared in `uses`, or `None` if the app did
+        not register one."""
+        return _lookup(self._plugins, self._name, name)
 
     def warn(self, message: str) -> None:
         """Report at startup a configuration that misbehaves later.
@@ -125,12 +165,13 @@ class EnvSetup:
     template directories have to be in the search path before it is built.
     """
 
-    __slots__ = ("config", "_current", "_owners", "contributions")
+    __slots__ = ("config", "_current", "_owners", "_plugins", "contributions")
 
-    def __init__(self, config: FjkitConfig) -> None:
+    def __init__(self, config: FjkitConfig, plugins: Mapping[str, Plugin]) -> None:
         self.config = config
         self.contributions = EnvContributions()
         self._current = ""
+        self._plugins = plugins
         #: key -> the plugin that claimed it, for the collision message.
         self._owners: dict[str, str] = {}
 
@@ -164,6 +205,11 @@ class EnvSetup:
             self._claim(f"context key {key!r}", key)
         self.contributions.processors.append((self._current, tuple(provides), fn))
 
+    def plugin(self, name: str) -> Plugin | None:
+        """A sibling this plugin declared in `uses`, or `None` if the app did
+        not register one."""
+        return _lookup(self._plugins, self._current, name)
+
     def _claim(self, what: str, key: str) -> None:
         owner = self._owners.get(key)
         if owner is not None:
@@ -188,8 +234,9 @@ class EnvContributions:
 
 def collect_env(config: FjkitConfig) -> EnvContributions:
     """Run every plugin's `extend`, in `FjkitConfig.plugins` order."""
-    setup = EnvSetup(config)
-    for plugin in _ordered(config):
+    registry = _ordered(config)
+    setup = EnvSetup(config, registry)
+    for plugin in registry.values():
         setup._current = plugin.name
         extend = getattr(plugin, "extend", None)
         if extend is not None:
@@ -199,25 +246,56 @@ def collect_env(config: FjkitConfig) -> EnvContributions:
 
 def install_plugins(app: FastAPI, config: FjkitConfig) -> None:
     """Run every plugin's `mount`, in `FjkitConfig.plugins` order."""
-    for plugin in _ordered(config):
+    registry = _ordered(config)
+    for plugin in registry.values():
         mount = getattr(plugin, "mount", None)
         if mount is not None:
-            mount(AppSetup(app, config, plugin.name))
+            mount(AppSetup(app, config, plugin.name, registry))
 
 
-def _ordered(config: FjkitConfig) -> tuple[Plugin, ...]:
-    """The configured plugins, with duplicate names rejected.
+def _lookup(plugins: Mapping[str, Plugin], current: str, name: str) -> Plugin | None:
+    """`setup.plugin()` for both setups: the declaration is the permission.
+
+    Refusing an undeclared name is what keeps `uses` honest. Without the check
+    it would be documentation, and the one plugin that forgot it would be the
+    one whose dependency nobody can see.
+    """
+    declared = getattr(plugins[current], "uses", ())
+    if name not in declared:
+        raise ValueError(
+            f"fjkit plugin {current!r} looked up {name!r} without declaring it. "
+            f"Add it to `uses`: uses = {tuple(declared) + (name,)!r}."
+        )
+    return plugins.get(name)
+
+
+def _ordered(config: FjkitConfig) -> dict[str, Plugin]:
+    """The configured plugins by name, in `FjkitConfig.plugins` order, with
+    duplicate names and unusable orders rejected.
 
     Two plugins under one name would collide on `request.state.<name>` and make
     every later error message ambiguous, so the duplicate is refused at startup
     rather than resolved by last-one-wins.
+
+    A plugin listed before one it `uses` is refused rather than moved: its
+    `mount` would run before the sibling's, and reordering silently would
+    change which middleware wraps which — an order the app wrote on purpose.
     """
-    seen: set[str] = set()
+    registry: dict[str, Plugin] = {}
     for plugin in config.plugins:
         name = getattr(plugin, "name", None)
         if not name:
             raise ValueError(f"fjkit plugin {plugin!r} has no `name`.")
-        if name in seen:
+        if name in registry:
             raise ValueError(f"fjkit plugin {name!r} is registered twice in FjkitConfig.plugins.")
-        seen.add(name)
-    return tuple(config.plugins)
+        registry[name] = plugin
+
+    position = {name: index for index, name in enumerate(registry)}
+    for name, plugin in registry.items():
+        for used in getattr(plugin, "uses", ()):
+            if used in position and position[used] > position[name]:
+                raise ValueError(
+                    f"fjkit plugin {name!r} uses {used!r}, which is listed after it. "
+                    f"List {used!r} before {name!r} in FjkitConfig.plugins."
+                )
+    return registry

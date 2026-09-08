@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import re
 import secrets
-import sys
 from collections.abc import Mapping, Sequence
 from datetime import timedelta
 from pathlib import Path
@@ -104,6 +103,7 @@ class ApiDocsPlugin:
     """
 
     name = "apidocs"
+    uses = ("auth",)
 
     def __init__(
         self,
@@ -152,15 +152,6 @@ class ApiDocsPlugin:
 
     def mount(self, setup: AppSetup) -> None:
         self._resolve_flow(setup)
-
-        taken = next((r for r in setup.app.routes if getattr(r, "path", None) == self.url), None)
-        if taken is not None:
-            setup.warn(
-                f"{self.url} is already routed by {getattr(taken, 'name', taken)!r}. Starlette matches "
-                "the first route that fits, so this page will never render. Pass a different "
-                "`url=`, or FastAPI(docs_url=None) if this is the built-in Swagger page."
-            )
-
         setup.include_router(self._router())
 
     def extend(self, setup: EnvSetup) -> None:
@@ -189,28 +180,28 @@ class ApiDocsPlugin:
         setup.add_template_dir(TEMPLATE_DIR)
 
     def _resolve_flow(self, setup: AppSetup) -> None:
-        """Find the app's `AuthPlugin` and wrap it, unless a flow was named.
+        """Wrap the sibling registered as `auth`, unless a flow was named.
 
-        Reading the sibling plugins rather than taking an `auth=` argument is
-        the difference between two lines of setup and one, and it makes
-        `plugins=(auth, ApiDocsPlugin())` produce a working sign-in panel. It is
-        also the only code here that knows `fjkit.auth` exists.
+        Asking the host rather than taking an `auth=` argument is the
+        difference between two lines of setup and one, and it makes
+        `plugins=(auth, ApiDocsPlugin())` produce a working sign-in panel. A
+        named `flow=` outranks the lookup, so an app that authenticates some
+        other way is never second-guessed.
 
-        The `sys.modules` check is why an app with no sessions pays nothing for
-        this. An `AuthPlugin` instance cannot be in `config.plugins` unless its
-        class was imported first, so a missing module proves there is nothing to
-        find, and importing one to discover that costs ~15 ms of startup for a
-        search that is certainly empty.
+        `fjkit.auth` is imported only once a plugin by that name is found. An
+        app with no sessions therefore pays nothing for this — not the ~15 ms
+        the module costs to load, and not a search that is certainly empty.
         """
         if self._flow_given:
             return
 
-        module = sys.modules.get("fjkit.auth.plugin")
-        if module is None:
+        auth = setup.plugin("auth")
+        if auth is None:
             return
 
-        auth = next((p for p in setup.config.plugins if isinstance(p, module.AuthPlugin)), None)
-        if auth is not None:
+        from fjkit.auth.plugin import AuthPlugin
+
+        if isinstance(auth, AuthPlugin):
             self.flow = SessionFlow(auth)
 
     # ---------------------------------------------------------------- routes

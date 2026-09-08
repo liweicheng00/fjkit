@@ -26,7 +26,7 @@ import secrets
 import warnings
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 from urllib.parse import quote
 
 from fastapi import Request, Response
@@ -38,11 +38,9 @@ from fjkit.auth.errors import AuthError, CsrfRejected, NotAuthenticated, Refresh
 from fjkit.auth.sources import LocalSource
 from fjkit.auth.stores import MemoryStore
 from fjkit.auth.types import Csrf, Session, SessionStore, TokenSource, decode, encode
+from fjkit.flash import FlashPlugin
 from fjkit.htmx import is_htmx
 from fjkit.plugins import AppSetup, EnvSetup, PluginWarning
-
-if TYPE_CHECKING:
-    from fjkit.flash import FlashPlugin
 
 __all__ = ["AuthPlugin", "CookieSpec", "safe_next"]
 
@@ -126,6 +124,7 @@ class AuthPlugin:
     """
 
     name = "auth"
+    uses = ("flash",)
 
     def __init__(
         self,
@@ -146,10 +145,11 @@ class AuthPlugin:
         self.store: SessionStore = store if store is not None else MemoryStore()
         self.source: TokenSource = source if source is not None else LocalSource()
         self.cookie = cookie or CookieSpec()
-        #: Optional, and injected rather than imported: this kit has no rule
-        #: letting one plugin depend on another. The app registers both and
-        #: hands one to the other, so auth works without flash and flash stays
-        #: useful to routes unrelated to auth.
+        #: Optional. Filled at `mount` from the sibling registered as "flash"
+        #: unless the app passed one: an explicit argument outranks the lookup,
+        #: so an app can hand auth a flash configured differently from the one
+        #: its routes use. Auth works without one, and flash stays useful to
+        #: routes unrelated to auth.
         self.flash = flash
         self.login_url = login_url
         self.refresh_leeway = refresh_leeway
@@ -172,6 +172,11 @@ class AuthPlugin:
     # ---------------------------------------------------------------- plugin
 
     def mount(self, setup: AppSetup) -> None:
+        if self.flash is None:
+            found = setup.plugin("flash")
+            if isinstance(found, FlashPlugin):
+                self.flash = found
+
         setup.add_middleware(_SessionMiddleware, plugin=self)
         setup.add_exception_handler(NotAuthenticated, self._handle)
         setup.add_exception_handler(CsrfRejected, self._handle)
