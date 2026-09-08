@@ -1,0 +1,56 @@
+# Every push to main and every pull request: the same checks the release
+# procedure runs by hand, through the same Makefile targets, so the two cannot
+# drift.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: pytest, ruff, fjkit check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      # `uv sync --group build` first: the tests read static/dist/, which is
+      # gitignored, and a later plain `uv sync` would uninstall pytailwindcss.
+      - run: make css
+      - run: make check
+
+  docs:
+    # docs/ is a build artefact that is committed. A push whose source changed
+    # but whose output did not ships a site describing the previous commit;
+    # .githooks/pre-push catches it locally, this catches it when the hook
+    # was not enabled.
+    name: docs/ is current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: make css
+      - run: make docs-check
+
+  dist:
+    # The five distributions build and pass `make verify` on every push, so a
+    # broken wheel is found before a tag is cut, not after.
+    name: build and verify dist/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: make build
+      - run: make verify
+      - run: make vsix

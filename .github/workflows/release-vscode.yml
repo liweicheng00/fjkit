@@ -1,0 +1,54 @@
+# Publish the editor extension to Open VSX.
+#
+#   git tag vscode-v0.1.0 && git push origin vscode-v0.1.0
+#
+# Its own tag prefix, because its version is not the Python one: the manifest
+# needs a strict major.minor.patch, so the extension is 0.1.0 while the
+# packages are 0.1.0.dev0. "Preview" is a publish flag here, not a suffix;
+# the manual run exposes it.
+#
+# One-time setup:
+#   1. https://open-vsx.org — sign in with GitHub, sign the Eclipse Publisher
+#      Agreement, create an access token.
+#   2. `npx ovsx create-namespace fjkit -p <token>` — once, from a machine.
+#   3. Store the token as the repository secret OPEN_VSX_TOKEN.
+#
+# Publish fjkit-lsp to PyPI first: the extension starts `.venv/bin/fjkit-lsp`
+# and does nothing until that is installable.
+name: Release (Open VSX)
+
+on:
+  push:
+    tags: ['vscode-v*']
+  workflow_dispatch:
+    inputs:
+      pre_release:
+        description: Publish as a pre-release
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: open-vsx
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: the tag must be the manifest version
+        if: github.event_name == 'push'
+        run: |
+          want="${GITHUB_REF_NAME#vscode-v}"
+          have=$(python3 -c "import json; print(json.load(open('tools/fjkit-vscode/package.json'))['version'])")
+          [ "$want" = "$have" ] || { echo "tag says $want, package.json says $have"; exit 1; }
+      - run: make vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: tools/fjkit-vscode/dist/*.vsix
+          if-no-files-found: error
+      - run: make publish-vsix PRE_RELEASE=${{ (github.event_name == 'workflow_dispatch' && inputs.pre_release) && '1' || '' }}
+        env:
+          OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}

@@ -1,0 +1,120 @@
+# Publish the five Python distributions.
+#
+#   git tag v0.1.0.dev0 && git push origin v0.1.0.dev0     -> PyPI
+#   Actions -> "Release (PyPI)" -> Run workflow             -> TestPyPI (default)
+#                                                              or PyPI, by choice
+#
+# The tag is the version: `vX.Y.Z` must equal the `version` in all five
+# pyproject.toml files, and `make verify` refuses otherwise.
+#
+# Uploads use PyPI Trusted Publishing (OIDC), so there is no token to store.
+# One-time setup, per index and per project name — for a name that does not
+# exist yet, register a *pending* publisher:
+#
+#   https://pypi.org/manage/account/publishing/   (test.pypi.org for the rehearsal)
+#     PyPI project name : fjkit | fjkit-charts | fjkit-apidocs | fjkit-admin | fjkit-lsp
+#     Owner             : liweicheng00
+#     Repository name   : fjkit
+#     Workflow name     : release-pypi.yml
+#     Environment name  : pypi   (testpypi for the rehearsal)
+#
+# and create the two GitHub environments `pypi` and `testpypi` under
+# Settings -> Environments. A required reviewer on `pypi` turns a tag push into
+# an approval step.
+#
+# Order is fjkit first, then the four that depend on it, as in goal/RELEASING.md.
+name: Release (PyPI)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Index to upload to
+        type: choice
+        options: [testpypi, pypi]
+        default: testpypi
+
+env:
+  # A tag push always means PyPI; a manual run goes where the input says.
+  TARGET: ${{ github.event_name == 'push' && 'pypi' || inputs.target }}
+
+jobs:
+  build:
+    name: build and verify dist/
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      target: ${{ env.TARGET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: make build
+      - name: verify (the tag must be the version)
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            make verify EXPECT_VERSION="${GITHUB_REF_NAME#v}"
+          else
+            make verify
+          fi
+      - id: version
+        run: echo "version=$(uv version --package fjkit --short)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish-fjkit:
+    name: publish fjkit
+    needs: build
+    runs-on: ubuntu-latest
+    environment: ${{ needs.build.outputs.target }}
+    permissions:
+      id-token: write   # Trusted Publishing
+      contents: read
+    steps:
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - run: |
+          if [ "${{ needs.build.outputs.target }}" = "testpypi" ]; then
+            uv publish --trusted-publishing always \
+              --publish-url https://test.pypi.org/legacy/ --check-url https://test.pypi.org/simple/ \
+              dist/fjkit-${{ needs.build.outputs.version }}*
+          else
+            uv publish --trusted-publishing always --check-url https://pypi.org/simple/ \
+              dist/fjkit-${{ needs.build.outputs.version }}*
+          fi
+
+  publish-plugins:
+    name: publish ${{ matrix.package }}
+    needs: [build, publish-fjkit]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.build.outputs.target }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [fjkit-charts, fjkit-apidocs, fjkit-admin, fjkit-lsp]
+    steps:
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - run: |
+          files="dist/$(echo '${{ matrix.package }}' | tr - _)-${{ needs.build.outputs.version }}*"
+          if [ "${{ needs.build.outputs.target }}" = "testpypi" ]; then
+            uv publish --trusted-publishing always \
+              --publish-url https://test.pypi.org/legacy/ --check-url https://test.pypi.org/simple/ $files
+          else
+            uv publish --trusted-publishing always --check-url https://pypi.org/simple/ $files
+          fi
