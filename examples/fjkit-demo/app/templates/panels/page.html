@@ -25,8 +25,11 @@
     fetches on {{ kbd("intersect") }} — when its tab is chosen — and hears a
     broadcast only while it is visible. The pick raises its event with
     {{ kbd("HX-Trigger-After-Swap") }}, so the id is on the page before anything
-    reads it. Every panel is stamped with the moment it rendered: open a tab,
-    pick a different row, and come back to see which stamps moved.
+    reads it, and pushes {{ kbd("/panels?task_id=") }} with
+    {{ kbd("HX-Push-Url") }}, so a reload comes back to the same task and a
+    second tab is a second selection. Every panel is stamped with the moment it
+    rendered: open a tab, pick a different row, and come back to see which
+    stamps moved.
   {% endset %}
 
   {{ page_header("Panels", note) }}

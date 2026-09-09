@@ -22,8 +22,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fjkit import render
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fjkit import htmx, render
 
 from app.features.search.schemas import CHANGED_EVENT, SELECTED_EVENT
 from app.features.tasks.schemas import (
@@ -43,6 +43,18 @@ def get_service(request: Request) -> TaskService:
 
 
 ServiceDep = Annotated[TaskService, Depends(get_service)]
+
+
+def _page_url(request: Request, task_id: int) -> str:
+    """The page URL that shows `task_id`, root-relative.
+
+    Built here rather than in the template: a query string is a wire contract,
+    and the layer that owns the route name owns it. Root-relative for the reason
+    `url_for` is — an absolute URL pins the reply to the host the app happened
+    to see, which is wrong behind a proxy.
+    """
+    url = request.url_for("panels_page").include_query_params(task_id=task_id)
+    return f"{url.path}?{url.query}"
 
 
 def _selected(service: TaskService, task_id: int | None) -> Task | None:
@@ -78,8 +90,10 @@ def panels_page(service: ServiceDep, task_id: int | None = None) -> MatchesRespo
 
 @router.get("/panels/select/{task_id}", name="panels_select")
 @render("panels/_matches.html", hx_trigger_after_swap=SELECTED_EVENT)
-def select_task(service: ServiceDep, task_id: int) -> MatchesResponse:
-    """Mark the row, answer with the table, then announce the pick.
+def select_task(
+    request: Request, response: Response, service: ServiceDep, task_id: int
+) -> MatchesResponse:
+    """Mark the row, put the pick in the address bar, then announce it.
 
     The event carries no detail. The id it would carry is already in the table
     this reply swaps in, and a panel that was hidden at the time never heard the
@@ -89,8 +103,17 @@ def select_task(service: ServiceDep, task_id: int) -> MatchesResponse:
     `hx_trigger_after_swap`, not `hx_trigger`, for the same reason: `HX-Trigger`
     fires before this table replaces the old one, so the open panel would read
     the id it is about to stop being about.
+
+    `push_url` is what makes the pick survive anything. The id this route was
+    given decides what four regions show, and `panels_page` already takes it as
+    a parameter, so the address bar is where it belongs: a reload comes back to
+    the same task, the link is worth sending to someone, and a second tab is a
+    second selection rather than the same one. The URL pushed is the page's,
+    not this route's — nobody should land on a fragment.
     """
-    return _matches(service, _selected(service, task_id).id)
+    selected = _selected(service, task_id)
+    htmx.push_url(response, _page_url(request, selected.id))
+    return _matches(service, selected.id)
 
 
 @router.post("/panels/advance/{task_id}", name="panels_advance")

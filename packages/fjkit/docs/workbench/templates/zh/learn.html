@@ -18,19 +18,20 @@
   {"id": "partials", "num": "05", "title": "partial：一份檔案，整頁與局部共用"},
   {"id": "oob",      "num": "06", "title": "一次回應，換掉好幾塊：hx-swap-oob"},
   {"id": "broadcast","num": "07", "title": "一個 id，好幾份 fragment：HX-Trigger"},
-  {"id": "pending",  "num": "08", "title": "請求進行中的那段時間"},
-  {"id": "patterns", "num": "09", "title": "九種 htmx 模式，以及對應的 handler"},
-  {"id": "messages", "num": "10", "title": "訊息：三層"},
-  {"id": "errors",   "num": "11", "title": "表單被退回的時候"},
-  {"id": "knob",     "num": "12", "title": "換品牌：品牌 token 與狀態 token"},
-  {"id": "gate",     "num": "13", "title": "fjkit check：封閉詞彙表"},
+  {"id": "state",    "num": "08", "title": "頁面狀態：被選取的 id 住在哪裡"},
+  {"id": "pending",  "num": "09", "title": "請求進行中的那段時間"},
+  {"id": "patterns", "num": "10", "title": "九種 htmx 模式，以及對應的 handler"},
+  {"id": "messages", "num": "11", "title": "訊息：三層"},
+  {"id": "errors",   "num": "12", "title": "表單被退回的時候"},
+  {"id": "knob",     "num": "13", "title": "換品牌：品牌 token 與狀態 token"},
+  {"id": "gate",     "num": "14", "title": "fjkit check：封閉詞彙表"},
 ] %}
 
 {% block content %}
 {% call stack(8) %}
 
   {% set intro %}
-    十三課：一支 fjkit app 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、換品牌怎麼換，
+    十四課：一支 fjkit app 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、換品牌怎麼換，
     以及那個會讓 build 失敗的指令。
     底下每個示範都會實際執行。
   {% endset %}
@@ -681,8 +682,64 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
   {% endcall %}
 
   {# ============================================================== 08 #}
-  {% set t08 %}一次 swap 是一趟來回，預設沒有東西擋得住第二次點擊。兩個屬性涵蓋整段等待。{% endset %}
-  {% call lesson("pending", "08", "請求進行中的那段時間", t08, tag="htmx") %}
+  {% set t08 %}上一課讓一個 id 在區域之間移動。這一課問的是：重新整理之後，那個 id 住在哪裡。{% endset %}
+  {% call lesson("state", "08", "頁面狀態：被選取的 id 住在哪裡", t08, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        一次選取決定四塊區域的內容。重新整理之後，這四塊都必須回到同一筆任務，否則那次選取只是
+        DOM 上的假象。所以上一課留下的問題不是 id 怎麼在區域之間傳遞，而是它在兩次請求之間住在哪裡。
+      </p>
+      <p>
+        伺服器為了回答這個請求而讀的狀態——哪一筆紀錄、第幾頁、依哪一欄排序——放在 URL 裡，
+        當作路徑片段或 query 參數，因為那是重新整理、加書籤、上一頁、
+        以及貼給同事的連結唯一都讀得到的地方。頁面路由把它宣告成一個普通參數，
+        區域裡每個子請求也一樣帶著它——放在自己的路徑裡，或透過 <code>hx-vals</code> 與
+        <code>hx-include</code>，這兩個屬性 htmx 會從區域根繼承下去，所以只需要寫一次。
+      </p>
+    {% endcall %}
+
+    {% set state_route = "@router.get(\"/panels\", name=\"panels_page\")
+@render(\"panels/page.html\", partial=\"panels/_matches.html\")
+def panels_page(service: ServiceDep, task_id: int | None = None) -> MatchesResponse:
+    \"\"\"整頁，以及它會 swap 的那張表。選取是一個參數，不是 session。\"\"\"
+    return _matches(service, _selected(service, task_id).id if task_id else None)
+
+
+@router.get(\"/panels/select/{task_id}\", name=\"panels_select\")
+@render(\"panels/_matches.html\", hx_trigger_after_swap=SELECTED_EVENT)
+def select_task(request: Request, response: Response, service: ServiceDep, task_id: int) -> MatchesResponse:
+    \"\"\"標記該列，把選取寫進網址列，然後廣播。\"\"\"
+    selected = _selected(service, task_id)
+    htmx.push_url(response, _page_url(request, selected.id))
+    return _matches(service, selected.id)" %}
+    {% call stage("讓一次選取撐過重新整理的兩半",
+                  "頁面路由讀的就是選取推上去的那個 id。缺任何一半，另一半都沒有用。", padded=false) %}
+      {{ code(state_route, label="router.py") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        <code>htmx.push_url</code> 寫出 <code>HX-Push-Url</code>，把一次 swap 放進網址列與瀏覽紀錄。
+        它是給「改變這一頁正在看什麼」的那一次 swap 用的，不是每次 swap 都推：
+        在編輯動作上推，上一頁就會帶著使用者走過自己的每一次編輯。
+        如果請求的 URL 本來就是要顯示的那一個，在觸發元素上寫 <code>hx-push-url="true"</code>
+        意思相同，而且不需要 header。兩種寫法都必須成立的一點是：推上去的 URL，
+        app 必須能用一整頁回答它。app 畫不出來的 URL，比沒有 URL 更糟。
+      </p>
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        可以動手改的檔案在 <code>examples/fjkit-demo/app/features/panels/</code> 與
+        <code>app/templates/panels/</code>。選一列，看網址列；重新整理，同一筆任務、
+        同一個面板還在。再開第二個分頁選另一筆，兩邊互不影響。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 09 #}
+  {% set t09 %}一次 swap 是一趟來回，預設沒有東西擋得住第二次點擊。兩個屬性涵蓋整段等待。{% endset %}
+  {% call lesson("pending", "09", "請求進行中的那段時間", t09, tag="htmx") %}
     {% call prose() %}
       <p>
         htmx 在請求期間把 <code>htmx-request</code> 這個 class 掛到某個元素上，結束後移除。
@@ -757,9 +814,9 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 09 #}
-  {% set t09 %}畫面不同，形狀相同：每一種都是一個 trigger、一個 target 與一份 partial。{% endset %}
-  {% call lesson("patterns", "09", "九種 htmx 模式，以及對應的 handler", t09, tag="htmx") %}
+  {# ============================================================== 10 #}
+  {% set t10 %}畫面不同，形狀相同：每一種都是一個 trigger、一個 target 與一份 partial。{% endset %}
+  {% call lesson("patterns", "10", "九種 htmx 模式，以及對應的 handler", t10, tag="htmx") %}
     {% call prose() %}
       <p>
         整套屬性詞彙一個螢幕放得下，
@@ -811,9 +868,9 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 10 #}
-  {% set t10 %}一則訊息，三層——而且只有最上面那層需要 secret。{% endset %}
-  {% call lesson("messages", "10", "訊息：三層", t10, tag="fjkit.messages") %}
+  {# ============================================================== 11 #}
+  {% set t11 %}一則訊息，三層——而且只有最上面那層需要 secret。{% endset %}
+  {% call lesson("messages", "11", "訊息：三層", t11, tag="fjkit.messages") %}
     {% call prose() %}
       <p>
         「給發出這次請求的人看一行字」由三層組成：畫出它的元件、讓它搭上這個回應的方法，
@@ -906,9 +963,9 @@ messages.add(request, \"Could not save\", \"The title is required.\", category=\
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 11 #}
-  {% set t11 %}表單被退回時，錯誤標在欄位下面，不再是一整頁 JSON，而且不需要任何一條路由要求。{% endset %}
-  {% call lesson("errors", "11", "表單被退回的時候", t11, tag="fjkit.errors") %}
+  {# ============================================================== 12 #}
+  {% set t12 %}表單被退回時，錯誤標在欄位下面，不再是一整頁 JSON，而且不需要任何一條路由要求。{% endset %}
+  {% call lesson("errors", "12", "表單被退回的時候", t12, tag="fjkit.errors") %}
     {% call prose() %}
       <p>
         FastAPI 對一份被退回的表單回的是 <code>{"detail":[{"type":"missing",…}]}</code> 加一個 422。
@@ -1007,9 +1064,9 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 12 #}
-  {% set t12 %}換品牌是一個 CSS 變數。狀態顏色不跟著變。{% endset %}
-  {% call lesson("knob", "12", "換品牌：品牌 token 與狀態 token", t12, tag="theming") %}
+  {# ============================================================== 13 #}
+  {% set t13 %}換品牌是一個 CSS 變數。狀態顏色不跟著變。{% endset %}
+  {% call lesson("knob", "13", "換品牌：品牌 token 與狀態 token", t13, tag="theming") %}
     {% call prose() %}
       <p>
         拖動色相滑桿，編輯的是 <code>:root</code> 上的 <code>--primary</code>，
@@ -1083,9 +1140,9 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 13 #}
-  {% set t13 %}被強制執行的慣例，勝過只寫在文件裡的慣例。{% endset %}
-  {% call lesson("gate", "13", "fjkit check：封閉詞彙表", t13) %}
+  {# ============================================================== 14 #}
+  {% set t14 %}被強制執行的慣例，勝過只寫在文件裡的慣例。{% endset %}
+  {% call lesson("gate", "14", "fjkit check：封閉詞彙表", t14) %}
     {% call prose() %}
       <p>
         <code>fjkit check</code> 讀模板，拒絕兩種東西：顏色字面值，以及元件詞彙表以外的 class。

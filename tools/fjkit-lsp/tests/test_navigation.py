@@ -159,7 +159,7 @@ def test_event_in_a_template_goes_to_the_routes_raising_it(rs: Resolver) -> None
     sym = _at(rs, DEMO / "templates/panels/page.html", 'on=["task-changed"]', "task-changed")
     assert sym.kind == "event" and sym.name == "task-changed"
     where = {(loc.path.relative_to(DEMO).as_posix(), loc.line + 1) for loc in rs.definition(sym)}
-    assert where == {("features/panels/router.py", 97), ("features/search/router.py", 150)}
+    assert where == {("features/panels/router.py", 120), ("features/search/router.py", 150)}
     text = rs.hover(sym) or ""
     assert "CHANGED_EVENT" in text and "HX-Trigger-After-Swap" in text and "HX-Trigger via" in text
 

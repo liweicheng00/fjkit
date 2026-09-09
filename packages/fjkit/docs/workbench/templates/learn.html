@@ -18,19 +18,20 @@
   {"id": "partials", "num": "05", "title": "Partials: one file, page and swap"},
   {"id": "oob",      "num": "06", "title": "One reply, many regions: hx-swap-oob"},
   {"id": "broadcast","num": "07", "title": "One id, many fragments: HX-Trigger"},
-  {"id": "pending",  "num": "08", "title": "While the request is in flight"},
-  {"id": "patterns", "num": "09", "title": "Nine htmx patterns, and their handlers"},
-  {"id": "messages", "num": "10", "title": "Messages: three layers"},
-  {"id": "errors",   "num": "11", "title": "When a form is rejected"},
-  {"id": "knob",     "num": "12", "title": "Rebranding: brand and status tokens"},
-  {"id": "gate",     "num": "13", "title": "fjkit check: the closed vocabulary"},
+  {"id": "state",    "num": "08", "title": "Page state: where the selected id lives"},
+  {"id": "pending",  "num": "09", "title": "While the request is in flight"},
+  {"id": "patterns", "num": "10", "title": "Nine htmx patterns, and their handlers"},
+  {"id": "messages", "num": "11", "title": "Messages: three layers"},
+  {"id": "errors",   "num": "12", "title": "When a form is rejected"},
+  {"id": "knob",     "num": "13", "title": "Rebranding: brand and status tokens"},
+  {"id": "gate",     "num": "14", "title": "fjkit check: the closed vocabulary"},
 ] %}
 
 {% block content %}
 {% call stack(8) %}
 
   {% set intro %}
-    Thirteen lessons: how a fjkit app is wired, what htmx sends, what a rejected form does, how a
+    Fourteen lessons: how a fjkit app is wired, what htmx sends, what a rejected form does, how a
     rebrand works, and the command that fails a build. Every demo below is live.
   {% endset %}
   {{ page_header("Build the interface where you build the routes", intro) }}
@@ -703,8 +704,67 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
   {% endcall %}
 
   {# ============================================================== 08 #}
-  {% set t08 %}A swap is a round trip, and nothing stops a second click during it. Two attributes cover the whole of the wait.{% endset %}
-  {% call lesson("pending", "08", "While the request is in flight", t08, tag="htmx") %}
+  {% set t08 %}The last lesson moved an id between regions. This one asks where that id lives when the page is reloaded.{% endset %}
+  {% call lesson("state", "08", "Page state: where the selected id lives", t08, tag="htmx") %}
+    {% call prose() %}
+      <p>
+        A pick drives four regions. Reload the page and every one of them has to come back to the same
+        task, or the pick was a trick of the DOM. So the question the last lesson leaves open is not how
+        the id travels between regions, but where it lives between requests.
+      </p>
+      <p>
+        The state the server reads in order to answer — which record, which page, which sort column —
+        goes in the URL, as a path segment or a query parameter, because that is the one place
+        a reload, a bookmark, the back button and a link sent to a colleague can all read it. The page
+        route takes it as an ordinary parameter and every sub-request inside the region carries it too —
+        in its own path, or through <code>hx-vals</code> and <code>hx-include</code>, both of which htmx
+        inherits from the region root, so it is written once.
+      </p>
+    {% endcall %}
+
+    {% set state_route = "@router.get(\"/panels\", name=\"panels_page\")
+@render(\"panels/page.html\", partial=\"panels/_matches.html\")
+def panels_page(service: ServiceDep, task_id: int | None = None) -> MatchesResponse:
+    \"\"\"The page, and the table it swaps. The pick is a parameter, not a session.\"\"\"
+    return _matches(service, _selected(service, task_id).id if task_id else None)
+
+
+@router.get(\"/panels/select/{task_id}\", name=\"panels_select\")
+@render(\"panels/_matches.html\", hx_trigger_after_swap=SELECTED_EVENT)
+def select_task(request: Request, response: Response, service: ServiceDep, task_id: int) -> MatchesResponse:
+    \"\"\"Mark the row, put the pick in the address bar, then announce it.\"\"\"
+    selected = _selected(service, task_id)
+    htmx.push_url(response, _page_url(request, selected.id))
+    return _matches(service, selected.id)" %}
+    {% call stage("The two halves that make a pick survive a reload",
+                  "The page route reads the id the pick pushed. Neither half is any use without the other.", padded=false) %}
+      {{ code(state_route, label="router.py") }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        <code>htmx.push_url</code> writes <code>HX-Push-Url</code>, which puts a swap in the address bar
+        and in history. It is for the swap that changes what the page is looking at, not for every swap:
+        push on an edit and the back button walks the visitor through their own edits. Where the request
+        URL is already the one to show, <code>hx-push-url="true"</code> on the trigger says the same
+        thing with no header. What must hold either way is that the pushed URL is one the app answers
+        with a whole page. A URL the app cannot render is worse than no URL at all.
+      </p>
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        The working files are <code>examples/fjkit-demo/app/features/panels/</code> and
+        <code>app/templates/panels/</code>. Pick a row and watch the address bar; reload, and the same
+        task is open with the same panel showing. Open a second tab on a different task and neither one
+        moves the other.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 09 #}
+  {% set t09 %}A swap is a round trip, and nothing stops a second click during it. Two attributes cover the whole of the wait.{% endset %}
+  {% call lesson("pending", "09", "While the request is in flight", t09, tag="htmx") %}
     {% call prose() %}
       <p>
         htmx adds the class <code>htmx-request</code> to an element for the length of a request and
@@ -782,9 +842,9 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 09 #}
-  {% set t09 %}Screens differ; the shapes do not. Each one is a trigger, a target and a partial.{% endset %}
-  {% call lesson("patterns", "09", "Nine htmx patterns, and their handlers", t09, tag="htmx") %}
+  {# ============================================================== 10 #}
+  {% set t10 %}Screens differ; the shapes do not. Each one is a trigger, a target and a partial.{% endset %}
+  {% call lesson("patterns", "10", "Nine htmx patterns, and their handlers", t10, tag="htmx") %}
     {% call prose() %}
       <p>
         The whole attribute vocabulary fits on one screen, and
@@ -837,9 +897,9 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 10 #}
-  {% set t10 %}One message, three layers — and only the top one needs a secret.{% endset %}
-  {% call lesson("messages", "10", "Messages: three layers", t10, tag="fjkit.messages") %}
+  {# ============================================================== 11 #}
+  {% set t11 %}One message, three layers — and only the top one needs a secret.{% endset %}
+  {% call lesson("messages", "11", "Messages: three layers", t11, tag="fjkit.messages") %}
     {% call prose() %}
       <p>
         Showing a line of text to the person who made this request is not one feature but three,
@@ -937,9 +997,9 @@ messages.add(request, \"Could not save\", \"The title is required.\", category=\
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 11 #}
-  {% set t11 %}A rejected form used to be a screen of JSON. Now it says what was wrong, under the field, and no route asked for that.{% endset %}
-  {% call lesson("errors", "11", "When a form is rejected", t11, tag="fjkit.errors") %}
+  {# ============================================================== 12 #}
+  {% set t12 %}A rejected form used to be a screen of JSON. Now it says what was wrong, under the field, and no route asked for that.{% endset %}
+  {% call lesson("errors", "12", "When a form is rejected", t12, tag="fjkit.errors") %}
     {% call prose() %}
       <p>
         FastAPI answers a rejected form with <code>{"detail":[{"type":"missing",…}]}</code> and a
@@ -1043,9 +1103,9 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 12 #}
-  {% set t12 %}Rebranding is a CSS variable. "Green means done" is not on the dial.{% endset %}
-  {% call lesson("knob", "12", "Rebranding: brand and status tokens", t12, tag="theming") %}
+  {# ============================================================== 13 #}
+  {% set t13 %}Rebranding is a CSS variable. "Green means done" is not on the dial.{% endset %}
+  {% call lesson("knob", "13", "Rebranding: brand and status tokens", t13, tag="theming") %}
     {% call prose() %}
       <p>
         Drag the hue. You are editing <code>--primary</code> on <code>:root</code>, which is the
@@ -1121,9 +1181,9 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 13 #}
-  {% set t13 %}A convention nobody can violate by accident is worth more than one written down.{% endset %}
-  {% call lesson("gate", "13", "fjkit check: the closed vocabulary", t13) %}
+  {# ============================================================== 14 #}
+  {% set t14 %}A convention nobody can violate by accident is worth more than one written down.{% endset %}
+  {% call lesson("gate", "14", "fjkit check: the closed vocabulary", t14) %}
     {% call prose() %}
       <p>
         <code>fjkit check</code> reads your templates and rejects two things: colour literals, and

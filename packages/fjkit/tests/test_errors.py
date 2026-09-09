@@ -380,6 +380,26 @@ def test_a_swap_style_can_be_overridden_on_its_own():
     assert response.headers["hx-reswap"] == "none"
 
 
+def test_a_swap_can_put_itself_in_the_address_bar():
+    """The state that decides what a region shows belongs in the URL, and a
+    swap that changes it has to say so or the address bar starts lying."""
+    response = Response()
+
+    htmx.push_url(response, "/panels?task_id=3")
+
+    assert response.headers["hx-push-url"] == "/panels?task_id=3"
+
+
+def test_a_pushed_url_can_be_written_to_a_plain_mapping():
+    """Same shape as `retarget`: the caller that matters is a handler that has
+    not built its response yet."""
+    headers: dict[str, str] = {}
+
+    htmx.push_url(headers, "/panels?task_id=3")
+
+    assert headers == {"HX-Push-Url": "/panels?task_id=3"}
+
+
 # --------------------------------------------------------------------------- #
 # errors — a rejected swap is FastAPI's own 422, and the page draws it
 # --------------------------------------------------------------------------- #

@@ -130,6 +130,34 @@ def test_the_table_writes_the_open_id_down_only_when_there_is_one(client):
     assert HIDDEN_INPUT.search(picked.text).group(1) == "1"
 
 
+def test_a_pick_puts_itself_in_the_address_bar(htmx):
+    """The picked id decides what four regions show, so it belongs in the URL.
+
+    The pushed URL is the page's, not this route's: a reload of it has to answer
+    with a whole page, and nobody should land on a fragment.
+    """
+    got = htmx.get("/panels/select/1")
+    assert got.headers["HX-Push-Url"] == "/panels?task_id=1"
+
+
+def test_the_pushed_url_restores_what_the_pick_showed(client, htmx):
+    """The half that makes the push honest. A URL in the address bar that the
+    app cannot render is worse than no URL at all, so the page route reads the
+    same parameter the pick pushed, and a reload comes back to the same task."""
+    picked = htmx.get("/panels/select/1")
+    pushed = picked.headers["HX-Push-Url"]
+
+    reloaded = client.get(pushed)
+    assert reloaded.status_code == 200
+    assert HIDDEN_INPUT.search(reloaded.text).group(1) == "1"
+
+
+def test_nothing_but_the_pick_pushes(htmx):
+    """`advance` changes the task, not which task the page is looking at. A URL
+    pushed for every swap makes the back button walk through edits."""
+    assert "HX-Push-Url" not in htmx.request("POST", "/panels/advance/1").headers
+
+
 @pytest.mark.parametrize("panel", PANELS)
 def test_the_request_the_page_actually_makes_is_answered(client, htmx, panel):
     """Issue what the browser issues, not what the route accepts.

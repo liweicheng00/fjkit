@@ -17,6 +17,7 @@ __all__ = [
     "is_htmx",
     "is_swap",
     "prompt",
+    "push_url",
     "reswap",
     "retarget",
     "target",
@@ -69,6 +70,28 @@ def retarget(response: Response | Headers, selector: str, *, swap: str | None = 
 def reswap(response: Response | Headers, swap: str) -> None:
     """Override `hx-swap` for this response only. `retarget` usually implies it."""
     _headers(response)["HX-Reswap"] = swap
+
+
+def push_url(response: Response | Headers, url: str) -> None:
+    """Set `HX-Push-Url`: put this swap in the address bar and in history.
+
+    For the swap that changes what the page is looking at — the row that was
+    picked, the record that was opened — rather than for every swap. The state
+    that decides a region's content belongs in the URL, where a reload, a
+    bookmark, the back button and a second tab can all read it, and the route
+    that renders the page already takes it as a parameter. A selection kept
+    anywhere else is a selection the address bar cannot describe.
+
+    The URL given must be one the app answers with a whole page, because that
+    is what a reload of it asks for. Root-relative, for the reason `url_for`
+    returns root-relative: an absolute one pins the reply to the host and the
+    scheme the app happened to see.
+
+    `hx-push-url="true"` on the trigger says the same thing when the request
+    URL is already the one to show. This header is for when it is not: a pick
+    posted to `/panels/select/3` shows as `/panels?task_id=3`.
+    """
+    _headers(response)["HX-Push-Url"] = url
 
 
 def _headers(response: Response | Headers) -> Headers:
