@@ -21,13 +21,18 @@
   browser gives the summary a button role plus Enter/Space. Basecoat animates
   `::details-content` and needs nothing from here.
 
-  The chevron sits inside the summary and rotates from the parent's `[open]`,
-  so marker and state have one source and cannot disagree. `list-none` and
-  Basecoat's `::-webkit-details-marker` rule remove the browser's own triangle;
-  without them a summary shows two markers.
+  The chevron sits inside the summary and rotates from its own `<details>`,
+  so marker and state have one source and cannot disagree. That rotation is
+  `.collapsible-caret` in `static/src/fjkit.css`, not a `group-open:` utility
+  here: the utility compiles to a descendant selector and reads the state of
+  any ancestor group, so a collapsible nested in another showed its chevron
+  turned over the moment the outer one opened. Reported from an app that
+  nested two of them. `list-none` and Basecoat's `::-webkit-details-marker`
+  rule remove the browser's own triangle; without them a summary shows two
+  markers.
 #}
 {% macro collapsible(summary, open=false, icon_name=none) -%}
-  <details class="group border-b"{% if open %} open{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+  <details class="border-b"{% if open %} open{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     <summary class="flex w-full list-none items-center justify-between gap-3 py-3 text-sm font-medium
                     hover:underline focus-visible:outline-ring focus-visible:-outline-offset-2 focus-visible:outline-2">
       <span class="flex items-center gap-2">
@@ -38,7 +43,7 @@
         aria-hidden, because the summary already announces its own expanded
         state. A chevron that is also read aloud says "collapsed" twice.
       #}
-      <span aria-hidden="true" class="text-muted-foreground transition-transform group-open:rotate-180">
+      <span aria-hidden="true" class="collapsible-caret">
         {{- icon("chevron-down", 16) -}}
       </span>
     </summary>

@@ -1679,6 +1679,28 @@ class TestDisclosure:
         html = render(f'{DISCLOSURE}{{% call collapsible("More") %}}body{{% endcall %}}')
         assert 'aria-hidden="true"' in html
 
+    def test_the_marker_rotates_from_its_own_details(self, render):
+        """`group-open:` compiles to `:where(.group):is([open]) *`, a descendant
+        selector, so it reads the state of any ancestor group rather than of the
+        <details> the chevron belongs to. Nested collapsibles then showed the
+        inner chevron turned over as soon as the outer one opened. The rotation
+        lives in `.collapsible-caret`, whose child combinators cannot reach past
+        one <details>."""
+        html = render(
+            f'{DISCLOSURE}{{% call collapsible("Outer", open=true) %}}'
+            f'{{% call collapsible("Inner") %}}body{{% endcall %}}'
+            "{% endcall %}"
+        )
+        assert "collapsible-caret" in html
+        assert "group-open:" not in html
+        assert 'class="group' not in html and " group " not in html
+
+    def test_the_caret_class_carries_the_marker_alone(self, render):
+        """One class on the span, so the rotation and the transition cannot be
+        separated by an edit to either file."""
+        html = render(f'{DISCLOSURE}{{% call collapsible("More") %}}body{{% endcall %}}')
+        assert 'class="collapsible-caret"' in html
+
     def test_an_accordion_carries_the_class_basecoat_initialises(self, render):
         html = render(f'{DISCLOSURE}{{% call accordion() %}}x{{% endcall %}}')
         assert 'class="accordion"' in html

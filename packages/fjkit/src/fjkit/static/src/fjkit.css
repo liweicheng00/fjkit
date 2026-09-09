@@ -355,6 +355,26 @@
   .description-list[data-layout="rows"] > div {
     @apply sm:grid-cols-[minmax(0,12rem)_1fr] sm:items-baseline sm:gap-4;
   }
+
+  /* The chevron in a `collapsible` summary, and the rule that turns it over.
+   *
+   * A rule here rather than a `group-open:` utility on the span, because that
+   * utility compiles to a descendant selector — `:where(.group):is([open]) *` —
+   * and so reads the state of any ancestor marked as the group, not of the
+   * <details> the chevron belongs to. Nest one collapsible inside another and
+   * the inner chevron points up from the moment the outer one is opened,
+   * whatever the inner one is doing. The child combinators below are the whole
+   * fix: `> summary >` cannot reach past one <details>.
+   *
+   * The transition is here too, so the class carries the marker's whole
+   * behaviour and the macro names it once. */
+  .collapsible-caret {
+    @apply text-muted-foreground transition-transform;
+  }
+
+  details[open] > summary > .collapsible-caret {
+    rotate: 180deg;
+  }
 }
 
 /* ---------------------------------------------------------------------------
