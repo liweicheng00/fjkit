@@ -149,6 +149,73 @@
 {%- endmacro %}
 
 {#
+  fill(justify, align, gap) — take the height the shell already gave `main`,
+  and place the children in it.
+
+      {% call fill() %}
+        {% call centered("sm") %}
+          {{ page_header("Sign in") }}
+          {% call card() %}…{% endcall %}
+        {% endcall %}
+      {% endcall %}
+
+  The other direction of `centered`, and deliberately a second macro rather
+  than a parameter on that one: capping a width and filling a height are wanted
+  separately far more often than together, and the sign-in page that wants both
+  says so by nesting them, in the order they read.
+
+  It grows, rather than asking for a height. `flex-1` inside the shell's `main`,
+  which is a flex column for this reason and no other.
+
+  The obvious spelling does not work, and the way it fails is silent. `main`
+  takes its own height from `flex-1`, so that height is a used value, not a
+  specified one, and a child asking for `min-height: 100%` resolves it against
+  an indefinite size and gets nothing. The box then fits its content and sits
+  at the top of the page — identical to not calling this macro at all, with no
+  error and no dead class for `fjkit check` to catch. It was written that way
+  first and only a screenshot found it.
+
+  A viewport unit is the other wrong answer: `min-h-screen` under a header adds
+  the header's height to a box that starts below it, and the page scrolls by
+  exactly that much on the one page nobody expects to scroll. Growing along
+  `main` needs no such arithmetic, and stays right whether the app filled the
+  header block or left it empty for a standalone page.
+
+  Content taller than the space is not clipped. A flex item's automatic minimum
+  size keeps the box at its content height, and the shell's wrapper is a
+  minimum height rather than a fixed one, so the page grows and scrolls.
+
+  What this costs: `fill` is for a direct child of `main`. In a block parent it
+  is inert, because `flex-1` describes an item and a block parent has no items
+  to lay out.
+
+  Vertical centring is what `justify` does here, because the children are a
+  column — the same lookups `row` uses, reading against the other axis. `align`
+  is the cross axis, so it is horizontal, and it is `none` by default: a
+  `centered` inside this one does that job better, with a width to show for it.
+
+  An unrecognised `justify` falls back to `justify-center` rather than to
+  nothing, which is the one place this file's fallback rule needs saying out
+  loud. Everywhere else an unknown key drops an optional class and the layout
+  is merely plainer. Here the class is the entire macro, and dropping it would
+  leave a box that fills the height and puts its content back at the top — the
+  behaviour of not calling it at all.
+
+  No gallery entry on the docs site. The preview cells there are sized by their
+  contents, and a macro whose whole subject is the height it was handed has
+  nothing to show in a box that has no height — it would demonstrate the
+  opposite of what it does. The cheatsheet row and `errors/page.html` are where
+  it is documented; CHARTER §5 allows the exemption for exactly this reason.
+#}
+{% macro fill(justify="center", align=none, gap=6) -%}
+  <div class="flex flex-1 flex-col {{ _GAP.get(gap, "gap-6") }}
+              {{- " " ~ _JUSTIFY.get(justify, "justify-center") if justify }}
+              {{- " " ~ _ALIGN.get(align, "") if align }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {{- caller() -}}
+  </div>
+{%- endmacro %}
+
+{#
   page_header(title, description) — the title block every page opens with.
 
   Works plain, or as a call block whose body becomes the right-hand actions:

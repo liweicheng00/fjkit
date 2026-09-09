@@ -169,6 +169,17 @@ GROUPS = [
                         "prose——登入卡片、設定表單、純文字頁面。只做水平置中。",
                     ),
                     _m(
+                        'fill(justify="center", align=none, gap=6)',
+                        block="children",
+                        en="The other axis. It takes the height the shell already gave main and "
+                        "places the children in it, so justify reads vertically here — center for "
+                        "a sign-in card, end for a footer that sits on the fold. Nest a centered "
+                        "inside it when the page wants both.",
+                        zh="另一個軸。它接下 shell 已經配給 main 的高度，再把子元素放進去，"
+                        "所以這裡的 justify 讀的是垂直方向——登入卡片用 center，"
+                        "貼在畫面底部的區塊用 end。兩個方向都要時，把 centered 包在它裡面。",
+                    ),
+                    _m(
                         "page_header(title, description=none)",
                         block="actions",
                         optional=True,

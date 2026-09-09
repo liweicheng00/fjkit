@@ -297,6 +297,14 @@
         標題、說明與一排按鈕在任何寬度下都在同一行，呼叫端不必量任何尺寸。
         這一頁最上面那個 header 就是同一支 macro，只是沒有動作要放。
       </p>
+      <p>
+        <code>centered</code> 與 <code>fill</code> 各管一個軸。<code>centered</code> 限制寬度；
+        <code>fill</code> 接下 shell 已經配給 <code>main</code> 的高度，再把子元素放進去，
+        登入卡片因此不必量任何尺寸就落在畫面正中央。兩個方向都要的頁面把它們套疊，
+        <code>fill</code> 在外層。下面沒有 <code>fill</code> 的預覽格，
+        因為一支以「拿到多少高度」為主題的 macro，放進本身沒有高度的方框裡沒有東西可看。
+        導覽失敗後落地的那一頁就是它的實例。
+      </p>
     {% endcall %}
 
     {% call card(padded=false) %}

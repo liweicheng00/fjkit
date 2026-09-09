@@ -312,6 +312,15 @@
         and a row of buttons stay on one line at every width, with no caller measuring anything. The
         header at the top of this page is the same macro with no actions to place.
       </p>
+      <p>
+        <code>centered</code> and <code>fill</code> are one axis each.
+        <code>centered</code> caps a width; <code>fill</code> takes the height the shell already
+        gave <code>main</code> and places the children in it, which is how a sign-in card sits in
+        the middle of the screen without a page measuring anything. A page that wants both nests
+        them, <code>fill</code> outside. There is no preview cell for <code>fill</code> below,
+        because a macro whose subject is the height it was handed has nothing to show inside a box
+        that has none. The page you land on after a failed navigation is the live one.
+      </p>
     {% endcall %}
 
     {% call card(padded=false) %}

@@ -100,7 +100,20 @@
       </header>
     {% endblock %}
 
-    <main class="flex-1 pb-16">
+    {#
+      A flex column, not a block, so `ui/layout.html`'s `fill` has a main axis
+      to grow along. A percentage height here would not do it: `main` takes its
+      own height from `flex-1`, and a flex item's main-axis size is indefinite,
+      so a child asking for `min-height: 100%` gets 0 and lands back at the top.
+
+      For every page that does not use `fill` this is the same layout it was.
+      A single child stretches to the full width exactly as a block child did,
+      and keeps its own height because nothing tells it to grow. The one real
+      difference is that adjacent children no longer collapse their margins,
+      which is why the kit spaces bands with `stack` and a gap rather than with
+      margins.
+    #}
+    <main class="flex flex-1 flex-col pb-16">
       {% block content %}{% endblock %}
     </main>
 

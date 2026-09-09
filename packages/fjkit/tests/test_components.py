@@ -18,7 +18,7 @@ DATA = (
     ' caption, link, kbd %}'
 )
 LAYOUT = (
-    '{% from "ui/layout.html" import stack, row, grid, split, centered, page_header,'
+    '{% from "ui/layout.html" import stack, row, grid, split, centered, fill, page_header,'
     " section, divider %}"
 )
 TABLE = (
@@ -123,6 +123,55 @@ class TestLayout:
     def test_centered_is_a_stack_so_the_common_case_is_one_call(self, render):
         html = render(f"{LAYOUT}{{% call centered(gap=4) %}}x{{% endcall %}}")
         assert "flex-col" in html and "gap-4" in html
+
+    def test_fill_centres_the_column_in_the_height_it_was_given(self, render):
+        html = render(f"{LAYOUT}{{% call fill() %}}x{{% endcall %}}")
+        assert "flex-1" in html
+        assert "flex-col" in html
+        assert "justify-center" in html
+
+    def test_fill_grows_rather_than_asking_for_a_height(self, render):
+        """`main` takes its height from `flex-1`, so that height is indefinite
+        and a child's `min-height: 100%` resolves to nothing. The box then fits
+        its content and sits at the top, which is what not calling the macro
+        does. `min-h-screen` is the other wrong answer: under a header it adds
+        the header's height to a box that starts below it."""
+        html = render(f"{LAYOUT}{{% call fill() %}}x{{% endcall %}}")
+        assert "min-h-full" not in html
+        assert "min-h-screen" not in html
+
+    @pytest.mark.parametrize("justify", ["start", "center", "end", "between", "around"])
+    def test_fill_renders_every_justify_it_offers(self, render, justify):
+        html = render(f'{LAYOUT}{{% call fill(justify="{justify}") %}}x{{% endcall %}}')
+        assert f"justify-{justify}" in html
+
+    def test_an_unknown_justify_falls_back_to_the_default_not_to_nothing(self, render):
+        """Dropping the class leaves a box that fills the height and puts its
+        content back at the top, which is what not calling the macro does."""
+        html = render(f'{LAYOUT}{{% call fill(justify="middle") %}}x{{% endcall %}}')
+        assert "justify-middle" not in html
+        assert "justify-center" in html
+
+    @pytest.mark.parametrize("align", ["start", "center", "end", "stretch", "baseline"])
+    def test_fill_renders_every_align_it_offers(self, render, align):
+        html = render(f'{LAYOUT}{{% call fill(align="{align}") %}}x{{% endcall %}}')
+        assert f"items-{align}" in html
+
+    def test_fill_leaves_the_cross_axis_alone_by_default(self, render):
+        """A `centered` inside it caps a width as well; an items-* here would
+        shrink the column to its content and the cap would have nothing to do."""
+        html = render(f"{LAYOUT}{{% call fill() %}}x{{% endcall %}}")
+        assert "items-" not in html
+
+    def test_fill_gap_uses_the_closed_lookup(self, render):
+        html = render(f"{LAYOUT}{{% call fill(gap=99) %}}x{{% endcall %}}")
+        assert "gap-99" not in html
+        assert "gap-6" in html
+
+    def test_fill_passes_attributes_through(self, render):
+        html = render(f'{LAYOUT}{{% call fill(id="shell", hx_get="/x") %}}x{{% endcall %}}')
+        assert 'id="shell"' in html
+        assert 'hx-get="/x"' in html
 
 
 class TestTable:
