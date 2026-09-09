@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788592493">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788885046">
   <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -79,27 +79,31 @@ fjkit
     </a>
   </li>
         <li>
-    <a href="learn.html#pending">      <span>08 · 請求進行中的那段時間</span>
+    <a href="learn.html#state">      <span>08 · 頁面狀態：被選取的 id 住在哪裡</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#patterns">      <span>09 · 九種 htmx 模式，以及對應的 handler</span>
+    <a href="learn.html#pending">      <span>09 · 請求進行中的那段時間</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#messages">      <span>10 · 訊息：三層</span>
+    <a href="learn.html#patterns">      <span>10 · 九種 htmx 模式，以及對應的 handler</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#errors">      <span>11 · 表單被退回的時候</span>
+    <a href="learn.html#messages">      <span>11 · 訊息：三層</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#knob">      <span>12 · 換品牌：品牌 token 與狀態 token</span>
+    <a href="learn.html#errors">      <span>12 · 表單被退回的時候</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#gate">      <span>13 · fjkit check：封閉詞彙表</span>
+    <a href="learn.html#knob">      <span>13 · 換品牌：品牌 token 與狀態 token</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#gate">      <span>14 · fjkit check：封閉詞彙表</span>
     </a>
   </li>
 </ul>
@@ -126,12 +130,12 @@ fjkit
 </div>        </div>
       </header>
 
-    <main class="flex-1 pb-16">
+    <main class="flex flex-1 flex-col pb-16">
 <div class="flex flex-col gap-8">
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">在寫路由的地方，把介面一起寫完</h1>
-<p class="text-muted-foreground text-sm">    十三課：一支 fjkit app 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、換品牌怎麼換，
+<p class="text-muted-foreground text-sm">    十四課：一支 fjkit app 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、換品牌怎麼換，
     以及那個會讓 build 失敗的指令。
     底下每個示範都會實際執行。
 </p>    </div>
@@ -911,8 +915,64 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 </section></div></div>
 <hr class="border-border">
 
-<div id="pending">
+<div id="state">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">頁面狀態：被選取的 id 住在哪裡</h2><p class="text-muted-foreground text-sm">上一課讓一個 id 在區域之間移動。這一課問的是：重新整理之後，那個 id 住在哪裡。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        一次選取決定四塊區域的內容。重新整理之後，這四塊都必須回到同一筆任務，否則那次選取只是
+        DOM 上的假象。所以上一課留下的問題不是 id 怎麼在區域之間傳遞，而是它在兩次請求之間住在哪裡。
+      </p>
+      <p>
+        伺服器為了回答這個請求而讀的狀態——哪一筆紀錄、第幾頁、依哪一欄排序——放在 URL 裡，
+        當作路徑片段或 query 參數，因為那是重新整理、加書籤、上一頁、
+        以及貼給同事的連結唯一都讀得到的地方。頁面路由把它宣告成一個普通參數，
+        區域裡每個子請求也一樣帶著它——放在自己的路徑裡，或透過 <code>hx-vals</code> 與
+        <code>hx-include</code>，這兩個屬性 htmx 會從區域根繼承下去，所以只需要寫一次。
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>讓一次選取撐過重新整理的兩半</h3><p>頁面路由讀的就是選取推上去的那個 id。缺任何一半，另一半都沒有用。</p>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.get(&#34;/panels&#34;, name=&#34;panels_page&#34;)
+@render(&#34;panels/page.html&#34;, partial=&#34;panels/_matches.html&#34;)
+def panels_page(service: ServiceDep, task_id: int | None = None) -&gt; MatchesResponse:
+    &#34;&#34;&#34;整頁，以及它會 swap 的那張表。選取是一個參數，不是 session。&#34;&#34;&#34;
+    return _matches(service, _selected(service, task_id).id if task_id else None)
+
+
+@router.get(&#34;/panels/select/{task_id}&#34;, name=&#34;panels_select&#34;)
+@render(&#34;panels/_matches.html&#34;, hx_trigger_after_swap=SELECTED_EVENT)
+def select_task(request: Request, response: Response, service: ServiceDep, task_id: int) -&gt; MatchesResponse:
+    &#34;&#34;&#34;標記該列，把選取寫進網址列，然後廣播。&#34;&#34;&#34;
+    selected = _selected(service, task_id)
+    htmx.push_url(response, _page_url(request, selected.id))
+    return _matches(service, selected.id)</pre>
+
+
+</div>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        <code>htmx.push_url</code> 寫出 <code>HX-Push-Url</code>，把一次 swap 放進網址列與瀏覽紀錄。
+        它是給「改變這一頁正在看什麼」的那一次 swap 用的，不是每次 swap 都推：
+        在編輯動作上推，上一頁就會帶著使用者走過自己的每一次編輯。
+        如果請求的 URL 本來就是要顯示的那一個，在觸發元素上寫 <code>hx-push-url="true"</code>
+        意思相同，而且不需要 header。兩種寫法都必須成立的一點是：推上去的 URL，
+        app 必須能用一整頁回答它。app 畫不出來的 URL，比沒有 URL 更糟。
+      </p>
+</div>
+<div class="flex flex-col gap-3">      <p>
+        可以動手改的檔案在 <code>examples/fjkit-demo/app/features/panels/</code> 與
+        <code>app/templates/panels/</code>。選一列，看網址列；重新整理，同一筆任務、
+        同一個面板還在。再開第二個分頁選另一筆，兩邊互不影響。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="pending">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">請求進行中的那段時間</h2><p class="text-muted-foreground text-sm">一次 swap 是一趟來回，預設沒有東西擋得住第二次點擊。兩個屬性涵蓋整段等待。</p>      </div>
@@ -987,7 +1047,7 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 <hr class="border-border">
 
 <div id="patterns">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">九種 htmx 模式，以及對應的 handler</h2><p class="text-muted-foreground text-sm">畫面不同，形狀相同：每一種都是一個 trigger、一個 target 與一份 partial。</p>      </div>
@@ -1044,7 +1104,7 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 <hr class="border-border">
 
 <div id="messages">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
 <span class="badge" data-variant="secondary">fjkit.messages</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">訊息：三層</h2><p class="text-muted-foreground text-sm">一則訊息，三層——而且只有最上面那層需要 secret。</p>      </div>
@@ -1162,7 +1222,7 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
 <hr class="border-border">
 
 <div id="errors">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
 <span class="badge" data-variant="secondary">fjkit.errors</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">表單被退回的時候</h2><p class="text-muted-foreground text-sm">表單被退回時，錯誤標在欄位下面，不再是一整頁 JSON，而且不需要任何一條路由要求。</p>      </div>
@@ -1280,7 +1340,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 <hr class="border-border">
 
 <div id="knob">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">13</span>
 <span class="badge" data-variant="secondary">theming</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">換品牌：品牌 token 與狀態 token</h2><p class="text-muted-foreground text-sm">換品牌是一個 CSS 變數。狀態顏色不跟著變。</p>      </div>
@@ -1355,7 +1415,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 <hr class="border-border">
 
 <div id="gate">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">13</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">14</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">fjkit check：封閉詞彙表</h2><p class="text-muted-foreground text-sm">被強制執行的慣例，勝過只寫在文件裡的慣例。</p>      </div>

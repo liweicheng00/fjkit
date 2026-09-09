@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788592493">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788885046">
   <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -122,7 +122,7 @@ fjkit
 </div>        </div>
       </header>
 
-    <main class="flex-1 pb-16">
+    <main class="flex flex-1 flex-col pb-16">
 <div class="flex flex-col gap-8">
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
@@ -219,6 +219,8 @@ fjkit
       <h4><code>split(aside=&#34;md&#34;, gap=6)</code></h4><p>用 {% call(slot) split() %} 呼叫，區塊會被渲染兩次——slot=&#34;main&#34; 一次，slot=&#34;aside&#34; 一次。</p>    </section><aside><span class="badge" data-variant="outline">區塊：兩個插槽——main 與 aside</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>centered(width=&#34;sm&#34;, gap=6)</code></h4><p>這個檔案其他 macro 給不了的寬度上限。width 只有 xs、sm、md、lg、xl、prose——登入卡片、設定表單、純文字頁面。只做水平置中。</p>    </section><aside><span class="badge" data-variant="outline">區塊：子元素</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fill(justify=&#34;center&#34;, align=none, gap=6)</code></h4><p>另一個軸。它接下 shell 已經配給 main 的高度，再把子元素放進去，所以這裡的 justify 讀的是垂直方向——登入卡片用 center，貼在畫面底部的區塊用 end。兩個方向都要時，把 centered 包在它裡面。</p>    </section><aside><span class="badge" data-variant="outline">區塊：子元素</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>page_header(title, description=none)</code></h4><p>不給區塊時就只有標題與說明。區塊是動作插槽，所以按鈕在任何寬度下都與標題齊平。</p>    </section><aside><span class="badge" data-variant="outline">區塊：動作按鈕（可省略）</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>

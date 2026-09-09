@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788592493">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788885046">
   <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -79,27 +79,31 @@ fjkit
     </a>
   </li>
         <li>
-    <a href="learn.html#pending">      <span>08 · While the request is in flight</span>
+    <a href="learn.html#state">      <span>08 · Page state: where the selected id lives</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#patterns">      <span>09 · Nine htmx patterns, and their handlers</span>
+    <a href="learn.html#pending">      <span>09 · While the request is in flight</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#messages">      <span>10 · Messages: three layers</span>
+    <a href="learn.html#patterns">      <span>10 · Nine htmx patterns, and their handlers</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#errors">      <span>11 · When a form is rejected</span>
+    <a href="learn.html#messages">      <span>11 · Messages: three layers</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#knob">      <span>12 · Rebranding: brand and status tokens</span>
+    <a href="learn.html#errors">      <span>12 · When a form is rejected</span>
     </a>
   </li>
         <li>
-    <a href="learn.html#gate">      <span>13 · fjkit check: the closed vocabulary</span>
+    <a href="learn.html#knob">      <span>13 · Rebranding: brand and status tokens</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html#gate">      <span>14 · fjkit check: the closed vocabulary</span>
     </a>
   </li>
 </ul>
@@ -126,12 +130,12 @@ fjkit
 </div>        </div>
       </header>
 
-    <main class="flex-1 pb-16">
+    <main class="flex flex-1 flex-col pb-16">
 <div class="flex flex-col gap-8">
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Build the interface where you build the routes</h1>
-<p class="text-muted-foreground text-sm">    Thirteen lessons: how a fjkit app is wired, what htmx sends, what a rejected form does, how a
+<p class="text-muted-foreground text-sm">    Fourteen lessons: how a fjkit app is wired, what htmx sends, what a rejected form does, how a
     rebrand works, and the command that fails a build. Every demo below is live.
 </p>    </div>
   </div>
@@ -933,8 +937,67 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 </section></div></div>
 <hr class="border-border">
 
-<div id="pending">
+<div id="state">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+<span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Page state: where the selected id lives</h2><p class="text-muted-foreground text-sm">The last lesson moved an id between regions. This one asks where that id lives when the page is reloaded.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        A pick drives four regions. Reload the page and every one of them has to come back to the same
+        task, or the pick was a trick of the DOM. So the question the last lesson leaves open is not how
+        the id travels between regions, but where it lives between requests.
+      </p>
+      <p>
+        The state the server reads in order to answer — which record, which page, which sort column —
+        goes in the URL, as a path segment or a query parameter, because that is the one place
+        a reload, a bookmark, the back button and a link sent to a colleague can all read it. The page
+        route takes it as an ordinary parameter and every sub-request inside the region carries it too —
+        in its own path, or through <code>hx-vals</code> and <code>hx-include</code>, both of which htmx
+        inherits from the region root, so it is written once.
+      </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The two halves that make a pick survive a reload</h3><p>The page route reads the id the pick pushed. Neither half is any use without the other.</p>      </div>
+    </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.get(&#34;/panels&#34;, name=&#34;panels_page&#34;)
+@render(&#34;panels/page.html&#34;, partial=&#34;panels/_matches.html&#34;)
+def panels_page(service: ServiceDep, task_id: int | None = None) -&gt; MatchesResponse:
+    &#34;&#34;&#34;The page, and the table it swaps. The pick is a parameter, not a session.&#34;&#34;&#34;
+    return _matches(service, _selected(service, task_id).id if task_id else None)
+
+
+@router.get(&#34;/panels/select/{task_id}&#34;, name=&#34;panels_select&#34;)
+@render(&#34;panels/_matches.html&#34;, hx_trigger_after_swap=SELECTED_EVENT)
+def select_task(request: Request, response: Response, service: ServiceDep, task_id: int) -&gt; MatchesResponse:
+    &#34;&#34;&#34;Mark the row, put the pick in the address bar, then announce it.&#34;&#34;&#34;
+    selected = _selected(service, task_id)
+    htmx.push_url(response, _page_url(request, selected.id))
+    return _matches(service, selected.id)</pre>
+
+
+</div>
+  </div>
+<div class="flex flex-col gap-3">      <p>
+        <code>htmx.push_url</code> writes <code>HX-Push-Url</code>, which puts a swap in the address bar
+        and in history. It is for the swap that changes what the page is looking at, not for every swap:
+        push on an edit and the back button walks the visitor through their own edits. Where the request
+        URL is already the one to show, <code>hx-push-url="true"</code> on the trigger says the same
+        thing with no header. What must hold either way is that the pushed URL is one the app answers
+        with a whole page. A URL the app cannot render is worse than no URL at all.
+      </p>
+</div>
+<div class="flex flex-col gap-3">      <p>
+        The working files are <code>examples/fjkit-demo/app/features/panels/</code> and
+        <code>app/templates/panels/</code>. Pick a row and watch the address bar; reload, and the same
+        task is open with the same panel showing. Open a second tab on a different task and neither one
+        moves the other.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="pending">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">While the request is in flight</h2><p class="text-muted-foreground text-sm">A swap is a round trip, and nothing stops a second click during it. Two attributes cover the whole of the wait.</p>      </div>
@@ -1012,7 +1075,7 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 <hr class="border-border">
 
 <div id="patterns">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
 <span class="badge" data-variant="secondary">htmx</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Nine htmx patterns, and their handlers</h2><p class="text-muted-foreground text-sm">Screens differ; the shapes do not. Each one is a trigger, a target and a partial.</p>      </div>
@@ -1070,7 +1133,7 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 <hr class="border-border">
 
 <div id="messages">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">10</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
 <span class="badge" data-variant="secondary">fjkit.messages</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Messages: three layers</h2><p class="text-muted-foreground text-sm">One message, three layers — and only the top one needs a secret.</p>      </div>
@@ -1193,7 +1256,7 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
 <hr class="border-border">
 
 <div id="errors">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">11</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
 <span class="badge" data-variant="secondary">fjkit.errors</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">When a form is rejected</h2><p class="text-muted-foreground text-sm">A rejected form used to be a screen of JSON. Now it says what was wrong, under the field, and no route asked for that.</p>      </div>
@@ -1316,7 +1379,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 <hr class="border-border">
 
 <div id="knob">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">13</span>
 <span class="badge" data-variant="secondary">theming</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Rebranding: brand and status tokens</h2><p class="text-muted-foreground text-sm">Rebranding is a CSS variable. "Green means done" is not on the dial.</p>      </div>
@@ -1392,7 +1455,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 <hr class="border-border">
 
 <div id="gate">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">13</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">14</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">fjkit check: the closed vocabulary</h2><p class="text-muted-foreground text-sm">A convention nobody can violate by accident is worth more than one written down.</p>      </div>

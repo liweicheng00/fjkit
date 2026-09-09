@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788592493">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788885046">
   <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
@@ -122,7 +122,7 @@ fjkit
 </div>        </div>
       </header>
 
-    <main class="flex-1 pb-16">
+    <main class="flex flex-1 flex-col pb-16">
 <div class="flex flex-col gap-8">
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
@@ -222,6 +222,8 @@ fjkit
       <h4><code>split(aside=&#34;md&#34;, gap=6)</code></h4><p>Called as {% call(slot) split() %}, and the block is rendered twice — once with slot=&#34;main&#34;, once with slot=&#34;aside&#34;.</p>    </section><aside><span class="badge" data-variant="outline">block: two slots — main and aside</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>centered(width=&#34;sm&#34;, gap=6)</code></h4><p>The width cap the rest of this file cannot express. width is xs, sm, md, lg, xl or prose — a sign-in card, a settings form, a page of prose. It centres horizontally only.</p>    </section><aside><span class="badge" data-variant="outline">block: the children</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fill(justify=&#34;center&#34;, align=none, gap=6)</code></h4><p>The other axis. It takes the height the shell already gave main and places the children in it, so justify reads vertically here — center for a sign-in card, end for a footer that sits on the fold. Nest a centered inside it when the page wants both.</p>    </section><aside><span class="badge" data-variant="outline">block: the children</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>page_header(title, description=none)</code></h4><p>Called without a block it is just the title and the description. The block is the actions slot, so buttons stay level with the title at every width.</p>    </section><aside><span class="badge" data-variant="outline">block: the actions (optional)</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
