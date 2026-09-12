@@ -8,6 +8,7 @@ dependencies = [
     "fastapi[standard]>=0.141.1",
     "fjkit",
     "fjkit-admin",
+    "pydantic-settings>=2.13.0",
 ]
 
 # Both resolve from the workspace, not PyPI.

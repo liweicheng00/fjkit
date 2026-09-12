@@ -5,20 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from admin_demo import main
+from admin_demo import db, main
 from fastapi.testclient import TestClient
 from fjkit.cli.check import assert_templates_clean
 
 
 @pytest.fixture
-def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-
-    engine = create_engine(f"sqlite:///{tmp_path / 'demo.sqlite'}", connect_args={"check_same_thread": False})
-    monkeypatch.setattr(main, "engine", engine)
-    monkeypatch.setattr(main, "SessionLocal", sessionmaker(engine, expire_on_commit=False))
-    with TestClient(main.create_app()) as client:
+def client(tmp_path: Path) -> TestClient:
+    # A database per test. `create_app` takes the engine, so nothing here has to
+    # reach into the module and rebind a name.
+    engine = db.build_engine(f"sqlite:///{tmp_path / 'demo.sqlite'}")
+    with TestClient(main.create_app(engine)) as client:
         yield client
 
 
