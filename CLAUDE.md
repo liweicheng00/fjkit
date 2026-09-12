@@ -19,13 +19,18 @@ packages/fjkit/        the package — this is the product
   docs/                the docs-site source — workbench generator and templates
   tests/               component contracts, vocabulary, loader override
 examples/fjkit-demo/        the demo app — a workspace member, depends on fjkit
-  app/                 main.py, features/<name>/, templates/<name>/
+  app/                 main.py, config.py, dependencies.py
+  app/routers/         one module per resource
+  app/schemas/         one module per resource — wire contracts, variant maps
+  app/services/<feature>/   business logic, one file per operation
+  app/templates/<name>/     page.html, _partials, macros.html
   tests/               routes, htmx contract, parity, conventions
 packages/fjkit-admin/  a second distribution: Django-style admin over SQLAlchemy, built on fjkit
   src/fjkit_admin/     plugin (routes), options (ModelAdmin), introspect, schema, queries
   src/fjkit_admin/templates/admin/   page, _index, _list, _form, macros — zero class attributes
   tests/               routes, vocabulary gate, introspection, SQLModel
 examples/fjkit-admin-demo/  the admin demo — SQLite, two models, one AdminPlugin
+  admin_demo/          main.py, config.py, db.py, models.py, admin.py, seed.py
 bench/                 render_bench.py — guards the performance claims
 docs/                  the published site (5 pages × 2 languages, built) + the evaluations
 CHARTER.md             mission, scope, architecture decisions, quality budgets

@@ -11,7 +11,7 @@ app 與 fjkit 只在四個地方接觸，其餘封在套件裡。
 ```mermaid
 flowchart LR
   subgraph you["你的 app"]
-    R["features/*/router.py<br/><small>路由、Depends、選模板</small>"]
+    R["routers/*.py<br/><small>路由、Depends、選模板</small>"]
     P["templates/&lt;f&gt;/page.html<br/><small>只呼叫 macro</small>"]
     T["templates/&lt;f&gt;/_*.html<br/><small>htmx 片段</small>"]
     B["static/brand.css<br/><small>只有 --primary 那幾行</small>"]

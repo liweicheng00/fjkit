@@ -93,7 +93,7 @@ the package.
 
 | Yours | Touches |
 |---|---|
-| `features/*/router.py` | imports `render` |
+| `routers/*.py` | imports `render` |
 | `templates/base.html` | extends `ui/shell.html` |
 | `templates/<feature>/*.html` | `{% from "ui/*.html" import … %}` |
 | your own `brand.css` | overrides the `--primary` tokens |

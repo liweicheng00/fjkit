@@ -323,6 +323,7 @@ dependencies = [
     { name = "fastapi", extra = ["standard"] },
     { name = "fjkit" },
     { name = "fjkit-admin" },
+    { name = "pydantic-settings" },
 ]
 
 [package.metadata]
@@ -330,6 +331,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.141.1" },
     { name = "fjkit", editable = "packages/fjkit" },
     { name = "fjkit-admin", editable = "packages/fjkit-admin" },
+    { name = "pydantic-settings", specifier = ">=2.13.0" },
 ]
 
 [[package]]
@@ -368,6 +370,7 @@ dependencies = [
     { name = "fjkit-apidocs" },
     { name = "fjkit-charts" },
     { name = "plotly" },
+    { name = "pydantic-settings" },
 ]
 
 [package.dev-dependencies]
@@ -384,6 +387,7 @@ requires-dist = [
     { name = "fjkit-apidocs", editable = "packages/fjkit-apidocs" },
     { name = "fjkit-charts", editable = "packages/fjkit-charts" },
     { name = "plotly", specifier = ">=6.9.0" },
+    { name = "pydantic-settings", specifier = ">=2.13.0" },
 ]
 
 [package.metadata.requires-dev]

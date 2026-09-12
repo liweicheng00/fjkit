@@ -10,9 +10,9 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..", "..", "..");
 const DOC = path.join(ROOT, "examples/fjkit-demo/app/templates/tasks/macros.html");
-const ROUTER = path.join(ROOT, "examples/fjkit-demo/app/features/tasks/router.py");
-const SCHEMAS = path.join(ROOT, "examples/fjkit-demo/app/features/tasks/schemas.py");
-const EVENTS = path.join(ROOT, "examples/fjkit-demo/app/features/search/schemas.py");
+const ROUTER = path.join(ROOT, "examples/fjkit-demo/app/routers/tasks.py");
+const SCHEMAS = path.join(ROOT, "examples/fjkit-demo/app/schemas/tasks.py");
+const EVENTS = path.join(ROOT, "examples/fjkit-demo/app/schemas/fragments.py");
 
 // ---- the vscode stand-in ---------------------------------------------------
 
@@ -131,7 +131,7 @@ function assert(condition, what) {
   const pos = positionOf(text, "cell(task.title", "title");
 
   const defs = await providers.definition.provideDefinition(doc, pos);
-  assert(defs && defs.length === 1 && defs[0].uri.fsPath.endsWith("features/tasks/schemas.py"), "definition of task.title is Task.title in schemas.py");
+  assert(defs && defs.length === 1 && defs[0].uri.fsPath.endsWith("schemas/tasks.py"), "definition of task.title is Task.title in schemas.py");
   assert(defs[0] instanceof Location && defs[0].range.start.line > 0, "a Location with a range");
 
   const hover = await providers.hover.provideHover(doc, pos);
@@ -146,7 +146,7 @@ function assert(condition, what) {
   handlers.change({ document: doc });
   const shifted = new Position(pos.line + 1, pos.character);
   const after = await providers.definition.provideDefinition(doc, shifted);
-  assert(after && after.length === 1 && after[0].uri.fsPath.endsWith("schemas.py"), "the server sees the edited buffer");
+  assert(after && after.length === 1 && after[0].uri.fsPath.endsWith("schemas/tasks.py"), "the server sees the edited buffer");
   const stale = await providers.definition.provideDefinition(doc, pos);
   assert(!stale || stale.length === 0, "the old position no longer resolves in the edited buffer");
 

@@ -692,7 +692,7 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
 
     {% call prose() %}
       <p>
-        The working files are <code>examples/fjkit-demo/app/features/search/</code> and
+        The working files are <code>examples/fjkit-demo/app/routers/search.py</code> and
         <code>app/templates/search/</code> — the same page as the last lesson. Every region there
         carries a render stamp, so the page itself shows which regions an action reached, with no
         network tab. A query is one request and six new stamps. A pick is three requests and three
@@ -754,7 +754,7 @@ def select_task(request: Request, response: Response, service: ServiceDep, task_
 
     {% call prose() %}
       <p>
-        The working files are <code>examples/fjkit-demo/app/features/panels/</code> and
+        The working files are <code>examples/fjkit-demo/app/routers/panels.py</code> and
         <code>app/templates/panels/</code>. Pick a row and watch the address bar; reload, and the same
         task is open with the same panel showing. Open a second tab on a different task and neither one
         moves the other.

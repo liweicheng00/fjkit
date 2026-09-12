@@ -32,6 +32,11 @@ def _cursor(path: Path, needle: str, on: str | None = None) -> tuple[int, int]:
     return line, start - (text.rfind("\n", 0, start) + 1)
 
 
+def _line(path: Path, needle: str) -> int:
+    """1-based line holding the first occurrence of `needle`."""
+    return _cursor(path, needle)[0] + 1
+
+
 def _at(rs: Resolver, path: Path, needle: str, on: str | None = None) -> Symbol:
     line, col = _cursor(path, needle, on)
     return rs.symbol(path, path.read_text(encoding="utf-8"), line, col)
@@ -55,7 +60,7 @@ def test_context_field_resolves_to_the_response_model(rs: Resolver) -> None:
     board = _tpl(rs, DEMO / "templates/tasks/_board.html")
     sym = Symbol("ident", "tasks", template=board, line=len(board.text.splitlines()))
     (loc,) = rs.definition(sym)
-    assert loc.path == DEMO / "features/tasks/schemas.py"
+    assert loc.path == DEMO / "schemas/tasks.py"
     assert "tasks: list[Task]" in loc.path.read_text().splitlines()[loc.line]
 
 
@@ -69,7 +74,7 @@ def test_macro_parameter_type_comes_from_call_sites(rs: Resolver) -> None:
     sym = _at(rs, DEMO / "templates/tasks/macros.html", "cell(task.title", "title")
     assert sym.kind == "attr" and (sym.head, sym.name) == ("task", "title")
     (loc,) = rs.definition(sym)
-    assert loc.path == DEMO / "features/tasks/schemas.py"
+    assert loc.path == DEMO / "schemas/tasks.py"
     assert loc.path.read_text().splitlines()[loc.line].strip().startswith("title:")
 
 
@@ -81,7 +86,7 @@ def test_imported_macro_goes_to_its_definition(rs: Resolver) -> None:
 
 
 def test_python_render_string_opens_the_template(rs: Resolver) -> None:
-    sym = _at(rs, DEMO / "features/tasks/router.py", '@render("tasks/page.html"', "tasks/page")
+    sym = _at(rs, DEMO / "routers/tasks.py", '@render("tasks/page.html"', "tasks/page")
     assert sym.kind == "template"
     (loc,) = rs.definition(sym)
     assert loc.path == DEMO / "templates/tasks/page.html"
@@ -95,7 +100,7 @@ def test_route_name_in_url_for_goes_to_the_handler(rs: Resolver) -> None:
 
 
 def test_model_field_references_are_jinja_code_in_the_demo(rs: Resolver) -> None:
-    sym = _at(rs, DEMO / "features/tasks/schemas.py", "    tasks: list[Task]", "tasks")
+    sym = _at(rs, DEMO / "schemas/tasks.py", "    tasks: list[Task]", "tasks")
     assert sym.kind == "py_field" and sym.name == "tasks"
     refs = rs.references(sym)
     assert refs
@@ -159,18 +164,21 @@ def test_event_in_a_template_goes_to_the_routes_raising_it(rs: Resolver) -> None
     sym = _at(rs, DEMO / "templates/panels/page.html", 'on=["task-changed"]', "task-changed")
     assert sym.kind == "event" and sym.name == "task-changed"
     where = {(loc.path.relative_to(DEMO).as_posix(), loc.line + 1) for loc in rs.definition(sym)}
-    assert where == {("features/panels/router.py", 120), ("features/search/router.py", 150)}
+    assert where == {
+        ("routers/panels.py", _line(DEMO / "routers/panels.py", "hx_trigger_after_swap=CHANGED_EVENT")),
+        ("routers/search.py", _line(DEMO / "routers/search.py", "hx_trigger=lambda task_id: {CHANGED_EVENT")),
+    }
     text = rs.hover(sym) or ""
     assert "CHANGED_EVENT" in text and "HX-Trigger-After-Swap" in text and "HX-Trigger via" in text
 
 
 def test_event_constant_in_python_finds_every_listener(rs: Resolver) -> None:
-    sym = _at(rs, DEMO / "features/search/router.py", "{CHANGED_EVENT: {SELECTED_KEY", "CHANGED_EVENT")
+    sym = _at(rs, DEMO / "routers/search.py", "{CHANGED_EVENT: {SELECTED_KEY", "CHANGED_EVENT")
     assert sym.kind == "event" and sym.name == "task-changed"
     assert rs.definition(sym) == []  # the constant is Pyright's to find
     refs = rs.references(sym)
     files = {loc.path.relative_to(DEMO).as_posix() for loc in refs}
-    assert {"templates/panels/page.html", "templates/search/_matches.html", "features/search/router.py"} <= files
+    assert {"templates/panels/page.html", "templates/search/_matches.html", "routers/search.py"} <= files
     for loc in refs:
         if loc.path.suffix == ".html":
             line = loc.path.read_text().splitlines()[loc.line]
@@ -206,8 +214,8 @@ def test_a_literal_url_resolves_to_the_route_with_the_router_prefix(rs: Resolver
 
 
 def test_python_definitions_are_left_to_pyright(rs: Resolver) -> None:
-    field = _at(rs, DEMO / "features/tasks/schemas.py", "    tasks: list[Task]", "tasks")
-    cls = _at(rs, DEMO / "features/tasks/schemas.py", "class BoardResponse", "BoardResponse")
+    field = _at(rs, DEMO / "schemas/tasks.py", "    tasks: list[Task]", "tasks")
+    cls = _at(rs, DEMO / "schemas/tasks.py", "class BoardResponse", "BoardResponse")
     assert field.kind == "py_field" and cls.kind == "py_class"
     assert rs.definition(field) == [] and rs.definition(cls) == []
     assert rs.references(field)  # what the kit adds: where the field is used in templates

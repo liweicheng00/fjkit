@@ -672,7 +672,7 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
 
     {% call prose() %}
       <p>
-        可以動手改的檔案在 repo 的 <code>examples/fjkit-demo/app/features/search/</code> 與
+        可以動手改的檔案在 repo 的 <code>examples/fjkit-demo/app/routers/search.py</code> 與
         <code>app/templates/search/</code>，跟上一課同一頁。那裡每一塊區域都帶著渲染時間戳，
         所以哪一次動作動到哪幾塊在頁面上就讀得出來，不必打開 network 分頁。
         一次查詢是一個請求、六個新的時間戳。一次選取是三個請求、三個時間戳——結果表、detail 面板、
@@ -730,7 +730,7 @@ def select_task(request: Request, response: Response, service: ServiceDep, task_
 
     {% call prose() %}
       <p>
-        可以動手改的檔案在 <code>examples/fjkit-demo/app/features/panels/</code> 與
+        可以動手改的檔案在 <code>examples/fjkit-demo/app/routers/panels.py</code> 與
         <code>app/templates/panels/</code>。選一列，看網址列；重新整理，同一筆任務、
         同一個面板還在。再開第二個分頁選另一筆，兩邊互不影響。
       </p>

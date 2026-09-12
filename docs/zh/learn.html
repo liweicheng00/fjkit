@@ -11,12 +11,12 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788885046">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1789199297">
   <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
-  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1787472655"></script>
-  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1787472655"></script>
-  <script defer src="../assets/js/errors.js?v=1788369088"></script>
+  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1789198753"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1789198753"></script>
+  <script defer src="../assets/js/errors.js?v=1789198753"></script>
   <meta name="description" content="不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。">
   <meta property="og:title" content="學會 fjkit">
   <meta property="og:description" content="不碰前端工具鏈也做得出 FastAPI 介面：kit 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、一拉就重新上色的品牌旋鈕，以及那支詞彙表檢查工具。">
@@ -26,7 +26,7 @@
 <body class="min-h-full antialiased">
   <aside class="sidebar" id="sidebar" data-side="left"
          aria-hidden="false">
-    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png?v=1787150370" width="28" height="28" alt="">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png?v=1789198753" width="28" height="28" alt="">
 fjkit
   </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
     <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
@@ -905,7 +905,7 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 </div>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        可以動手改的檔案在 repo 的 <code>examples/fjkit-demo/app/features/search/</code> 與
+        可以動手改的檔案在 repo 的 <code>examples/fjkit-demo/app/routers/search.py</code> 與
         <code>app/templates/search/</code>，跟上一課同一頁。那裡每一塊區域都帶著渲染時間戳，
         所以哪一次動作動到哪幾塊在頁面上就讀得出來，不必打開 network 分頁。
         一次查詢是一個請求、六個新的時間戳。一次選取是三個請求、三個時間戳——結果表、detail 面板、
@@ -963,7 +963,7 @@ def select_task(request: Request, response: Response, service: ServiceDep, task_
       </p>
 </div>
 <div class="flex flex-col gap-3">      <p>
-        可以動手改的檔案在 <code>examples/fjkit-demo/app/features/panels/</code> 與
+        可以動手改的檔案在 <code>examples/fjkit-demo/app/routers/panels.py</code> 與
         <code>app/templates/panels/</code>。選一列，看網址列；重新整理，同一筆任務、
         同一個面板還在。再開第二個分頁選另一筆，兩邊互不影響。
       </p>

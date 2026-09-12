@@ -36,13 +36,15 @@ mount_fjkit(app, config)`,
 {% endblock %}`,
   },
   {
-    file: "app/features/tasks/router.py",
+    file: "app/routers/tasks.py",
     lang: "python",
-    why: "Routers read the request, call the service and name a template. The handler returns data: @render turns it into the page, and FastAPI reads the return annotation for response_model, so one declaration describes both the page and the JSON. Option lists and variant maps are built here, because a template prints what it is handed.",
-    code: `router = APIRouter(tags=["tasks"])
+    why: "Routers read the request, call the service and name a template. The handler returns data: @render turns it into the page, and FastAPI reads the return annotation for response_model, so one declaration describes both the page and the JSON. The rows come from app/services, and the shape — response model, option lists, variant maps — from app/schemas. The router computes nothing.",
+    code: `from app.dependencies import TaskServiceDep
+from app.schemas.tasks import STATUS_FILTERS, BoardResponse
+from app.services import tasks as task_service
+from app.services.tasks import TaskService
 
-# Built once, not rebuilt per render.
-STATUS_FILTERS = [(None, "All")] + [(s, s.value.capitalize()) for s in Status]
+router = APIRouter(tags=["tasks"])
 
 def board(service: TaskService) -> BoardResponse:
     """Everything tasks/_board.html reads, in one place.
@@ -53,7 +55,7 @@ def board(service: TaskService) -> BoardResponse:
     """
     return BoardResponse(
         tasks=service.list(),
-        stats=service.stats(),
+        stats=task_service.stats(service.list()),
         status_filters=STATUS_FILTERS,
     )
 
@@ -62,7 +64,7 @@ def board(service: TaskService) -> BoardResponse:
 # CPU-bound, so Starlette runs this in the threadpool.
 @router.get("/tasks", name="tasks_page")
 @render("tasks/page.html", partial="tasks/_board.html")
-def tasks_page(service: ServiceDep) -> BoardResponse:
+def tasks_page(service: TaskServiceDep) -> BoardResponse:
     return board(service)`,
   },
   {

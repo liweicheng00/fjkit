@@ -35,7 +35,7 @@ It renders wrong markup silently.
 |---|---|
 | macro signatures, shell blocks, closed enumerations | `src/fjkit/templates/ui/*.html` |
 | template globals, `page()` vs `stream()`, config knobs | `src/fjkit/templating.py`, `config.py`, `rendering.py` |
-| partials, swaps, forms, filter bars | `examples/fjkit-demo/app/features/*/` — the worked example |
+| partials, swaps, forms, filter bars | `examples/fjkit-demo/app/routers/`, `schemas/`, `services/` — the worked example |
 | validation errors, toasts, the 500 page | `src/fjkit/errors.py`, `forms.py`, `messages.py` |
 | tokens, rebranding, dark mode | `src/fjkit/static/src/fjkit.css`, `src/fjkit/styles.py` |
 | a blocked class, `eject`, building the CSS | `src/fjkit/cli/` |
@@ -59,24 +59,26 @@ pattern the kit supports. Read it before you invent one.
   appear literally in the file, as they do in every fjkit macro.
 - **Extend Basecoat's attribute API.** Write `data-variant="success"` on the
   existing class. Do not add a parallel `badge-success`.
-- **Templates print what they are handed.** Build option lists, variant maps and
-  query strings in the router (`STATUS_FILTERS`, `status_variant`, `urlencode`),
-  not in Jinja.
+- **Templates print what they are handed.** Option lists and variant maps
+  (`STATUS_FILTERS`, `STATUS_VARIANT`) belong in `schemas/`, query strings in the
+  router (`urlencode`). Never in Jinja.
 - **Handlers that render are `def`, not `async def`.** Rendering is CPU-bound,
   and Starlette runs `def` handlers in the threadpool.
 
 ## Building a feature
 
-1. **Router** (`app/features/<name>/router.py`) — routes, `Depends`, status
-   codes, template choice. A handler returns its response model. `@render`
-   names the template and goes **below** `@router.get`, never above it. Put
-   business logic in `service.py`. Put the response model, wire contracts and
-   domain→variant maps in `schemas.py`.
+1. **Router** (`app/routers/<name>.py`) — routes, `Depends`, status codes,
+   template choice. A handler returns its response model. `@render` names the
+   template and goes **below** `@router.get`, never above it. Put business logic
+   in `app/services/<name>/`, one file per operation. Put the response model,
+   wire contracts, option lists and domain→variant maps in
+   `app/schemas/<name>.py`. The `Depends` aliases live in `app/dependencies.py`,
+   declared once for the whole app.
 
    ```python
    @router.get("/tasks", name="tasks_page")
    @render("tasks/page.html", partial="tasks/_board.html")
-   def tasks_page(service: ServiceDep, status: Status | None = None) -> BoardResponse:
+   def tasks_page(service: TaskServiceDep, status: Status | None = None) -> BoardResponse:
        return board(service, status)
    ```
 
@@ -101,7 +103,7 @@ pattern the kit supports. Read it before you invent one.
 
    ```python
    @render("tasks/_board.html")
-   def create_task(service: ServiceDep, payload: Annotated[TaskCreate, Form()]) -> BoardResponse:
+   def create_task(service: TaskServiceDep, payload: Annotated[TaskCreate, Form()]) -> BoardResponse:
    ```
 
    A rejected submit is FastAPI's own 422 — the list of fields and messages it
