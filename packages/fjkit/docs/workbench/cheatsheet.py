@@ -112,6 +112,23 @@ GROUPS = [
                     ),
                 ],
             },
+            {
+                "name": "ui/swap.html",
+                "macros": [
+                    _m(
+                        "morph_scripts()",
+                        en="Loads the idiomorph extension, which adds the morph:* swap styles: the "
+                        "reply patches the DOM instead of replacing it, so focus, scroll position, "
+                        "an open details and a ticked box survive a sort. Two halves — the element "
+                        'whose swaps should morph declares hx-ext="morph", and the swap itself is '
+                        'swap="morph:outerHTML". Per page, never the shell.',
+                        zh="載入 idiomorph 擴充，提供 morph:* 這組 swap：回應是去 patch DOM "
+                        "而不是換掉它，所以焦點、捲動位置、展開的 details 與勾好的核取方塊"
+                        "都撐得過一次排序。分兩半——要 morph 的元素自己宣告 "
+                        'hx-ext="morph"，swap 本身寫 swap="morph:outerHTML"。逐頁載入，不進 shell。',
+                    ),
+                ],
+            },
         ],
     },
     {

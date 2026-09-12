@@ -8,6 +8,30 @@
   here, and the Archive button targets it too — so the three of them cannot
   land in three different places, and a sort applied on page 4 comes back as a
   whole table rather than a table with somebody else's strip under it.
+
+  That one element is also where `hx-ext="morph"` goes, and every swap into it
+  asks for `morph:outerHTML`. htmx inherits `hx-ext`, so the attribute is
+  written once and the sort links, the page strip, the size control and the
+  Archive button all get it. The page loads the extension with
+  `morph_scripts()`; both halves are needed and `ui/swap.html` says what each
+  failure looks like.
+
+  What it buys on this page, measured against the same page with `hx-ext`
+  removed: a row that is still in the reply keeps its DOM node, and keeps it
+  when the sort moves it — one row went from the 41st position to the 30th and
+  was the same element afterwards, where `outerHTML` gave a new one. Everything
+  the browser holds on a node and no markup describes rides along with it: a
+  text selection inside a cell, a transition that is halfway through, the open
+  state of anything native.
+
+  What it does not buy, so nobody goes looking for it. A ticked box is not
+  preserved — a checkbox's state is one of the things the reply describes, so
+  the morph syncs it like any other, and a sort that pages in a different set
+  of rows has nothing to preserve anyway. Focus is kept here with or without
+  the extension: htmx restores focus by id on its own, and the size control has
+  one. `select.js` needs no change — it is delegated from `document` and
+  recomputes on `htmx:load`, which htmx still fires for the nodes a morph
+  returns.
 #}
 {% from "ui/button.html" import button %}
 {% from "ui/data.html" import card %}
@@ -15,7 +39,7 @@
 {% from "ui/table.html" import page_size, pagination, select_count, table %}
 {% from "records/macros.html" import record_row %}
 
-<div id="records">
+<div id="records" hx-ext="morph">
 {% call stack(4) %}
 
   {#
@@ -33,13 +57,13 @@
       {{ button("Archive selected", variant="secondary", size="xs", icon_name="archive",
                 hx_post=action_url,
                 hx_include="[data-fjkit-select]",
-                hx_target="#records", hx_swap="outerHTML",
+                hx_target="#records", hx_swap="morph:outerHTML",
                 hx_disabled_elt="this") }}
     {% endcall %}
   {% endset %}
 
   {% call card(total ~ " datasets", actions=toolbar, padded=false) %}
-    {% call table(columns, rows=records, target="#records",
+    {% call table(columns, rows=records, target="#records", swap="morph:outerHTML",
                   empty_title="Nothing here",
                   empty_description="No dataset is in this view.",
                   empty_icon="table") %}
@@ -56,8 +80,10 @@
     be the only control on the page you cannot get back out of.
   #}
   {% call row(gap=4, justify="between") %}
-    {{ page_size(base_url, per_page, options=page_sizes, keep=keep, target="#records") }}
-    {{ pagination(page, pages, page_url, total=total, per_page=per_page, target="#records") }}
+    {{ page_size(base_url, per_page, options=page_sizes, keep=keep, target="#records",
+                 swap="morph:outerHTML") }}
+    {{ pagination(page, pages, page_url, total=total, per_page=per_page, target="#records",
+                  swap="morph:outerHTML") }}
   {% endcall %}
 
 {% endcall %}

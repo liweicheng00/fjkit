@@ -32,6 +32,24 @@ HTMX_VERSION = "2.0.10"
 #: in the shell.
 HTMX_JSON_ENC_VERSION = "2.0.3"
 
+#: idiomorph's htmx extension, which adds the `morph:*` swap styles. A morph
+#: patches the DOM it is given instead of replacing it, so the nodes that did
+#: not change keep what the browser put on them: focus, scroll position, an
+#: open `<details>`, a checkbox the person ticked, the caret's place in an
+#: input. Every other swap style throws that away, because it throws the nodes
+#: away.
+#:
+#: **No page loads it unless that page asks for it** — `morph_scripts()` in
+#: `ui/swap.html`, the same page-level opt-in `form_scripts()` and
+#: `chart_scripts()` use. CHARTER §4.2 budgets what every page downloads and
+#: that answer has to stay "htmx and Basecoat", so bytes that only a sorting
+#: table or a redrawn form needs are opted into by the page that has one.
+#:
+#: The pin is the extension package, not idiomorph itself. `idiomorph-ext.js`
+#: is the library plus the htmx glue in one file, which is what a page loads;
+#: vendoring the bare library as well would ship the same algorithm twice.
+IDIOMORPH_VERSION = "0.8.0"
+
 
 #: The Basecoat style packs vendored alongside each other under
 #: `static/vendor/basecoat/styles/`. They share one token vocabulary and one

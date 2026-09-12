@@ -18,9 +18,17 @@
   twelve pages 1 to 12. It needs no macro of its own: a numbered cell is
   `cell` with three of its existing parameters, and one that invented a fourth
   spelling of muted right-aligned digits would be a worse `cell`.
+
+  The `id` is what makes the morph swap on this page worth having. idiomorph
+  matches an old node to a new one by id first, so a row that carries one is
+  recognised after a sort has moved it and is relocated rather than rewritten:
+  measured at 100 rows a page, a sort moved one row up eleven places and left
+  it the same DOM element. Without an id the algorithm falls back to position,
+  and morphing the 41st row into whatever record now sorts 41st is the same
+  amount of rewriting as not morphing at all.
 #}
 {% macro record_row(request, record, number) -%}
-  <tr>
+  <tr id="record-{{ record.id }}">
     {{ select_cell(record.id, label="Select " ~ record.name) }}
     {{ cell(number, tone="muted", numeric=true, align="end") }}
     {{ cell(record.name, tone="strong") }}

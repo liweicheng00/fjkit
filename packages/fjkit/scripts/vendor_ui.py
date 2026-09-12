@@ -18,7 +18,12 @@ from pathlib import Path
 
 # Single source of truth lives in the package, so the footer the shell renders
 # cannot drift from the bytes on disk.
-from fjkit.vendored import BASECOAT_VERSION, HTMX_JSON_ENC_VERSION, HTMX_VERSION  # noqa: E402
+from fjkit.vendored import (  # noqa: E402
+    BASECOAT_VERSION,
+    HTMX_JSON_ENC_VERSION,
+    HTMX_VERSION,
+    IDIOMORPH_VERSION,
+)
 
 PACKAGE = Path(__file__).resolve().parent.parent / "src" / "fjkit"
 ROOT = PACKAGE
@@ -108,6 +113,17 @@ def vendor_htmx() -> None:
     write(
         VENDOR / "htmx" / "json-enc.js",
         fetch(f"{JSDELIVR}/htmx-ext-json-enc@{HTMX_JSON_ENC_VERSION}/json-enc.js"),
+    )
+
+    # `idiomorph-ext.min.js`, not `idiomorph.min.js`: the extension build is the
+    # library plus the htmx glue in one file, and it is the only one a page
+    # loads. Taking both would ship the same algorithm twice. Minified, unlike
+    # `json-enc.js` beside it, because this one is 11 KB of generated output
+    # rather than 1 KB of readable source — there is nothing to read.
+    print(f"idiomorph@{IDIOMORPH_VERSION}")
+    write(
+        VENDOR / "htmx" / "idiomorph-ext.min.js",
+        fetch(f"{JSDELIVR}/idiomorph@{IDIOMORPH_VERSION}/dist/idiomorph-ext.min.js"),
     )
 
 

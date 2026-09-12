@@ -185,7 +185,7 @@ The CSS budget is **per page**: eight packs ship, a page loads one.
 | `fjkit-<pack>.css`, gzip — **the governed number** | ≤ 28 KB | 24.3–24.9 KB across eight packs (vega 24.7) |
 | `fjkit-<pack>.css`, uncompressed — blowout guard | ≤ 260 KB | 219.1–237.2 KB (sera smallest, nova largest) |
 | fjkit runtime dependencies | `fastapi`, `jinja2`. A third needs an RFC | 2 |
-| Third-party JS permitted in the wheel — **whitelist** | Only what `fjkit/vendored.py` pins: `htmx.org`, `htmx-ext-json-enc`, `basecoat-css` (with `all.min.js`). Adding one edits this cell (A11) | 3 |
+| Third-party JS permitted in the wheel — **whitelist** | Only what `fjkit/vendored.py` pins: `htmx.org`, `htmx-ext-json-enc`, `idiomorph`, `basecoat-css` (with `all.min.js`). Adding one edits this cell (A11) | 4 |
 | Single-page render regression | No more than 10% slower than the previous version | Threshold definition still open |
 
 **Why gzip and not raw.** CSS compresses about 10:1, and the user downloads the
@@ -225,7 +225,19 @@ totalling 517 bytes — theme anti-flash, and the listener that turns an
 | `select.js` | `ui/table.html` | 5,353 / 2,252 |
 | `multiselect.js` | `ui/overlay.html` | 5,459 / 2,470 |
 | `charts.js` | `chart_scripts()` | 8,953 / 3,822, in `fjkit-charts` |
-| `json-enc.js` | `form_scripts()` | vendored |
+| `json-enc.js` | `form_scripts()` | vendored, 1,012 raw |
+| `idiomorph-ext.min.js` | `morph_scripts()` | vendored, 11,037 / 3,924 |
+
+**A vendored file is on the same footing.** `idiomorph-ext.min.js` is the
+largest thing in the table above, and it stays out of the shell for that
+reason: it is a swap strategy, not a component, so the page that wants one asks
+for it. Every page downloading it would have bought, for most pages, nothing —
+a swap only morphs where a caller wrote `morph:*`, and the reason to write that
+is state the browser holds on nodes the reply is about to replace. Measured on
+the demo's records table: a row still in the reply keeps its DOM node and is
+relocated when a sort moves it, where `outerHTML` gives a new one. Not measured
+as a win for focus, which htmx already restores by id, and not for a ticked
+box, which the reply describes and the morph therefore syncs.
 
 **Adding a file fjkit wrote requires a named reason why no-JS is worse, and its
 bytes recorded here.** This replaces the earlier rule that fjkit would write no

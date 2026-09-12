@@ -11,12 +11,12 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1789199297">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=1788885046">
   <link rel="stylesheet" href="../assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
-  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1789198753"></script>
-  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1789198753"></script>
-  <script defer src="../assets/js/errors.js?v=1789198753"></script>
+  <script defer src="../assets/vendor/htmx/htmx.min.js?v=1789203155"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=1789203155"></script>
+  <script defer src="../assets/js/errors.js?v=1788369088"></script>
   <meta name="description" content="每一支 fjkit macro，一個檔案一張表：完整簽名、要不要用區塊呼叫、區塊裡放什麼——外加外殼的 block、模板 global，以及 fjkit 頁面實際會用到的 htmx 屬性。">
   <meta property="og:title" content="fjkit 速查表">
   <meta property="og:description" content="每一支 fjkit macro，一個檔案一張表：完整簽名、要不要用區塊呼叫、區塊裡放什麼——外加外殼的 block、模板 global，以及 fjkit 頁面實際會用到的 htmx 屬性。">
@@ -26,7 +26,7 @@
 <body class="min-h-full antialiased">
   <aside class="sidebar" id="sidebar" data-side="left"
          aria-hidden="false">
-    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png?v=1789198753" width="28" height="28" alt="">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png?v=1787150370" width="28" height="28" alt="">
 fjkit
   </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
     <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
@@ -198,6 +198,12 @@ fjkit
 <h3>ui/attrs.html</h3>      </div>
     </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
       <h4><code>attrs(mapping)</code></h4><p>app 不會呼叫它。每一支 macro 都以 **kwargs 收尾並交給它處理，hx_post=&#34;/tasks&#34; 因此在標記裡變成 hx-post=&#34;/tasks&#34;。</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/swap.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>morph_scripts()</code></h4><p>載入 idiomorph 擴充，提供 morph:* 這組 swap：回應是去 patch DOM 而不是換掉它，所以焦點、捲動位置、展開的 details 與勾好的核取方塊都撐得過一次排序。分兩半——要 morph 的元素自己宣告 hx-ext=&#34;morph&#34;，swap 本身寫 swap=&#34;morph:outerHTML&#34;。逐頁載入，不進 shell。</p>    </section>  </div>
 </div></div>
   </div>
 </section></div>

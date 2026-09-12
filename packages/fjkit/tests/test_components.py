@@ -174,6 +174,35 @@ class TestLayout:
         assert 'hx-get="/x"' in html
 
 
+class TestSwap:
+    SWAP = '{% from "ui/swap.html" import morph_scripts %}'
+
+    def test_morph_scripts_loads_the_extension_after_htmx(self, render):
+        """`defer`, for the reason `form_scripts` gives: deferred scripts run in
+        document order, htmx is deferred in the shell's head, and this file
+        calls `htmx.defineExtension` the moment it runs."""
+        html = render(f"{self.SWAP}{{{{ morph_scripts() }}}}")
+        assert "<script defer" in html
+        assert "vendor/htmx/idiomorph-ext.min.js" in html
+
+    def test_the_extension_is_actually_in_the_package(self):
+        """The macro names a path and nothing else checks the vendoring script
+        put a file there. Missing, it is a 404 and a `morph:outerHTML` that
+        htmx does not recognise — which falls back to `innerHTML` and nests the
+        reply inside the element it meant to replace."""
+        from fjkit.config import STATIC_DIR
+
+        assert (STATIC_DIR / "vendor" / "htmx" / "idiomorph-ext.min.js").is_file()
+
+    def test_the_shell_does_not_load_it(self):
+        """CHARTER §4.2 budgets what every page downloads, and this is the
+        largest per-page script the kit ships. A page asks for it."""
+        from fjkit.config import TEMPLATE_DIR
+
+        shell = (TEMPLATE_DIR / "ui" / "shell.html").read_text(encoding="utf-8")
+        assert "idiomorph" not in shell
+
+
 class TestTable:
     COLUMNS = '[{"label": "Task"}, {"label": "Owner"}, {"width": "min"}]'
 

@@ -11,12 +11,12 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1789199297">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=1788885046">
   <link rel="stylesheet" href="assets/brand.css?v=0.1.0.dev0">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
-  <script defer src="assets/vendor/htmx/htmx.min.js?v=1789198753"></script>
-  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1789198753"></script>
-  <script defer src="assets/js/errors.js?v=1789198753"></script>
+  <script defer src="assets/vendor/htmx/htmx.min.js?v=1789203155"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js?v=1789203155"></script>
+  <script defer src="assets/js/errors.js?v=1788369088"></script>
   <meta name="description" content="Every fjkit macro in one table per file, with its full signature, whether it is called with a block and what goes inside it — plus the shell&#39;s blocks, the template globals and the htmx attributes a fjkit page actually uses.">
   <meta property="og:title" content="fjkit cheatsheet">
   <meta property="og:description" content="Every fjkit macro in one table per file, with its full signature, whether it is called with a block and what goes inside it — plus the shell&#39;s blocks, the template globals and the htmx attributes a fjkit page actually uses.">
@@ -26,7 +26,7 @@
 <body class="min-h-full antialiased">
   <aside class="sidebar" id="sidebar" data-side="left"
          aria-hidden="false">
-    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png?v=1789198753" width="28" height="28" alt="">
+    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png?v=1787150370" width="28" height="28" alt="">
 fjkit
   </a></header>      <section><div role="group" aria-label="Documentation"><h3>Documentation</h3>    <ul>        <li>
     <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>Introduction</span>
@@ -201,6 +201,12 @@ fjkit
 <h3>ui/attrs.html</h3>      </div>
     </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
       <h4><code>attrs(mapping)</code></h4><p>An app never calls this. Every macro ends with **kwargs and runs it through here, which is how hx_post=&#34;/tasks&#34; reaches the markup as hx-post=&#34;/tasks&#34;.</p>    </section>  </div>
+</div></div>
+  </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>ui/swap.html</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
+      <h4><code>morph_scripts()</code></h4><p>Loads the idiomorph extension, which adds the morph:* swap styles: the reply patches the DOM instead of replacing it, so focus, scroll position, an open details and a ticked box survive a sort. Two halves — the element whose swaps should morph declares hx-ext=&#34;morph&#34;, and the swap itself is swap=&#34;morph:outerHTML&#34;. Per page, never the shell.</p>    </section>  </div>
 </div></div>
   </div>
 </section></div>

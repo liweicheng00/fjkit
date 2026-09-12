@@ -1,0 +1,58 @@
+{#
+  How a reply replaces what is on the page, when replacing it is too blunt.
+
+  Every swap style htmx ships builds new nodes and drops the old ones. That is
+  usually right and it is always cheap, but the browser keeps state on nodes
+  that no markup describes: which control has focus and where the caret sits
+  inside it, how far a scroll container has been scrolled, which `<details>` is
+  open, which checkbox a person ticked since the page rendered. Replace the
+  nodes and every one of those is gone, whether or not the server changed
+  anything about them.
+
+  A morph patches instead. idiomorph walks the reply against the DOM already
+  there, keeps the nodes that match, and edits only what differs — so an
+  unchanged row is the same element afterwards, with the browser's state still
+  on it. Sorting a table no longer moves the caret out of the filter box, and a
+  form redrawn after a 422 keeps the scroll position of the panel it sits in.
+
+  This file holds the opt-in and nothing else. There is no `morph_table` and no
+  `swap="morph"` parameter anywhere in the kit, because a swap style is not a
+  component: `table`, `pagination` and `page_size` already take `swap` as a
+  string, so a caller that wants morphing passes `swap="morph:outerHTML"` and
+  changes no signature.
+#}
+
+{#
+  morph_scripts() — the script a page loads to be allowed `morph:*` swaps.
+
+      {% block scripts %}{{ morph_scripts() }}{% endblock %}
+
+  Two halves, and the page needs both. This loads the extension; the element
+  whose swaps should morph declares `hx-ext="morph"`, which htmx inherits, so
+  a region root covers everything inside it:
+
+      {% call card("Records", hx_ext="morph") %}
+        {{ table(columns, target="#records", swap="morph:outerHTML") }}
+      {% endcall %}
+
+  Per page, never from the shell. CHARTER §4.2 budgets what every page
+  downloads and the answer has to stay "htmx and Basecoat", so 11,037 bytes
+  (3,924 gzip) that only a sorting table or a redrawn form needs are opted into
+  by the page that has one — the way `form_scripts()` opts into `json-enc` and
+  `chart_scripts()` opts into Plotly.
+
+  `defer` keeps it after htmx, for the reason `form_scripts()` gives: deferred
+  scripts run in document order, htmx is deferred in the shell's head, and this
+  file calls `htmx.defineExtension` the moment it runs. A plain `<script>` here
+  runs first and throws on an undefined global.
+
+  Forgetting either half fails differently, and neither failure is loud. With
+  no script, `hx-swap="morph:outerHTML"` is a swap style htmx does not know, so
+  it falls back to `innerHTML` and the reply lands nested inside the element it
+  meant to replace. With no `hx-ext`, the extension is loaded and never
+  consulted, and the swap is an ordinary one — the page works, and only the
+  focus it keeps losing says otherwise.
+#}
+{% macro morph_scripts() -%}
+  <script defer src="{{ fjkit_static("vendor/htmx/idiomorph-ext.min.js") }}"></script>
+{%- endmacro %}

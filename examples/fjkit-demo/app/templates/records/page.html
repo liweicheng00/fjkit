@@ -2,6 +2,7 @@
 {% extends "base.html" %}
 {% from "ui/data.html" import kbd %}
 {% from "ui/layout.html" import page_header %}
+{% from "ui/swap.html" import morph_scripts %}
 {% from "ui/table.html" import select_scripts %}
 
 {% block title %}Records{% endblock %}
@@ -20,5 +21,10 @@
   {% include "records/_table.html" %}
 {% endblock %}
 
-{# Ticks the column from the header box, and tints the rows it picks. #}
-{% block scripts %}{{ select_scripts() }}{% endblock %}
+{#
+  Two per-page scripts. `select_scripts` ticks the column from the header box
+  and tints the rows it picks; `morph_scripts` is what lets the table ask for
+  `morph:outerHTML`, so a sort relocates the rows it already has instead of
+  rebuilding every one of them.
+#}
+{% block scripts %}{{ select_scripts() }}{{ morph_scripts() }}{% endblock %}
