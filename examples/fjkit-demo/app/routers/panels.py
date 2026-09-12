@@ -1,0 +1,156 @@
+"""Panels routes — lesson 07's fragments, moved into tabs.
+
+`/search` fans one id out to five regions that are all on screen. In tabs, four
+of the five are `hidden`, which is `display:none`, and a subscriber does not
+care: the event is raised on `<body>`, so a hidden panel hears it as well as the
+open one. Every broadcast then fetches five fragments and shows one — the
+"N panels, N requests" cost of the broadcast pattern, paid for markup nobody is
+looking at.
+
+This page inverts that trade. A panel fetches when it is shown, and listens for
+a broadcast only while it is showing. `ui/tabs.html` holds the three attributes
+that say so, and its signature comment explains each one.
+
+One consequence reaches this file: an `intersect` carries no event, so a panel
+opened after the pick reads the id off the page. The pick therefore broadcasts
+with `hx_trigger_after_swap`, which fires once the table — carrying the hidden
+input the panels' `hx-include` selects — is in the document. `HX-Trigger` fires
+before that swap, so every panel would read the previous id.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, HTTPException, Request, Response
+from fjkit import htmx, render
+
+from app.dependencies import TaskServiceDep
+from app.schemas.fragments import (
+    CHANGED_EVENT,
+    SELECTED_EVENT,
+    DetailResponse,
+    MatchesResponse,
+    RelatedResponse,
+    StatsResponse,
+)
+from app.schemas.tasks import Task
+from app.services import tasks as task_service
+from app.services.tasks import TaskService
+
+router = APIRouter(tags=["panels"])
+
+
+def _page_url(request: Request, task_id: int) -> str:
+    """The page URL that shows `task_id`, root-relative.
+
+    Built here rather than in the template: a query string is a wire contract,
+    and the layer that owns the route name owns it. Root-relative for the reason
+    `url_for` is — an absolute URL pins the reply to the host the app happened
+    to see, which is wrong behind a proxy.
+    """
+    url = request.url_for("panels_page").include_query_params(task_id=task_id)
+    return f"{url.path}?{url.query}"
+
+
+def _selected(service: TaskService, task_id: int | None) -> Task | None:
+    """Return the picked task, or `None` when nothing is picked. 404 for a gone id."""
+    if task_id is None:
+        return None
+    task = service.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    return task
+
+
+def _matches(service: TaskService, task_id: int | None) -> MatchesResponse:
+    return MatchesResponse(query="", matches=service.list(), total=service.count(), selected_id=task_id)
+
+
+# --------------------------------------------------------------------------- #
+# the page, and the two actions that move the table
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/panels", name="panels_page")
+@render("panels/page.html", partial="panels/_matches.html")
+def panels_page(service: TaskServiceDep, task_id: int | None = None) -> MatchesResponse:
+    """Render the page, or just the table for an htmx request.
+
+    `task_id` is read back so a reload with a panel open still knows what the
+    page is about. The selection lives in the browser; this is the server's only
+    involvement in it.
+    """
+    return _matches(service, _selected(service, task_id).id if task_id else None)
+
+
+@router.get("/panels/select/{task_id}", name="panels_select")
+@render("panels/_matches.html", hx_trigger_after_swap=SELECTED_EVENT)
+def select_task(
+    request: Request, response: Response, service: TaskServiceDep, task_id: int
+) -> MatchesResponse:
+    """Mark the row, put the pick in the address bar, then announce it.
+
+    The event carries no detail. The id it would carry is already in the table
+    this reply swaps in, and a panel that was hidden at the time never heard the
+    event anyway. So every panel reads that one place instead, and the two paths
+    into a panel cannot disagree.
+
+    `hx_trigger_after_swap`, not `hx_trigger`, for the same reason: `HX-Trigger`
+    fires before this table replaces the old one, so the open panel would read
+    the id it is about to stop being about.
+
+    `push_url` is what makes the pick survive anything. The id this route was
+    given decides what four regions show, and `panels_page` already takes it as
+    a parameter, so the address bar is where it belongs: a reload comes back to
+    the same task, the link is worth sending to someone, and a second tab is a
+    second selection rather than the same one. The URL pushed is the page's,
+    not this route's — nobody should land on a fragment.
+    """
+    selected = _selected(service, task_id)
+    htmx.push_url(response, _page_url(request, selected.id))
+    return _matches(service, selected.id)
+
+
+@router.post("/panels/advance/{task_id}", name="panels_advance")
+@render("panels/_matches.html", hx_trigger_after_swap=CHANGED_EVENT)
+def advance_task(service: TaskServiceDep, task_id: int) -> MatchesResponse:
+    """Advance the picked task and answer with the table, which shows its status.
+
+    The reply is the table rather than the detail panel because the detail panel
+    is not addressable here: it is a tab body, replaced whole every time that tab
+    is shown. A page built out of lazy panels has one in-band region, and the
+    panels follow it.
+    """
+    if service.advance(task_id) is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    return _matches(service, task_id)
+
+
+# --------------------------------------------------------------------------- #
+# the panel bodies — one route each, and none of them knows it is in a tab
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/panels/detail", name="panels_detail")
+@render("panels/_detail.html")
+def detail_panel(service: TaskServiceDep, task_id: int | None = None) -> DetailResponse:
+    """Render the open task. `task_id` arrives from the page as a query parameter."""
+    return DetailResponse(selected=_selected(service, task_id))
+
+
+@router.get("/panels/related", name="panels_related")
+@render("panels/_related.html")
+def related_panel(service: TaskServiceDep, task_id: int | None = None) -> RelatedResponse:
+    """Render everything else assigned to the open task's owner."""
+    selected = _selected(service, task_id)
+    return RelatedResponse(selected=selected, related=task_service.siblings(service.list(), selected))
+
+
+@router.get("/panels/counters", name="panels_counters")
+@render("panels/_counters.html")
+def counters_panel(service: TaskServiceDep) -> StatsResponse:
+    """Count the whole board.
+
+    It takes no id. It is on the page to show that `include` is per panel: a
+    panel that needs nothing sends nothing.
+    """
+    return StatsResponse(query="", stats=task_service.stats(service.list()), total=service.count())

@@ -8,9 +8,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from app.features.charts import service as charts
-from app.features.charts.schemas import Grouping
-from app.features.tasks.schemas import Priority, Status, Task
+from app.schemas.charts import Grouping
+from app.schemas.tasks import Priority, Status, Task
+from app.services import charts
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = ROOT / "app" / "templates" / "charts"

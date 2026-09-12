@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from app.features.auth.service import DEMO_PASSWORD, DEMO_USERNAME
-from app.main import TRUSTED_ORIGINS
+from app.config import settings
 
-ORIGIN = {"origin": TRUSTED_ORIGINS[0]}
-GOOD = {"username": DEMO_USERNAME, "password": DEMO_PASSWORD}
+ORIGIN = {"origin": settings.trusted_origins[0]}
+GOOD = {"username": settings.username, "password": settings.password}
 
 #: The `Accept` header a browser sends on a navigation.
 BROWSER = {"accept": "text/html,application/xhtml+xml"}
@@ -37,12 +36,12 @@ def test_the_session_survives_the_next_request(client):
 def test_the_cookie_carries_no_claims(client):
     client.post("/session", data=GOOD, headers=ORIGIN)
 
-    assert DEMO_USERNAME not in client.cookies["fjkit_session"]
+    assert settings.username not in client.cookies["fjkit_session"]
 
 
 def test_bad_credentials_come_back_as_a_swappable_panel(htmx):
     """Bad credentials answer 200, not 401: htmx swaps a 2xx reply and drops everything else."""
-    response = htmx.post("/session", data={"username": DEMO_USERNAME, "password": "wrong"})
+    response = htmx.post("/session", data={"username": settings.username, "password": "wrong"})
 
     assert response.status_code == 200
     assert "not the demo account" in response.text
@@ -63,7 +62,7 @@ def test_the_reveal_survives_a_rejected_sign_in(htmx):
     """The panel a rejected sign-in swaps in carries its own button, and the
     listener is on `document` so that button works too. That is why
     `js/reveal.js` binds nothing per button."""
-    panel = htmx.post("/session", data={"username": DEMO_USERNAME, "password": "wrong"}).text
+    panel = htmx.post("/session", data={"username": settings.username, "password": "wrong"}).text
 
     assert "data-fjkit-reveal" in panel
     assert 'aria-controls="f-password"' in panel
@@ -101,7 +100,7 @@ def test_the_protected_route_answers_a_session(htmx):
     response = htmx.get("/session/secret")
 
     assert response.status_code == 200
-    assert DEMO_USERNAME in response.text
+    assert settings.username in response.text
 
 
 def test_the_protected_route_sends_an_anonymous_swap_to_the_login_page(htmx):

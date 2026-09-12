@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from app.features.jobs.schemas import KIND_OPTIONS, JobKind, JobState
+from app.schemas.jobs import KIND_OPTIONS, JobKind, JobState
 
 
 @pytest.fixture

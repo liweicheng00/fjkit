@@ -1,9 +1,11 @@
-"""The demo app: fjkit config, plugins, and the feature routers."""
+"""The demo app: fjkit config, plugins, and the routers.
+
+Nothing here computes. It reads the settings, builds the four plugins, puts the
+three stores where `Depends` can reach them, and includes the routers.
+"""
 
 from __future__ import annotations
 
-import os
-import sys
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from pathlib import Path
@@ -15,20 +17,12 @@ from fjkit.vendored import STYLE_PACKS
 from fjkit_apidocs import ApiDocsPlugin, FlowField, SessionFlow
 from fjkit_charts import ChartsPlugin
 
-from app.features.auth.router import protected as auth_protected_router
-from app.features.auth.router import router as auth_router
-from app.features.auth.service import DEMO_PASSWORD, DEMO_USERNAME, DemoSource
-from app.features.charts.router import router as charts_router
-from app.features.dashboard.router import router as dashboard_router
-from app.features.failures.router import router as failures_router
-from app.features.jobs.router import router as jobs_router
-from app.features.jobs.service import JobService
-from app.features.panels.router import router as panels_router
-from app.features.records.router import router as records_router
-from app.features.records.service import RecordService
-from app.features.search.router import router as search_router
-from app.features.tasks.router import router as tasks_router
-from app.features.tasks.service import TaskService
+from app.config import settings
+from app.routers import auth, charts, dashboard, failures, jobs, panels, records, search, tasks
+from app.services.auth import DemoSource
+from app.services.jobs import JobService
+from app.services.records import RecordService
+from app.services.tasks import TaskService
 
 APP_DIR = Path(__file__).resolve().parent
 ROOT_DIR = APP_DIR.parent
@@ -39,25 +33,6 @@ STATIC_URL = "/_fjkit"
 #: Style pack name -> stylesheet URL, used by the shell's style picker.
 STYLE_SHEETS = {pack: f"{STATIC_URL}/dist/fjkit-{pack}.css" for pack in STYLE_PACKS}
 
-
-def _dev_port(default: str = "8000") -> str:
-    """Return the port this process serves on: `PORT`, then `--port` in argv, then `default`."""
-    if (from_env := os.environ.get("PORT")) is not None:
-        return from_env
-    argv = sys.argv
-    for i, arg in enumerate(argv):
-        if arg == "--port" and i + 1 < len(argv):
-            return argv[i + 1]
-        if arg.startswith("--port="):
-            return arg.split("=", 1)[1]
-    return default
-
-
-#: Origins the CSRF check accepts. Both loopback spellings of the dev port.
-TRUSTED_ORIGINS = [f"http://localhost:{_dev_port()}", f"http://127.0.0.1:{_dev_port()}"]
-
-#: Signing secret for the flash and session cookies. Fixed so reloads keep sessions.
-DEMO_SECRET = "fjkit-demo-not-a-secret"
 
 def exception_handler(request: Request, exc: Exception) -> Message:
     """Build the `Message` shown for an unexpected exception, from its type and text."""
@@ -80,26 +55,26 @@ config = FjkitConfig(
 
 def build_plugins() -> tuple[FlashPlugin, AuthPlugin, ApiDocsPlugin, ChartsPlugin]:
     """Build the flash, auth, API-docs and charts plugins for one app instance."""
-    flash = FlashPlugin(secret=DEMO_SECRET, secure=False)
-    auth = AuthPlugin(
+    flash = FlashPlugin(secret=settings.secret, secure=settings.cookie_secure)
+    auth_plugin = AuthPlugin(
         flash=flash,
-        secret=DEMO_SECRET,
+        secret=settings.secret,
         store=MemoryStore(),
-        source=DemoSource(),
-        trusted_origins=TRUSTED_ORIGINS,
+        source=DemoSource(settings.username, settings.password),
+        trusted_origins=settings.trusted_origins,
         login_url="/session",
-        cookie=CookieSpec(secure=False),
+        cookie=CookieSpec(secure=settings.cookie_secure),
     )
 
-    # The API console, with a sign-in flow through `auth`.
+    # The API console, with a sign-in flow through `auth_plugin`.
     docs = ApiDocsPlugin(
         title="Fjkit Demo API",
         home_url="/",
         flow=SessionFlow(
-            auth,
+            auth_plugin,
             fields=(
-                FlowField("username", "Username", placeholder=DEMO_USERNAME, hint="the demo account"),
-                FlowField("password", "Password", type="password", placeholder=DEMO_PASSWORD),
+                FlowField("username", "Username", placeholder=settings.username, hint="the demo account"),
+                FlowField("password", "Password", type="password", placeholder=settings.password),
             ),
             describe=lambda session: (
                 ("username", session.claims.get("username", "—")),
@@ -109,9 +84,7 @@ def build_plugins() -> tuple[FlashPlugin, AuthPlugin, ApiDocsPlugin, ChartsPlugi
         ),
     )
 
-    charts = ChartsPlugin()
-
-    return flash, auth, docs, charts
+    return flash, auth_plugin, docs, ChartsPlugin()
 
 
 @asynccontextmanager
@@ -125,22 +98,22 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title="Fjkit Demo", lifespan=lifespan)
 
-    flash, auth, docs, charts = build_plugins()
-    app.state.auth = auth
+    flash, auth_plugin, docs, charts_plugin = build_plugins()
+    app.state.auth = auth_plugin
     app.state.flash = flash
 
-    mount_fjkit(app, replace(config, plugins=(flash, auth, docs, charts)))
+    mount_fjkit(app, replace(config, plugins=(flash, auth_plugin, docs, charts_plugin)))
 
-    app.include_router(dashboard_router)
-    app.include_router(charts_router)
-    app.include_router(tasks_router)
-    app.include_router(records_router)
-    app.include_router(search_router)
-    app.include_router(panels_router)
-    app.include_router(jobs_router)
-    app.include_router(failures_router)
-    app.include_router(auth_router)
-    app.include_router(auth_protected_router)
+    app.include_router(dashboard.router)
+    app.include_router(charts.router)
+    app.include_router(tasks.router)
+    app.include_router(records.router)
+    app.include_router(search.router)
+    app.include_router(panels.router)
+    app.include_router(jobs.router)
+    app.include_router(failures.router)
+    app.include_router(auth.router)
+    app.include_router(auth.protected)
 
     @app.get("/health", include_in_schema=False)
     async def health() -> dict[str, str]:

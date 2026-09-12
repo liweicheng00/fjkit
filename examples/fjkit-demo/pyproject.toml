@@ -12,6 +12,7 @@ dependencies = [
     "fjkit-apidocs",
     "fjkit-charts",
     "plotly>=6.9.0",
+    "pydantic-settings>=2.13.0",
 ]
 
 [dependency-groups]

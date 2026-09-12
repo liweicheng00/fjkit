@@ -26,7 +26,7 @@ from time import perf_counter
 #: be on the path before its schemas import.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "examples" / "fjkit-demo"))
 
-from app.features.tasks.schemas import Priority, Status, Task
+from app.schemas.tasks import Priority, Status, Task
 from fjkit import FjkitConfig, build_environment
 from fjkit.config import TEMPLATE_DIR as KIT_TEMPLATE_DIR
 from jinja2 import Environment, FileSystemLoader, StrictUndefined

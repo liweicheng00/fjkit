@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 
 import pytest
-from app.features.search.schemas import CHANGED_EVENT, SELECTED_EVENT
+from app.schemas.fragments import CHANGED_EVENT, SELECTED_EVENT
 
 #: The page's panels, in the order the tabs declare them.
 PANELS = ("panel-detail", "panel-related", "panel-counters")

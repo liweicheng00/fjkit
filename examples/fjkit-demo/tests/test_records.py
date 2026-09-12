@@ -19,8 +19,8 @@ import json
 import re
 
 import pytest
-from app.features.records.router import PER_PAGE
-from app.features.records.schemas import (
+from app.routers.records import PER_PAGE
+from app.schemas.records import (
     DEFAULT_SORT,
     PAGE_SIZES,
     SORT_LABELS,
@@ -29,7 +29,7 @@ from app.features.records.schemas import (
     parse_page_size,
     parse_sort,
 )
-from app.features.records.service import RecordService
+from app.services.records import RecordService, page
 
 #: The row order the page opens on.
 FIRST_PAGE = "/records"
@@ -395,12 +395,12 @@ class TestService:
     def test_the_fixture_is_deterministic(self):
         """Two runs must sort identically, or a test naming the rows on page 3
         cannot exist."""
-        assert [r.name for r in RecordService().page(None, 1, 5)[0]] == [
-            r.name for r in RecordService().page(None, 1, 5)[0]
+        assert [r.name for r in page(RecordService().all(), None, 1, 5)[0]] == [
+            r.name for r in page(RecordService().all(), None, 1, 5)[0]
         ]
 
     def test_the_page_number_comes_back_clamped(self):
-        assert RecordService().page(None, 900, 12)[1:] == (12, 12)
+        assert page(RecordService().all(), None, 900, 12)[1:] == (12, 12)
 
     def test_archiving_is_idempotent(self):
         service = RecordService()

@@ -5,12 +5,11 @@ from __future__ import annotations
 import json
 
 import pytest
-from app.features.auth.service import DEMO_PASSWORD, DEMO_USERNAME
-from app.main import TRUSTED_ORIGINS
+from app.config import settings
 from fastapi.testclient import TestClient
 
 DOCS = "/api-docs"
-ORIGIN = TRUSTED_ORIGINS[0]
+ORIGIN = settings.trusted_origins[0]
 
 SECRET_OP = f"{DOCS}/try/session_secret_session_secret_get"
 BOARD_OP = f"{DOCS}/try/tasks_board_tasks_board_get"
@@ -30,7 +29,7 @@ def console(client):
 
 
 def sign_in(console) -> None:
-    response = console.post(f"{DOCS}/auth", data={"username": DEMO_USERNAME, "password": DEMO_PASSWORD})
+    response = console.post(f"{DOCS}/auth", data={"username": settings.username, "password": settings.password})
     assert "Signed in as" in response.text
 
 
@@ -48,7 +47,7 @@ def test_the_sidebar_link_resolves_to_the_plugin_s_own_route(console):
 
 
 def test_signing_in_runs_the_app_s_own_token_source(console):
-    refused = console.post(f"{DOCS}/auth", data={"username": DEMO_USERNAME, "password": "wrong"})
+    refused = console.post(f"{DOCS}/auth", data={"username": settings.username, "password": "wrong"})
     assert "BadCredentials" in refused.text
     assert "Not signed in" in refused.text
 
@@ -65,7 +64,7 @@ def test_a_protected_route_answers_the_console_and_refuses_a_stranger(console):
 
     allowed = console.post(SECRET_OP)
     assert "200" in allowed.text
-    assert DEMO_USERNAME in allowed.text
+    assert settings.username in allowed.text
 
 
 def test_a_fragment_endpoint_answers_the_console_with_its_model(console):

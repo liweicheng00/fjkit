@@ -12,7 +12,7 @@ import json
 import re
 
 import pytest
-from app.features.search.schemas import CHANGED_EVENT, SELECTED_EVENT, SELECTED_KEY
+from app.schemas.fragments import CHANGED_EVENT, SELECTED_EVENT, SELECTED_KEY
 
 #: Every region the page declares.
 REGIONS = (
