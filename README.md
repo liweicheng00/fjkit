@@ -1,26 +1,41 @@
 # fjkit
 
-**Build the interface where you build the routes.** fjkit is the UI layer FastAPI
-does not ship: pages, tables, forms, navigation, dark mode and htmx swaps,
-composed as Jinja macros in the same codebase as your handlers.
+The UI layer for FastAPI. Pages, tables, forms, navigation, dark mode and htmx swaps, written as Jinja macros next to your routes.
 
-From an empty directory to a page with navigation and dark mode is about twenty
-lines of Python. Everything a back-end developer needs to put up a real page is
-here, and nothing that needs a front-end toolchain: the stylesheet is compiled
-when fjkit is released, not when your app runs, so there is no `package.json`, no
-`node_modules`, no Tailwind binary, and nothing to rebuild when you edit a
-template.
+There is no front-end build. The stylesheet is compiled when fjkit is released, so your app has no `package.json`, no `node_modules` and nothing to rebuild when you edit a template.
+
+## Install
+
+```bash
+uv add fjkit
+```
+
+## A page in two files
 
 ```python
-from fastapi import FastAPI
-from fjkit import FjkitConfig, mount_fjkit
+from pathlib import Path
 
-config = FjkitConfig(template_dir=APP_DIR / "templates")
+from fastapi import FastAPI
+from fjkit import FjkitConfig, mount_fjkit, render
+from pydantic import BaseModel
 
 app = FastAPI()
-mount_fjkit(app, config)              # serves fjkit.css, htmx and Basecoat's JS,
-                                      # and builds the Jinja Environment
+mount_fjkit(app, FjkitConfig(template_dir=Path(__file__).parent / "templates"))
+
+
+class Overview(BaseModel):
+    done: int
+
+
+@app.get("/")
+@render("overview.html")
+def overview() -> Overview:
+    return Overview(done=18)
 ```
+
+`mount_fjkit` serves the CSS and JavaScript and builds the Jinja environment. The handler returns a model, and `@render` passes its fields to the template. `@render` goes below `@app.get`.
+
+`templates/overview.html`:
 
 ```jinja
 {% extends "ui/shell.html" %}
@@ -30,23 +45,20 @@ mount_fjkit(app, config)              # serves fjkit.css, htmx and Basecoat's JS
 {% block content %}
   {{ page_header("Overview", "How the board is doing") }}
   {% call grid(cols=4) %}
-    {{ stat("Done", 18, tone="success", icon_name="check") }}
+    {{ stat("Done", done, tone="success", icon_name="check") }}
   {% endcall %}
 {% endblock %}
 ```
 
-Note what the template does not contain: no utility classes, no colour, no
-`<svg>`. That is not a style preference — it is what makes the no-build promise
-hold, and `fjkit check` enforces it.
+The template has no CSS classes, no colours and no `<svg>`. Macros take named options such as `tone="success"`, so the shipped stylesheet covers every page. `fjkit check` fails the build if a template adds its own.
 
-## Learn it by operating it
+## What you get
 
-**[The published site](https://liweicheng00.github.io/fjkit/)** is three pages —
-an introduction, then Learn and Components, both of which you can drive. Set
-macro parameters and watch the real output. Fire genuine htmx requests and watch
-the swap land. Turn the brand knob and watch the page repaint. Every preview is
-rendered by the kit itself, so the site cannot document a macro the package does
-not ship — and the site is itself a fjkit app that passes `fjkit check`.
+- **Layout and components as macros**: `stack`, `row`, `grid`, `card`, `table`, `form` and more.
+- **htmx on any macro**: pass `hx_get=`, `hx_target=` and so on as keywords.
+- **One partial for the page and the swap**: the page embeds the partial that the htmx endpoint returns, so the two cannot drift.
+- **A JSON API for free**: an htmx endpoint returns HTML to htmx and its model as JSON to any other caller, such as `curl`.
+- **Rebranding in one file**: templates name a colour role (`primary`, `destructive`), never a hue.
 
 ## Try the demo
 
@@ -55,63 +67,36 @@ uv sync
 uv run fastapi dev examples/fjkit-demo/app/main.py
 ```
 
-<http://127.0.0.1:8000> — an overview page, a task board with htmx swaps, and a
-streamed 20,000-row report. There is no CSS build to run and no watcher to keep
-open.
+Open <http://127.0.0.1:8000>.
 
-## The promises, and what makes each one hold
+## Packages
 
-| Promise | Mechanism |
+| Package | What it is |
 |---|---|
-| A page is a handful of macro calls | components *and* layout ship as macros — `stack`, `row`, `grid`, `split`, `card`, `table`, `form` |
-| It looks right without a designer | Basecoat's shadcn-derived components and token vocabulary, dark mode included |
-| Interactivity without JavaScript | any macro forwards `hx_*` keywords, so htmx never appears in a component definition |
-| Rebranding is one file | every colour is a token. Templates name a role, never a hue. |
-| A macro cannot be misused | signatures take closed enumerations and never a class string |
-| Page and htmx swap cannot drift | one partial, embedded by the page and returned by the endpoints |
-| Every htmx endpoint is already a JSON API | a handler returns a model; `@render` serialises it when no browser is waiting for markup, so a swap route answers `curl` with its `response_model` — no second route, no serialiser |
-| …and none of it needs a build step | Tailwind runs in fjkit's release pipeline. `dist/fjkit.css`, htmx and Basecoat's JS ship inside the wheel — which only holds because the class vocabulary is closed, and `fjkit check` enforces that. |
+| `fjkit` | The UI kit |
+| `fjkit-admin` | A Django-style admin for SQLAlchemy models |
+| `fjkit-charts` | Server-rendered Plotly charts |
+| `fjkit-apidocs` | An API reference and console, in place of Swagger UI |
+| `fjkit-lsp` | A language server that links routes, response models and templates |
 
-## Why this stack
+## Built on
 
-| Layer | Choice | Why this one |
-|---|---|---|
-| HTTP | FastAPI | `Depends` gives a clean seam between router and service. |
-| Templates | Jinja2 | Compiles to Python, so the cost model is knowable — see the benchmark. |
-| Components | Basecoat | shadcn/ui's design and token vocabulary as plain CSS classes. Most of it needs no JavaScript. |
-| Interactivity | htmx | The server already renders HTML. htmx swaps fragments of it, so there is no client state to keep in sync. |
+- [FastAPI](https://fastapi.tiangolo.com/) for routes and dependency injection
+- [Jinja2](https://jinja.palletsprojects.com/) for templates
+- [Basecoat](https://basecoatui.com/) for shadcn/ui-style components as plain CSS
+- [htmx](https://htmx.org/) for swapping server-rendered HTML
 
-**Why Basecoat over the alternatives.** daisyUI would also work; Basecoat wins
-on token names that map to colour *roles* (`--primary`, `--muted-foreground`,
-`--destructive`) rather than hues. Bootstrap's theming is a Sass rebuild, while
-Basecoat retints from CSS custom properties, which keeps the brand knob a
-runtime variable. Plain Tailwind pushes 15+ classes into every button, and
-markup length is the thing you render on every request. A React or Vue kit means
-a build step, a hydration story, and two sources of truth for one screen.
-
-Cost: `fjkit.css` is 225 KB raw, **23.2 KB gzip**, against a 28 KB budget that
-the build enforces. Basecoat's component layer is a single stylesheet and cannot
-be tree-shaken, which is the trade for getting the full component set.
+The stylesheet is about 25 KB gzipped.
 
 ## Documentation
 
-**[Docs](https://liweicheng00.github.io/fjkit/)**
+**[liweicheng00.github.io/fjkit](https://liweicheng00.github.io/fjkit/)** — every example on the site is rendered by the kit, and you can change macro parameters and see the result.
 
-## Performance, in one paragraph
-
-Rendering is rarely the problem. The three things that are: **template
-compilation on a cold process** (102 ms → 4.3 ms with the bytecode cache),
-**peak memory on large pages** (22 MB → 16 KB by streaming), and **where the
-render runs** (a heavy `async def` handler freezes the event loop for the
-duration — 140 ms in the benchmark). Everything else people tune —
-`auto_reload`, `StrictUndefined`, `with context` — does not measure at all: the
-differences sit inside run-to-run noise and change sign between runs. Full
-numbers and method: [docs/jinja-performance.md](docs/jinja-performance.md).
+Rendering performance: [docs/jinja-performance.md](docs/jinja-performance.md).
 
 ## Status
 
-Pre-release (0.1.0.dev0), not yet on PyPI. Macro signatures are not frozen until
-1.0.
+Pre-release (`0.1.0.dev0`). Macro signatures can change until 1.0.
 
 ## License
 

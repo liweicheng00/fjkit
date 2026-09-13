@@ -1,13 +1,8 @@
 # CLAUDE.md
 
-**fjkit** is what this repository builds: the UI layer for FastAPI — pages,
-tables, forms, navigation and htmx swaps, composed as Jinja macros in the same
-codebase as the routes. It reaches that with **no front-end build step on the
-user's side**, which is the constraint every rule below protects.
-`examples/fjkit-demo` is the demo, and it is also the kit's acceptance test.
+**fjkit** is what this repository builds: the UI layer for FastAPI — pages, tables, forms, navigation and htmx swaps, composed as Jinja macros in the same codebase as the routes. It reaches that with **no front-end build step on the user's side**, which is the constraint every rule below protects. `examples/fjkit-demo` is the demo, and it is also the kit's acceptance test.
 
-Toolchain is **uv only**. Never add `npm`, `package.json` or `node_modules` —
-not to the kit, and not to the demo.
+Toolchain is **uv only**. Never add `npm`, `package.json` or `node_modules` — not to the kit, and not to the demo.
 
 ## Where things are
 
@@ -56,11 +51,7 @@ uv run python packages/fjkit/scripts/vendor_ui.py      # re-download htmx/Baseco
 uv run python packages/fjkit/docs/workbench/build.py   # rebuild the docs site
 ```
 
-The docs site is the documentation — there is no Markdown copy of it in the
-repo. `docs/` at the root is a build artefact, so **rebuild it and commit the
-result before every push** that touched `packages/fjkit/docs/workbench/`,
-`src/fjkit/templates/ui/` or `static/src/fjkit.css`. `.githooks/pre-push`
-enforces this; enable it once with `git config core.hooksPath .githooks`.
+The docs site is the documentation — there is no Markdown copy of it in the repo. `docs/` at the root is a build artefact, so **rebuild it and commit the result before every push** that touched `packages/fjkit/docs/workbench/`, `src/fjkit/templates/ui/` or `static/src/fjkit.css`. `.githooks/pre-push` enforces this; enable it once with `git config core.hooksPath .githooks`.
 
 An app author runs none of the second group. That asymmetry is the product.
 
@@ -75,8 +66,7 @@ An app author runs none of the second group. That asymmetry is the product.
 | What am I allowed to do without asking? | `CHARTER.md` §6, then `goal/OPERATING.md` §1 |
 | What did the benchmarks actually measure? | `docs/jinja-performance.md` |
 
-Read the authority rather than restating it here. This file is loaded on every
-turn, so it stays a map.
+Read the authority rather than restating it here. This file is loaded on every turn, so it stays a map.
 
 ## Layer boundaries in the demo
 
@@ -95,8 +85,7 @@ Three kinds of template, three rules:
 | Partial | `<feature>/_*.html` | never | htmx swaps |
 | Macros | `<feature>/macros.html`, `ui/*.html` | never | never |
 
-1. A partial renders standalone. It declares its own imports and reads only
-   what the router put in the context.
+1. A partial renders standalone. It declares its own imports and reads only what the router put in the context.
 2. The page embeds the same partial the htmx endpoints return.
 3. A repeated component is a macro, never `{% include %}` in a loop.
 
@@ -104,22 +93,13 @@ Three kinds of template, three rules:
 
 ## Colour
 
-Every colour is defined once, in
-`packages/fjkit/src/fjkit/static/src/fjkit.css`. Templates name a **role**
-(`variant="success"`, `bg-primary text-primary-foreground`), never a hue.
-Status colours are deliberately not tied to `--primary`, because "green means
-done" has to survive a rebrand. `fjkit check` fails the build on hex codes,
-`rgb()`/`oklch()`, Tailwind palette hues and `text-white`/`text-black`.
+Every colour is defined once, in `packages/fjkit/src/fjkit/static/src/fjkit.css`. Templates name a **role** (`variant="success"`, `bg-primary text-primary-foreground`), never a hue. Status colours are deliberately not tied to `--primary`, because "green means done" has to survive a rebrand. `fjkit check` fails the build on hex codes, `rgb()`/`oklch()`, Tailwind palette hues and `text-white`/`text-black`.
 
-The token table is that file itself; rebranding is covered on the site's Learn
-page.
+The token table is that file itself; rebranding is covered on the site's Learn page.
 
 ## Rendering
 
-- `templates.page()` for normal responses. `templates.stream()` when the row
-  count is user-controlled.
+- `templates.page()` for normal responses. `templates.stream()` when the row count is user-controlled.
 - Streaming must be buffered. Unbuffered is 65× slower over ASGI.
-- A handler that renders should be `def`, not `async def`, so Starlette runs it
-  in the threadpool.
-- Every Jinja knob lives in `FjkitConfig`. Re-run `bench/render_bench.py` when
-  a change is meant to be an optimisation.
+- A handler that renders should be `def`, not `async def`, so Starlette runs it in the threadpool.
+- Every Jinja knob lives in `FjkitConfig`. Re-run `bench/render_bench.py` when a change is meant to be an optimisation.
