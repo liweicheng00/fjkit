@@ -850,6 +850,13 @@ SHELL_BLOCKS = [
         "zh": "整條標頭；上面那幾個插槽不夠用時才動它。",
     },
     {
+        "name": "header_position",
+        "en": "static (default) or sticky. sticky pins the header to the top while the page scrolls; "
+        "with a sidebar, the bar spans the full width and the rail sits under it.",
+        "zh": "static（預設）或 sticky。sticky 讓標頭在頁面捲動時固定在頂端；"
+        "有側邊欄時，頂列橫跨全寬，側邊欄位於其下方。",
+    },
+    {
         "name": "header_actions",
         "en": "The right-hand end of the header. Defaults to theme_toggle().",
         "zh": "標頭右端。預設是 theme_toggle()。",

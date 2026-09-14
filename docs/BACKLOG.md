@@ -2059,3 +2059,18 @@ htmx 會套用，分頁的標題才不會停在「Add task」。
 **0.1 沒做的**：async session（`async_sessionmaker` 直接拒絕並說明）、inline formset、檔案上傳、
 FK 的伺服器端搜尋（等 `combobox` 那題）、`fieldsets`／`list_editable`／`date_hierarchy`、
 文件站的頁面。批次動作的 `hx-confirm` 是原生 `confirm()`，瀏覽器自動化碰不了，只有測試走過。
+
+## 2026-09-14 — shell 的 `header_position` block
+
+`ui/shell.html` 新增 `header_position` block，值為 `static`（預設）或 `sticky`；只有 `sticky` 會切換，
+其他值（包括 `fixed`）維持原本在 flow 裡的 header。用 `position: sticky` 而不是 `fixed`，
+所以 `main` 不需要依 header 高度補 padding。sticky 時 header 為 `bg-background sticky top-0 z-30 h-14 border-b`，
+`<html>` 加 `scroll-pt-16`。`z-30` 低於 Basecoat 的 sidebar 背板（40）與 dialog／popover／toast（50）。
+demo 的 `base.html` 已啟用。
+
+sticky 加 sidebar 時，header 移出 wrapper、放在 `<aside>` 之前，橫跨整個寬度；
+`fjkit.css` 的 `header[data-position="sticky"] + .sidebar > nav { @apply md:top-14 }` 讓側邊欄從頂列下方開始。
+窄螢幕不套用這個位移：側邊欄在那裡是全螢幕 overlay，照常蓋住頂列。
+`h-14` 與 `md:top-14` 必須一致，`test_the_rail_offset_matches_the_bar` 守這一點。
+
+CSS 預算：八個包 24.4–25.1 KB gzip（上限 28 KB）。

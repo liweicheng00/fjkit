@@ -1138,6 +1138,71 @@ class TestShellSidebarSlot:
         assert "mx-auto flex min-h-screen max-w-6xl flex-col px-5" in html
 
 
+def _header_class(html):
+    return html.split("<header", 1)[1].split(">", 1)[0]
+
+
+class TestShellHeaderPosition:
+    def test_the_header_stays_in_the_flow_by_default(self, render):
+        html = render(SHELL_WITHOUT_SIDEBAR)
+        assert 'class="flex items-center gap-6 py-5"' in _header_class(html)
+        assert "sticky" not in html
+        assert "scroll-pt-16" not in html
+
+    def test_sticky_pins_the_header(self, render):
+        html = render(SHELL_WITHOUT_SIDEBAR + "{% block header_position %}sticky{% endblock %}")
+        header = _header_class(html)
+        assert "sticky top-0" in header
+        assert "bg-background" in header, "without a ground, content shows through the bar"
+        assert '<html lang="en" class="h-full scroll-pt-16">' in html
+
+    def test_sticky_sits_below_basecoat_s_overlays(self, render):
+        """The narrow-screen sidebar backdrop is z-40 and dialogs, popovers and
+        toasts are z-50. A bar at or above either covers the thing that opened."""
+        html = render(SHELL_WITH_SIDEBAR + "{% block header_position %}sticky{% endblock %}")
+        assert "z-30" in _header_class(html)
+
+    def test_sticky_keeps_the_sidebar_adjacency(self, render):
+        html = render(SHELL_WITH_SIDEBAR + "{% block header_position %} sticky\n{% endblock %}")
+        between = html[html.index("</aside>") + len("</aside>") : html.index("<div class=")]
+        assert between.strip() == ""
+        assert "sticky top-0" in _header_class(html)
+
+    def test_sticky_with_a_sidebar_puts_the_rail_under_the_bar(self, render):
+        """`fjkit.css` moves the rail's panel down with
+        `header[data-position="sticky"] + .sidebar > nav`. The header has to be
+        the aside's previous sibling, and outside the wrapper that carries the
+        sidebar's margin, or the bar does not span the rail's column."""
+        html = render(SHELL_WITH_SIDEBAR + "{% block header_position %}sticky{% endblock %}")
+        body = html[html.index("<body") :]
+        assert body.index("</header>") < body.index('<aside class="sidebar"')
+        between = body[body.index("</header>") + len("</header>") : body.index('<aside class="sidebar"')]
+        assert between.strip() == ""
+        header = _header_class(html)
+        assert 'data-position="sticky"' in header
+        assert "h-14" in header, "the rail's offset is md:top-14; the bar's height must match"
+        assert "-mx-5" not in header, "outside the wrapper there is no gutter to stretch across"
+
+    def test_sticky_without_a_sidebar_stays_in_the_centred_wrapper(self, render):
+        html = render(SHELL_WITHOUT_SIDEBAR + "{% block header_position %}sticky{% endblock %}")
+        assert html.index("max-w-6xl") < html.index("<header")
+        assert 'data-position="sticky"' in _header_class(html)
+
+    def test_the_rail_offset_matches_the_bar(self):
+        from fjkit.config import TEMPLATE_DIR
+
+        css =(TEMPLATE_DIR.parent / "static" / "src" / "fjkit.css").read_text(encoding="utf-8")
+        rule = css.split('header[data-position="sticky"] + .sidebar > nav', 1)[1].split("}", 1)[0]
+        assert "md:top-14" in rule
+
+    def test_an_unknown_position_falls_back_to_static(self, render):
+        """`fixed` would take the bar out of the flow with nothing to pad `main`
+        clear of it. Only the one word the shell has rules for switches."""
+        html = render(SHELL_WITHOUT_SIDEBAR + "{% block header_position %}fixed{% endblock %}")
+        assert 'class="flex items-center gap-6 py-5"' in _header_class(html)
+        assert "fixed" not in _header_class(html)
+
+
 TABS = '{% from "ui/tabs.html" import tabs, tab_panel %}'
 CODE = '{% from "ui/data.html" import code_block, item_list, item %}'
 DL = '{% from "ui/data.html" import description_list, description_item %}'

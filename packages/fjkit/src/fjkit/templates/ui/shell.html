@@ -17,6 +17,10 @@
 
   Fill the `sidebar` block instead of `nav` and the skeleton becomes a side
   column plus a thin top bar; see the note above <body>.
+
+  Pin the header to the top of the viewport while the page scrolls:
+
+      {% block header_position %}sticky{% endblock %}
 #}
 {% from "ui/feedback.html" import toast, toaster %}
 {% from "ui/nav.html" import theme_toggle %}
@@ -33,9 +37,31 @@
   set, and that flag gets forgotten.
 #}
 {% set sidebar_slot %}{% block sidebar %}{% endblock %}{% endset %}
-{% set has_sidebar = sidebar_slot.strip() | length > 0 -%}
+{% set has_sidebar = sidebar_slot.strip() | length > 0 %}
+{#
+  header_position: static | sticky
+
+  A block rather than a variable for the reason every other seam here is one:
+  a `{% set %}` written inside some other block in the app's base.html is
+  scoped to that block and changes nothing, with no error, while a block
+  override lands wherever it is written. Captured and compared like the sidebar
+  slot, and only the exact word `sticky` switches — `fixed`, or a typo, keeps
+  the header in the flow instead of emitting a position no rule was written for.
+
+  `sticky` rather than `position: fixed`. A fixed bar leaves the flow, so `main`
+  would need a top padding equal to the bar's height, and that height changes
+  with the style pack, the brand mark and whatever `header_actions` holds. A
+  sticky one keeps its own space and pins only once the page scrolls past it.
+#}
+{% set header_slot %}{% block header_position %}static{% endblock %}{% endset %}
+{% set sticky_header = header_slot.strip() == "sticky" -%}
 <!doctype html>
-<html lang="{% block lang %}en{% endblock %}" class="h-full">
+{#
+  `scroll-pt-16` keeps an anchor target or a focused control from scrolling to
+  a position underneath the pinned bar (WCAG 2.4.11). 4rem clears the bar's
+  fixed `h-14` (3.5rem) with room to spare.
+#}
+<html lang="{% block lang %}en{% endblock %}" class="{% if sticky_header %}h-full scroll-pt-16{% else %}h-full{% endif %}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -85,20 +111,53 @@
   That layout also drops `mx-auto max-w-6xl`: `mx-auto` is a utility,
   Basecoat's margin comes through `@apply` in the components layer, and
   utilities win — a centred wrapper would park itself underneath the sidebar.
+
+  A sticky header with a sidebar is the one layout where the header leaves the
+  wrapper: the bar spans the whole viewport and the rail hangs underneath it,
+  so the header comes before the aside instead of inside the wrapper after it.
+  The adjacency above still holds, because nothing moves between the aside and
+  the wrapper. `fjkit.css` moves the rail's top edge down by the bar's height
+  when a sticky header is the aside's previous sibling; that is why the bar has
+  a fixed `h-14` here rather than padding — the offset has to be one number.
 #}
+{% set top_bar = sticky_header and has_sidebar %}
+{#
+  The sticky bar paints `bg-background` so content scrolls under it rather
+  than through it, and `border-b` marks where the page ends. Inside the centred
+  wrapper, `-mx-5 px-5` stretches it across the gutter, so content scrolling
+  beside the bar does not show in a 20px strip on either side.
+
+  `z-30` is one step below everything Basecoat layers over a page: the
+  narrow-screen sidebar backdrop (40), the sidebar panel, dialogs, popovers and
+  toasts (50). A dropdown opened from `header_actions` still covers the page,
+  because the bar's stacking context sits above `main`'s. On a narrow screen the
+  open sidebar is a full-screen overlay, and it covers the bar as well.
+
+  Captured, like the sidebar slot, because it renders in one of two places and
+  a block can be defined only once.
+#}
+{% set header_markup %}
+  {% block header %}
+    <header class="{% if top_bar %}bg-background sticky top-0 z-30 flex h-14 items-center gap-6 border-b px-5{% elif sticky_header %}bg-background sticky top-0 z-30 -mx-5 mb-5 flex h-14 items-center gap-6 border-b px-5{% else %}flex items-center gap-6 py-5{% endif %}"
+      {%- if sticky_header %} data-position="sticky"{% endif %}>
+      {% if has_sidebar %}{% block sidebar_trigger %}{{ sidebar_trigger() }}{% endblock %}{% endif %}
+      {% block brand %}{% endblock %}
+      {% block nav %}{% endblock %}
+      <div class="ml-auto">
+        {% block header_actions %}{{ theme_toggle() }}{% endblock %}
+      </div>
+    </header>
+  {% endblock %}
+{% endset %}
 <body class="min-h-full antialiased">
+  {% if top_bar %}{{ header_markup }}{% endif %}
   {{ sidebar_slot }}
-  <div class="{% if has_sidebar %}flex min-h-screen flex-col px-5{% else %}mx-auto flex min-h-screen max-w-6xl flex-col px-5{% endif %}">
-    {% block header %}
-      <header class="flex items-center gap-6 py-5">
-        {% if has_sidebar %}{% block sidebar_trigger %}{{ sidebar_trigger() }}{% endblock %}{% endif %}
-        {% block brand %}{% endblock %}
-        {% block nav %}{% endblock %}
-        <div class="ml-auto">
-          {% block header_actions %}{{ theme_toggle() }}{% endblock %}
-        </div>
-      </header>
-    {% endblock %}
+  {#
+    Under a top bar the wrapper's minimum is the viewport less the bar, so a
+    short page still puts the footer at the bottom without scrolling 3.5rem.
+  #}
+  <div class="{% if top_bar %}flex min-h-[calc(100vh-3.5rem)] flex-col px-5 pt-5{% elif has_sidebar %}flex min-h-screen flex-col px-5{% else %}mx-auto flex min-h-screen max-w-6xl flex-col px-5{% endif %}">
+    {% if not top_bar %}{{ header_markup }}{% endif %}
 
     {#
       A flex column, not a block, so `ui/layout.html`'s `fill` has a main axis

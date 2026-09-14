@@ -411,6 +411,12 @@
         骨架就變成側邊欄加一條細的頂列。外殼自己會判斷那個 block 是不是空的，
         並在頁首補上 <code>sidebar_trigger</code>，所以 app 不必另外設旗標宣告要哪一種版面。
       </p>
+      <p>
+        另一個 block 改變的是頁首的行為。在 <code>header_position</code> 填入 <code>sticky</code>，
+        頁面捲動時頁首會固定在視窗頂端。它使用 <code>position: sticky</code> 而不是 <code>fixed</code>，
+        所以頂列保留自己的空間，<code>main</code> 不需要額外的內距來避開它。
+        若同時填了 <code>sidebar</code>，頂列會橫跨整個寬度，側邊欄從頂列下方開始。
+      </p>
     {% endcall %}
 
     {{ snippet("shell", "你的 base.html，完整版") }}

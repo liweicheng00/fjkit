@@ -375,6 +375,19 @@
   details[open] > summary > .collapsible-caret {
     rotate: 180deg;
   }
+
+  /* A sticky header before the sidebar: `ui/shell.html` with
+   * `header_position` set to `sticky`. Basecoat pins the rail's panel at
+   * `inset-y-0`, so without this the panel would sit on top of the bar's left
+   * end. `h-14` on the bar is the other half of this rule; the two numbers are
+   * one number.
+   *
+   * Wide screens only. On a narrow screen the open sidebar is a full-screen
+   * overlay, and an overlay that left a strip of the page uncovered would be
+   * clickable through its backdrop. */
+  header[data-position="sticky"] + .sidebar > nav {
+    @apply md:top-14;
+  }
 }
 
 /* ---------------------------------------------------------------------------
