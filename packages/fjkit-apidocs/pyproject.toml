@@ -32,7 +32,9 @@ classifiers = [
 # `fjkit.auth` is reached through `sys.modules` rather than imported, so the
 # sign-in panel is wired only when the app already registered `AuthPlugin`.
 # That is a runtime lookup inside fjkit, not a second dependency.
-dependencies = ["fjkit"]
+dependencies = [
+    "fjkit>=0.1.0.dev0",
+]
 
 [project.urls]
 Homepage = "https://liweicheng00.github.io/fjkit/"

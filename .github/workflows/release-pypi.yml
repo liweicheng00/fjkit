@@ -1,11 +1,23 @@
-# Publish the five Python distributions.
+# Publish one Python distribution. The five versions are independent, so each
+# distribution has its own tag prefix and each tag publishes exactly one:
 #
-#   git tag v0.1.0.dev0 && git push origin v0.1.0.dev0     -> PyPI
-#   Actions -> "Release (PyPI)" -> Run workflow             -> TestPyPI (default)
-#                                                              or PyPI, by choice
+#   git tag v0.1.0.dev0     && git push origin v0.1.0.dev0      -> fjkit
+#   git tag charts-v0.1.1   && git push origin charts-v0.1.1    -> fjkit-charts
+#   git tag apidocs-v0.1.1  && git push origin apidocs-v0.1.1   -> fjkit-apidocs
+#   git tag admin-v0.2.0    && git push origin admin-v0.2.0     -> fjkit-admin
+#   git tag lsp-v0.1.1      && git push origin lsp-v0.1.1       -> fjkit-lsp
 #
-# The tag is the version: `vX.Y.Z` must equal the `version` in all five
-# pyproject.toml files, and `make verify` refuses otherwise.
+#   Actions -> "Release (PyPI)" -> Run workflow  -> pick a package and an index
+#                                                   (TestPyPI by default)
+#
+# The tag is the version: what follows the prefix must equal the `version` in
+# that package's pyproject.toml, and `make verify PACKAGE=… EXPECT_VERSION=…`
+# refuses otherwise. Releasing all five means five tags.
+#
+# `fjkit` first is no longer a job dependency, because a plugin's tag no longer
+# carries the kit. The plugin's own `fjkit>=` lower bound is what states the
+# requirement, and `make verify` fails a plugin that declares none: a plugin
+# needing a kit version that is not on the index yet waits for the kit's tag.
 #
 # Uploads use PyPI Trusted Publishing (OIDC), so there is no token to store.
 # One-time setup, per index and per project name — for a name that does not
@@ -21,15 +33,20 @@
 # and create the two GitHub environments `pypi` and `testpypi` under
 # Settings -> Environments. A required reviewer on `pypi` turns a tag push into
 # an approval step.
-#
-# Order is fjkit first, then the four that depend on it, as in goal/RELEASING.md.
 name: Release (PyPI)
 
 on:
   push:
-    tags: ['v*']
+    # `v[0-9]*`, not `v*`: the latter also matches `vscode-v…`, which belongs to
+    # release-vscode.yml.
+    tags: ['v[0-9]*', 'charts-v[0-9]*', 'apidocs-v[0-9]*', 'admin-v[0-9]*', 'lsp-v[0-9]*']
   workflow_dispatch:
     inputs:
+      package:
+        description: Distribution to publish
+        type: choice
+        options: [fjkit, fjkit-charts, fjkit-apidocs, fjkit-admin, fjkit-lsp]
+        default: fjkit
       target:
         description: Index to upload to
         type: choice
@@ -42,34 +59,56 @@ env:
 
 jobs:
   build:
-    name: build and verify dist/
+    name: build and verify one distribution
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      package: ${{ steps.resolve.outputs.package }}
+      version: ${{ steps.resolve.outputs.version }}
       target: ${{ env.TARGET }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: make build
+      - id: resolve
+        name: which distribution, and at which version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            case "$GITHUB_REF_NAME" in
+              charts-v*)  pkg=fjkit-charts;  version="${GITHUB_REF_NAME#charts-v}" ;;
+              apidocs-v*) pkg=fjkit-apidocs; version="${GITHUB_REF_NAME#apidocs-v}" ;;
+              admin-v*)   pkg=fjkit-admin;   version="${GITHUB_REF_NAME#admin-v}" ;;
+              lsp-v*)     pkg=fjkit-lsp;     version="${GITHUB_REF_NAME#lsp-v}" ;;
+              # The trigger glob already excludes this; the branch stays so a
+              # widened glob cannot route the extension's tag to PyPI.
+              vscode-v*)  echo "$GITHUB_REF_NAME belongs to release-vscode.yml"; exit 1 ;;
+              v*)         pkg=fjkit;         version="${GITHUB_REF_NAME#v}" ;;
+              *) echo "no distribution owns the tag $GITHUB_REF_NAME"; exit 1 ;;
+            esac
+          else
+            pkg='${{ inputs.package }}'
+            version=$(uv version --package "$pkg" --short)
+          fi
+          echo "publishing $pkg $version"
+          echo "package=$pkg" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - run: make build-${{ steps.resolve.outputs.package }}
       - name: verify (the tag must be the version)
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
-            make verify EXPECT_VERSION="${GITHUB_REF_NAME#v}"
+            make verify PACKAGE=${{ steps.resolve.outputs.package }} \
+                        EXPECT_VERSION=${{ steps.resolve.outputs.version }}
           else
-            make verify
+            make verify PACKAGE=${{ steps.resolve.outputs.package }}
           fi
-      - id: version
-        run: echo "version=$(uv version --package fjkit --short)" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
           if-no-files-found: error
 
-  publish-fjkit:
-    name: publish fjkit
+  publish:
+    name: publish ${{ needs.build.outputs.package }} ${{ needs.build.outputs.version }}
     needs: build
     runs-on: ubuntu-latest
     environment: ${{ needs.build.outputs.target }}
@@ -83,38 +122,11 @@ jobs:
           name: dist
           path: dist/
       - run: |
+          files="dist/$(echo '${{ needs.build.outputs.package }}' | tr - _)-${{ needs.build.outputs.version }}*"
           if [ "${{ needs.build.outputs.target }}" = "testpypi" ]; then
             uv publish --trusted-publishing always \
               --publish-url https://test.pypi.org/legacy/ --check-url https://test.pypi.org/simple/ \
-              dist/fjkit-${{ needs.build.outputs.version }}*
-          else
-            uv publish --trusted-publishing always --check-url https://pypi.org/simple/ \
-              dist/fjkit-${{ needs.build.outputs.version }}*
-          fi
-
-  publish-plugins:
-    name: publish ${{ matrix.package }}
-    needs: [build, publish-fjkit]
-    runs-on: ubuntu-latest
-    environment: ${{ needs.build.outputs.target }}
-    permissions:
-      id-token: write
-      contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        package: [fjkit-charts, fjkit-apidocs, fjkit-admin, fjkit-lsp]
-    steps:
-      - uses: astral-sh/setup-uv@v6
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - run: |
-          files="dist/$(echo '${{ matrix.package }}' | tr - _)-${{ needs.build.outputs.version }}*"
-          if [ "${{ needs.build.outputs.target }}" = "testpypi" ]; then
-            uv publish --trusted-publishing always \
-              --publish-url https://test.pypi.org/legacy/ --check-url https://test.pypi.org/simple/ $files
+              $files
           else
             uv publish --trusted-publishing always --check-url https://pypi.org/simple/ $files
           fi

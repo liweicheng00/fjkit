@@ -38,7 +38,7 @@ classifiers = [
 # `to_plotly_json()`, so an app that builds figures by hand needs nothing extra
 # and an app that uses `plotly` declares it itself.
 dependencies = [
-    "fjkit",
+    "fjkit>=0.1.0.dev0",
     "pydantic>=2.9",
 ]
 

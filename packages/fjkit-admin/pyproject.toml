@@ -26,7 +26,7 @@ classifiers = [
 # SQLModel is not listed. A `table=True` class is an ordinary mapped class,
 # so nothing here needs to import it; see `fjkit_admin.schema`.
 dependencies = [
-    "fjkit",
+    "fjkit>=0.1.0.dev0",
     "sqlalchemy>=2.0",
 ]
 

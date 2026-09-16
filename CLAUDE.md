@@ -64,6 +64,7 @@ An app author runs none of the second group. That asymmetry is the product.
 | Should this feature exist? | `CHARTER.md` §2 |
 | What is next? | `goal/ROADMAP.md` — untracked, and the only document here that expires |
 | What am I allowed to do without asking? | `CHARTER.md` §6, then `goal/OPERATING.md` §1 |
+| How does a branch, a version or a tag become a release? | `RELEASE.md` |
 | What did the benchmarks actually measure? | `docs/jinja-performance.md` |
 
 Read the authority rather than restating it here. This file is loaded on every turn, so it stays a map.

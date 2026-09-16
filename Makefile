@@ -8,10 +8,15 @@
 # No token is a Makefile variable. `uv publish` reads UV_PUBLISH_TOKEN from
 # the environment, and the Open VSX target reads OPEN_VSX_TOKEN.
 #
-# The order of the six targets is fixed: fjkit first, because the other four
+# The order of the six targets is fixed: fjkit first, because three of the other
 # Python distributions declare it as a dependency; fjkit-vscode last, because
 # it starts `fjkit-lsp` from the user's own venv and is inert until that is
 # installable.
+#
+# Each distribution carries its own version. Nothing here compares one against
+# another: a plugin releases when the plugin changes. What keeps the dependency
+# honest instead is a `fjkit>=` lower bound in the plugin's metadata, which
+# `verify` requires every plugin to declare.
 
 PYTHON_DISTS := fjkit fjkit-charts fjkit-apidocs fjkit-admin fjkit-lsp
 PLUGIN_DISTS := $(filter-out fjkit,$(PYTHON_DISTS))
@@ -20,12 +25,18 @@ DIST     := dist
 VSIX_DIR := tools/fjkit-vscode/dist
 DEMO_TEMPLATES := examples/fjkit-demo/app/templates examples/fjkit-admin-demo/admin_demo/templates
 
-# Lazy (`=`) so a plain `make help` does not spawn uv.
-VERSION      = $(shell uv version --package fjkit --short)
+# Lazy (`=`) so a plain `make help` does not spawn uv. One call per package,
+# because the five versions are independent.
+pkg_version  = $(shell uv version --package $(1) --short)
 VSIX_VERSION = $(shell python3 -c "import json; print(json.load(open('tools/fjkit-vscode/package.json'))['version'])")
 
 # `fjkit-charts` on the command line is `fjkit_charts-<version>` on disk.
-dist_files = $(DIST)/$(subst -,_,$(1))-$(VERSION)*
+dist_files = $(DIST)/$(subst -,_,$(1))-$(call pkg_version,$(1))*
+
+# `verify` checks every distribution; PACKAGE=<dist> narrows it to one, which is
+# what a tag does. EXPECT_VERSION only means something against a single package.
+PACKAGE      ?=
+VERIFY_DISTS := $(if $(PACKAGE),$(PACKAGE),$(PYTHON_DISTS))
 
 # Set to 1 to mark the extension as a pre-release. The manifest cannot say so
 # itself: VS Code requires a strict major.minor.patch, so the flag is the only
@@ -87,31 +98,44 @@ $(addprefix build-,$(PYTHON_DISTS)): build-%:
 vsix: ## The editor extension as tools/fjkit-vscode/dist/*.vsix
 	uv run python tools/fjkit-vscode/build.py
 
-# The checks from the release procedure: every wheel carries the licence, the
-# five versions agree, fjkit still has no extras (the style markers were
-# withdrawn before 0.1.0 and must not come back), and the built CSS is inside.
-# EXPECT_VERSION, when given, must match too; CI passes the tag here.
-verify: ## Inspect dist/ before uploading (EXPECT_VERSION=x.y.z to pin)
+# The checks from the release procedure, per distribution: the wheel carries the
+# licence, the wheel and the sdist for the version in pyproject.toml are both
+# there, and a plugin states which fjkit it needs. fjkit adds two of its own —
+# still no extras (the style markers were withdrawn before 0.1.0 and must not
+# come back), and the built CSS is inside.
+#
+# PACKAGE=<dist> narrows this to one distribution, and EXPECT_VERSION then has
+# to match that one's version; a tag passes both.
+verify: ## Inspect dist/ before uploading (PACKAGE=<dist>, EXPECT_VERSION=x.y.z)
 	@test -d $(DIST) || { echo "no $(DIST)/ — run make build"; exit 1; }
-	@v="$(VERSION)"; \
-	if [ -n "$(EXPECT_VERSION)" ] && [ "$(EXPECT_VERSION)" != "$$v" ]; then \
-	  echo "version mismatch: expected $(EXPECT_VERSION), pyproject says $$v"; exit 1; fi; \
-	for p in $(PYTHON_DISTS); do \
-	  pv=$$(uv version --package $$p --short); \
-	  [ "$$pv" = "$$v" ] || { echo "$$p is $$pv, fjkit is $$v"; exit 1; }; \
-	  n=$$(ls $(DIST)/$$(echo $$p | tr - _)-$$v-*.whl $(DIST)/$$(echo $$p | tr - _)-$$v.tar.gz 2>/dev/null | wc -l | tr -d ' '); \
+	@test -z "$(EXPECT_VERSION)" || test -n "$(PACKAGE)" || \
+	  { echo "EXPECT_VERSION needs PACKAGE=<dist>: the five versions are independent"; exit 1; }
+	@for p in $(VERIFY_DISTS); do \
+	  v=$$(uv version --package $$p --short) || exit 1; \
+	  if [ -n "$(EXPECT_VERSION)" ] && [ "$(EXPECT_VERSION)" != "$$v" ]; then \
+	    echo "$$p: expected $(EXPECT_VERSION), pyproject says $$v"; exit 1; fi; \
+	  u=$$(echo $$p | tr - _); \
+	  n=$$(ls $(DIST)/$$u-$$v-*.whl $(DIST)/$$u-$$v.tar.gz 2>/dev/null | wc -l | tr -d ' '); \
 	  [ "$$n" = "2" ] || { echo "$$p: expected a wheel and an sdist for $$v in $(DIST)/, found $$n"; exit 1; }; \
-	done; \
-	for w in $(DIST)/*.whl; do \
+	  w=$$(ls $(DIST)/$$u-$$v-*.whl); \
 	  meta=$$(unzip -p "$$w" '*/METADATA'); \
 	  echo "$$meta" | grep -q '^License-Expression: MIT' || { echo "$$w: no License-Expression: MIT"; exit 1; }; \
-	done; \
-	fj=$$(ls $(DIST)/fjkit-$$v-*.whl); \
-	extras=$$(unzip -p "$$fj" '*/METADATA' | grep -c '^Provides-Extra' || true); \
-	[ "$$extras" = "0" ] || { echo "$$fj declares $$extras extras; the style markers must stay withdrawn"; exit 1; }; \
-	css=$$(unzip -l "$$fj" | grep -c 'static/dist/' || true); \
-	[ "$$css" -ge 8 ] || { echo "$$fj has $$css files under static/dist/, expected the 8 style packs — run make css"; exit 1; }; \
-	echo "verify: $(words $(PYTHON_DISTS)) distributions at $$v, licence and CSS present, no extras"
+	  if [ "$$p" = "fjkit" ]; then \
+	    extras=$$(echo "$$meta" | grep -c '^Provides-Extra' || true); \
+	    [ "$$extras" = "0" ] || { echo "$$w declares $$extras extras; the style markers must stay withdrawn"; exit 1; }; \
+	    css=$$(unzip -l "$$w" | grep -c 'static/dist/' || true); \
+	    [ "$$css" -ge 8 ] || { echo "$$w has $$css files under static/dist/, expected the 8 style packs — run make css"; exit 1; }; \
+	  else \
+	    req=$$(echo "$$meta" | grep '^Requires-Dist: fjkit' || true); \
+	    case "$$req" in \
+	      "") ;; \
+	      *">="*) ;; \
+	      *) echo "$$p: \"$$req\" has no lower bound. Independent versions mean the"; \
+	         echo "    metadata is the only place that says which fjkit this needs."; exit 1;; \
+	    esac; \
+	  fi; \
+	  echo "verify: $$p $$v — licence, wheel and sdist present"; \
+	done
 
 # ---------------------------------------------------------------- publish
 
