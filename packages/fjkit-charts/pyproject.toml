@@ -9,7 +9,7 @@
 # was free to take before 0.1.0 reached PyPI.
 [project]
 name = "fjkit-charts"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Server-rendered Plotly charts for fjkit — a plugin, no front-end build"
 readme = "README.md"
 requires-python = ">=3.13"

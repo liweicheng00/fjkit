@@ -8,7 +8,7 @@
 # `fjkit` is a regular package, so a second distribution cannot write into it.
 [project]
 name = "fjkit-apidocs"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "API reference and in-process console for FastAPI, in place of Swagger UI — a fjkit plugin"
 readme = "README.md"
 requires-python = ">=3.13"

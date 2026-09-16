@@ -6,7 +6,7 @@
 # works from the repository root. Nothing in `packages/` depends on it.
 [project]
 name = "fjkit-lsp"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "A language server that links fjkit routes, response models and Jinja templates."
 readme = "README.md"
 requires-python = ">=3.13"
