@@ -265,7 +265,7 @@ wheels = [
 
 [[package]]
 name = "fjkit"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "packages/fjkit" }
 dependencies = [
     { name = "fastapi" },
@@ -288,7 +288,7 @@ build = [{ name = "pytailwindcss", specifier = ">=0.3.1" }]
 
 [[package]]
 name = "fjkit-admin"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "packages/fjkit-admin" }
 dependencies = [
     { name = "fjkit" },
@@ -336,7 +336,7 @@ requires-dist = [
 
 [[package]]
 name = "fjkit-apidocs"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "packages/fjkit-apidocs" }
 dependencies = [
     { name = "fjkit" },
@@ -347,7 +347,7 @@ requires-dist = [{ name = "fjkit", editable = "packages/fjkit" }]
 
 [[package]]
 name = "fjkit-charts"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "packages/fjkit-charts" }
 dependencies = [
     { name = "fjkit" },
@@ -399,7 +399,7 @@ dev = [
 
 [[package]]
 name = "fjkit-lsp"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "tools/fjkit-lsp" }
 dependencies = [
     { name = "pygls" },

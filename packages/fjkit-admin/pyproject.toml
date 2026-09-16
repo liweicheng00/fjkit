@@ -1,6 +1,6 @@
 [project]
 name = "fjkit-admin"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "A Django-style admin for FastAPI: SQLAlchemy models, rendered with fjkit, swapped with htmx"
 readme = "README.md"
 # PEP 639: an SPDX string plus the file, never a `License ::` classifier — the

@@ -1,6 +1,6 @@
 [project]
 name = "fjkit"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Server-rendered UI kit for FastAPI — Jinja2 + Basecoat + htmx, no front-end build"
 readme = "README.md"
 requires-python = ">=3.13"
