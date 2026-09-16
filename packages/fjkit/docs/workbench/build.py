@@ -32,8 +32,8 @@ classes and no hand-written chrome — `tests/test_docs_site.py` runs
 `fjkit check` over `templates/` and fails the build if any appears. Whatever
 the kit cannot say shows up here first.
 
-Two adaptations turn a server-rendered app into a static site, both using knobs
-`FjkitConfig` already has rather than a fork of the shell:
+Three adaptations turn a server-rendered app into a static site, none of them a
+fork of the shell. The first two are knobs `FjkitConfig` already has:
 
 * `static_url="assets"` — `fjkit_static('dist/fjkit-<pack>.css')` resolves to a
   path next to the page instead of to a mounted route. The static tree is
@@ -43,6 +43,10 @@ Two adaptations turn a server-rendered app into a static site, both using knobs
   `(request, name)` signature and read `request.route`, a plain object the
   page's context supplies. Route *names* stay the currency, so `nav_links`
   and `sidebar_link` work unmodified.
+* `fjkit_static` is replaced after the Environment is built, to stamp each
+  asset with a hash of the copy under `docs/assets/` instead of its mtime. The
+  output is committed and CI rebuilds it to check it is current; a checkout
+  resets every mtime, so an mtime stamp could never match.
 
 Everything else is the package: the shell's `<head>`, its theme flash-guard,
 Basecoat's JS (which initialises the sidebar, the tab strips and the range
@@ -52,6 +56,7 @@ sliders on these pages), and every component preview — all rendered by
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -407,6 +412,31 @@ def is_active(request, name: str) -> bool:
     return getattr(request, "route", None) == name
 
 
+def content_stamped(prefix: str):
+    """Build the site's `fjkit_static`: the kit's URL, stamped with a hash of
+    the file's bytes rather than its mtime.
+
+    The kit's reasons for an mtime hold in an app and fail here. `docs/` is
+    committed, and CI rebuilds it to check it is current; a fresh checkout gives
+    every file a new mtime, so the rebuild would never match. A hash depends
+    only on the content, and still changes when the content does.
+
+    It reads the copies under `docs/assets/`, which `build()` writes before any
+    page renders. That covers the site's own scripts as well, which the kit's
+    version stamps with the fjkit version because they are not in its tree.
+    """
+    base = prefix.rstrip("/")
+    stamps: dict[str, str] = {}
+
+    def fjkit_static(path: str) -> str:
+        clean = path.lstrip("/")
+        if clean not in stamps:
+            stamps[clean] = hashlib.sha256((OUT_ASSETS / clean).read_bytes()).hexdigest()[:12]
+        return f"{base}/{clean}?v={stamps[clean]}"
+
+    return fjkit_static
+
+
 def build() -> int:
     for path, _, hint in VENDORED:
         if not path.exists():
@@ -452,6 +482,7 @@ def build() -> int:
                 globals={"url_for": url_for, "is_active": is_active},
             )
         )
+        env.globals["fjkit_static"] = content_stamped(lang["static"])
         out_dir = OUT / lang["dir"] if lang["dir"] else OUT
         out_dir.mkdir(parents=True, exist_ok=True)
         strings = STRINGS[lang["code"]]
