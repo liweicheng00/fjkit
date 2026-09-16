@@ -34,6 +34,8 @@
 # Settings -> Environments. A required reviewer on `pypi` turns a tag push into
 # an approval step.
 name: Release (PyPI)
+# Names the distribution in the run list, where every run otherwise reads alike.
+run-name: "Release ${{ inputs.package || github.ref_name }} → ${{ inputs.target || 'pypi' }}"
 
 on:
   push:
