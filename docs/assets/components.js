@@ -1051,7 +1051,7 @@ const SNIPPET = {
     /* Read out of shell.html at build time, so this list cannot offer a block
        the shell stopped having. */
     code: () => DATA.shell.blocks.map((name) => `{% block ${name} %}`).join("\n"),
-    caption: "Read out of shell.html at build time, so this cannot list a block the shell stopped having. Fill sidebar and the skeleton becomes a side column plus a thin top bar — the shell tests the block for emptiness and grows a sidebar_trigger in the header on its own. Fill header_position with sticky and the header stays pinned to the top while the page scrolls — with a sidebar, across the full width and above the rail; any other value leaves it in the flow.",
+    caption: "Read out of shell.html at build time, so this cannot list a block the shell stopped having. Fill sidebar and the skeleton becomes a side column plus a thin top bar — the shell tests the block for emptiness and grows a sidebar_trigger in the header on its own. The header stays pinned to the top while the page scrolls — with a sidebar, across the full width and above the rail. For a header in the flow, override the header block.",
   },
 
   sidebar: {
