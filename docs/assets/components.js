@@ -747,6 +747,25 @@ const SHOWCASE = {
     caption: "Basecoat owns which tab is selected, the roving tabindex and the arrow keys. The ids tie a tab to its panel — pass them once, in the list.",
   },
 
+  tabs_segmented: {
+    html: () => DATA.gallery.tabs_segmented,
+    jinja: `{% from "ui/tabs.html" import tabs, tab_panel %}
+
+{% call tabs([{"id": "draft", "label": "Draft"},
+              {"id": "history", "label": "History"}], label="Document") %}
+  {% call tab_panel("draft") %}
+    {% call tabs([{"id": "generate", "label": "Generate"},
+                  {"id": "review", "label": "Review my draft"}],
+                 label="Mode", variant="segmented") %}
+      {% call tab_panel("generate") %}…{% endcall %}
+      {% call tab_panel("review") %}…{% endcall %}
+    {% endcall %}
+  {% endcall %}
+  {% call tab_panel("history") %}…{% endcall %}
+{% endcall %}`,
+    caption: "variant is shape here, not a colour role: underline (the default) or segmented, the style pack's own pill strip, so it follows a rebrand. Use it for a group nested inside a tab panel, where a second underline strip would read as a second level of navigation. Both panels stay in the DOM and only toggle hidden, so a half-filled form in the other mode keeps its input.",
+  },
+
   code_block: {
     html: () => DATA.gallery.code_block,
     jinja: `{% from "ui/data.html" import code_block %}

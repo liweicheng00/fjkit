@@ -473,6 +473,19 @@ gallery = {
         '{% call tab_panel("g-b") %}<p>What has happened to it.</p>{% endcall %}'
         "{% endcall %}"
     ),
+    "tabs_segmented": render(
+        f'{TABS}{{% call tabs([{{"id": "gs-draft", "label": "Draft"}}, '
+        '{"id": "gs-history", "label": "History"}], label="Document") %}'
+        '{% call tab_panel("gs-draft") %}'
+        '{% call tabs([{"id": "gs-generate", "label": "Generate"}, '
+        '{"id": "gs-review", "label": "Review my draft"}], label="Mode", variant="segmented") %}'
+        '{% call tab_panel("gs-generate") %}<p>Describe the document and get a first draft.</p>{% endcall %}'
+        '{% call tab_panel("gs-review") %}<p>Paste a draft and get it checked.</p>{% endcall %}'
+        "{% endcall %}"
+        "{% endcall %}"
+        '{% call tab_panel("gs-history") %}<p>Every earlier version.</p>{% endcall %}'
+        "{% endcall %}"
+    ),
     "code_block": render(
         f'{CONTENT}{{{{ code_block("{{{{ button(\'Add\', variant=\'primary\') }}}}", label="Jinja") }}}}'
     ),
