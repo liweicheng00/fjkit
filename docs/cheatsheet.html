@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=b6fc025d21d1">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=485377dca63f">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -404,7 +404,10 @@ fjkit
       <div>
 <h3>ui/tabs.html</h3>      </div>
     </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
-      <h4><code>tabs(items, label=&#34;Tabs&#34;, selected=none, orientation=&#34;horizontal&#34;)</code></h4><p>items is a list of {id, label}. selected names the tab that starts open, so the server decides it rather than a script after paint.</p>    </section><aside><span class="badge" data-variant="outline">block: tab_panel() calls</span></aside>  </div>
+      <h4><code>tabs(items, label=&#34;Tabs&#34;, selected=none, orientation=&#34;horizontal&#34;,
+     variant=&#34;underline&#34;)</code></h4><p>items is a list of {id, label}. selected names the tab that starts open, so the server decides it rather than a script after paint.</p>    </section><aside><span class="badge" data-variant="outline">block: tab_panel() calls</span></aside>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>tabs(items, label=&#34;Mode&#34;, variant=&#34;segmented&#34;)</code></h4><p>A pill strip, for a tab group nested inside a tab panel, so it reads as a mode switch rather than a second level of navigation. variant here is shape, not a colour role: underline | segmented, and anything else is underline.</p>    </section><aside><span class="badge" data-variant="outline">block: tab_panel() calls</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>tab_panel(id, lazy=none, on=none, include=none)</code></h4><p>id has to match the tab&#39;s. That pairing is the whole aria contract Basecoat&#39;s keyboard behaviour reads.</p>    </section><aside><span class="badge" data-variant="outline">block: the body</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -720,7 +723,7 @@ HX-Refresh: true                 (response)</code></h4><p>Full-page navigation, 
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=bf77ff1b0913"></script>
+  <script defer src="assets/data.js?v=1ad7de50e4a2"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
 </body>
 </html>

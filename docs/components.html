@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=b6fc025d21d1">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=485377dca63f">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -1006,6 +1006,14 @@ fjkit
         was for, so it is a parameter rather than something a script decides after paint. The two
         representations under every playground on this page are one of these.
       </p>
+      <p>
+        A tab group can sit inside another tab's panel — a mode switch inside a page section, where
+        both modes hold a form and neither may lose its input. Two underline strips would then read
+        as two levels of navigation, so the inner one takes <code>variant="segmented"</code>: the
+        style pack's own pill strip. <code>variant</code> here is shape, not a colour role as it is
+        on <code>button</code> or <code>badge</code>; the values are <code>underline</code>, the
+        default, and <code>segmented</code>, and anything else falls back to the default.
+      </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -1015,6 +1023,16 @@ fjkit
 </section>
   </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tabs"></pre>
   <footer data-showcase-caption="tabs"></footer>
+
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>tabs(items, label, variant=&#34;segmented&#34;) — nested inside a tab_panel</h3>      </div>
+    </header>      <section>    <div data-showcase="tabs_segmented"></div>
+
+</section>
+  </div><div class="card">        <pre class="code-block scrollbar" tabindex="0" data-showcase-code="tabs_segmented"></pre>
+  <footer data-showcase-caption="tabs_segmented"></footer>
 
   </div>
 
@@ -1063,9 +1081,9 @@ fjkit
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=bf77ff1b0913"></script>
+  <script defer src="assets/data.js?v=1ad7de50e4a2"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
-  <script defer src="assets/components.js?v=7492a72d4577"></script>
+  <script defer src="assets/components.js?v=1e2e382232c5"></script>
   <script defer src="assets/js/reveal.js?v=4beeb908adcf"></script>
 </body>
 </html>

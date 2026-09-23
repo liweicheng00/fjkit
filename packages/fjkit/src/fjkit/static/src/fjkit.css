@@ -219,7 +219,7 @@
    *
    * `:not(.field)` is dead weight that matches the specificity of the rule
    * above — three class-level parts — so source order decides and this one,
-   * imported later, wins. Same trick as the tabs rules below. */
+   * imported later, wins. */
   .field > .button-group:not(.field),
   .fieldset > .button-group:not(.field) {
     @apply w-fit gap-0;
@@ -243,14 +243,17 @@
    * every one of those has to be turned back off here. Leaving any of them
    * standing is not cosmetic: `h-9` is 6px shorter than the tabs this file sizes,
    * and `overflow-x-auto` below makes overflow-y compute to `auto` too, so the
-   * strip grew a phantom vertical scrollbar on the card's edge. */
-  /* The second selector is dead weight on its own — the pack paints the strip
-   * from `[role="tablist"]:not([data-variant="line"])`, one attribute more
-   * specific than the plain selector, so `bg-transparent` written here alone
-   * loses and the grey pill bar stays. Same specificity-matching trick as the
-   * selected-tab rule below. */
-  .tabs > [role="tablist"],
-  .tabs > [role="tablist"]:not([data-variant="line"]) {
+   * strip grew a phantom vertical scrollbar on the card's edge.
+   *
+   * Every rule here is scoped to `:not([data-variant="segmented"])`. A
+   * `tabs(variant="segmented")` strip is the pack's pill, untouched, so it
+   * follows the pack on a rebrand and needs no colour of its own. The scope is
+   * also what lets these rules win without help: `:not(…)` gives the tablist
+   * selector the pack's own specificity, three class-level parts, the same as
+   * its `:not([data-variant='line'])` pill rule, and this file is imported
+   * later. Before the scope, each rule carried a second, dead-weight selector
+   * only to reach that specificity. */
+  .tabs > [role="tablist"]:not([data-variant="segmented"]) {
     @apply h-auto w-full justify-start gap-0 rounded-none bg-transparent p-0;
     @apply overflow-x-auto border-b;
   }
@@ -261,47 +264,38 @@
   /* `rounded-none` undoes the pack's `rounded-md`. A rounded corner makes a tab
    * read as a button rather than as a label on a strip, and the radius survived
    * the first pass because only the tablist was reset. */
-  .tabs > [role="tablist"] > [role="tab"] {
+  .tabs > [role="tablist"]:not([data-variant="segmented"]) > [role="tab"] {
     @apply text-muted-foreground shrink-0 grow-0 cursor-pointer rounded-none border-e px-3.5 py-2 text-sm after:hidden;
   }
 
-  .tabs > [role="tablist"] > [role="tab"]:hover {
+  .tabs > [role="tablist"]:not([data-variant="segmented"]) > [role="tab"]:hover {
     @apply text-foreground;
   }
 
   /* The selected tab is marked by an inset ring rather than a border, so the
    * strip does not shift by a pixel when the selection moves.
    *
-   * The first selector is dead weight on its own — it exists to match the
-   * specificity of the pack's `:not([data-variant='line'])` pill rule, which
-   * otherwise outranks this one and repaints the tab white. */
-  .tabs > [role="tablist"]:not([data-variant="line"]) > [role="tab"][aria-selected="true"],
-  .tabs > [role="tablist"] > [role="tab"][aria-selected="true"] {
+   * The `dark:` half answers the pack, which fills and outlines the selected
+   * tab again under `html.dark`: that rule is one class and one type more
+   * specific than the light one, and `dark:` adds exactly that here. It can sit
+   * in the same rule only because the selector is single. Tailwind splices a
+   * variant onto the last selector of a comma-separated list and emits
+   * `…[aria-selected="true"]):is(html.dark *)` — one bracket too many, which
+   * drops the whole rule. */
+  .tabs > [role="tablist"]:not([data-variant="segmented"]) > [role="tab"][aria-selected="true"] {
     @apply text-foreground bg-transparent shadow-[inset_0_-2px_0_var(--primary)];
-  }
-
-  /* The pack fills and outlines the selected tab again under `html.dark`, which
-   * is one class and one type more specific than the rule above. This rule
-   * matches that specificity and lands later, so the underline is the only
-   * selection mark in both themes.
-   *
-   * Written as its own rule with a single selector, not a `dark:` utility added
-   * to the pair above: Tailwind splices the variant onto the last selector of a
-   * comma-separated list and emits `…[aria-selected="true"]):is(html.dark *)` —
-   * one bracket too many, which drops the whole rule. */
-  .tabs > [role="tablist"]:not([data-variant="line"]) > [role="tab"][aria-selected="true"] {
     @apply dark:border-transparent dark:bg-transparent;
   }
 
-  .tabs > [role="tablist"] > [role="tab"]:focus-visible {
+  .tabs > [role="tablist"]:not([data-variant="segmented"]) > [role="tab"]:focus-visible {
     @apply outline-ring -outline-offset-2 outline-2;
   }
 
-  .tabs > [role="tablist"][aria-orientation="vertical"] {
+  .tabs > [role="tablist"]:not([data-variant="segmented"])[aria-orientation="vertical"] {
     @apply w-fit border-e border-b-0;
   }
 
-  .tabs > [role="tablist"][aria-orientation="vertical"] > [role="tab"] {
+  .tabs > [role="tablist"]:not([data-variant="segmented"])[aria-orientation="vertical"] > [role="tab"] {
     @apply justify-start border-e-0 border-b text-start;
   }
 

@@ -39,24 +39,40 @@
 {% from "ui/attrs.html" import attrs %}
 
 {#
-  tabs(items, label, selected, orientation)
+  tabs(items, label, selected, orientation, variant)
 
   orientation: horizontal | vertical — the value Basecoat's key handler reads to
   decide whether Left/Right or Up/Down moves between tabs, so it is a closed
   lookup rather than interpolated: `aria-orientation="sideways"` would leave the
   arrow keys dead with no other symptom.
 
+  variant: underline | segmented — a shape, not a colour role like the
+  `variant` on `button` or `badge`. `underline` is fjkit's strip and the
+  default. `segmented` is the style pack's own pill strip, which `fjkit.css`
+  leaves unpainted: a tab group nested inside a tab panel then reads as a mode
+  switch rather than as a second level of navigation. An unknown value falls
+  back to `underline`.
+
+  `data-variant` goes on the tablist, not the container, because that is where
+  every pack's selector looks, and only `segmented` writes it. Nesting is safe
+  with Basecoat's script: it takes the container's first `[role="tablist"]` in
+  document order — this `<nav>`, which precedes every panel — and binds its
+  listeners to that tablist, so an inner group's keys never reach the outer.
+
   `selected` names the item that starts open; the first one by default. The
   server knows which tab the request was for, so this is a parameter and not
   something a script decides after paint.
 #}
-{% macro tabs(items, label="Tabs", selected=none, orientation="horizontal") -%}
+{% macro tabs(items, label="Tabs", selected=none, orientation="horizontal", variant="underline") -%}
   {%- set body = caller() -%}
   {%- set orientations = {"horizontal": "horizontal", "vertical": "vertical"} -%}
+  {%- set shapes = {"underline": "", "segmented": "segmented"} -%}
+  {%- set shape = shapes.get(variant, "") -%}
   {%- set active = selected if selected is not none else (items[0].id if items else none) -%}
   <div class="tabs"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     <nav role="tablist" aria-label="{{ label }}"
-         aria-orientation="{{ orientations.get(orientation, "horizontal") }}">
+         aria-orientation="{{ orientations.get(orientation, "horizontal") }}"
+         {%- if shape %} data-variant="{{ shape }}"{% endif %}>
       {% for item in items %}
         <button type="button" role="tab" aria-controls="{{ item.id }}"
                 aria-selected="{{ "true" if item.id == active else "false" }}">{{ item.label }}</button>

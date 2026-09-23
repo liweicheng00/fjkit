@@ -501,9 +501,18 @@
         所以它是一個參數，而不是繪製之後由腳本決定。
         這一頁每一組控制項底下那兩個表示法，用的就是這支 macro。
       </p>
+      <p>
+        一組分頁可以放在另一個分頁的面板裡，例如頁面某一區塊內的模式切換：兩種模式各有一張表單，
+        兩邊已輸入的內容都不能遺失。此時兩條底線分頁列會被讀成兩層導覽，
+        所以內層那組使用 <code>variant="segmented"</code>，也就是 style pack 自己的膠囊形分頁列。
+        這裡的 <code>variant</code> 表示形狀，不是 <code>button</code> 或 <code>badge</code>
+        上那種顏色角色；可用值為 <code>underline</code>（預設）與 <code>segmented</code>，
+        其他值一律退回預設。
+      </p>
     {% endcall %}
 
     {{ showcase("tabs", "tabs(items, label, selected) / tab_panel(id)——兩支都收區塊") }}
+    {{ showcase("tabs_segmented", "tabs(items, label, variant=\"segmented\")——放在 tab_panel 裡") }}
   {% endcall %}
 
   {# ============================================================== next #}

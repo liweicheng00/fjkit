@@ -534,9 +534,18 @@
         was for, so it is a parameter rather than something a script decides after paint. The two
         representations under every playground on this page are one of these.
       </p>
+      <p>
+        A tab group can sit inside another tab's panel — a mode switch inside a page section, where
+        both modes hold a form and neither may lose its input. Two underline strips would then read
+        as two levels of navigation, so the inner one takes <code>variant="segmented"</code>: the
+        style pack's own pill strip. <code>variant</code> here is shape, not a colour role as it is
+        on <code>button</code> or <code>badge</code>; the values are <code>underline</code>, the
+        default, and <code>segmented</code>, and anything else falls back to the default.
+      </p>
     {% endcall %}
 
     {{ showcase("tabs", "tabs(items, label, selected) / tab_panel(id) — both take a block") }}
+    {{ showcase("tabs_segmented", "tabs(items, label, variant=\"segmented\") — nested inside a tab_panel") }}
   {% endcall %}
 
   {# ============================================================== next #}

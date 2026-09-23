@@ -600,12 +600,24 @@ GROUPS = [
                 "name": "ui/tabs.html",
                 "macros": [
                     _m(
-                        'tabs(items, label="Tabs", selected=none, orientation="horizontal")',
+                        'tabs(items, label="Tabs", selected=none, orientation="horizontal",\n'
+                        '     variant="underline")',
                         block="tab_panel()",
                         en="items is a list of {id, label}. selected names the tab that starts "
                         "open, so the server decides it rather than a script after paint.",
                         zh="items 是 {id, label} 的清單。selected 指名一開始就打開的分頁，"
                         "由伺服器決定，而不是繪製後由腳本決定。",
+                    ),
+                    _m(
+                        'tabs(items, label="Mode", variant="segmented")',
+                        block="tab_panel()",
+                        en="A pill strip, for a tab group nested inside a tab panel, so it reads "
+                        "as a mode switch rather than a second level of navigation. variant here is "
+                        "shape, not a colour role: underline | segmented, and anything else is "
+                        "underline.",
+                        zh="膠囊形的分頁列，用於放在分頁面板內的第二組分頁，讓它看起來是模式切換，"
+                        "而不是第二層導覽。這裡的 variant 是形狀，不是顏色角色：underline | segmented，"
+                        "其他值一律視為 underline。",
                     ),
                     _m(
                         "tab_panel(id, lazy=none, on=none, include=none)",

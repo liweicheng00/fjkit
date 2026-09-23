@@ -9,6 +9,7 @@ a breaking change loud.
 from __future__ import annotations
 
 import re
+from html.parser import HTMLParser
 
 import pytest
 
@@ -1259,6 +1260,107 @@ class TestTabs:
         )
         assert "hidden" not in html
         assert "second" in html
+
+
+class _Tree(HTMLParser):
+    """Just enough of a DOM to ask which element is a container's first child."""
+
+    VOID = {"input", "br", "img", "hr", "meta", "link"}
+
+    def __init__(self):
+        super().__init__()
+        self.root = {"tag": None, "attrs": {}, "children": []}
+        self.stack = [self.root]
+
+    def handle_starttag(self, tag, attrs):
+        node = {"tag": tag, "attrs": dict(attrs), "children": []}
+        self.stack[-1]["children"].append(node)
+        if tag not in self.VOID:
+            self.stack.append(node)
+
+    def handle_endtag(self, tag):
+        if self.stack[-1]["tag"] == tag:
+            self.stack.pop()
+
+    def find_all(self, predicate, node=None):
+        node = node or self.root
+        found = [node] if predicate(node) else []
+        for child in node["children"]:
+            found += self.find_all(predicate, child)
+        return found
+
+
+class TestTabsVariant:
+    """`variant` is the tablist's shape. `segmented` is the pack's pill strip,
+    for a tab group nested inside a tab panel; `fjkit.css` paints the rest."""
+
+    NESTED = (
+        f'{TABS}{{% call tabs([{{"id": "o-gen", "label": "Generate"}}, '
+        '{"id": "o-other", "label": "Other"}], label="Page") %}'
+        '{% call tab_panel("o-gen") %}'
+        '{% call tabs([{"id": "m-new", "label": "New"}, {"id": "m-review", "label": "Review"}], '
+        'label="Mode", variant="segmented") %}'
+        '{% call tab_panel("m-new") %}<form></form>{% endcall %}'
+        '{% call tab_panel("m-review") %}<form></form>{% endcall %}'
+        "{% endcall %}"
+        "{% endcall %}"
+        '{% call tab_panel("o-other") %}x{% endcall %}'
+        "{% endcall %}"
+    )
+
+    def test_each_tablist_is_its_containers_first_child(self, render):
+        """Basecoat takes `container.querySelector('[role="tablist"]')` — the
+        first in document order. Nesting is safe only while each container's own
+        tablist precedes its panels, and so precedes every nested tablist."""
+        tree = _Tree()
+        tree.feed(render(self.NESTED))
+        containers = tree.find_all(lambda n: "tabs" in (n["attrs"].get("class") or "").split())
+        assert len(containers) == 2
+        for container in containers:
+            first = container["children"][0]
+            assert first["tag"] == "nav" and first["attrs"].get("role") == "tablist"
+        outer, inner = containers
+        assert outer["children"][0]["attrs"]["aria-label"] == "Page"
+        assert inner["children"][0]["attrs"]["aria-label"] == "Mode"
+
+    def test_segmented_marks_the_tablist(self, render):
+        """On the tablist, not the container: that is where every pack's
+        selector looks."""
+        html = render(f'{TABS}{{% call tabs({FILE_ITEMS}, variant="segmented") %}}{{% endcall %}}')
+        tree = _Tree()
+        tree.feed(html)
+        (tablist,) = tree.find_all(lambda n: n["attrs"].get("role") == "tablist")
+        assert tablist["attrs"].get("data-variant") == "segmented"
+        assert html.count("data-variant") == 1
+
+    @pytest.mark.parametrize("variant", ["underline", "line", "pill", "success"])
+    def test_other_values_render_the_underline_strip(self, render, variant):
+        """A closed lookup: `line` would switch the pack's own underline skin on
+        under fjkit's, and anything else is a typo. Both fall back."""
+        html = render(f'{TABS}{{% call tabs({FILE_ITEMS}, variant="{variant}") %}}{{% endcall %}}')
+        assert "data-variant" not in html
+
+    def test_the_default_is_unchanged(self, render):
+        html = render(f"{TABS}{{% call tabs({FILE_ITEMS}) %}}{{% endcall %}}")
+        assert "data-variant" not in html
+
+    def test_fjkit_css_leaves_the_segmented_strip_to_the_pack(self):
+        """Every tabs rule in `fjkit.css` is scoped away from `segmented`. One
+        unscoped rule layers fjkit's underline geometry over the pack's pill,
+        which is how the strip once grew a phantom scrollbar."""
+        from fjkit.config import TEMPLATE_DIR
+
+        css = (TEMPLATE_DIR.parent / "static" / "src" / "fjkit.css").read_text(encoding="utf-8")
+        css = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+        selectors = [
+            s.strip()
+            for block in re.findall(r"([^{}]+)\{", css)
+            for s in block.split(",")
+            if s.strip().startswith(".tabs")
+        ]
+        assert selectors, "the tabs block moved; point this test at it"
+        for selector in selectors:
+            assert selector.startswith('.tabs > [role="tablist"]:not([data-variant="segmented"])'), selector
 
 
 class TestLazyTabPanel:
