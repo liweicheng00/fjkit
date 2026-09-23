@@ -412,10 +412,11 @@
         並在頁首補上 <code>sidebar_trigger</code>，所以 app 不必另外設旗標宣告要哪一種版面。
       </p>
       <p>
-        另一個 block 改變的是頁首的行為。在 <code>header_position</code> 填入 <code>sticky</code>，
-        頁面捲動時頁首會固定在視窗頂端。它使用 <code>position: sticky</code> 而不是 <code>fixed</code>，
+        頁面捲動時，頁首固定在視窗頂端。它使用 <code>position: sticky</code> 而不是 <code>fixed</code>，
         所以頂列保留自己的空間，<code>main</code> 不需要額外的內距來避開它。
-        若同時填了 <code>sidebar</code>，頂列會橫跨整個寬度，側邊欄從頂列下方開始。
+        若填了 <code>sidebar</code>，頂列會橫跨整個寬度，側邊欄從頂列下方開始。
+        需要頁首留在一般文件流中的頁面（例如嵌入式或列印版面），請以自己的 <code>&lt;header&gt;</code>
+        覆寫 <code>header</code> block。
       </p>
     {% endcall %}
 

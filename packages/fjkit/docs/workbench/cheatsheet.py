@@ -858,15 +858,10 @@ SHELL_BLOCKS = [
     },
     {
         "name": "header",
-        "en": "The whole header bar, when the pieces above are not enough.",
-        "zh": "整條標頭；上面那幾個插槽不夠用時才動它。",
-    },
-    {
-        "name": "header_position",
-        "en": "static (default) or sticky. sticky pins the header to the top while the page scrolls; "
-        "with a sidebar, the bar spans the full width and the rail sits under it.",
-        "zh": "static（預設）或 sticky。sticky 讓標頭在頁面捲動時固定在頂端；"
-        "有側邊欄時，頂列橫跨全寬，側邊欄位於其下方。",
+        "en": "The whole header bar, when the pieces above are not enough. The default is pinned "
+        "to the top; override this block for a header that stays in the flow.",
+        "zh": "整條標頭；上面那幾個插槽不夠用時才動它。預設的標頭固定在頂端；"
+        "需要不固定的標頭時，覆寫這個 block。",
     },
     {
         "name": "header_actions",
