@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fjkit import FjkitConfig, build_environment, mount_fjkit
 from fjkit_charts import (
     PLOTLY_FILENAME,
@@ -164,6 +164,35 @@ class TestPlugin:
         env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), static_url="/assets", auto_reload=False))
         html = env.from_string('{% from "charts/macros.html" import chart_scripts %}{{ chart_scripts() }}').render()
         assert f"/assets/vendor/plotly/{PLOTLY_FILENAME}" in html
+
+    def test_a_mounted_sub_app_links_both_scripts_under_its_prefix(self):
+        """The plugin mounts its assets on the app it is given, so mounted at
+        `/ui` both scripts are served under `/ui` and must be linked there."""
+        import re
+
+        from fastapi.testclient import TestClient
+        from jinja2 import ChoiceLoader, DictLoader
+
+        sub = FastAPI()
+        templates = mount_fjkit(sub, FjkitConfig(plugins=(ChartsPlugin(),)))
+        page = '{% from "charts/macros.html" import chart_scripts %}{{ chart_scripts() }}'
+        templates.env.loader = ChoiceLoader([DictLoader({"p.html": page}), templates.env.loader])
+
+        @sub.get("/p")
+        def p(request: Request):
+            return templates.page(request, "p.html")
+
+        parent = FastAPI()
+        parent.mount("/ui", sub)
+        client = TestClient(parent)
+
+        urls = re.findall(r'src="([^"?]+)', client.get("/ui/p").text)
+
+        assert urls == [
+            f"/ui/_fjkit-charts/assets/vendor/plotly/{PLOTLY_FILENAME}",
+            "/ui/_fjkit-charts/assets/charts.js",
+        ]
+        assert all(client.get(url).status_code == 200 for url in urls)
 
     def test_plotly_url_overrides_the_vendored_copy(self):
         plugin = ChartsPlugin(plotly_url="https://example.test/plotly.js")
