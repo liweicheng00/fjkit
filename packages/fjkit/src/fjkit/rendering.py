@@ -339,10 +339,10 @@ def _finish(
     # to it: there is no representation to negotiate, so no `Vary`, and no shell
     # that could carry a toast instead of the header.
     if plan.template is None:
-        status_code, headers = _response_args(request, response)
+        status_code, headers, cookies = _response_args(request, response)
         _deliver_trigger(plan, result, call_kwargs, headers)
         _deliver_messages(request, headers, renders_shell=False)
-        return Response(status_code=status_code, headers=headers)
+        return _with_cookies(Response(status_code=status_code, headers=headers), cookies)
 
     requested = _mode(request, plan.mode)
     from_htmx = htmx.is_htmx(request)
@@ -375,14 +375,16 @@ def _finish(
     # report, so a template passing `error=errors.title` never has to guard the
     # key — see `fjkit.forms.NO_ERRORS`.
     context.setdefault("errors", NO_ERRORS)
-    status_code, headers = _response_args(request, response)
+    status_code, headers, cookies = _response_args(request, response)
     _deliver_trigger(plan, result, call_kwargs, headers)
     _deliver_messages(request, headers, renders_shell=name == plan.template and plan.serves_a_page)
     if plan.stream:
-        return templates.stream(
+        reply = templates.stream(
             request, name, context, buffer_size=plan.buffer_size, status_code=status_code, headers=headers
         )
-    return templates.page(request, name, context, status_code=status_code, headers=headers)
+    else:
+        reply = templates.page(request, name, context, status_code=status_code, headers=headers)
+    return _with_cookies(reply, cookies)
 
 
 def _deliver_trigger(plan: _Plan, result: Any, call_kwargs: Mapping[str, Any], headers: dict[str, str]) -> None:
@@ -539,16 +541,39 @@ def _context(result: Any, template: str) -> dict[str, Any]:
     )
 
 
-def _response_args(request: Request, response: Response | None) -> tuple[int, dict[str, str]]:
+def _response_args(request: Request, response: Response | None) -> tuple[int, dict[str, str], list[str]]:
     """Resolve status and headers in precedence order: the handler's
     `Response`, the route's `status_code`, 200. FastAPI merges these only into
     replies it builds itself.
+
+    `Set-Cookie` comes back as its own list rather than in the dict. It is the
+    one header a reply legitimately repeats — RFC 6265 forbids folding two
+    cookies into one line, because `Expires=` already contains a comma — and a
+    dict keyed by name keeps only the last. `AuthPlugin.issue()` and
+    `FlashPlugin.add()` in one handler write two; the flash was the one lost.
+    The dict stays for everything else, where `_write_trigger` and
+    `_deliver_messages` need to find a header by name, case-insensitively.
     """
     route = request.scope.get("route")
     status_code = getattr(route, "status_code", None) or 200
     headers: dict[str, str] = {}
+    cookies: list[str] = []
     if response is not None:
         if response.status_code is not None:
             status_code = response.status_code
-        headers.update(response.headers)
-    return status_code, headers
+        for name, value in response.headers.items():
+            if name.lower() == "set-cookie":
+                cookies.append(value)
+            else:
+                headers[name] = value
+    return status_code, headers, cookies
+
+
+def _with_cookies(reply: Response, cookies: list[str]) -> Response:
+    """Append each `Set-Cookie` the handler wrote to the reply the decorator
+    built. Appended after construction, because `Response(headers=…)` takes a
+    mapping and so cannot carry a repeated header.
+    """
+    for cookie in cookies:
+        reply.raw_headers.append((b"set-cookie", cookie.encode("latin-1")))
+    return reply

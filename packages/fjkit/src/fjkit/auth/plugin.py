@@ -495,7 +495,13 @@ def safe_next(value: str | None, fallback: str = "/") -> str:
     The rule is positional rather than a blocklist. One leading slash, not two:
     `//evil.example.com` is a protocol-relative URL that a browser reads as a
     different site, and a naive `startswith("/")` lets it through.
+
+    A backslash counts as the second slash. Browsers parse `\\` as `/` in the
+    path of an `http(s)` URL (the WHATWG URL parser does this for every special
+    scheme), so `Location: /\\evil.example.com` lands on `//evil.example.com`.
+    The check reads the second character rather than scanning the whole value:
+    a backslash anywhere later is still inside a path on this site.
     """
-    if not value or not value.startswith("/") or value.startswith("//"):
+    if not value or value[:1] != "/" or value[1:2] in ("/", "\\"):
         return fallback
     return value

@@ -495,6 +495,51 @@ def test_headers_set_by_the_handler_are_carried_over(make_app):
     assert got.headers["HX-Trigger"] == "refresh"
 
 
+class _Rows(BaseModel):
+    rows: list[str]
+
+
+@pytest.mark.parametrize(
+    ("decorator", "path", "annotation"),
+    [
+        (render("page.html"), "/page", Payload),
+        (render("rows.html", stream=True), "/stream", _Rows),
+        (render(None), "/none", type(None)),
+    ],
+    ids=["page", "stream", "headers-only"],
+)
+def test_every_cookie_the_handler_sets_reaches_the_browser(make_app, decorator, path, annotation):
+    """`Set-Cookie` is the one header a reply repeats: RFC 6265 forbids folding
+    two cookies into one line. Carrying the handler's headers through a dict
+    kept only the last one, so `AuthPlugin.issue()` and `FlashPlugin.add()` in
+    the same handler lost the flash — silently, because the session cookie
+    was the one written last. Every reply the decorator builds is covered:
+    the page, the stream and the headers-only route.
+    """
+    router = APIRouter()
+
+    def thing(response: Response):
+        response.set_cookie("session", "abc", httponly=True)
+        response.set_cookie("flash", "welcome", path="/")
+        response.headers["HX-Trigger"] = "refresh"
+        if annotation is Payload:
+            return Payload(title="Hello", body="World")
+        if annotation is _Rows:
+            return _Rows(rows=["a"])
+        return None
+
+    thing.__annotations__["return"] = annotation
+    router.add_api_route(path, decorator(thing), methods=["GET"], status_code=200)
+
+    got = make_app(router).get(path)
+    cookies = got.headers.get_list("set-cookie")
+    assert len(cookies) == 2
+    assert any(c.startswith("session=abc") and "HttpOnly" in c for c in cookies)
+    assert any(c.startswith("flash=welcome") for c in cookies)
+    # The dict path is still the one the single-valued headers take.
+    assert got.headers["HX-Trigger"] == "refresh"
+
+
 def test_httpexception_is_untouched(make_app):
     router = APIRouter()
 
