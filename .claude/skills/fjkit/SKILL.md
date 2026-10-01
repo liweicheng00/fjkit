@@ -36,8 +36,10 @@ It renders wrong markup silently.
 | macro signatures, shell blocks, closed enumerations | `src/fjkit/templates/ui/*.html` |
 | template globals, `page()` vs `stream()`, config knobs | `src/fjkit/templating.py`, `config.py`, `rendering.py` |
 | partials, swaps, forms, filter bars | `examples/fjkit-demo/app/routers/`, `schemas/`, `services/` — the worked example |
-| validation errors, toasts, the 500 page | `src/fjkit/errors.py`, `forms.py`, `messages.py` |
-| tokens, rebranding, dark mode | `src/fjkit/static/src/fjkit.css`, `src/fjkit/styles.py` |
+| validation errors, toasts, the 500 page | `src/fjkit/errors.py`, `forms.py`, `messages.py`, `static/js/errors.js` |
+| a message that survives a redirect | `src/fjkit/flash.py` |
+| icons | `ui/icon.html`, `src/fjkit/icons.py` |
+| tokens, rebranding, dark mode, style packs | `src/fjkit/static/src/fjkit.css`, `src/fjkit/styles.py` |
 | a blocked class, `eject`, building the CSS | `src/fjkit/cli/` |
 | what the benchmarks measured | `docs/jinja-performance.md` |
 
@@ -121,7 +123,9 @@ pattern the kit supports. Read it before you invent one.
    HTML form would post it, so `{"items": [{"title": …}]}` fails as
    `items.0.title`. A JSON form's page must load the extension —
    `{% block scripts %}{{ form_scripts() }}{% endblock %}` — and must set a
-   `target`, because only an htmx submit can carry JSON.
+   `target`, because only an htmx submit can carry JSON. The demo's task board
+   takes this JSON path: `create_task(service, payload: TaskCreate)` in
+   `routers/tasks.py`, with `tasks/page.html` loading `form_scripts()`.
 
    Two rules, and each is a trap when broken:
 
@@ -183,30 +187,30 @@ that is meant to be an optimisation.
 - **`hx-swap` or `hx-target` inherited from an ancestor.** Both are inherited.
   A button inside a card that polls itself with `hx-swap="outerHTML"` inherits
   that swap and replaces the element it meant to fill, taking the element's `id`
-  with it, so every later open of the same dialog finds no target. Spell both
-  out on any trigger nested inside another htmx element (`jobs/macros.html` is
-  the worked case).
+  with it, so every later open of the same dialog finds no target. Render the
+  target outside the polling element — `jobs/macros.html` emits the dialog as a
+  sibling of the card, and the card carries `hx-*` only while the job runs. When
+  the trigger has to stay nested, spell out both attributes on it.
 - **An icon-only button with no `aria_label`.** The label is empty, so nothing
   else names the button.
 - **A utility the stylesheet does not contain.** The CSS is built from what the
   kit's own templates use. A plausible Tailwind class an app invents — or one a
   kit template invents, which `fjkit check` does not scan for — compiles,
-  renders, and styles nothing. `grep` the class in
-  `src/fjkit/static/dist/fjkit-vega.css` before believing it works.
+  renders, and styles nothing. `grep` the class in the app's style pack,
+  `src/fjkit/static/dist/fjkit-<pack>.css` (`vega` unless `FjkitConfig.style`
+  names another), before believing it works.
 - **`HX-Trigger` carrying a JSON array.** htmx passes a JSON object through as
   `event.detail` and wraps anything else, arrays included, as `{value: …}`. A
   listener reading `event.detail` directly then finds nothing, and the symptom
   is an empty toast rather than an error. Send an object.
-- **`None` in `value=`.** It renders the four letters `None` into the box. Only
-  `errors.<field>` answers `None` for an absent name; `values.<field>` answers
-  `""`, because a field with nothing typed in it has a value and that value is
-  empty.
+- **`None` in `value=`.** The field macros print `value="{{ value }}"`, so a
+  `None` renders the four letters `None` into the box. Pass `task.title or ""`
+  for an optional attribute.
 - **A body taken with `Body(embed=True)`, or a second body parameter.** FastAPI
-  then names the failure `body.payload.title`, so the key is `payload.title` and
-  a template asking `errors.title` gets `None` — the same answer a field with
-  nothing wrong with it gives. The red text never appears and nothing says why.
-  Take the model as a single un-embedded parameter, or look the error up under
-  its whole key.
+  then names the failure `["body", "payload", "title"]`, and `errors.js` looks
+  for a control named `payload.title`. The control is named `title`, so the
+  message lands in a toast instead of under the field. Take the model as a
+  single un-embedded parameter.
 - **`encoding="json"` on a page that never called `form_scripts()`.** The
   extension is not loaded, htmx submits urlencoded to a route that only reads
   JSON, and the reply is a 422 whose message is about the body not being an
@@ -244,7 +248,8 @@ When you change the package:
 
 Stop and ask the user before you do any of these:
 
-- add a runtime dependency (there are exactly three: `fastapi`, `jinja2` and `pydantic`)
+- add a runtime dependency (`pyproject.toml` declares two, `fastapi` and
+  `jinja2`; `pydantic` arrives through FastAPI)
 - change a published macro signature
 - add hand-written JavaScript
 - add npm, `package.json` or `node_modules`
