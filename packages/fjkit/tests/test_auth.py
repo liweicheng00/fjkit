@@ -191,6 +191,8 @@ def test_a_navigation_is_recognised_by_sec_fetch_mode_too():
     [
         ("/tasks?status=doing", "/tasks?status=doing"),
         ("//evil.example.com", "/"),
+        ("/\\evil.example.com", "/"),
+        ("/tasks?path=a\\b", "/tasks?path=a\\b"),
         ("https://evil.example.com", "/"),
         ("evil.example.com", "/"),
         ("", "/"),
@@ -204,6 +206,9 @@ def test_safe_next_only_returns_to_this_site(value, expected):
 
     `//evil.example.com` is the case a naive `startswith("/")` waves through. A
     browser reads it as a protocol-relative URL, so it is a different site.
+    `/\\evil.example.com` is the same case in disguise: a browser turns the
+    backslash into a slash before it resolves the URL. A backslash later in the
+    value is still a path on this site and is kept.
     """
     assert safe_next(value) == expected
 
