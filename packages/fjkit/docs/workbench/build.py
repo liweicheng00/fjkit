@@ -400,6 +400,16 @@ def url_for(request, name: str, /, **path_params) -> str:
     return prefix + ROUTES[route] + (f"#{fragment}" if fragment else "")
 
 
+#: Where `repo()` points. A reader who installed the wheel has no checkout, so a
+#: repository path on the site is a link, never bare text.
+REPO_URL = "https://github.com/liweicheng00/fjkit/tree/main/"
+
+
+def repo(path: str) -> str:
+    """Link a repository path, such as `examples/fjkit-demo/`, on GitHub."""
+    return REPO_URL + path.lstrip("/")
+
+
 def is_active(request, name: str) -> bool:
     """Report whether `name` is the page being rendered.
 
@@ -479,7 +489,7 @@ def build() -> int:
                 # into `assets/dist/` come from one word.
                 style=DOCS_STYLE,
                 auto_reload=False,
-                globals={"url_for": url_for, "is_active": is_active},
+                globals={"url_for": url_for, "is_active": is_active, "repo": repo},
             )
         )
         env.globals["fjkit_static"] = content_stamped(lang["static"])

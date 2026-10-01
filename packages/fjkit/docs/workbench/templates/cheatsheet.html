@@ -183,11 +183,13 @@
 
       {% set d_learn %}<a href="{{ url_for(request, "learn") }}">how the pieces fit, and what htmx sends</a>{% endset %}
       {% set d_components %}<a href="{{ url_for(request, "components") }}">every macro running, with the knobs turned</a>{% endset %}
+      {% set d_demo %}<a href="{{ repo("examples/fjkit-demo") }}">these macros inside a working app</a>{% endset %}
+      {% set d_tokens %}<a href="{{ repo("packages/fjkit/src/fjkit/static/src/fjkit.css") }}">the token table behind every variant</a>{% endset %}
       {{ defs("Read next", [
         ("Learn", d_learn),
         ("Components", d_components),
-        ("examples/fjkit-demo/", "these macros inside a working app, in the repo"),
-        ("src/fjkit/static/src/fjkit.css", "the token table behind every variant"),
+        ("examples/fjkit-demo/", d_demo),
+        ("src/fjkit/static/src/fjkit.css", d_tokens),
       ]) }}
     {% endcall %}
   {% endcall %}

@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=44a51c52a6fd">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=b6fc025d21d1">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -64,40 +64,41 @@ fjkit
   </li>
 </ul>
   </div>
-<div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
-    <a href="plugins.html#why">      <span>01 · What a plugin is</span>
+<div role="group" aria-label="Ready-made plugins"><h3>Ready-made plugins</h3>    <ul>          <li>
+    <a href="plugins.html#auth">      <span>01 · The auth plugin</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#mount">      <span>02 · mount(): the app side</span>
+          <li>
+    <a href="plugins.html#write">      <span>02 · The flash plugin</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#extend">      <span>03 · extend(): Jinja, and every render</span>
+          <li>
+    <a href="plugins.html#apidocs">      <span>03 · The API console</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#rules">      <span>04 · Order, collisions, and limits</span>
+          <li>
+    <a href="plugins.html#charts">      <span>04 · Charts</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#auth">      <span>05 · The auth plugin</span>
+          <li>
+    <a href="plugins.html#admin">      <span>05 · The admin</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#write">      <span>06 · The flash plugin</span>
+</ul>
+  </div><div role="group" aria-label="Write your own"><h3>Write your own</h3>    <ul>          <li>
+    <a href="plugins.html#why">      <span>06 · What a plugin is</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#apidocs">      <span>07 · The API console</span>
+          <li>
+    <a href="plugins.html#mount">      <span>07 · mount(): the app side</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#charts">      <span>08 · Charts</span>
+          <li>
+    <a href="plugins.html#extend">      <span>08 · extend(): Jinja, and every render</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#admin">      <span>09 · The admin</span>
+          <li>
+    <a href="plugins.html#rules">      <span>09 · Order, collisions, and limits</span>
     </a>
   </li>
 </ul>
@@ -116,199 +117,19 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Plugins</h1>
-<p class="text-muted-foreground text-sm">    Some things are not a macro. A plugin adds middleware, an exception handler, or a value every
-    template gets — in one object, registered in one place.
+<p class="text-muted-foreground text-sm">    A plugin adds what a macro cannot: middleware, an exception handler, routes, or a value every
+    template gets. <strong>01–05</strong> are the plugins that ship with fjkit or beside it, and how
+    to register each. <strong>06–09</strong> are for writing your own.
 </p>    </div>
   </div>
 
-<div id="why">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">What a plugin is</h2><p class="text-muted-foreground text-sm">Two contribution points, because the kit has two moments.</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        A macro covers what a page draws. It does not cover what happens before the handler runs, or
-        what every template should know without a route passing it along. Sessions need both.
-        Locales and feature flags need the second. A flash message needs only the first.
-      </p>
-      <p>
-        A plugin is one object with two optional methods. <code>mount()</code> runs when the app is
-        constructed; <code>extend()</code> runs when the Jinja environment is built. A plugin that
-        only puts a value in every template writes only the second, and one that only touches the
-        request on its way past writes only the first.
-      </p>
-</div>
-    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">config = FjkitConfig(
-    template_dir=APP_DIR / &#34;templates&#34;,
-    plugins=(auth, flash),
-)
-mount_fjkit(app, config)</pre>
-
-
-<div class="flex flex-col gap-3">      <p>
-        That is the whole registration. <code>mount_fjkit()</code> already reads this config for the
-        static mount and the environment, so a plugin needs no second call and no import order to
-        get right.
-      </p>
-      <p>
-        The split between the two methods stays visible on purpose. Hiding it would be friendlier
-        until someone's <code>mount()</code> silently never ran.
-      </p>
-</div>
-</section></div></div>
-<hr class="border-border">
-
-<div id="mount">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">mount(): the app side</h2><p class="text-muted-foreground text-sm">Middleware, handlers, routes — attributed to the plugin that added them.</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        <code>AppSetup</code> is a thin pass-through to FastAPI. What it adds is attribution: a
-        misbehaving plugin is named rather than found by elimination.
-      </p>
-</div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>AppSetup</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>add_middleware(cls, **options)</h4><p>Starlette runs middleware in reverse registration order, so a plugin listed later in plugins= wraps the ones before it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>add_exception_handler(exc, handler)</h4><p>note that an exception raised inside middleware never reaches one — Starlette&#39;s handler layer sits inside the user stack</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>include_router(router)</h4><p>for a plugin that ships endpoints of its own</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>mount_static(url, directory)</h4><p>for a plugin that ships assets, mounted under a name derived from the plugin&#39;s</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>warn(message)</h4><p>startup configuration checks; the message is prefixed with the plugin&#39;s name and raised as PluginWarning</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>app, config</h4><p>the live FastAPI app and the FjkitConfig, for the checks the two above cannot express</p>    </section>  </div></div></div>
-  </div>
-
-<div class="flex flex-col gap-3">      <p>
-        <code>warn()</code> is for the combinations only the plugin can recognise — an in-memory
-        session store under a production config, say. That works on your laptop and logs users out at
-        random behind four workers, and nothing in the traceback points at the cause.
-      </p>
-</div>
-</section></div></div>
-<hr class="border-border">
-
-<div id="extend">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">extend(): Jinja, and every render</h2><p class="text-muted-foreground text-sm">The per-request context is the part that was missing.</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        <code>FjkitConfig.globals</code> is resolved once per process. That is right for a version
-        string and useless for the signed-in user. <code>add_context_processor()</code> is the
-        other half: a callable run once per render, with the live request.
-      </p>
-</div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>EnvSetup</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>add_template_dir(path)</h4><p>searched after the app&#39;s templates and before the kit&#39;s — a plugin may replace a kit macro, never a file the app wrote</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>add_global(name, value)</h4><p>one value for the whole process</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>add_filter(name, fn)</h4><p>a Jinja filter</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>add_context_processor(fn, provides=[…])</h4><p>merged into every template&#39;s context, once per render</p>    </section>  </div></div></div>
-  </div>
-
-    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the auth plugin&#39;s whole extend()" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
-    setup.add_context_processor(
-        lambda request: {&#34;session&#34;: getattr(request.state, &#34;auth&#34;, None)},
-        provides=[&#34;session&#34;],
-    )</pre>
-
-
-<div class="flex flex-col gap-3">      <p>
-        Two constraints, both deliberate. A processor is <strong>synchronous</strong>: it runs inside
-        <code>Templates.page()</code>, which a <code>def</code> handler reaches from the threadpool. A
-        plugin needing I/O does it in middleware and leaves the result on
-        <code>request.state</code>, which is what the line above reads.
-      </p>
-      <p>
-        <code>provides=</code> is required rather than inferred. Without it, two plugins fighting over
-        <code>user</code> are discoverable only by rendering a page and noticing. With it, the clash
-        is a startup error naming both.
-      </p>
-      <p>
-        <code>add_template_dir()</code> is how a plugin that ships UI ships it; section 07 is the
-        worked example. One thing goes with it: the Tailwind build scans an explicit list of
-        directories in <code>fjkit.css</code>, so a plugin inside the kit adds its template directory
-        to that list. Miss it and nothing fails — the templates render, every utility class in them is
-        absent from the stylesheet, and the page looks broken.
-      </p>
-</div>
-</section></div></div>
-<hr class="border-border">
-
-<div id="rules">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">Order, collisions, and limits</h2><p class="text-muted-foreground text-sm">Everything a plugin can collide over fails at startup, not in production.</p>      </div>
-      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>Template search order</h3><p>First match wins.</p>      </div>
-    </header>      <section>      <div class="table-container">
-      <table class="table">
-        <thead>
-          <tr>
-<th class=" ">Searched</th>
-<th class=" ">Belongs to</th>
-<th class=" ">May shadow</th>
-          </tr>
-        </thead>
-        <tbody>        <tr>
-          <td class="text-muted-foreground tabular-nums">1</td>
-          <td class="font-medium">the app&#39;s template_dir</td>
-          <td class="">everything — this is fjkit eject</td>
-        </tr>
-        <tr>
-          <td class="text-muted-foreground tabular-nums">2</td>
-          <td class="font-medium">each plugin, in plugins= order</td>
-          <td class="">the kit&#39;s macros, never the app&#39;s files</td>
-        </tr>
-        <tr>
-          <td class="text-muted-foreground tabular-nums">3</td>
-          <td class="font-medium">the kit</td>
-          <td class="">nothing</td>
-        </tr>
-</tbody>
-      </table>
-    </div>
-
-</section>
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>Refused at startup</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>two plugins with one name</h4><p>they would collide on request.state.&lt;name&gt; and make every later error ambiguous</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>two plugins claiming one global, filter or context key</h4><p>the error names both, and says to rename one or drop one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>a context key a processor did not declare</h4><p>caught under strict_undefined, so it surfaces in development</p>    </section>  </div></div></div>
-  </div>
-
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>What a plugin cannot do</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>inject markup</h4><p>      There is no hook to inject markup into the shell. With one, any plugin could put a
-      <code>&lt;script&gt;</code> on every page, and both "no build step on your side" and the closed
-      vocabulary would leave through it. A plugin that ships UI ships templates, and they pass
-      <code>fjkit check</code> like everything else.
-</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>reach a sibling it did not declare</h4><p>a plugin that reads another says so — uses = (&#34;flash&#34;,) — and gets it from setup.plugin(&#34;flash&#34;), or None when the app registered none. An undeclared lookup is a startup error, and so is a sibling listed after the plugin that uses it. Order is still the order you wrote: the host checks it and never reorders</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>open a connection at startup</h4><p>no lifespan hook — a plugin takes a client the app already built, which is why RedisStore has a client parameter</p>    </section>  </div></div></div>
-  </div>
-
-</section></div></div>
-<hr class="border-border">
-
 <div id="auth">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
 <span class="badge" data-variant="secondary">fjkit.auth</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">The auth plugin</h2><p class="text-muted-foreground text-sm">The browser holds a cookie. The server holds the token.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        The first plugin in the box, and the reason the seam exists. The browser gets one opaque,
+        Sign-in for an htmx app, shipped inside fjkit as <code>fjkit.auth</code>. The browser gets one opaque,
         signed, <code>HttpOnly</code> cookie. The access token, the refresh token and your claims stay
         in a session store on the server.
       </p>
@@ -404,7 +225,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
 <hr class="border-border">
 
 <div id="write">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
 <span class="badge" data-variant="secondary">fjkit.flash</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">The flash plugin</h2><p class="text-muted-foreground text-sm">A message that outlives the response that raised it.</p>      </div>
@@ -484,13 +305,13 @@ if carried and messages.shown(request):
 <hr class="border-border">
 
 <div id="apidocs">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
 <span class="badge" data-variant="secondary">fjkit_apidocs</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">The API console</h2><p class="text-muted-foreground text-sm">Sign in on the page, and every call below goes out as you.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         Swagger UI's Authorize dialog can express only what an OpenAPI document can describe: an API
-        key, an HTTP scheme, an OAuth2 flow. An app whose sessions are section 05's — a signed
+        key, an HTTP scheme, an OAuth2 flow. An app whose sessions are section 01's — a signed
         <code>HttpOnly</code> cookie over a server-side token — is none of those. Its Try it out could
         not send one anyway: it runs <code>fetch()</code> in the browser, and that cookie is the one
         JavaScript may not read.
@@ -576,7 +397,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
   </div>
 
 <div class="flex flex-col gap-3">      <p>
-        It is also the kit's worked example of section 03's <code>add_template_dir()</code>. The
+        It is also the kit's worked example of section 08's <code>add_template_dir()</code>. The
         console's templates live beside its code, in <code>fjkit_apidocs/templates/apidocs/</code>,
         and <code>extend()</code> hands that directory to the loader. The inner <code>apidocs/</code>
         keeps the names at <code>apidocs/page.html</code>, which lets your app replace any one of them
@@ -598,7 +419,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
 <hr class="border-border">
 
 <div id="charts">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
 <span class="badge" data-variant="secondary">fjkit_charts</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Charts</h2><p class="text-muted-foreground text-sm">Python decides the shape of the figure. The browser decides its chrome.</p>      </div>
@@ -686,7 +507,7 @@ Chart(
 <hr class="border-border">
 
 <div id="admin">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
 <span class="badge" data-variant="secondary">fjkit_admin</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">The admin</h2><p class="text-muted-foreground text-sm">Register a model; get the list, the form and the routes between them.</p>      </div>
@@ -771,6 +592,187 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, admin)))</pre>
 </section></div></div>
 <hr class="border-border">
 
+<div id="why">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">What a plugin is</h2><p class="text-muted-foreground text-sm">Two contribution points, because the kit has two moments.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        A macro covers what a page draws. It does not cover what happens before the handler runs, or
+        what every template should know without a route passing it along. Sessions need both.
+        Locales and feature flags need the second. A flash message needs only the first.
+      </p>
+      <p>
+        A plugin is one object with two optional methods. <code>mount()</code> runs when the app is
+        constructed; <code>extend()</code> runs when the Jinja environment is built. A plugin that
+        only puts a value in every template writes only the second, and one that only touches the
+        request on its way past writes only the first.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">config = FjkitConfig(
+    template_dir=APP_DIR / &#34;templates&#34;,
+    plugins=(auth, flash),
+)
+mount_fjkit(app, config)</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        That is the whole registration. <code>mount_fjkit()</code> already reads this config for the
+        static mount and the environment, so a plugin needs no second call and no import order to
+        get right.
+      </p>
+      <p>
+        The split between the two methods stays visible on purpose. Hiding it would be friendlier
+        until someone's <code>mount()</code> silently never ran.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="mount">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">mount(): the app side</h2><p class="text-muted-foreground text-sm">Middleware, handlers, routes — attributed to the plugin that added them.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>AppSetup</code> is a thin pass-through to FastAPI. What it adds is attribution: a
+        misbehaving plugin is named rather than found by elimination.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>AppSetup</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>add_middleware(cls, **options)</h4><p>Starlette runs middleware in reverse registration order, so a plugin listed later in plugins= wraps the ones before it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_exception_handler(exc, handler)</h4><p>note that an exception raised inside middleware never reaches one — Starlette&#39;s handler layer sits inside the user stack</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>include_router(router)</h4><p>for a plugin that ships endpoints of its own</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>mount_static(url, directory)</h4><p>for a plugin that ships assets, mounted under a name derived from the plugin&#39;s</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>warn(message)</h4><p>startup configuration checks; the message is prefixed with the plugin&#39;s name and raised as PluginWarning</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>app, config</h4><p>the live FastAPI app and the FjkitConfig, for the checks the two above cannot express</p>    </section>  </div></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        <code>warn()</code> is for the combinations only the plugin can recognise — an in-memory
+        session store under a production config, say. That works on your laptop and logs users out at
+        random behind four workers, and nothing in the traceback points at the cause.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="extend">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">extend(): Jinja, and every render</h2><p class="text-muted-foreground text-sm">The per-request context is the part that was missing.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>FjkitConfig.globals</code> is resolved once per process. That is right for a version
+        string and useless for the signed-in user. <code>add_context_processor()</code> is the
+        other half: a callable run once per render, with the live request.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>EnvSetup</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>add_template_dir(path)</h4><p>searched after the app&#39;s templates and before the kit&#39;s — a plugin may replace a kit macro, never a file the app wrote</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_global(name, value)</h4><p>one value for the whole process</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_filter(name, fn)</h4><p>a Jinja filter</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_context_processor(fn, provides=[…])</h4><p>merged into every template&#39;s context, once per render</p>    </section>  </div></div></div>
+  </div>
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the auth plugin&#39;s whole extend()" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
+    setup.add_context_processor(
+        lambda request: {&#34;session&#34;: getattr(request.state, &#34;auth&#34;, None)},
+        provides=[&#34;session&#34;],
+    )</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        Two constraints, both deliberate. A processor is <strong>synchronous</strong>: it runs inside
+        <code>Templates.page()</code>, which a <code>def</code> handler reaches from the threadpool. A
+        plugin needing I/O does it in middleware and leaves the result on
+        <code>request.state</code>, which is what the line above reads.
+      </p>
+      <p>
+        <code>provides=</code> is required rather than inferred. Without it, two plugins fighting over
+        <code>user</code> are discoverable only by rendering a page and noticing. With it, the clash
+        is a startup error naming both.
+      </p>
+      <p>
+        <code>add_template_dir()</code> is how a plugin that ships UI ships it; section 03 is the
+        worked example. A plugin that lives inside the fjkit repository has one more step: the Tailwind
+        build scans an explicit list of directories in <code>fjkit.css</code>, so the plugin adds its
+        template directory to that list. Miss it and nothing fails — the templates render, every utility class in them is
+        absent from the stylesheet, and the page looks broken.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="rules">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Order, collisions, and limits</h2><p class="text-muted-foreground text-sm">Everything a plugin can collide over fails at startup, not in production.</p>      </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Template search order</h3><p>First match wins.</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+<th class=" ">Searched</th>
+<th class=" ">Belongs to</th>
+<th class=" ">May shadow</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="text-muted-foreground tabular-nums">1</td>
+          <td class="font-medium">the app&#39;s template_dir</td>
+          <td class="">everything — this is fjkit eject</td>
+        </tr>
+        <tr>
+          <td class="text-muted-foreground tabular-nums">2</td>
+          <td class="font-medium">each plugin, in plugins= order</td>
+          <td class="">the kit&#39;s macros, never the app&#39;s files</td>
+        </tr>
+        <tr>
+          <td class="text-muted-foreground tabular-nums">3</td>
+          <td class="font-medium">the kit</td>
+          <td class="">nothing</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Refused at startup</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>two plugins with one name</h4><p>they would collide on request.state.&lt;name&gt; and make every later error ambiguous</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>two plugins claiming one global, filter or context key</h4><p>the error names both, and says to rename one or drop one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a context key a processor did not declare</h4><p>caught under strict_undefined, so it surfaces in development</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What a plugin cannot do</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>inject markup</h4><p>      There is no hook to inject markup into the shell. With one, any plugin could put a
+      <code>&lt;script&gt;</code> on every page, and both "no build step on your side" and the closed
+      vocabulary would leave through it. A plugin that ships UI ships templates, and they pass
+      <code>fjkit check</code> like everything else.
+</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>reach a sibling it did not declare</h4><p>a plugin that reads another says so — uses = (&#34;flash&#34;,) — and gets it from setup.plugin(&#34;flash&#34;), or None when the app registered none. An undeclared lookup is a startup error, and so is a sibling listed after the plugin that uses it. Order is still the order you wrote: the host checks it and never reorders</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>open a connection at startup</h4><p>no lifespan hook — a plugin takes a client the app already built, which is why RedisStore has a client parameter</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
 </div>    </main>
 
       <footer class="text-muted-foreground border-t py-5 text-xs">
@@ -790,7 +792,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, admin)))</pre>
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=e4b5be20e86a"></script>
+  <script defer src="assets/data.js?v=202f3ed3983d"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
 </body>
 </html>

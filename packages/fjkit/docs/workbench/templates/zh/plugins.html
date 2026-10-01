@@ -6,182 +6,37 @@
 
 {#
   base.html 的側欄由這份清單建出來，所以在這裡改名就等於改了導覽。
-  id 要跟 `lesson()` 產生的錨點一致。
+  id 要跟 `lesson()` 產生的錨點一致。app 會註冊的外掛排在前面；
+  自己寫外掛的介面排在後面，因為需要它的讀者較少。
 #}
 {% set sections = [
-  {"id": "why",      "num": "01", "title": "plugin 是什麼"},
-  {"id": "mount",    "num": "02", "title": "mount()：app 那一側"},
-  {"id": "extend",   "num": "03", "title": "extend()：Jinja 與每一次渲染"},
-  {"id": "rules",    "num": "04", "title": "順序、碰撞與界線"},
-  {"id": "auth",     "num": "05", "title": "auth plugin"},
-  {"id": "write",    "num": "06", "title": "flash plugin"},
-  {"id": "apidocs",  "num": "07", "title": "API 主控台"},
-  {"id": "charts",   "num": "08", "title": "圖表"},
-  {"id": "admin",    "num": "09", "title": "admin"},
+  {"id": "auth",     "num": "01", "title": "auth plugin", "group": "現成的外掛"},
+  {"id": "write",    "num": "02", "title": "flash plugin", "group": "現成的外掛"},
+  {"id": "apidocs",  "num": "03", "title": "API 主控台", "group": "現成的外掛"},
+  {"id": "charts",   "num": "04", "title": "圖表", "group": "現成的外掛"},
+  {"id": "admin",    "num": "05", "title": "admin", "group": "現成的外掛"},
+  {"id": "why",      "num": "06", "title": "plugin 是什麼", "group": "自己寫外掛"},
+  {"id": "mount",    "num": "07", "title": "mount()：app 那一側", "group": "自己寫外掛"},
+  {"id": "extend",   "num": "08", "title": "extend()：Jinja 與每一次渲染", "group": "自己寫外掛"},
+  {"id": "rules",    "num": "09", "title": "順序、碰撞與界線", "group": "自己寫外掛"},
 ] %}
 
 {% block content %}
 {% call stack(8) %}
 
   {% set intro %}
-    有些東西不是 macro。plugin 加的是 middleware、exception handler，或每個模板都該拿到的值：
-    一個物件，一個地方註冊。
+    plugin 補上 macro 做不到的部分：middleware、exception handler、路由，或每個模板都拿得到的值。
+    <strong>01–05</strong> 是 fjkit 內建或另行發佈的外掛，以及各自的註冊方式。
+    <strong>06–09</strong> 說明如何自己寫外掛。
   {% endset %}
   {{ page_header("Plugins", intro) }}
 
   {# ============================================================== 01 #}
-  {% set t01 %}兩個貢獻時機，對應 kit 的兩個時機。{% endset %}
-  {% call lesson("why", "01", "plugin 是什麼", t01) %}
+  {% set t01 %}瀏覽器拿 cookie，token 留在伺服器。{% endset %}
+  {% call lesson("auth", "01", "auth plugin", t01, tag="fjkit.auth") %}
     {% call prose() %}
       <p>
-        macro 只管一頁畫出什麼。handler 執行之前發生的事，以及每個模板都該知道、
-        但不該由每條路由傳過去的值，都不歸它管。session 兩者都要，
-        語系與 feature flag 只要後者，flash 訊息只要前者。
-      </p>
-      <p>
-        plugin 是一個物件，兩個方法都可選。<code>mount()</code> 在 app 建構時執行，
-        <code>extend()</code> 在 Jinja environment 建立時執行。只給每個模板一個值的 plugin
-        只寫 <code>extend()</code>；只在請求經過時處理的 plugin 只寫 <code>mount()</code>。
-      </p>
-    {% endcall %}
-
-    {{ code("config = FjkitConfig(
-    template_dir=APP_DIR / \"templates\",
-    plugins=(auth, flash),
-)
-mount_fjkit(app, config)", label="app/main.py") }}
-
-    {% call prose() %}
-      <p>
-        註冊到此結束。<code>mount_fjkit()</code> 本來就要讀這份 config 來掛靜態檔與建立
-        environment，所以 plugin 不需要第二個呼叫，也沒有 import 順序要記。
-      </p>
-      <p>
-        兩個時機刻意保持可見。把它藏起來的代價，是某個 plugin 的 <code>mount()</code>
-        沒有執行而沒有人發現。
-      </p>
-    {% endcall %}
-  {% endcall %}
-
-  {# ============================================================== 02 #}
-  {% set t02 %}middleware、handler、路由——而且都記在加它的那個 plugin 頭上。{% endset %}
-  {% call lesson("mount", "02", "mount()：app 那一側", t02) %}
-    {% call prose() %}
-      <p>
-        <code>AppSetup</code> 把呼叫轉給 FastAPI，並多做一件事：署名。
-        出問題時錯誤訊息會指名那個 plugin，不必逐一拔掉來找。
-      </p>
-    {% endcall %}
-
-    {{ defs("AppSetup", [
-      ("add_middleware(cls, **options)", "Starlette 依註冊的反序執行 middleware，所以 plugins= 裡排在後面的 plugin 包在前面那些的外層"),
-      ("add_exception_handler(exc, handler)", "middleware 裡拋出的例外到不了 handler：Starlette 的 handler 那一層在使用者 middleware 的內側"),
-      ("include_router(router)", "給自帶端點的 plugin"),
-      ("mount_static(url, directory)", "給自帶資產的 plugin，掛載名稱由 plugin 名字衍生"),
-      ("warn(message)", "啟動期的設定檢查；訊息會冠上 plugin 名稱，以 PluginWarning 發出"),
-      ("app, config", "活的 FastAPI app 與 FjkitConfig，給上面兩個表達不了的檢查用"),
-    ]) }}
-
-    {% call prose() %}
-      <p>
-        <code>warn()</code> 用於只有這個 plugin 認得出來的組合。例如正式設定配上記憶體版
-        session store：在開發機上正常，換到四個 worker 後面會隨機把人登出，
-        而且 traceback 裡沒有一行指向原因。
-      </p>
-    {% endcall %}
-  {% endcall %}
-
-  {# ============================================================== 03 #}
-  {% set t03 %}per-request 的 context，就是 globals 缺的那一塊。{% endset %}
-  {% call lesson("extend", "03", "extend()：Jinja 與每一次渲染", t03) %}
-    {% call prose() %}
-      <p>
-        <code>FjkitConfig.globals</code> 每個 process 只算一次，適合版本字串，
-        不適合「現在登入的是誰」。<code>add_context_processor()</code> 補上另一半：
-        每次渲染執行一次，拿得到當下的 request。
-      </p>
-    {% endcall %}
-
-    {{ defs("EnvSetup", [
-      ("add_template_dir(path)", "搜尋順序排在 app 的模板之後、kit 的之前——plugin 可以蓋掉 kit 的 macro，永遠蓋不掉 app 自己寫的檔案"),
-      ("add_global(name, value)", "整個 process 一個值"),
-      ("add_filter(name, fn)", "一個 Jinja filter"),
-      ("add_context_processor(fn, provides=[…])", "併進每個模板的 context，每次渲染一次"),
-    ]) }}
-
-    {{ code("def extend(self, setup: EnvSetup) -> None:
-    setup.add_context_processor(
-        lambda request: {\"session\": getattr(request.state, \"auth\", None)},
-        provides=[\"session\"],
-    )", label="auth plugin 的 extend()，全部") }}
-
-    {% call prose() %}
-      <p>
-        兩個限制都是刻意的。processor 必須<strong>同步</strong>：它在
-        <code>Templates.page()</code> 裡執行，而那是 <code>def</code> handler 從 threadpool 進來的。
-        需要 I/O 的 plugin 在 middleware 裡做完，把結果留在 <code>request.state</code> 上，
-        上面那一行讀的正是這個。
-      </p>
-      <p>
-        <code>provides=</code> 是強制宣告，不是自動推得。沒有它，兩個 plugin 會默默搶同一個
-        <code>user</code>，只能靠渲染頁面時碰巧注意到。有了它，衝突變成一個點名雙方的啟動期錯誤。
-      </p>
-      <p>
-        <code>add_template_dir()</code> 是帶 UI 的 plugin 把 UI 帶進來的方式，第 07 節是範例。
-        它有一個附帶條件：Tailwind 的掃描範圍是 <code>fjkit.css</code> 裡一份明列的目錄清單，
-        所以 kit 內建的 plugin 要把自己的模板目錄加進那份清單。
-        漏掉不會產生任何錯誤：模板照樣渲染，但裡面的 utility class 都不在樣式表裡，頁面看起來是壞的。
-      </p>
-    {% endcall %}
-  {% endcall %}
-
-  {# ============================================================== 04 #}
-  {% set t04 %}所有可能相撞的東西都在啟動時報錯，不會留到正式環境。{% endset %}
-  {% call lesson("rules", "04", "順序、碰撞與界線", t04) %}
-    {% call stage("模板搜尋順序", "先找到的贏。") %}
-      {% call table([{"label": "順序"}, {"label": "屬於"}, {"label": "可以蓋掉"}]) %}
-        <tr>
-          {{ cell("1", tone="muted", numeric=true) }}
-          {{ cell("app 的 template_dir", tone="strong") }}
-          {{ cell("全部——這就是 fjkit eject") }}
-        </tr>
-        <tr>
-          {{ cell("2", tone="muted", numeric=true) }}
-          {{ cell("每個 plugin，依 plugins= 的順序", tone="strong") }}
-          {{ cell("kit 的 macro，永遠不含 app 的檔案") }}
-        </tr>
-        <tr>
-          {{ cell("3", tone="muted", numeric=true) }}
-          {{ cell("kit", tone="strong") }}
-          {{ cell("沒有") }}
-        </tr>
-      {% endcall %}
-    {% endcall %}
-
-    {{ defs("啟動時就拒絕", [
-      ("兩個 plugin 同名", "它們會在 request.state.<name> 上相撞，之後的錯誤訊息無法分辨是哪一個"),
-      ("兩個 plugin 搶同一個 global、filter 或 context key", "錯誤訊息會點名雙方，並要求改名或拿掉一個"),
-      ("processor 回傳沒宣告過的 key", "strict_undefined 會抓到，所以在開發階段就浮現"),
-    ]) }}
-
-    {% set no_markup %}
-      沒有任何 hook 能把 markup 塞進 shell。有的話，任何 plugin 都能在每一頁放一段
-      <code>&lt;script&gt;</code>，零建置與封閉詞彙表會同時失守。要出 UI 的
-      plugin 出的是模板，而且跟其他東西一樣要過 <code>fjkit check</code>。
-    {% endset %}
-    {{ defs("plugin 做不到的事", [
-      ("注入 markup", no_markup),
-      ("讀取沒宣告的同伴", "要讀別的 plugin 就先宣告——uses = (\"flash\",)——再用 setup.plugin(\"flash\") 拿；app 沒註冊時拿到 None。沒宣告就查是啟動錯誤，被用的 plugin 排在使用者後面也是。順序仍然是你寫的順序：host 只檢查，不重排"),
-      ("在啟動時開連線", "沒有 lifespan hook。plugin 收的是 app 已經建好的 client，RedisStore 有一個 client 參數就是這個原因"),
-    ]) }}
-  {% endcall %}
-
-  {# ============================================================== 05 #}
-  {% set t05 %}瀏覽器拿 cookie，token 留在伺服器。{% endset %}
-  {% call lesson("auth", "05", "auth plugin", t05, tag="fjkit.auth") %}
-    {% call prose() %}
-      <p>
-        內建的第一個 plugin，也是這個接縫存在的理由。瀏覽器只拿到一個不透明、簽名過的
+        htmx app 的登入機制，內建於 fjkit，模組為 <code>fjkit.auth</code>。瀏覽器只拿到一個不透明、簽名過的
         <code>HttpOnly</code> cookie。access token、refresh token 與 claims 全部留在伺服器端的
         session store。
       </p>
@@ -253,9 +108,9 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))", label="app/ma
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 06 #}
-  {% set t06 %}一則活得比產生它的那個回應更久的訊息。{% endset %}
-  {% call lesson("write", "06", "flash plugin", t06, tag="fjkit.flash") %}
+  {# ============================================================== 02 #}
+  {% set t02 %}一則活得比產生它的那個回應更久的訊息。{% endset %}
+  {% call lesson("write", "02", "flash plugin", t02, tag="fjkit.flash") %}
     {% call prose() %}
       <p>
         轉址會讓訊息消失。<code>HX-Trigger</code> 是叫頁面觸發一個事件，但頁面在那個標頭抵達之前
@@ -323,13 +178,13 @@ if carried and messages.shown(request):
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 07 #}
-  {% set t07 %}在這一頁登入，底下每一次呼叫都以你的身分送出。{% endset %}
-  {% call lesson("apidocs", "07", "API 主控台", t07, tag="fjkit_apidocs") %}
+  {# ============================================================== 03 #}
+  {% set t03 %}在這一頁登入，底下每一次呼叫都以你的身分送出。{% endset %}
+  {% call lesson("apidocs", "03", "API 主控台", t03, tag="fjkit_apidocs") %}
     {% call prose() %}
       <p>
         Swagger UI 的 <em>Authorize</em> 只能表達 OpenAPI 文件描述得出來的東西：API key、HTTP scheme、
-        OAuth2 flow。第 05 節那種 session——簽章過的 <code>HttpOnly</code> cookie，token 留在伺服器
+        OAuth2 flow。第 01 節那種 session——簽章過的 <code>HttpOnly</code> cookie，token 留在伺服器
         ——四種都不是。它的 <em>Try it out</em> 也送不出去：那是在瀏覽器裡跑 <code>fetch()</code>，
         而那顆 cookie 正好不給 JavaScript 讀。
       </p>
@@ -400,7 +255,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
 
     {% call prose() %}
       <p>
-        它同時是第 03 節 <code>add_template_dir()</code> 在 kit 裡的實例。主控台的模板與它的程式碼
+        它同時是第 08 節 <code>add_template_dir()</code> 在 kit 裡的實例。主控台的模板與它的程式碼
         放在一起，在 <code>fjkit_apidocs/templates/apidocs/</code>，由 <code>extend()</code> 把那個
         目錄交給 loader。裡面那層 <code>apidocs/</code> 讓模板名維持 <code>apidocs/page.html</code>，
         所以你的 app 只要寫一份自己的 <code>templates/apidocs/&lt;名稱&gt;.html</code>
@@ -416,9 +271,9 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 08 #}
-  {% set t08 %}圖形的形狀由 Python 決定，圖形的外裝由瀏覽器決定。{% endset %}
-  {% call lesson("charts", "08", "圖表", t08, tag="fjkit_charts") %}
+  {# ============================================================== 04 #}
+  {% set t04 %}圖形的形狀由 Python 決定，圖形的外裝由瀏覽器決定。{% endset %}
+  {% call lesson("charts", "04", "圖表", t04, tag="fjkit_charts") %}
     {% call prose() %}
       <p>
         Basecoat 有 <code>chart</code> 元件，kit 沒有把它包進來。圖表是唯一一個沒辦法只靠 markup
@@ -484,9 +339,9 @@ Chart(
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 09 #}
-  {% set t09 %}註冊一個 model，就得到列表、表單，以及它們之間的路由。{% endset %}
-  {% call lesson("admin", "09", "admin", t09, tag="fjkit_admin") %}
+  {# ============================================================== 05 #}
+  {% set t05 %}註冊一個 model，就得到列表、表單，以及它們之間的路由。{% endset %}
+  {% call lesson("admin", "05", "admin", t05, tag="fjkit_admin") %}
     {% call prose() %}
       <p>
         charter 第 02 節把 admin 產生器放在 kit 之外，理由是它少不了的那件事：讀你的 schema。
@@ -554,6 +409,153 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, admin)))", label="
       ("SQLModel 跟其他 model 一樣註冊", "table=True 的類別就是一個 mapped class，送出時它自己的 validator 會透過 model_validate 執行"),
       ("兩個依賴", "fjkit 與 sqlalchemy>=2.0"),
       ("刻意留下一個 async handler", "它要讀 htmx 從勾選欄位送出的 body，用 parse_qs 讀，因此 python-multipart 不必進依賴清單。其餘負責渲染的 handler 都是 def，交給 Starlette 丟到 threadpool"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 06 #}
+  {% set t06 %}兩個貢獻時機，對應 kit 的兩個時機。{% endset %}
+  {% call lesson("why", "06", "plugin 是什麼", t06) %}
+    {% call prose() %}
+      <p>
+        macro 只管一頁畫出什麼。handler 執行之前發生的事，以及每個模板都該知道、
+        但不該由每條路由傳過去的值，都不歸它管。session 兩者都要，
+        語系與 feature flag 只要後者，flash 訊息只要前者。
+      </p>
+      <p>
+        plugin 是一個物件，兩個方法都可選。<code>mount()</code> 在 app 建構時執行，
+        <code>extend()</code> 在 Jinja environment 建立時執行。只給每個模板一個值的 plugin
+        只寫 <code>extend()</code>；只在請求經過時處理的 plugin 只寫 <code>mount()</code>。
+      </p>
+    {% endcall %}
+
+    {{ code("config = FjkitConfig(
+    template_dir=APP_DIR / \"templates\",
+    plugins=(auth, flash),
+)
+mount_fjkit(app, config)", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        註冊到此結束。<code>mount_fjkit()</code> 本來就要讀這份 config 來掛靜態檔與建立
+        environment，所以 plugin 不需要第二個呼叫，也沒有 import 順序要記。
+      </p>
+      <p>
+        兩個時機刻意保持可見。把它藏起來的代價，是某個 plugin 的 <code>mount()</code>
+        沒有執行而沒有人發現。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set t07 %}middleware、handler、路由——而且都記在加它的那個 plugin 頭上。{% endset %}
+  {% call lesson("mount", "07", "mount()：app 那一側", t07) %}
+    {% call prose() %}
+      <p>
+        <code>AppSetup</code> 把呼叫轉給 FastAPI，並多做一件事：署名。
+        出問題時錯誤訊息會指名那個 plugin，不必逐一拔掉來找。
+      </p>
+    {% endcall %}
+
+    {{ defs("AppSetup", [
+      ("add_middleware(cls, **options)", "Starlette 依註冊的反序執行 middleware，所以 plugins= 裡排在後面的 plugin 包在前面那些的外層"),
+      ("add_exception_handler(exc, handler)", "middleware 裡拋出的例外到不了 handler：Starlette 的 handler 那一層在使用者 middleware 的內側"),
+      ("include_router(router)", "給自帶端點的 plugin"),
+      ("mount_static(url, directory)", "給自帶資產的 plugin，掛載名稱由 plugin 名字衍生"),
+      ("warn(message)", "啟動期的設定檢查；訊息會冠上 plugin 名稱，以 PluginWarning 發出"),
+      ("app, config", "活的 FastAPI app 與 FjkitConfig，給上面兩個表達不了的檢查用"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        <code>warn()</code> 用於只有這個 plugin 認得出來的組合。例如正式設定配上記憶體版
+        session store：在開發機上正常，換到四個 worker 後面會隨機把人登出，
+        而且 traceback 裡沒有一行指向原因。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 08 #}
+  {% set t08 %}per-request 的 context，就是 globals 缺的那一塊。{% endset %}
+  {% call lesson("extend", "08", "extend()：Jinja 與每一次渲染", t08) %}
+    {% call prose() %}
+      <p>
+        <code>FjkitConfig.globals</code> 每個 process 只算一次，適合版本字串，
+        不適合「現在登入的是誰」。<code>add_context_processor()</code> 補上另一半：
+        每次渲染執行一次，拿得到當下的 request。
+      </p>
+    {% endcall %}
+
+    {{ defs("EnvSetup", [
+      ("add_template_dir(path)", "搜尋順序排在 app 的模板之後、kit 的之前——plugin 可以蓋掉 kit 的 macro，永遠蓋不掉 app 自己寫的檔案"),
+      ("add_global(name, value)", "整個 process 一個值"),
+      ("add_filter(name, fn)", "一個 Jinja filter"),
+      ("add_context_processor(fn, provides=[…])", "併進每個模板的 context，每次渲染一次"),
+    ]) }}
+
+    {{ code("def extend(self, setup: EnvSetup) -> None:
+    setup.add_context_processor(
+        lambda request: {\"session\": getattr(request.state, \"auth\", None)},
+        provides=[\"session\"],
+    )", label="auth plugin 的 extend()，全部") }}
+
+    {% call prose() %}
+      <p>
+        兩個限制都是刻意的。processor 必須<strong>同步</strong>：它在
+        <code>Templates.page()</code> 裡執行，而那是 <code>def</code> handler 從 threadpool 進來的。
+        需要 I/O 的 plugin 在 middleware 裡做完，把結果留在 <code>request.state</code> 上，
+        上面那一行讀的正是這個。
+      </p>
+      <p>
+        <code>provides=</code> 是強制宣告，不是自動推得。沒有它，兩個 plugin 會默默搶同一個
+        <code>user</code>，只能靠渲染頁面時碰巧注意到。有了它，衝突變成一個點名雙方的啟動期錯誤。
+      </p>
+      <p>
+        <code>add_template_dir()</code> 是帶 UI 的 plugin 把 UI 帶進來的方式，第 03 節是範例。
+        位於 fjkit repository 內的 plugin 多一個步驟：Tailwind 的掃描範圍是 <code>fjkit.css</code>
+        裡一份明列的目錄清單，所以該 plugin 要把自己的模板目錄加進那份清單。
+        漏掉不會產生任何錯誤：模板照樣渲染，但裡面的 utility class 都不在樣式表裡，頁面看起來是壞的。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 09 #}
+  {% set t09 %}所有可能相撞的東西都在啟動時報錯，不會留到正式環境。{% endset %}
+  {% call lesson("rules", "09", "順序、碰撞與界線", t09) %}
+    {% call stage("模板搜尋順序", "先找到的贏。") %}
+      {% call table([{"label": "順序"}, {"label": "屬於"}, {"label": "可以蓋掉"}]) %}
+        <tr>
+          {{ cell("1", tone="muted", numeric=true) }}
+          {{ cell("app 的 template_dir", tone="strong") }}
+          {{ cell("全部——這就是 fjkit eject") }}
+        </tr>
+        <tr>
+          {{ cell("2", tone="muted", numeric=true) }}
+          {{ cell("每個 plugin，依 plugins= 的順序", tone="strong") }}
+          {{ cell("kit 的 macro，永遠不含 app 的檔案") }}
+        </tr>
+        <tr>
+          {{ cell("3", tone="muted", numeric=true) }}
+          {{ cell("kit", tone="strong") }}
+          {{ cell("沒有") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {{ defs("啟動時就拒絕", [
+      ("兩個 plugin 同名", "它們會在 request.state.<name> 上相撞，之後的錯誤訊息無法分辨是哪一個"),
+      ("兩個 plugin 搶同一個 global、filter 或 context key", "錯誤訊息會點名雙方，並要求改名或拿掉一個"),
+      ("processor 回傳沒宣告過的 key", "strict_undefined 會抓到，所以在開發階段就浮現"),
+    ]) }}
+
+    {% set no_markup %}
+      沒有任何 hook 能把 markup 塞進 shell。有的話，任何 plugin 都能在每一頁放一段
+      <code>&lt;script&gt;</code>，零建置與封閉詞彙表會同時失守。要出 UI 的
+      plugin 出的是模板，而且跟其他東西一樣要過 <code>fjkit check</code>。
+    {% endset %}
+    {{ defs("plugin 做不到的事", [
+      ("注入 markup", no_markup),
+      ("讀取沒宣告的同伴", "要讀別的 plugin 就先宣告——uses = (\"flash\",)——再用 setup.plugin(\"flash\") 拿；app 沒註冊時拿到 None。沒宣告就查是啟動錯誤，被用的 plugin 排在使用者後面也是。順序仍然是你寫的順序：host 只檢查，不重排"),
+      ("在啟動時開連線", "沒有 lifespan hook。plugin 收的是 app 已經建好的 client，RedisStore 有一個 client 參數就是這個原因"),
     ]) }}
   {% endcall %}
 

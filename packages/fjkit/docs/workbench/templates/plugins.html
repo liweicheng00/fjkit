@@ -6,187 +6,38 @@
 
 {#
   The rail in base.html is built from this list, so a section renamed here is
-  renamed in the navigation. Ids match the anchors `lesson()` emits.
+  renamed in the navigation. Ids match the anchors `lesson()` emits. The plugins
+  an app registers come first; the seam for writing one comes after, because
+  fewer readers need it.
 #}
 {% set sections = [
-  {"id": "why",      "num": "01", "title": "What a plugin is"},
-  {"id": "mount",    "num": "02", "title": "mount(): the app side"},
-  {"id": "extend",   "num": "03", "title": "extend(): Jinja, and every render"},
-  {"id": "rules",    "num": "04", "title": "Order, collisions, and limits"},
-  {"id": "auth",     "num": "05", "title": "The auth plugin"},
-  {"id": "write",    "num": "06", "title": "The flash plugin"},
-  {"id": "apidocs",  "num": "07", "title": "The API console"},
-  {"id": "charts",   "num": "08", "title": "Charts"},
-  {"id": "admin",    "num": "09", "title": "The admin"},
+  {"id": "auth",     "num": "01", "title": "The auth plugin", "group": "Ready-made plugins"},
+  {"id": "write",    "num": "02", "title": "The flash plugin", "group": "Ready-made plugins"},
+  {"id": "apidocs",  "num": "03", "title": "The API console", "group": "Ready-made plugins"},
+  {"id": "charts",   "num": "04", "title": "Charts", "group": "Ready-made plugins"},
+  {"id": "admin",    "num": "05", "title": "The admin", "group": "Ready-made plugins"},
+  {"id": "why",      "num": "06", "title": "What a plugin is", "group": "Write your own"},
+  {"id": "mount",    "num": "07", "title": "mount(): the app side", "group": "Write your own"},
+  {"id": "extend",   "num": "08", "title": "extend(): Jinja, and every render", "group": "Write your own"},
+  {"id": "rules",    "num": "09", "title": "Order, collisions, and limits", "group": "Write your own"},
 ] %}
 
 {% block content %}
 {% call stack(8) %}
 
   {% set intro %}
-    Some things are not a macro. A plugin adds middleware, an exception handler, or a value every
-    template gets — in one object, registered in one place.
+    A plugin adds what a macro cannot: middleware, an exception handler, routes, or a value every
+    template gets. <strong>01–05</strong> are the plugins that ship with fjkit or beside it, and how
+    to register each. <strong>06–09</strong> are for writing your own.
   {% endset %}
   {{ page_header("Plugins", intro) }}
 
   {# ============================================================== 01 #}
-  {% set t01 %}Two contribution points, because the kit has two moments.{% endset %}
-  {% call lesson("why", "01", "What a plugin is", t01) %}
+  {% set t01 %}The browser holds a cookie. The server holds the token.{% endset %}
+  {% call lesson("auth", "01", "The auth plugin", t01, tag="fjkit.auth") %}
     {% call prose() %}
       <p>
-        A macro covers what a page draws. It does not cover what happens before the handler runs, or
-        what every template should know without a route passing it along. Sessions need both.
-        Locales and feature flags need the second. A flash message needs only the first.
-      </p>
-      <p>
-        A plugin is one object with two optional methods. <code>mount()</code> runs when the app is
-        constructed; <code>extend()</code> runs when the Jinja environment is built. A plugin that
-        only puts a value in every template writes only the second, and one that only touches the
-        request on its way past writes only the first.
-      </p>
-    {% endcall %}
-
-    {{ code("config = FjkitConfig(
-    template_dir=APP_DIR / \"templates\",
-    plugins=(auth, flash),
-)
-mount_fjkit(app, config)", label="app/main.py") }}
-
-    {% call prose() %}
-      <p>
-        That is the whole registration. <code>mount_fjkit()</code> already reads this config for the
-        static mount and the environment, so a plugin needs no second call and no import order to
-        get right.
-      </p>
-      <p>
-        The split between the two methods stays visible on purpose. Hiding it would be friendlier
-        until someone's <code>mount()</code> silently never ran.
-      </p>
-    {% endcall %}
-  {% endcall %}
-
-  {# ============================================================== 02 #}
-  {% set t02 %}Middleware, handlers, routes — attributed to the plugin that added them.{% endset %}
-  {% call lesson("mount", "02", "mount(): the app side", t02) %}
-    {% call prose() %}
-      <p>
-        <code>AppSetup</code> is a thin pass-through to FastAPI. What it adds is attribution: a
-        misbehaving plugin is named rather than found by elimination.
-      </p>
-    {% endcall %}
-
-    {{ defs("AppSetup", [
-      ("add_middleware(cls, **options)", "Starlette runs middleware in reverse registration order, so a plugin listed later in plugins= wraps the ones before it"),
-      ("add_exception_handler(exc, handler)", "note that an exception raised inside middleware never reaches one — Starlette's handler layer sits inside the user stack"),
-      ("include_router(router)", "for a plugin that ships endpoints of its own"),
-      ("mount_static(url, directory)", "for a plugin that ships assets, mounted under a name derived from the plugin's"),
-      ("warn(message)", "startup configuration checks; the message is prefixed with the plugin's name and raised as PluginWarning"),
-      ("app, config", "the live FastAPI app and the FjkitConfig, for the checks the two above cannot express"),
-    ]) }}
-
-    {% call prose() %}
-      <p>
-        <code>warn()</code> is for the combinations only the plugin can recognise — an in-memory
-        session store under a production config, say. That works on your laptop and logs users out at
-        random behind four workers, and nothing in the traceback points at the cause.
-      </p>
-    {% endcall %}
-  {% endcall %}
-
-  {# ============================================================== 03 #}
-  {% set t03 %}The per-request context is the part that was missing.{% endset %}
-  {% call lesson("extend", "03", "extend(): Jinja, and every render", t03) %}
-    {% call prose() %}
-      <p>
-        <code>FjkitConfig.globals</code> is resolved once per process. That is right for a version
-        string and useless for the signed-in user. <code>add_context_processor()</code> is the
-        other half: a callable run once per render, with the live request.
-      </p>
-    {% endcall %}
-
-    {{ defs("EnvSetup", [
-      ("add_template_dir(path)", "searched after the app's templates and before the kit's — a plugin may replace a kit macro, never a file the app wrote"),
-      ("add_global(name, value)", "one value for the whole process"),
-      ("add_filter(name, fn)", "a Jinja filter"),
-      ("add_context_processor(fn, provides=[…])", "merged into every template's context, once per render"),
-    ]) }}
-
-    {{ code("def extend(self, setup: EnvSetup) -> None:
-    setup.add_context_processor(
-        lambda request: {\"session\": getattr(request.state, \"auth\", None)},
-        provides=[\"session\"],
-    )", label="the auth plugin's whole extend()") }}
-
-    {% call prose() %}
-      <p>
-        Two constraints, both deliberate. A processor is <strong>synchronous</strong>: it runs inside
-        <code>Templates.page()</code>, which a <code>def</code> handler reaches from the threadpool. A
-        plugin needing I/O does it in middleware and leaves the result on
-        <code>request.state</code>, which is what the line above reads.
-      </p>
-      <p>
-        <code>provides=</code> is required rather than inferred. Without it, two plugins fighting over
-        <code>user</code> are discoverable only by rendering a page and noticing. With it, the clash
-        is a startup error naming both.
-      </p>
-      <p>
-        <code>add_template_dir()</code> is how a plugin that ships UI ships it; section 07 is the
-        worked example. One thing goes with it: the Tailwind build scans an explicit list of
-        directories in <code>fjkit.css</code>, so a plugin inside the kit adds its template directory
-        to that list. Miss it and nothing fails — the templates render, every utility class in them is
-        absent from the stylesheet, and the page looks broken.
-      </p>
-    {% endcall %}
-  {% endcall %}
-
-  {# ============================================================== 04 #}
-  {% set t04 %}Everything a plugin can collide over fails at startup, not in production.{% endset %}
-  {% call lesson("rules", "04", "Order, collisions, and limits", t04) %}
-    {% call stage("Template search order", "First match wins.") %}
-      {% call table([{"label": "Searched"}, {"label": "Belongs to"}, {"label": "May shadow"}]) %}
-        <tr>
-          {{ cell("1", tone="muted", numeric=true) }}
-          {{ cell("the app's template_dir", tone="strong") }}
-          {{ cell("everything — this is fjkit eject") }}
-        </tr>
-        <tr>
-          {{ cell("2", tone="muted", numeric=true) }}
-          {{ cell("each plugin, in plugins= order", tone="strong") }}
-          {{ cell("the kit's macros, never the app's files") }}
-        </tr>
-        <tr>
-          {{ cell("3", tone="muted", numeric=true) }}
-          {{ cell("the kit", tone="strong") }}
-          {{ cell("nothing") }}
-        </tr>
-      {% endcall %}
-    {% endcall %}
-
-    {{ defs("Refused at startup", [
-      ("two plugins with one name", "they would collide on request.state.<name> and make every later error ambiguous"),
-      ("two plugins claiming one global, filter or context key", "the error names both, and says to rename one or drop one"),
-      ("a context key a processor did not declare", "caught under strict_undefined, so it surfaces in development"),
-    ]) }}
-
-    {% set no_markup %}
-      There is no hook to inject markup into the shell. With one, any plugin could put a
-      <code>&lt;script&gt;</code> on every page, and both "no build step on your side" and the closed
-      vocabulary would leave through it. A plugin that ships UI ships templates, and they pass
-      <code>fjkit check</code> like everything else.
-    {% endset %}
-    {{ defs("What a plugin cannot do", [
-      ("inject markup", no_markup),
-      ("reach a sibling it did not declare", "a plugin that reads another says so — uses = (\"flash\",) — and gets it from setup.plugin(\"flash\"), or None when the app registered none. An undeclared lookup is a startup error, and so is a sibling listed after the plugin that uses it. Order is still the order you wrote: the host checks it and never reorders"),
-      ("open a connection at startup", "no lifespan hook — a plugin takes a client the app already built, which is why RedisStore has a client parameter"),
-    ]) }}
-  {% endcall %}
-
-  {# ============================================================== 05 #}
-  {% set t05 %}The browser holds a cookie. The server holds the token.{% endset %}
-  {% call lesson("auth", "05", "The auth plugin", t05, tag="fjkit.auth") %}
-    {% call prose() %}
-      <p>
-        The first plugin in the box, and the reason the seam exists. The browser gets one opaque,
+        Sign-in for an htmx app, shipped inside fjkit as <code>fjkit.auth</code>. The browser gets one opaque,
         signed, <code>HttpOnly</code> cookie. The access token, the refresh token and your claims stay
         in a session store on the server.
       </p>
@@ -264,9 +115,9 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))", label="app/ma
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 06 #}
-  {% set t06 %}A message that outlives the response that raised it.{% endset %}
-  {% call lesson("write", "06", "The flash plugin", t06, tag="fjkit.flash") %}
+  {# ============================================================== 02 #}
+  {% set t02 %}A message that outlives the response that raised it.{% endset %}
+  {% call lesson("write", "02", "The flash plugin", t02, tag="fjkit.flash") %}
     {% call prose() %}
       <p>
         A redirect loses a message. <code>HX-Trigger</code> names an event for the page to fire, and
@@ -341,13 +192,13 @@ if carried and messages.shown(request):
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 07 #}
-  {% set t07 %}Sign in on the page, and every call below goes out as you.{% endset %}
-  {% call lesson("apidocs", "07", "The API console", t07, tag="fjkit_apidocs") %}
+  {# ============================================================== 03 #}
+  {% set t03 %}Sign in on the page, and every call below goes out as you.{% endset %}
+  {% call lesson("apidocs", "03", "The API console", t03, tag="fjkit_apidocs") %}
     {% call prose() %}
       <p>
         Swagger UI's Authorize dialog can express only what an OpenAPI document can describe: an API
-        key, an HTTP scheme, an OAuth2 flow. An app whose sessions are section 05's — a signed
+        key, an HTTP scheme, an OAuth2 flow. An app whose sessions are section 01's — a signed
         <code>HttpOnly</code> cookie over a server-side token — is none of those. Its Try it out could
         not send one anyway: it runs <code>fetch()</code> in the browser, and that cookie is the one
         JavaScript may not read.
@@ -421,7 +272,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
 
     {% call prose() %}
       <p>
-        It is also the kit's worked example of section 03's <code>add_template_dir()</code>. The
+        It is also the kit's worked example of section 08's <code>add_template_dir()</code>. The
         console's templates live beside its code, in <code>fjkit_apidocs/templates/apidocs/</code>,
         and <code>extend()</code> hands that directory to the loader. The inner <code>apidocs/</code>
         keeps the names at <code>apidocs/page.html</code>, which lets your app replace any one of them
@@ -438,9 +289,9 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 08 #}
-  {% set t08 %}Python decides the shape of the figure. The browser decides its chrome.{% endset %}
-  {% call lesson("charts", "08", "Charts", t08, tag="fjkit_charts") %}
+  {# ============================================================== 04 #}
+  {% set t04 %}Python decides the shape of the figure. The browser decides its chrome.{% endset %}
+  {% call lesson("charts", "04", "Charts", t04, tag="fjkit_charts") %}
     {% call prose() %}
       <p>
         Basecoat has a <code>chart</code> component and the kit does not ship it, because a chart is
@@ -508,9 +359,9 @@ Chart(
     ]) }}
   {% endcall %}
 
-  {# ============================================================== 09 #}
-  {% set t09 %}Register a model; get the list, the form and the routes between them.{% endset %}
-  {% call lesson("admin", "09", "The admin", t09, tag="fjkit_admin") %}
+  {# ============================================================== 05 #}
+  {% set t05 %}Register a model; get the list, the form and the routes between them.{% endset %}
+  {% call lesson("admin", "05", "The admin", t05, tag="fjkit_admin") %}
     {% call prose() %}
       <p>
         Section 02 of the charter puts an admin generator outside the kit, and the reason is the one
@@ -580,6 +431,158 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, admin)))", label="
       ("SQLModel registers like anything else", "a table=True class is a mapped class, and its own validators run on submit through model_validate"),
       ("two dependencies", "fjkit and sqlalchemy>=2.0"),
       ("one async handler, on purpose", "it reads the body htmx posts from the checkbox column, with parse_qs, which keeps python-multipart off the dependency list. Every handler that renders is def, so Starlette runs it in the threadpool"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 06 #}
+  {% set t06 %}Two contribution points, because the kit has two moments.{% endset %}
+  {% call lesson("why", "06", "What a plugin is", t06) %}
+    {% call prose() %}
+      <p>
+        A macro covers what a page draws. It does not cover what happens before the handler runs, or
+        what every template should know without a route passing it along. Sessions need both.
+        Locales and feature flags need the second. A flash message needs only the first.
+      </p>
+      <p>
+        A plugin is one object with two optional methods. <code>mount()</code> runs when the app is
+        constructed; <code>extend()</code> runs when the Jinja environment is built. A plugin that
+        only puts a value in every template writes only the second, and one that only touches the
+        request on its way past writes only the first.
+      </p>
+    {% endcall %}
+
+    {{ code("config = FjkitConfig(
+    template_dir=APP_DIR / \"templates\",
+    plugins=(auth, flash),
+)
+mount_fjkit(app, config)", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        That is the whole registration. <code>mount_fjkit()</code> already reads this config for the
+        static mount and the environment, so a plugin needs no second call and no import order to
+        get right.
+      </p>
+      <p>
+        The split between the two methods stays visible on purpose. Hiding it would be friendlier
+        until someone's <code>mount()</code> silently never ran.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 07 #}
+  {% set t07 %}Middleware, handlers, routes — attributed to the plugin that added them.{% endset %}
+  {% call lesson("mount", "07", "mount(): the app side", t07) %}
+    {% call prose() %}
+      <p>
+        <code>AppSetup</code> is a thin pass-through to FastAPI. What it adds is attribution: a
+        misbehaving plugin is named rather than found by elimination.
+      </p>
+    {% endcall %}
+
+    {{ defs("AppSetup", [
+      ("add_middleware(cls, **options)", "Starlette runs middleware in reverse registration order, so a plugin listed later in plugins= wraps the ones before it"),
+      ("add_exception_handler(exc, handler)", "note that an exception raised inside middleware never reaches one — Starlette's handler layer sits inside the user stack"),
+      ("include_router(router)", "for a plugin that ships endpoints of its own"),
+      ("mount_static(url, directory)", "for a plugin that ships assets, mounted under a name derived from the plugin's"),
+      ("warn(message)", "startup configuration checks; the message is prefixed with the plugin's name and raised as PluginWarning"),
+      ("app, config", "the live FastAPI app and the FjkitConfig, for the checks the two above cannot express"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        <code>warn()</code> is for the combinations only the plugin can recognise — an in-memory
+        session store under a production config, say. That works on your laptop and logs users out at
+        random behind four workers, and nothing in the traceback points at the cause.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 08 #}
+  {% set t08 %}The per-request context is the part that was missing.{% endset %}
+  {% call lesson("extend", "08", "extend(): Jinja, and every render", t08) %}
+    {% call prose() %}
+      <p>
+        <code>FjkitConfig.globals</code> is resolved once per process. That is right for a version
+        string and useless for the signed-in user. <code>add_context_processor()</code> is the
+        other half: a callable run once per render, with the live request.
+      </p>
+    {% endcall %}
+
+    {{ defs("EnvSetup", [
+      ("add_template_dir(path)", "searched after the app's templates and before the kit's — a plugin may replace a kit macro, never a file the app wrote"),
+      ("add_global(name, value)", "one value for the whole process"),
+      ("add_filter(name, fn)", "a Jinja filter"),
+      ("add_context_processor(fn, provides=[…])", "merged into every template's context, once per render"),
+    ]) }}
+
+    {{ code("def extend(self, setup: EnvSetup) -> None:
+    setup.add_context_processor(
+        lambda request: {\"session\": getattr(request.state, \"auth\", None)},
+        provides=[\"session\"],
+    )", label="the auth plugin's whole extend()") }}
+
+    {% call prose() %}
+      <p>
+        Two constraints, both deliberate. A processor is <strong>synchronous</strong>: it runs inside
+        <code>Templates.page()</code>, which a <code>def</code> handler reaches from the threadpool. A
+        plugin needing I/O does it in middleware and leaves the result on
+        <code>request.state</code>, which is what the line above reads.
+      </p>
+      <p>
+        <code>provides=</code> is required rather than inferred. Without it, two plugins fighting over
+        <code>user</code> are discoverable only by rendering a page and noticing. With it, the clash
+        is a startup error naming both.
+      </p>
+      <p>
+        <code>add_template_dir()</code> is how a plugin that ships UI ships it; section 03 is the
+        worked example. A plugin that lives inside the fjkit repository has one more step: the Tailwind
+        build scans an explicit list of directories in <code>fjkit.css</code>, so the plugin adds its
+        template directory to that list. Miss it and nothing fails — the templates render, every utility class in them is
+        absent from the stylesheet, and the page looks broken.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 09 #}
+  {% set t09 %}Everything a plugin can collide over fails at startup, not in production.{% endset %}
+  {% call lesson("rules", "09", "Order, collisions, and limits", t09) %}
+    {% call stage("Template search order", "First match wins.") %}
+      {% call table([{"label": "Searched"}, {"label": "Belongs to"}, {"label": "May shadow"}]) %}
+        <tr>
+          {{ cell("1", tone="muted", numeric=true) }}
+          {{ cell("the app's template_dir", tone="strong") }}
+          {{ cell("everything — this is fjkit eject") }}
+        </tr>
+        <tr>
+          {{ cell("2", tone="muted", numeric=true) }}
+          {{ cell("each plugin, in plugins= order", tone="strong") }}
+          {{ cell("the kit's macros, never the app's files") }}
+        </tr>
+        <tr>
+          {{ cell("3", tone="muted", numeric=true) }}
+          {{ cell("the kit", tone="strong") }}
+          {{ cell("nothing") }}
+        </tr>
+      {% endcall %}
+    {% endcall %}
+
+    {{ defs("Refused at startup", [
+      ("two plugins with one name", "they would collide on request.state.<name> and make every later error ambiguous"),
+      ("two plugins claiming one global, filter or context key", "the error names both, and says to rename one or drop one"),
+      ("a context key a processor did not declare", "caught under strict_undefined, so it surfaces in development"),
+    ]) }}
+
+    {% set no_markup %}
+      There is no hook to inject markup into the shell. With one, any plugin could put a
+      <code>&lt;script&gt;</code> on every page, and both "no build step on your side" and the closed
+      vocabulary would leave through it. A plugin that ships UI ships templates, and they pass
+      <code>fjkit check</code> like everything else.
+    {% endset %}
+    {{ defs("What a plugin cannot do", [
+      ("inject markup", no_markup),
+      ("reach a sibling it did not declare", "a plugin that reads another says so — uses = (\"flash\",) — and gets it from setup.plugin(\"flash\"), or None when the app registered none. An undeclared lookup is a startup error, and so is a sibling listed after the plugin that uses it. Order is still the order you wrote: the host checks it and never reorders"),
+      ("open a connection at startup", "no lifespan hook — a plugin takes a client the app already built, which is why RedisStore has a client parameter"),
     ]) }}
   {% endcall %}
 

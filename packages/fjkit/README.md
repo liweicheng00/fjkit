@@ -20,17 +20,30 @@ uv add fjkit
 
 ## A working page
 
+`app/main.py`:
+
 ```python
 from pathlib import Path
 
 from fastapi import FastAPI
-from fjkit import FjkitConfig, mount_fjkit
-
-config = FjkitConfig(template_dir=Path(__file__).parent / "templates")
+from fjkit import FjkitConfig, mount_fjkit, render
+from pydantic import BaseModel
 
 app = FastAPI()
-mount_fjkit(app, config)
+mount_fjkit(app, FjkitConfig(template_dir=Path(__file__).parent / "templates"))
+
+
+class Overview(BaseModel):
+    done: int
+
+
+@app.get("/")
+@render("overview.html")
+def overview() -> Overview:
+    return Overview(done=18)
 ```
+
+`app/templates/overview.html`:
 
 ```jinja
 {% extends "ui/shell.html" %}
@@ -40,10 +53,14 @@ mount_fjkit(app, config)
 {% block content %}
   {{ page_header("Overview", "How the board is doing") }}
   {% call grid(cols=4) %}
-    {{ stat("Total", 42, icon_name="list") }}
+    {{ stat("Done", done, tone="success", icon_name="check") }}
   {% endcall %}
 {% endblock %}
 ```
+
+Run `uv run fastapi dev app/main.py` and open <http://127.0.0.1:8000>.
+`@render` goes below `@app.get` and passes the returned model's fields to the
+template.
 
 ## Rebranding
 
@@ -85,7 +102,7 @@ uv run fjkit check app/templates
 
 **[Docs](https://liweicheng00.github.io/fjkit/)**
 
-Status: pre-release, under active development.
+Status: 0.1.0. Macro signatures can change before 1.0.
 
 ## License
 

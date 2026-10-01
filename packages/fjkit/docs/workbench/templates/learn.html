@@ -8,31 +8,35 @@
 
 {#
   The rail in base.html is built from this list, so a section renamed here is
-  renamed in the navigation. Ids match the anchors `lesson()` emits.
+  renamed in the navigation. Ids match the anchors `lesson()` emits, and `group`
+  is the reading stage the rail files each lesson under.
 #}
 {% set sections = [
-  {"id": "wiring",   "num": "01", "title": "Wiring: config, mount, templates"},
-  {"id": "exchange", "num": "02", "title": "The htmx request and response"},
-  {"id": "targets",  "num": "03", "title": "hx-target and hx-swap"},
-  {"id": "triggers", "num": "04", "title": "hx-trigger: typing, scrolling, polling"},
-  {"id": "partials", "num": "05", "title": "Partials: one file, page and swap"},
-  {"id": "oob",      "num": "06", "title": "One reply, many regions: hx-swap-oob"},
-  {"id": "broadcast","num": "07", "title": "One id, many fragments: HX-Trigger"},
-  {"id": "state",    "num": "08", "title": "Page state: where the selected id lives"},
-  {"id": "pending",  "num": "09", "title": "While the request is in flight"},
-  {"id": "patterns", "num": "10", "title": "Nine htmx patterns, and their handlers"},
-  {"id": "messages", "num": "11", "title": "Messages: three layers"},
-  {"id": "errors",   "num": "12", "title": "When a form is rejected"},
-  {"id": "knob",     "num": "13", "title": "Rebranding: brand and status tokens"},
-  {"id": "gate",     "num": "14", "title": "fjkit check: the closed vocabulary"},
+  {"id": "wiring",   "num": "01", "title": "Wiring: config, mount, render",           "group": "Start here"},
+  {"id": "exchange", "num": "02", "title": "The htmx request and response",           "group": "Start here"},
+  {"id": "targets",  "num": "03", "title": "hx-target and hx-swap",                   "group": "Start here"},
+  {"id": "triggers", "num": "04", "title": "hx-trigger: typing, scrolling, polling",  "group": "Start here"},
+  {"id": "partials", "num": "05", "title": "Partials: one file, page and swap",       "group": "Start here"},
+  {"id": "oob",      "num": "06", "title": "One reply, many regions: hx-swap-oob",    "group": "Advanced htmx"},
+  {"id": "broadcast","num": "07", "title": "One id, many fragments: HX-Trigger",      "group": "Advanced htmx"},
+  {"id": "state",    "num": "08", "title": "Page state: where the selected id lives", "group": "Advanced htmx"},
+  {"id": "pending",  "num": "09", "title": "While the request is in flight",          "group": "Advanced htmx"},
+  {"id": "patterns", "num": "10", "title": "Nine htmx patterns, and their handlers",  "group": "Advanced htmx"},
+  {"id": "messages", "num": "11", "title": "Messages: three layers",                  "group": "Forms, messages, theming"},
+  {"id": "errors",   "num": "12", "title": "When a form is rejected",                 "group": "Forms, messages, theming"},
+  {"id": "knob",     "num": "13", "title": "Rebranding: brand and status tokens",     "group": "Forms, messages, theming"},
+  {"id": "gate",     "num": "14", "title": "fjkit check: the closed vocabulary",      "group": "Forms, messages, theming"},
 ] %}
 
 {% block content %}
 {% call stack(8) %}
 
   {% set intro %}
-    Fourteen lessons: how a fjkit app is wired, what htmx sends, what a rejected form does, how a
-    rebrand works, and the command that fails a build. Every demo below is live.
+    Fourteen lessons in three stages. <strong>01–05</strong> are enough to build a screen: the
+    wiring, what htmx sends, and the partial a page and its swaps share. <strong>06–10</strong> are
+    for a page where one action updates several regions. <strong>11–14</strong> cover messages,
+    rejected forms, rebranding and <code>fjkit check</code>, and can be read in any order. Every
+    demo below runs a real htmx request.
   {% endset %}
   {{ page_header("Build the interface where you build the routes", intro) }}
 
@@ -47,9 +51,8 @@
         <code>@render</code> names the template a route answers with.
       </p>
       <p>
-        Click through the four files. There is no <code>package.json</code> and no watcher to keep
-        running. <code>examples/fjkit-demo</code> in the repository is the same four files in a working
-        app.
+        The four files below are a complete app. <a href="{{ repo("examples/fjkit-demo") }}"><code>examples/fjkit-demo</code></a>
+        is the same four files with more pages.
       </p>
     {% endcall %}
 
@@ -65,7 +68,7 @@
 
     {% call prose() %}
       <p>
-        The second tab is the one worth a picture. <code>base.html</code> is four blocks long because
+        <code>base.html</code> is four blocks long because
         <code>ui/shell.html</code> — the template it extends — already holds everything else: the
         <code>&lt;head&gt;</code>, the script that applies dark mode before the first paint, the links
         to the stylesheet and the three vendored scripts, and the header/main/footer skeleton. Below is
@@ -81,7 +84,7 @@
 
     {% call prose() %}
       <p>
-        Four words below carry a specific meaning on this page, and every later lesson leans on them.
+        The rest of this page uses four terms in the sense defined here.
       </p>
     {% endcall %}
 
@@ -89,7 +92,7 @@
     {% set w_shell %}<code>ui/shell.html</code>, the figure above: the document around your page — <code>&lt;head&gt;</code>, header, <code>&lt;main&gt;</code>, footer, toaster{% endset %}
     {% set w_fragment %}a piece of HTML that is not a whole document: no <code>&lt;!doctype&gt;</code>, no <code>&lt;head&gt;</code>, just the elements. It is what an htmx response carries{% endset %}
     {% set w_partial %}the template that renders a fragment. Its file name starts with an underscore, it never extends the shell, and the page and the htmx endpoints both use it — lesson 05{% endset %}
-    {{ defs("The four words this page uses precisely", [
+    {{ defs("Terms", [
       ("markup", w_markup),
       ("the shell", w_shell),
       ("a fragment", w_fragment),
@@ -102,8 +105,7 @@
   {% call lesson("exchange", "02", "The htmx request and response", t02, tag="htmx") %}
     {% call prose() %}
       <p>
-        This is the whole idea, and it is smaller than it looks. An element names the request to make
-        and where to put the answer. The server answers with a piece of HTML — the same markup it
+        An element names the request to make and where to put the answer. The server answers with a piece of HTML — the same markup it
         would have put in the page — and htmx drops that piece into the element you named.
       </p>
       <p>
@@ -145,9 +147,8 @@
     {% call prose() %}
       <p>
         {{ link("hx-target", "https://htmx.org/attributes/hx-target/") }} picks the element.
-        {{ link("hx-swap", "https://htmx.org/attributes/hx-swap/") }} says what to do with it. This pair
-        is where most htmx confusion lives, so try it against a live board. Every combination below
-        runs a real request and swaps the real response.
+        {{ link("hx-swap", "https://htmx.org/attributes/hx-swap/") }} says what to do with it.  Every combination below
+        runs a real request against a live board and swaps the real response.
       </p>
       <p>
         <code>outerHTML</code> replaces the target itself, so the response has to include the wrapper.
@@ -213,7 +214,7 @@
   {% call lesson("partials", "05", "Partials: one file, page and swap", t05, tag="htmx") %}
     {% call prose() %}
       <p>
-        Now the fjkit half. A partial is any template whose name starts with an underscore. It never
+        A partial is any template whose name starts with an underscore. It never
         extends the shell, it declares its own imports, and it wraps itself in the element the swap
         replaces. The full page {% raw %}<code>{% include %}</code>{% endraw %}s it; every htmx
         endpoint returns it bare.
@@ -221,8 +222,8 @@
       <p>
         That is why a fjkit app has no "update the row" code path. Every mutation re-renders the
         whole board partial and swaps it. One definition of what a board looks like, used by the
-        first paint and by every request after it. The real files are
-        <code>examples/fjkit-demo/app/templates/tasks/</code> in the repository.
+        first paint and by every request after it. The working files are in
+        <a href="{{ repo("examples/fjkit-demo/app/templates/tasks") }}"><code>examples/fjkit-demo/app/templates/tasks/</code></a>.
       </p>
     {% endcall %}
 
@@ -242,7 +243,7 @@
 
     {% call prose() %}
       <p>
-        Those two handlers name the same file, and the name is the part that misleads.
+        Both handlers name the same file.
         <strong><code>_board.html</code> is not one task.</strong> It is the entire board — the create
         form, the filter bar, the stats card and every row in the table, wrapped in the one
         <code>&lt;div id="board"&gt;</code> that every control on the page targets. The leading
@@ -393,7 +394,7 @@
 
     {% call prose() %}
       <p>
-        Nothing about the trigger is special, and that is the point worth seeing before the reply. One
+        The trigger is ordinary: one
         input, one <code>hx-get</code>, one <code>hx-target</code> — the same shape as lesson 03. It
         names <code>#search-matches</code> and knows about no other region on the page.
       </p>
@@ -485,11 +486,10 @@
 
     {% call prose() %}
       <p>
-        The payoff is that the page decides where a fragment lives, once. Move the facet card from the
-        aside into the main column and the router, the response model and the swap are all unchanged.
-        The working files are
-        <code>examples/fjkit-demo/app/templates/search/</code> in the repository — and the next
-        lesson is the other half of that same page, because a real screen needs both.
+        The page decides where a fragment lives, once. Move the facet card from the aside into the
+        main column and the router, the response model and the swap are all unchanged. The working
+        files are in <a href="{{ repo("examples/fjkit-demo/app/templates/search") }}"><code>examples/fjkit-demo/app/templates/search/</code></a>.
+        Lesson 07 covers the other half of the same page.
       </p>
     {% endcall %}
   {% endcall %}
@@ -692,8 +692,8 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
 
     {% call prose() %}
       <p>
-        The working files are <code>examples/fjkit-demo/app/routers/search.py</code> and
-        <code>app/templates/search/</code> — the same page as the last lesson. Every region there
+        The working files are <a href="{{ repo("examples/fjkit-demo/app/routers/search.py") }}"><code>app/routers/search.py</code></a> and
+        <a href="{{ repo("examples/fjkit-demo/app/templates/search") }}"><code>app/templates/search/</code></a> in the demo — the same page as lesson 06. Every region there
         carries a render stamp, so the page itself shows which regions an action reached, with no
         network tab. A query is one request and six new stamps. A pick is three requests and three
         stamps — the table, the detail panel, the siblings panel — while the counters, the progress
@@ -708,9 +708,8 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
   {% call lesson("state", "08", "Page state: where the selected id lives", t08, tag="htmx") %}
     {% call prose() %}
       <p>
-        A pick drives four regions. Reload the page and every one of them has to come back to the same
-        task, or the pick was a trick of the DOM. So the question the last lesson leaves open is not how
-        the id travels between regions, but where it lives between requests.
+        A pick drives four regions. After a reload, all four have to show the same task again, so the
+        id needs a place that outlives the request.
       </p>
       <p>
         The state the server reads in order to answer — which record, which page, which sort column —
@@ -754,8 +753,8 @@ def select_task(request: Request, response: Response, service: ServiceDep, task_
 
     {% call prose() %}
       <p>
-        The working files are <code>examples/fjkit-demo/app/routers/panels.py</code> and
-        <code>app/templates/panels/</code>. Pick a row and watch the address bar; reload, and the same
+        The working files are <a href="{{ repo("examples/fjkit-demo/app/routers/panels.py") }}"><code>app/routers/panels.py</code></a> and
+        <a href="{{ repo("examples/fjkit-demo/app/templates/panels") }}"><code>app/templates/panels/</code></a> in the demo. Pick a row and watch the address bar; reload, and the same
         task is open with the same panel showing. Open a second tab on a different task and neither one
         moves the other.
       </p>
@@ -892,7 +891,7 @@ def select_task(request: Request, response: Response, service: ServiceDep, task_
       ]) }}
       {{ defs("Not yet, on purpose", [
         ("dialogs", "hx-confirm until then — it is the browser's own, and it works"),
-        ("sorting", "a filter bar with different query params; the table macro learns it in 0.4"),
+        ("sorting", "a filter bar with different query params until the table macro supports it"),
       ]) }}
     {% endcall %}
   {% endcall %}
@@ -975,7 +974,7 @@ messages.add(request, \"Could not save\", \"The title is required.\", category=\
         response htmx will not swap at all. htmx reads <code>HX-Trigger</code> in
         <code>handleAjaxResponse</code> <strong>before</strong> it consults
         <code>responseHandling</code> for the status code, so a 422 or a 500 can still raise a toast
-        on the page the person is looking at. That is the entire delivery mechanism for section 11.
+        on the page the person is looking at.
       </p>
     {% endcall %}
 
@@ -998,7 +997,7 @@ messages.add(request, \"Could not save\", \"The title is required.\", category=\
   {% endcall %}
 
   {# ============================================================== 12 #}
-  {% set t12 %}A rejected form used to be a screen of JSON. Now it says what was wrong, under the field, and no route asked for that.{% endset %}
+  {% set t12 %}A rejected form shows each message under its field. No route has to handle the rejection.{% endset %}
   {% call lesson("errors", "12", "When a form is rejected", t12, tag="fjkit.errors") %}
     {% call prose() %}
       <p>
@@ -1040,7 +1039,7 @@ messages.add(request, \"Could not save\", \"The title is required.\", category=\
 
     {% call prose() %}
       <p>
-        The last row is the one worth saying out loud. A caller that did not ask for markup keeps
+        A caller that did not ask for markup keeps
         <code>{"detail": …}</code>, because turning an API's error into an HTML page would be a worse
         bug than the one this fixes. The first row is the same bytes, which is the whole design: an
         endpoint that is also somebody's API has one error contract, and the page reads it the way
@@ -1219,7 +1218,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
     {% call prose() %}
       <p>
         A blocked class is information: it names the component or the parameter that does not exist
-        yet. When 0.1 landed, the pre-fjkit templates scored 258 violations; the rewrite scores 0.
+        yet. Open an issue with the class it blocked.
       </p>
     {% endcall %}
 
@@ -1231,11 +1230,14 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
         ("fjkit build-css", "fjkit's own release step, never yours"),
       ]) }}
       {% set d_components %}<a href="{{ url_for(request, "components") }}">every signature and enumeration, live</a>{% endset %}
+      {% set d_demo %}<a href="{{ repo("examples/fjkit-demo") }}">the same patterns in a working app</a>{% endset %}
+      {% set d_tokens %}<a href="{{ repo("packages/fjkit/src/fjkit/static/src/fjkit.css") }}">every token, defined once — the file a rebrand overrides</a>{% endset %}
+      {% set d_perf %}<a href="{{ repo("docs/jinja-performance.md") }}"><code>page()</code> against <code>stream()</code>, and the numbers behind the advice</a>{% endset %}
       {{ defs("Read next", [
         ("Components", d_components),
-        ("examples/fjkit-demo/", "the same patterns in a working app, in the repo"),
-        ("src/fjkit/static/src/fjkit.css", "every token, defined once — the file a rebrand overrides"),
-        ("docs/jinja-performance.md", "page() against stream(), and the numbers behind the advice"),
+        ("examples/fjkit-demo/", d_demo),
+        ("fjkit.css", d_tokens),
+        ("jinja-performance.md", d_perf),
       ]) }}
     {% endcall %}
   {% endcall %}
