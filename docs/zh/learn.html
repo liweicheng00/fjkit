@@ -170,11 +170,8 @@ fjkit
 
   </div>
 <div class="flex flex-col gap-3">      <p>
-        <code>base.html</code> 只有四個 block，是因為它 extends 的
-        <code>ui/shell.html</code> 已經拿走其餘部分：<code>&lt;head&gt;</code>、
-        第一次繪製前就套用深色模式的那支腳本、指向 stylesheet 與三支 vendored 腳本的連結，
-        以及 header／main／footer 這副骨架。底下就是那個檔案畫出來的樣子。
-        用品牌色標起來的區塊是你要填的 block，其餘由外殼負責，你不去翻它就不會看到。
+        <code>base.html</code> 只有四個 block，其餘部分（<code>&lt;head&gt;</code>、腳本、header／main／footer）
+        由它 extends 的 <code>ui/shell.html</code> 提供，如下圖。
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -248,11 +245,6 @@ fjkit
       <div class="flex flex-col gap-3">      <p>
         一個元素說明要發哪個請求，以及答案要放在哪裡。伺服器回一段 HTML，
         內容就是它本來會放進整頁的那段標記。htmx 把那段放進指名的元素裡。
-      </p>
-      <p>
-        沒有東西被序列化，前端不重新渲染，狀態也不會同時存在兩個地方。
-        按下底下的按鈕會發出真正的請求：
-        這一頁載了 htmx，並由瀏覽器裡的一支 mock server 扮演 FastAPI 那一側。
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -366,7 +358,7 @@ fjkit
   </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>這組合怎麼寫，以及回來了什麼</h3>      </div>
+<h3>模板長這樣：</h3>      </div>
     </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" id="swap-code"></pre>
       <div class="item-group scrollbar" id="swap-log"></div>
       <footer id="swap-caption"></footer>

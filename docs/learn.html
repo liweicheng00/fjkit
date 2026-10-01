@@ -172,12 +172,8 @@ fjkit
 
   </div>
 <div class="flex flex-col gap-3">      <p>
-        <code>base.html</code> is four blocks long because
-        <code>ui/shell.html</code> — the template it extends — already holds everything else: the
-        <code>&lt;head&gt;</code>, the script that applies dark mode before the first paint, the links
-        to the stylesheet and the three vendored scripts, and the header/main/footer skeleton. Below is
-        that file, drawn. The regions in the brand colour are the blocks you fill; everything else the
-        shell owns, and you never see it unless you go looking.
+        <code>base.html</code> is four blocks long because <code>ui/shell.html</code>, which it
+        extends, provides the rest. The diagram below shows it.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -251,11 +247,6 @@ fjkit
       <div class="flex flex-col gap-3">      <p>
         An element names the request to make and where to put the answer. The server answers with a piece of HTML — the same markup it
         would have put in the page — and htmx drops that piece into the element you named.
-      </p>
-      <p>
-        Nothing is serialised for the swap, nothing is re-rendered on the client, and no state lives
-        in two places. Press the button: <strong>the request below is real</strong>. htmx is loaded on
-        this page, and a mock server in the browser plays the FastAPI side.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -369,7 +360,7 @@ fjkit
   </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>What that spells, and what came back</h3>      </div>
+<h3>The template looks like:</h3>      </div>
     </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" id="swap-code"></pre>
       <div class="item-group scrollbar" id="swap-log"></div>
       <footer id="swap-caption"></footer>

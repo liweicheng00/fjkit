@@ -123,8 +123,6 @@ def overview() -> Overview:
     {{ defs("What it costs", [
       ("a first page", "about twenty lines, as in 01, with no build step"),
       ("an admin screen", "a list, filters, a create form and htmx updates, with no CSS and no JavaScript"),
-      ("a rebrand", "one stylesheet of token overrides, loaded after the kit's"),
-      ("an upgrade", "a version bump. The stylesheet lives in the wheel, not in your repository."),
     ]) }}
   {% endcall %}
 
@@ -141,8 +139,6 @@ def overview() -> Overview:
       {{ defs("The whole surface you touch", [
         ("FjkitConfig, mount_fjkit", "the wiring, once per app"),
         ("@render", "names the template; the handler returns data"),
-        ("fjkit check", "the vocabulary gate. Run it in CI."),
-        ("fjkit eject", "copies one macro file into your app so you can edit it"),
       ]) }}
     {% endcall %}
 

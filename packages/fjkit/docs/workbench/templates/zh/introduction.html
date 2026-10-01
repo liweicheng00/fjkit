@@ -115,8 +115,6 @@ def overview() -> Overview:
     {{ defs("預期成本", [
       ("第一頁", "約二十行，如 01 所示，沒有建置步驟"),
       ("一個後台畫面", "列表、篩選、新增表單與 htmx 更新，不寫 CSS，也不寫 JavaScript"),
-      ("換品牌", "一份覆寫 token 的 stylesheet，載入順序在 kit 之後"),
-      ("升級", "改一個版本號。stylesheet 在 wheel 裡，不在你的 repo 裡。"),
     ]) }}
   {% endcall %}
 
@@ -133,8 +131,6 @@ def overview() -> Overview:
       {{ defs("你會用到的全部介面", [
         ("FjkitConfig、mount_fjkit", "接線，每支 app 一次"),
         ("@render", "指名模板；handler 只回資料"),
-        ("fjkit check", "詞彙表關卡。放進 CI。"),
-        ("fjkit eject", "把一份 macro 檔複製進你的 app，以便修改"),
       ]) }}
     {% endcall %}
 
