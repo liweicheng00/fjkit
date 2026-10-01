@@ -13,8 +13,8 @@
 {% set sections = [
   {"id": "auth",     "num": "01", "title": "The auth plugin", "group": "Ready-made plugins"},
   {"id": "write",    "num": "02", "title": "The flash plugin", "group": "Ready-made plugins"},
-  {"id": "apidocs",  "num": "03", "title": "The API console", "group": "Ready-made plugins"},
-  {"id": "charts",   "num": "04", "title": "Charts", "group": "Ready-made plugins"},
+  {"id": "charts",   "num": "03", "title": "Charts", "group": "Ready-made plugins"},
+  {"id": "apidocs",  "num": "04", "title": "The API console", "group": "Ready-made plugins"},
   {"id": "admin",    "num": "05", "title": "The admin", "group": "Ready-made plugins"},
   {"id": "why",      "num": "06", "title": "What a plugin is", "group": "Write your own"},
   {"id": "mount",    "num": "07", "title": "mount(): the app side", "group": "Write your own"},
@@ -26,9 +26,9 @@
 {% call stack(8) %}
 
   {% set intro %}
-    A plugin adds what a macro cannot: middleware, an exception handler, routes, or a value every
-    template gets. <strong>01–05</strong> are the plugins that ship with fjkit or beside it, and how
-    to register each. <strong>06–09</strong> are for writing your own.
+    Plugins integrate the features most apps need into a fjkit app: sign-in, flash messages, charts, an
+    API console, an admin. <strong>01–05</strong> are the ones that ship with fjkit or beside it, and
+    how to register each. <strong>06–09</strong> show how to write your own.
   {% endset %}
   {{ page_header("Plugins", intro) }}
 
@@ -193,8 +193,95 @@ if carried and messages.shown(request):
   {% endcall %}
 
   {# ============================================================== 03 #}
-  {% set t03 %}Sign in on the page, and every call below goes out as you.{% endset %}
-  {% call lesson("apidocs", "03", "The API console", t03, tag="fjkit_apidocs") %}
+  {% set t03 %}Python decides the shape of the figure. The browser decides its chrome.{% endset %}
+  {% call lesson("charts", "03", "Charts", t03, tag="fjkit_charts") %}
+    {% call prose() %}
+      <p>
+        Charts are drawn with {{ link("Plotly", "https://plotly.com/python/") }}.
+      </p>
+    {% endcall %}
+
+    {{ code("uv add fjkit-charts plotly", label="shell") }}
+
+    {{ code("from fjkit_charts import ChartsPlugin
+
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))", label="app/main.py") }}
+
+    {% call prose() %}
+      <p>
+        A route returns a list of <code>Chart</code> objects. The page draws each one with the
+        <code>chart()</code> macro and loads Plotly with <code>chart_scripts()</code>. The browser
+        fetches no separate chart data.
+      </p>
+    {% endcall %}
+
+    {{ files([
+      {"id": "charts-router", "label": "app/routers/workload.py", "lang": "python", "source": "import plotly.graph_objects as go
+from fastapi import APIRouter
+from fjkit import render
+from fjkit_charts import Chart, figure_of
+
+router = APIRouter()
+
+
+@router.get(\"/workload\")
+@render(\"workload/page.html\")
+def workload():
+    owners, counts = [\"Ana\", \"Ben\", \"Cy\"], [5, 4, 3]
+    return {\"charts\": [
+        Chart(
+            id=\"by-owner\",
+            title=\"Open tasks by owner\",
+            summary=\"Ana has 5 of the 12 open tasks.\",
+            figure=figure_of(go.Figure(go.Bar(x=owners, y=counts))),
+        ),
+    ]}",
+       "note": "A Chart has four fields you set: id, title, summary and figure. summary is required: it is the text a screen reader reads, and the text shown when JavaScript is off. figure_of() converts a Plotly figure and validates it, so an invalid trace fails here instead of rendering an empty box."},
+      {"id": "charts-page", "label": "app/templates/workload/page.html", "lang": "jinja", "source": "{% extends \"base.html\" %}
+{% from \"charts/macros.html\" import chart, chart_scripts %}
+
+{% block content %}
+  {% for item in charts %}{{ chart(item) }}{% endfor %}
+{% endblock %}
+
+{% block scripts %}{{ chart_scripts() }}{% endblock %}",
+       "note": "chart(item) draws one figure in a card. chart_scripts() loads Plotly for this page only, so pages without charts do not download it."},
+    ]) }}
+
+    {% set f_fields %}any attribute Plotly documents for those types: {{ link("bar", "https://plotly.com/python/reference/bar/") }}, {{ link("scatter", "https://plotly.com/python/reference/scatter/") }}, {{ link("pie", "https://plotly.com/python/reference/pie/") }} and {{ link("layout", "https://plotly.com/python/reference/layout/") }}. type, x, y, labels, values, barmode and showlegend are type-checked; every other key passes through unchecked{% endset %}
+    {{ defs("figure_of()", [
+      ("what it does", "converts a go.Figure, or a plain dict, into the model Chart.figure expects. Call it once per figure, in the route"),
+      ("it removes layout.template", "plotly.py always writes a default template, and that template holds 111 colour values. Without it, charts.js sets axis text, grid lines and backgrounds from the page's theme tokens, so the chart follows light and dark mode"),
+      ("it validates the figure", "an invalid figure raises a validation error in the route, instead of drawing an empty box in the browser"),
+      ("trace types", "bar, scatter and pie: the types in the bundled Plotly build. Any other type fails validation"),
+      ("fields you can set", f_fields),
+      ("fields to leave out", "colours: marker_color, line_color, font colours, backgrounds. The series use Plotly's palette and the theme sets the rest. figure_of() does not reject them; call assert_no_colour_in(charts) in your tests to catch them"),
+    ]) }}
+
+    {{ defs("The division of labour", [
+      ("the traces, and what they mean", "Python, in Chart.figure. The service that computed the numbers is the only thing that knows which of them is a bar"),
+      ("axis text, grid lines, tick colour, the gaps between pie slices", "the browser. charts.js resolves them from the live tokens on every draw, because Plotly's defaults are a dark grey on a light grey — a chart drawn for a white page, on a page that may be dark. A theme toggle is a redraw"),
+      ("the series colours", "Plotly's own palette, and the theme does not touch them. The figure carries no colour at all: a hex code there would fail the rule fjkit check applies to templates, and be wrong in one of the two schemes"),
+      ("the height", "Chart.height, applied by the same script that draws. A style=\"\" attribute in the markup is the other way an app starts writing CSS"),
+      ("the text alternative", "Chart.summary, written from the same numbers the traces were built from. Plotly's SVG is a thousand unlabelled <path> elements, so the caption is what a screen reader gets — and without JavaScript it is the whole content"),
+    ]) }}
+
+    {{ defs("What each argument decides", [
+      ("url=\"/_fjkit-charts\"", "where this plugin's own assets are served. Keep it outside config.static_url: Starlette matches the first mount whose prefix fits, so a path nested inside the kit's static mount is swallowed by it and 404s against a directory that does not hold these files"),
+      ("plotly_url=", "serve Plotly from somewhere other than the copy in the wheel — a path your app already serves, or a URL. The default is the vendored bundle under this plugin's own url, cache-stamped like every other kit asset"),
+    ]) }}
+
+    {{ defs("Worth knowing before you reach for it", [
+      ("summary is a required field", "not a keyword someone forgets. A chart with no text alternative is invisible to a screen reader, and the macro cannot invent the sentence"),
+      ("the basic bundle, not the full one", "scatter, bar and pie. plotly.js-dist-min is 4.85 MB of 3D, maps, financial and statistical traces most dashboards never draw, and picking the bundle is the only size knob Plotly offers without a build step"),
+      ("being in a wheel is not being on a page", "which distribution holds the bundle decides what an install carries; §7 budgets what a page downloads. An app that never draws a chart installs neither"),
+      ("the pin lives with the bytes", "PLOTLY_VERSION is in fjkit_charts and scripts/vendor_plotly.py fetches it. The kit no longer knows Plotly exists"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 04 #}
+  {% set t04 %}Sign in on the page, and every call below goes out as you.{% endset %}
+  {% call lesson("apidocs", "04", "The API console", t04, tag="fjkit_apidocs") %}
     {% call prose() %}
       <p>
         Swagger UI's Authorize dialog can express only what an OpenAPI document can describe: an API
@@ -254,11 +341,6 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
           {{ cell("what JavaScript can reach") }}
           {{ cell("your session cookie, HttpOnly and all") }}
         </tr>
-        <tr>
-          {{ cell("Gating the page", tone="strong") }}
-          {{ cell(badge("not its job", variant="outline")) }}
-          {{ cell("dependencies=[Depends(auth.required)]") }}
-        </tr>
       {% endcall %}
     {% endcall %}
 
@@ -286,76 +368,6 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))", label="a
       ("a call is capped", "64 KB of body and 30 seconds, both arguments. The console is a reading tool, not a load generator"),
       ("form bodies become fields", "an Annotated[str, Form()] route gets one input per field rather than a text box, so nobody is asked to hand-write urlencoding. A JSON body stays a single editable example, prefilled from the schema"),
       ("nothing on the page can read the credential", "signing in is a form your app defines, not a box to paste a token into — which is the same property that makes the cookie worth having"),
-    ]) }}
-  {% endcall %}
-
-  {# ============================================================== 04 #}
-  {% set t04 %}Python decides the shape of the figure. The browser decides its chrome.{% endset %}
-  {% call lesson("charts", "04", "Charts", t04, tag="fjkit_charts") %}
-    {% call prose() %}
-      <p>
-        Basecoat has a <code>chart</code> component and the kit does not ship it, because a chart is
-        the one component that cannot be markup and tokens: something has to turn numbers into paths,
-        and that something is 1.1&nbsp;MB of JavaScript. Making it a plugin is what keeps that number
-        off every page that draws nothing.
-      </p>
-      <p>
-        Registering it gives an app the <code>chart</code> macro, the theming bridge, the Plotly
-        bundle and the two <code>&lt;script&gt;</code> lines that load them. Nothing to download and
-        nothing to mount: the bundle ships inside this wheel and is served from the plugin's own
-        static mount.
-      </p>
-    {% endcall %}
-
-    {{ code("uv add fjkit-charts", label="shell") }}
-
-    {{ code("from fjkit_charts import ChartsPlugin
-
-mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))", label="app/main.py") }}
-
-    {% call prose() %}
-      <p>
-        The router builds one <code>Chart</code> per figure and the page draws them. There is nothing
-        in between: no chart endpoint, no JSON the browser fetches, no client state.
-      </p>
-    {% endcall %}
-
-    {{ files([
-      {"id": "charts-router", "label": "router.py", "lang": "python", "source": "from fjkit_charts import Chart, figure_of
-
-Chart(
-    id=\"by-owner\",
-    title=\"Workload\",
-    summary=\"Ana holds 5 of the 12 open tasks.\",
-    figure=figure_of(go.Figure(...)),
-)",
-       "note": "figure_of() drops Plotly's default template on the way through — 7,621 bytes carrying 111 colour literals — and validates the rest, so a trace the browser cannot draw fails here rather than rendering an empty box. It duck-types on to_plotly_json(), so plotly stays out of the kit's dependencies and a plain dict also works."},
-      {"id": "charts-page", "label": "charts/page.html", "lang": "jinja", "source": "{% from \"charts/macros.html\" import chart, chart_scripts %}
-
-{% for item in charts %}{{ chart(item) }}{% endfor %}
-
-{% block scripts %}{{ chart_scripts() }}{% endblock %}",
-       "note": "chart_scripts() is called by the page, never by the shell. A plugin may not inject markup into ui/shell.html, and this is the case that rule was written for: a hook letting this one add a <script> to every page would put 1.1 MB on the login screen."},
-    ]) }}
-
-    {{ defs("The division of labour", [
-      ("the traces, and what they mean", "Python, in Chart.figure. The service that computed the numbers is the only thing that knows which of them is a bar"),
-      ("axis text, grid lines, tick colour, the gaps between pie slices", "the browser. charts.js resolves them from the live tokens on every draw, because Plotly's defaults are a dark grey on a light grey — a chart drawn for a white page, on a page that may be dark. A theme toggle is a redraw"),
-      ("the series colours", "Plotly's own palette, and the theme does not touch them. The figure carries no colour at all: a hex code there would fail the rule fjkit check applies to templates, and be wrong in one of the two schemes"),
-      ("the height", "Chart.height, applied by the same script that draws. A style=\"\" attribute in the markup is the other way an app starts writing CSS"),
-      ("the text alternative", "Chart.summary, written from the same numbers the traces were built from. Plotly's SVG is a thousand unlabelled <path> elements, so the caption is what a screen reader gets — and without JavaScript it is the whole content"),
-    ]) }}
-
-    {{ defs("What each argument decides", [
-      ("url=\"/_fjkit-charts\"", "where this plugin's own assets are served. Keep it outside config.static_url: Starlette matches the first mount whose prefix fits, so a path nested inside the kit's static mount is swallowed by it and 404s against a directory that does not hold these files"),
-      ("plotly_url=", "serve Plotly from somewhere other than the copy in the wheel — a path your app already serves, or a URL. The default is the vendored bundle under this plugin's own url, cache-stamped like every other kit asset"),
-    ]) }}
-
-    {{ defs("Worth knowing before you reach for it", [
-      ("summary is a required field", "not a keyword someone forgets. A chart with no text alternative is invisible to a screen reader, and the macro cannot invent the sentence"),
-      ("the basic bundle, not the full one", "scatter, bar and pie. plotly.js-dist-min is 4.85 MB of 3D, maps, financial and statistical traces most dashboards never draw, and picking the bundle is the only size knob Plotly offers without a build step"),
-      ("being in a wheel is not being on a page", "which distribution holds the bundle decides what an install carries; §7 budgets what a page downloads. An app that never draws a chart installs neither"),
-      ("the pin lives with the bytes", "PLOTLY_VERSION is in fjkit_charts and scripts/vendor_plotly.py fetches it. The kit no longer knows Plotly exists"),
     ]) }}
   {% endcall %}
 
@@ -535,7 +547,7 @@ mount_fjkit(app, config)", label="app/main.py") }}
         is a startup error naming both.
       </p>
       <p>
-        <code>add_template_dir()</code> is how a plugin that ships UI ships it; section 03 is the
+        <code>add_template_dir()</code> is how a plugin that ships UI ships it; section 04 is the
         worked example. A plugin that lives inside the fjkit repository has one more step: the Tailwind
         build scans an explicit list of directories in <code>fjkit.css</code>, so the plugin adds its
         template directory to that list. Miss it and nothing fails — the templates render, every utility class in them is

@@ -153,7 +153,7 @@ def overview() -> Overview:
     {% set n_learn %}<a href="{{ url_for(request, "learn") }}">Learn</a> — how the app is wired, how htmx swaps work, form errors, messages, rebranding and <code>fjkit check</code>. Read 01–05 first.{% endset %}
     {% set n_components %}<a href="{{ url_for(request, "components") }}">Components</a> — every macro, live, with the call that produced it{% endset %}
     {% set n_cheatsheet %}<a href="{{ url_for(request, "cheatsheet") }}">Cheatsheet</a> — every signature, shell block, template global and htmx attribute on one page{% endset %}
-    {% set n_plugins %}<a href="{{ url_for(request, "plugins") }}">Plugins</a> — sign-in, flash messages, an API console, charts and an admin, and how to write your own{% endset %}
+    {% set n_plugins %}<a href="{{ url_for(request, "plugins") }}">Plugins</a> — sign-in, flash messages, charts, an API console and an admin, and how to write your own{% endset %}
     {{ defs("On this site", [
       ("build my first real screen", n_learn),
       ("find a component", n_components),

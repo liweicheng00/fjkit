@@ -145,7 +145,7 @@ def overview() -> Overview:
     {% set n_learn %}<a href="{{ url_for(request, "learn") }}">上手</a>——app 怎麼接線、htmx 局部更新怎麼運作、表單錯誤、訊息、換品牌與 <code>fjkit check</code>。先讀 01–05。{% endset %}
     {% set n_components %}<a href="{{ url_for(request, "components") }}">元件</a>——每支 macro 的實際渲染，附上產生它的呼叫{% endset %}
     {% set n_cheatsheet %}<a href="{{ url_for(request, "cheatsheet") }}">速查表</a>——所有簽名、外殼 block、模板全域變數與 htmx 屬性，集中在一頁{% endset %}
-    {% set n_plugins %}<a href="{{ url_for(request, "plugins") }}">外掛</a>——登入、flash 訊息、API 主控台、圖表與 admin，以及如何自己寫外掛{% endset %}
+    {% set n_plugins %}<a href="{{ url_for(request, "plugins") }}">外掛</a>——登入、flash 訊息、圖表、API 主控台與 admin，以及如何自己寫外掛{% endset %}
     {{ defs("這個站上", [
       ("做出第一個真正的畫面", n_learn),
       ("找一個元件", n_components),
