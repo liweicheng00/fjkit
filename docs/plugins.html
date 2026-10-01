@@ -337,7 +337,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))</pre>
     </nav><div id="charts-router" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/routers/workload.py" data-lang="python">import plotly.graph_objects as go
 from fastapi import APIRouter
 from fjkit import render
-from fjkit_charts import Chart, figure_of
+from fjkit_charts import Chart
 
 router = APIRouter()
 
@@ -351,11 +351,11 @@ def workload():
             id=&#34;by-owner&#34;,
             title=&#34;Open tasks by owner&#34;,
             summary=&#34;Ana has 5 of the 12 open tasks.&#34;,
-            figure=figure_of(go.Figure(go.Bar(x=owners, y=counts))),
+            figure=go.Figure(go.Bar(x=owners, y=counts)),
         ),
     ]}</pre>
 
-<footer>A Chart has four fields you set: id, title, summary and figure. summary is required: it is the text a screen reader reads, and the text shown when JavaScript is off. figure_of() converts a Plotly figure and validates it, so an invalid trace fails here instead of rendering an empty box.</footer></div><div id="charts-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
+<footer>A Chart has four fields you set: id, title, summary and figure. summary is required: it is the text a screen reader reads, and the text shown when JavaScript is off. figure takes the go.Figure itself; Chart validates it, so an invalid trace fails here instead of rendering an empty box.</footer></div><div id="charts-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
 {% from &#34;charts/macros.html&#34; import chart, chart_scripts %}
 
 {% block content %}
@@ -369,14 +369,14 @@ def workload():
 
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>figure_of()</h3>      </div>
+<h3>Chart.figure</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>what it does</h4><p>converts a go.Figure, or a plain dict, into the model Chart.figure expects. Call it once per figure, in the route</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>what it accepts</h4><p>a go.Figure. A plain dict is rejected</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>it removes layout.template</h4><p>plotly.py always writes a default template, and that template holds 111 colour values. Without it, charts.js sets axis text, grid lines and backgrounds from the page&#39;s theme tokens, so the chart follows light and dark mode</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>it validates the figure</h4><p>an invalid figure raises a validation error in the route, instead of drawing an empty box in the browser</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>trace types</h4><p>bar, scatter and pie: the types in the bundled Plotly build. Any other type fails validation</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fields you can set</h4><p>any attribute Plotly documents for those types: <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/bar/">bar</a>, <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/scatter/">scatter</a>, <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/pie/">pie</a> and <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/layout/">layout</a>. type, x, y, labels, values, barmode and showlegend are type-checked; every other key passes through unchecked</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fields to leave out</h4><p>colours: marker_color, line_color, font colours, backgrounds. The series use Plotly&#39;s palette and the theme sets the rest. figure_of() does not reject them; call assert_no_colour_in(charts) in your tests to catch them</p>    </section>  </div></div></div>
+      <h4>fields you can set</h4><p>any attribute Plotly documents for those types: <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/bar/">bar</a>, <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/scatter/">scatter</a>, <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/pie/">pie</a> and <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/layout/">layout</a>. Chart checks only the trace type; every other key passes through unchecked, so a misspelt key is silently ignored by Plotly</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fields to leave out</h4><p>colours: marker_color, line_color, font colours, backgrounds. The series use Plotly&#39;s palette and the theme sets the rest. Chart does not reject them; call assert_no_colour_in(charts) in your tests to catch them</p>    </section>  </div></div></div>
   </div>
 
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
