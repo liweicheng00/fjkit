@@ -104,5 +104,10 @@ class ChartsPlugin:
         assets = static_url(f"{self.url}/assets", STATIC_DIR, auto_reload=setup.config.auto_reload)
         setup.add_global("fjkit_charts_script", lambda: assets("charts.js"))
 
-        plotly = self.plotly_url if self.plotly_url is not None else assets(PLOTLY_PATH)
-        setup.add_global("fjkit_charts_plotly", lambda: plotly)
+        # Called per render, not once here: the bundled URL carries the
+        # request's `root_path`, which is not known until a request arrives.
+        plotly_url = self.plotly_url
+        if plotly_url is None:
+            setup.add_global("fjkit_charts_plotly", lambda: assets(PLOTLY_PATH))
+        else:
+            setup.add_global("fjkit_charts_plotly", lambda: plotly_url)
