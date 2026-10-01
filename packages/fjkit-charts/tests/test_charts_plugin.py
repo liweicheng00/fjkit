@@ -20,8 +20,8 @@ from fjkit_charts import (
     ChartsPlugin,
     PlotlyFigure,
     assert_no_colour_in,
-    figure_of,
 )
+from pydantic import ValidationError
 
 BAR = {"data": [{"type": "bar", "x": ["a", "b"], "y": [1, 2]}], "layout": {"barmode": "group"}}
 
@@ -31,13 +31,13 @@ def a_chart(**over) -> Chart:
         id=over.pop("id", "c1"),
         title=over.pop("title", "Workload"),
         summary=over.pop("summary", "Ana has 5 of 12 open tasks."),
-        figure=figure_of(over.pop("figure", BAR)),
+        figure=FakeFigure(over.pop("figure", BAR)),
         **over,
     )
 
 
 class FakeFigure:
-    """What `plotly.graph_objects.Figure` looks like from `figure_of`'s side.
+    """What `plotly.graph_objects.Figure` looks like from `Chart`'s side.
 
     A stand-in rather than the real class: plotly is not a dependency of fjkit,
     and a test that imported it would quietly make it one.
@@ -50,42 +50,55 @@ class FakeFigure:
         return self._payload
 
 
-class TestFigureOf:
+class TestFigure:
     def test_accepts_anything_with_to_plotly_json(self):
-        figure = figure_of(FakeFigure(BAR))
+        figure = a_chart().figure
         assert isinstance(figure, PlotlyFigure)
         assert figure.data[0].type == "bar"
+        assert figure.layout == {"barmode": "group"}
 
-    def test_accepts_a_plain_dict_so_plotly_is_never_needed(self):
-        assert figure_of(BAR).layout.barmode == "group"
+    def test_a_plain_dict_is_refused(self):
+        """A dict skips the attribute validation `plotly.py` does, which is the
+        validation this package relies on instead of typing Plotly's schema."""
+        with pytest.raises(ValidationError, match="plotly Figure"):
+            Chart(id="c", title="t", summary="s", figure=BAR)
+
+    def test_a_validated_figure_passes_through(self):
+        figure = a_chart().figure
+        assert Chart(id="c", title="t", summary="s", figure=figure).figure == figure
 
     def test_the_default_template_is_stripped(self):
         """plotly.py writes a template even when it is set to `None`, and the
         default template carries 111 colour literals."""
         payload = {**BAR, "layout": {"barmode": "group", "template": {"layout": {"font": {"color": "#444"}}}}}
-        figure = figure_of(FakeFigure(payload))
-        assert "template" not in figure.layout.model_dump(exclude_none=True)
+        chart = a_chart(figure=payload)
+        assert chart.figure.layout == {"barmode": "group"}
+        assert "template" not in chart.figure_json
+
+    def test_layout_may_be_omitted(self):
+        chart = a_chart(figure={"data": [{"type": "scatter", "x": [1], "y": [2]}]})
+        assert chart.figure.layout == {}
 
     def test_an_undrawable_trace_type_fails_here_not_in_the_browser(self):
-        with pytest.raises(ValueError, match="type"):
-            figure_of({"data": [{"type": "surface", "z": [[1]]}], "layout": {}})
+        with pytest.raises(ValidationError, match="type"):
+            a_chart(figure={"data": [{"type": "heatmap", "z": [[1]]}], "layout": {}})
 
     def test_the_plotly_tail_survives(self):
         """`extra="allow"` keeps the rest of the library reachable."""
-        figure = figure_of({"data": [{"type": "pie", "labels": ["a"], "values": [1], "hole": 0.4}], "layout": {}})
-        assert figure.data[0].model_dump(exclude_none=True)["hole"] == 0.4
+        chart = a_chart(figure={"data": [{"type": "pie", "labels": ["a"], "values": [1], "hole": 0.4}]})
+        assert chart.figure.model_dump()["data"][0] == {"type": "pie", "labels": ["a"], "values": [1], "hole": 0.4}
 
 
 class TestChart:
-    def test_figure_json_drops_the_nulls_of_the_other_trace_kinds(self):
-        """A bar has no `labels`, a pie has no `x`. Emitting them as nulls sends
-        Plotly keys it has to ignore, on every trace."""
+    def test_figure_json_carries_only_what_the_figure_set(self):
+        """No typed field defaults to `None`, so nothing Plotly has to ignore
+        reaches the attribute."""
         blob = a_chart().figure_json
         assert "labels" not in blob and "null" not in blob
 
     def test_a_summary_is_required_because_it_is_the_text_alternative(self):
         with pytest.raises(ValueError, match="summary"):
-            Chart(id="c", title="t", figure=figure_of(BAR))
+            Chart(id="c", title="t", figure=FakeFigure(BAR))
 
 
 class TestColourRule:
@@ -218,7 +231,7 @@ def test_the_kit_no_longer_carries_plotly():
 def test_this_package_never_imports_the_plotly_library():
     """Plotly's JavaScript ships here; Plotly's Python does not.
 
-    `figure_of` is duck-typed on `to_plotly_json()`, so an app that builds
+    `Chart` is duck-typed on `to_plotly_json()`, so an app that builds
     figures with `plotly.py` declares it itself and an app that builds them by
     hand installs nothing extra. A single `import plotly` here would make the
     20 MB library a runtime dependency of every install of this package, and
