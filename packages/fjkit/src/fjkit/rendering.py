@@ -526,7 +526,7 @@ def _context(result: Any, template: str) -> dict[str, Any]:
         return dict(result)
     # Recognised by its fields rather than by `isinstance(result, BaseModel)`,
     # so the kit does not import pydantic. FastAPI cannot exist without it, but
-    # fjkit declares two runtime dependencies and CHARTER §7 keeps it at two —
+    # fjkit declares two runtime dependencies and CHARTER §4.1 keeps it at two —
     # an import is what turns a transitive package into a third.
     cls = type(result)
     fields = getattr(cls, "model_fields", None)

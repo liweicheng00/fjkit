@@ -64,16 +64,20 @@ fjkit
   </li>
 </ul>
   </div>
-<div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
-    <a href="index.html#who">      <span>01 · 給誰用</span>
+<div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>          <li>
+    <a href="index.html#start">      <span>01 · 開始使用</span>
     </a>
   </li>
-        <li>
-    <a href="index.html#box">      <span>02 · wheel 裡裝了什麼</span>
+          <li>
+    <a href="index.html#who">      <span>02 · 給誰用</span>
     </a>
   </li>
-        <li>
-    <a href="index.html#next">      <span>03 · 接下來去哪</span>
+          <li>
+    <a href="index.html#box">      <span>03 · wheel 裡裝了什麼</span>
+    </a>
+  </li>
+          <li>
+    <a href="index.html#next">      <span>04 · 接下來去哪</span>
     </a>
   </li>
 </ul>
@@ -92,7 +96,7 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">給 FastAPI 的快速 UI</h1>
-<p class="text-muted-foreground text-sm">    把 Jinja、Tailwind CSS 與 shadcn 風格元件整合起來，給 FastAPI 用。
+<p class="text-muted-foreground text-sm">    給 FastAPI 的頁面、表格、表單、導覽與 htmx 局部更新，以 Jinja macro 寫在路由旁邊。
 </p>    </div>
   </div>
 
@@ -101,38 +105,96 @@ fjkit
 <h3>主要特色</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>零建置</h4><p>沒有 package.json、沒有 node_modules、沒有 watcher。stylesheet 在 fjkit 發佈時編譯，不在你的 app 執行時編譯。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>顏色只有一個開關</h4><p>每個顏色都是 token。換品牌是改一個檔案，而且改完綠色仍然代表完成。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>掛在你現有的 API 上</h4><p>每一個 htmx 端點都會用 JSON 回應 curl。同一條路由、同一個 handler、同一個回傳標註。</p>    </section>  </div></div></div>
+      <h4>顏色只有一個開關</h4><p>每個顏色都是 token。換品牌是一份 stylesheet，狀態色不跟著變，所以綠色仍然代表完成。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>htmx 端點同時是 JSON API</h4><p>渲染 partial 的路由對 htmx 回 HTML，對其他呼叫者回 response model 的 JSON。</p>    </section>  </div></div></div>
   </div>
 
-<div id="who">
+<div id="start">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">開始使用</h2><p class="text-muted-foreground text-sm">安裝一個套件，寫一個 handler 與一份模板，執行 app。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>需要 Python 3.13 以上。</p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="1 · 安裝" data-lang="bash">uv add fjkit</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="2 · app/main.py" data-lang="python">from pathlib import Path
+
+from fastapi import FastAPI
+from fjkit import FjkitConfig, mount_fjkit, render
+from pydantic import BaseModel
+
+app = FastAPI()
+mount_fjkit(app, FjkitConfig(template_dir=Path(__file__).parent / &#34;templates&#34;))
+
+
+class Overview(BaseModel):
+    done: int
+
+
+@app.get(&#34;/&#34;)
+@render(&#34;overview.html&#34;)
+def overview() -&gt; Overview:
+    return Overview(done=18)</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        <code>mount_fjkit</code> 供應 stylesheet 與內附的 JavaScript，並建立 Jinja environment。
+        <code>@render</code> 寫在 <code>@app.get</code> 下方，把回傳 model 的欄位交給模板。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="3 · app/templates/overview.html" data-lang="jinja">{% extends &#34;ui/shell.html&#34; %}
+{% from &#34;ui/layout.html&#34; import page_header, grid %}
+{% from &#34;ui/data.html&#34; import stat %}
+
+{% block content %}
+  {{ page_header(&#34;Overview&#34;, &#34;How the board is doing&#34;) }}
+  {% call grid(cols=4) %}
+    {{ stat(&#34;Done&#34;, done, tone=&#34;success&#34;, icon_name=&#34;check&#34;) }}
+  {% endcall %}
+{% endblock %}</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="4 · 執行" data-lang="bash">uv run fastapi dev app/main.py</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        開啟 <code>http://127.0.0.1:8000</code>。頁面有 header、深色模式切換與一張統計卡。
+        模板裡沒有 CSS class，也沒有顏色：macro 接受具名選項，例如 <code>tone="success"</code>，
+        由內附的 stylesheet 負責呈現。
+      </p>
+      <p>
+        把 <code>uv run fjkit check app/templates</code> 加進 CI。模板使用詞彙表以外的 class
+        或顏色時，它會失敗。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="who">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">給誰用</h2><p class="text-muted-foreground text-sm">會寫後端、需要一套介面、不想碰前端工具鏈的人。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        適用對象：已經在寫 FastAPI，需要導覽、深色模式、一張可篩選的表格，
-        以及一個會驗證的表單。
-      </p>
-      <p>
-        要引入 React、Vue 或 Svelte 的專案不適用。這是設計決定，不是缺口。
+        適用對象：已經在寫 FastAPI，需要導覽、深色模式、一張可篩選的表格，以及一個會驗證的表單。
+        若要使用 React、Vue 或 Svelte，請直接用它們：fjkit 在伺服器端渲染，沒有前端元件模型。
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>預期成本</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>第一頁</h4><p>約二十行 Python，含導覽與深色模式，沒有建置步驟</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>一個後台畫面</h4><p>列表、篩選、新增表單與 htmx 更新，一個下午。不寫 CSS，也不寫 JavaScript。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>換品牌</h4><p>一份覆寫 token 的 stylesheet，掛在 kit 後面</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>升級</h4><p>改一個版本號。stylesheet 在 wheel 裡，不在你的 repo 裡。</p>    </section>  </div></div></div>
+      <h4>第一頁</h4><p>約二十行，如 01 所示，沒有建置步驟</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>一個後台畫面</h4><p>列表、篩選、新增表單與 htmx 更新，不寫 CSS，也不寫 JavaScript</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>
 <hr class="border-border">
 
 <div id="box">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">wheel 裡裝了什麼</h2><p class="text-muted-foreground text-sm">一個 wheel、兩個執行期依賴，不需要自行編譯任何東西。</p>      </div>
@@ -141,7 +203,7 @@ fjkit
 <h3>套件裡帶的</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>templates/ui/</h4><p>macro：版面、按鈕、資料、表單、表格、分頁、導覽、側欄、回饋、圖示與文件外殼</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>編譯好的 stylesheet，每個風格包一份。234 KB 原始、23.9 KB gzip，在 build 自己守著的 28 KB 預算內。一頁只載一份。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>編譯好的 stylesheet，每個風格包一份。234 KB 原始、23.9 KB gzip；超過 28 KB 時 build 失敗。一頁只載一份。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>static/vendor/</h4><p>htmx 與 Basecoat 的 JavaScript，版本釘死，直接從套件裡供應</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>1,767 個圖示</h4><p>Lucide，按名字內嵌。沒有 icon font、沒有 sprite 請求、執行期沒有 JS。</p>    </section>  </div></div></div>
   </div>
@@ -150,30 +212,27 @@ fjkit
 <h3>你會用到的全部介面</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>FjkitConfig、mount_fjkit</h4><p>接線，每支 app 一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>@render</h4><p>在裝飾器上指名模板；handler 只回資料</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fjkit check</h4><p>詞彙表關卡。放進你的 CI。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fjkit eject</h4><p>逃生口：把一支 macro 拿進你的 app 再改</p>    </section>  </div></div></div>
+      <h4>@render</h4><p>指名模板；handler 只回資料</p>    </section>  </div></div></div>
   </div>
 </div>
-<div class="flex flex-col gap-3">      <p>
-        需求：Python 3.13 以上，加上 FastAPI 與 Jinja2 兩個執行期依賴。
-        目前沒有加入第三個依賴的理由。
-      </p>
+<div class="flex flex-col gap-3">      <p>執行期依賴：FastAPI 與 Jinja2。</p>
 </div>
 </section></div></div>
 <hr class="border-border">
 
 <div id="next">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">接下來去哪</h2><p class="text-muted-foreground text-sm">兩頁：一頁是接線，一頁是每一支 macro。</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">接下來去哪</h2><p class="text-muted-foreground text-sm">依你要做的事選頁面。</p>      </div>
           <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>這個站上</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>上手</h4><p><a href="learn.html">kit 怎麼接、htmx 送出什麼，以及那個會讓 build 失敗的關卡</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>元件</h4><p><a href="components.html">每支 macro 的實際渲染，附上產生它的那行呼叫</a></p>    </section>  </div></div></div>
+      <h4>做出第一個真正的畫面</h4><p><a href="learn.html">上手</a>——app 怎麼接線、htmx 局部更新怎麼運作、表單錯誤、訊息、換品牌與 <code>fjkit check</code>。先讀 01–05。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>找一個元件</h4><p><a href="components.html">元件</a>——每支 macro 的實際渲染，附上產生它的呼叫</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>查一個參數</h4><p><a href="cheatsheet.html">速查表</a>——所有簽名、外殼 block、模板全域變數與 htmx 屬性，集中在一頁</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>加上登入、圖表或 admin</h4><p><a href="plugins.html">外掛</a>——登入、flash 訊息、圖表、API 主控台與 admin，以及如何自己寫外掛</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>

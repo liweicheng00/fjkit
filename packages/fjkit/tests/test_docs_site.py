@@ -247,7 +247,7 @@ def test_the_site_builds():
                 template_dir=TEMPLATES,
                 static_url=lang["static"],
                 auto_reload=False,
-                globals={"url_for": build.url_for, "is_active": build.is_active},
+                globals={"url_for": build.url_for, "is_active": build.is_active, "repo": build.repo},
             )
         )
         pages = [{k: v for k, v in p.items() if k not in build.LANG_BY_CODE} | p[lang["code"]] for p in build.PAGES]

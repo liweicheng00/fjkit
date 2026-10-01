@@ -26,7 +26,7 @@
   used to be there. Nothing below reconciles against a swap for the same reason:
   the fresh markup is already correct.
 
-  Loaded per page by `select_scripts()`, never from the shell (CHARTER §7).
+  Loaded per page by `select_scripts()`, never from the shell (CHARTER §4.2).
 */
 ;(() => {
   const ALL = "data-fjkit-select-all"

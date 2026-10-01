@@ -30,7 +30,7 @@ def test_every_pack_is_vendored():
 
 @pytest.mark.parametrize("pack", STYLE_PACKS)
 def test_every_pack_is_built_and_within_budget(pack: str):
-    """CHARTER.md §7 is a per-page budget, and a page loads exactly one pack —
+    """CHARTER.md §4.1 is a per-page budget, and a page loads exactly one pack —
     so every pack has to clear it on its own, not on average."""
     built = output_for(pack)
     assert built.exists(), f"{built.name} missing — run: uv run fjkit build-css"

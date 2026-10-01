@@ -195,7 +195,7 @@ class TestPlugin:
 
 
 def test_this_package_ships_exactly_the_whitelisted_plotly():
-    """CHARTER §7 whitelists the JavaScript a wheel may carry, and Plotly's
+    """CHARTER §4.1 whitelists the JavaScript a wheel may carry, and Plotly's
     basic bundle is on it: one copy, at the pinned version, under this package's
     own `static/vendor/` where `scripts/vendor_plotly.py` writes it."""
     import fjkit_charts

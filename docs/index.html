@@ -64,16 +64,20 @@ fjkit
   </li>
 </ul>
   </div>
-<div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
-    <a href="index.html#who">      <span>01 · Who it is for</span>
+<div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>          <li>
+    <a href="index.html#start">      <span>01 · Get started</span>
     </a>
   </li>
-        <li>
-    <a href="index.html#box">      <span>02 · What ships in the wheel</span>
+          <li>
+    <a href="index.html#who">      <span>02 · Who it is for</span>
     </a>
   </li>
-        <li>
-    <a href="index.html#next">      <span>03 · Where to go next</span>
+          <li>
+    <a href="index.html#box">      <span>03 · What ships in the wheel</span>
+    </a>
+  </li>
+          <li>
+    <a href="index.html#next">      <span>04 · Where to go next</span>
     </a>
   </li>
 </ul>
@@ -92,7 +96,8 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">A Fast UI for FastAPI</h1>
-<p class="text-muted-foreground text-sm">    An integration of Jinja, Tailwind CSS and shadcn-style components, for FastAPI.
+<p class="text-muted-foreground text-sm">    Pages, tables, forms, navigation and htmx swaps for FastAPI, written as Jinja macros next to
+    your routes.
 </p>    </div>
   </div>
 
@@ -101,39 +106,98 @@ fjkit
 <h3>The key features are:</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>No build step</h4><p>No package.json, no node_modules, no watcher. The stylesheet is compiled when fjkit is released, not when your app runs.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>One colour knob</h4><p>Every colour is a token. Rebranding is one file, and green still means done afterwards.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>Mounts on your existing API</h4><p>Every htmx endpoint answers curl with JSON. Same route, same handler, same return annotation.</p>    </section>  </div></div></div>
+      <h4>One colour knob</h4><p>Every colour is a token. Rebranding is one stylesheet, and status colours stay put, so green still means done.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>The htmx endpoint is also the JSON API</h4><p>A route that renders a partial answers htmx with HTML and every other caller with its response model as JSON.</p>    </section>  </div></div></div>
   </div>
 
-<div id="who">
+<div id="start">
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Get started</h2><p class="text-muted-foreground text-sm">Install one package, write a handler and a template, run the app.</p>      </div>
+      <div class="flex flex-col gap-3">      <p>Requires Python 3.13 or newer.</p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="1 · install" data-lang="bash">uv add fjkit</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="2 · app/main.py" data-lang="python">from pathlib import Path
+
+from fastapi import FastAPI
+from fjkit import FjkitConfig, mount_fjkit, render
+from pydantic import BaseModel
+
+app = FastAPI()
+mount_fjkit(app, FjkitConfig(template_dir=Path(__file__).parent / &#34;templates&#34;))
+
+
+class Overview(BaseModel):
+    done: int
+
+
+@app.get(&#34;/&#34;)
+@render(&#34;overview.html&#34;)
+def overview() -&gt; Overview:
+    return Overview(done=18)</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        <code>mount_fjkit</code> serves the stylesheet and the vendored JavaScript and builds the
+        Jinja environment. <code>@render</code> goes below <code>@app.get</code> and passes the
+        fields of the returned model to the template.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="3 · app/templates/overview.html" data-lang="jinja">{% extends &#34;ui/shell.html&#34; %}
+{% from &#34;ui/layout.html&#34; import page_header, grid %}
+{% from &#34;ui/data.html&#34; import stat %}
+
+{% block content %}
+  {{ page_header(&#34;Overview&#34;, &#34;How the board is doing&#34;) }}
+  {% call grid(cols=4) %}
+    {{ stat(&#34;Done&#34;, done, tone=&#34;success&#34;, icon_name=&#34;check&#34;) }}
+  {% endcall %}
+{% endblock %}</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="4 · run" data-lang="bash">uv run fastapi dev app/main.py</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        Open <code>http://127.0.0.1:8000</code>. The page has a header, a dark-mode toggle and one
+        stat card. The template has no CSS classes and no colours: macros take named options such as
+        <code>tone="success"</code>, and the shipped stylesheet covers them.
+      </p>
+      <p>
+        Add <code>uv run fjkit check app/templates</code> to CI. It fails when a template uses a
+        class or a colour outside the kit's vocabulary.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="who">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Who it is for</h2><p class="text-muted-foreground text-sm">A back-end developer who needs a real interface and no front-end toolchain.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        You already write FastAPI. You need navigation, dark mode, a filterable table and a form that
-        validates. This is for you.
-      </p>
-      <p>
-        If you are bringing React, Vue or Svelte, this is the wrong layer. That is a decision, not a
-        gap.
+        You write FastAPI and need navigation, dark mode, a filterable table and a form that
+        validates. If you want React, Vue or Svelte, use them instead: fjkit renders on the server
+        and has no client-side component model.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>What it should cost you</h3>      </div>
+<h3>What it costs</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>a first page</h4><p>navigation and dark mode in about twenty lines of Python, with no build step</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>an admin screen</h4><p>list, filters, a create form and htmx updates in an afternoon. No CSS, no JavaScript.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>a rebrand</h4><p>one stylesheet of token overrides, loaded after the kit&#39;s</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>an upgrade</h4><p>a version bump. The stylesheet lives in the wheel, not in your repository.</p>    </section>  </div></div></div>
+      <h4>a first page</h4><p>about twenty lines, as in 01, with no build step</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>an admin screen</h4><p>a list, filters, a create form and htmx updates, with no CSS and no JavaScript</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>
 <hr class="border-border">
 
 <div id="box">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
 </div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">What ships in the wheel</h2><p class="text-muted-foreground text-sm">One wheel, two runtime dependencies, and nothing for you to compile.</p>      </div>
@@ -142,7 +206,7 @@ fjkit
 <h3>Shipped in the package</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>templates/ui/</h4><p>the macros: layout, buttons, data, forms, tables, tabs, navigation, sidebar, feedback, icons, and the document shell</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>the compiled stylesheet, one per style pack. 234 KB raw, 23.9 KB gzip, under a 28 KB budget the build enforces. A page loads one.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>the compiled stylesheet, one per style pack. 234 KB raw, 23.9 KB gzip; the build fails above 28 KB. A page loads one.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>static/vendor/</h4><p>htmx and Basecoat&#39;s JavaScript, pinned and served out of the package</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>1,767 icons</h4><p>Lucide, inlined by name. No icon font, no sprite request, no runtime JS.</p>    </section>  </div></div></div>
   </div>
@@ -151,30 +215,27 @@ fjkit
 <h3>The whole surface you touch</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>FjkitConfig, mount_fjkit</h4><p>the wiring, once per app</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>@render</h4><p>name a template on the decorator; the handler returns data</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fjkit check</h4><p>the vocabulary gate. Run it in your CI.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fjkit eject</h4><p>the escape hatch: take one macro into your app and edit it</p>    </section>  </div></div></div>
+      <h4>@render</h4><p>names the template; the handler returns data</p>    </section>  </div></div></div>
   </div>
 </div>
-<div class="flex flex-col gap-3">      <p>
-        Requirements: Python 3.13 or newer, and two runtime dependencies — FastAPI and Jinja2. Adding
-        a third needs an argument nobody has made yet.
-      </p>
+<div class="flex flex-col gap-3">      <p>Runtime dependencies: FastAPI and Jinja2.</p>
 </div>
 </section></div></div>
 <hr class="border-border">
 
 <div id="next">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
 </div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">Where to go next</h2><p class="text-muted-foreground text-sm">Two pages. One shows you the wiring, the other shows you every macro.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">Where to go next</h2><p class="text-muted-foreground text-sm">Pick the page by what you are trying to do.</p>      </div>
           <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>On this site</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>Learn</h4><p><a href="learn.html">how the kit is wired, what htmx sends, and the gate that fails a build</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>Components</h4><p><a href="components.html">every macro, live, with the call that made it</a></p>    </section>  </div></div></div>
+      <h4>build my first real screen</h4><p><a href="learn.html">Learn</a> — how the app is wired, how htmx swaps work, form errors, messages, rebranding and <code>fjkit check</code>. Read 01–05 first.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>find a component</h4><p><a href="components.html">Components</a> — every macro, live, with the call that produced it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>look up a parameter</h4><p><a href="cheatsheet.html">Cheatsheet</a> — every signature, shell block, template global and htmx attribute on one page</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add auth, charts or an admin</h4><p><a href="plugins.html">Plugins</a> — sign-in, flash messages, charts, an API console and an admin, and how to write your own</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>

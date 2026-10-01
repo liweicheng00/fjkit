@@ -73,11 +73,11 @@ Open <http://127.0.0.1:8000>.
 
 | Package | What it is |
 |---|---|
-| `fjkit` | The UI kit |
-| `fjkit-admin` | A Django-style admin for SQLAlchemy models |
-| `fjkit-charts` | Server-rendered Plotly charts |
-| `fjkit-apidocs` | An API reference and console, in place of Swagger UI |
-| `fjkit-lsp` | A language server that links routes, response models and templates |
+| [`fjkit`](packages/fjkit) | The UI kit |
+| [`fjkit-admin`](packages/fjkit-admin) | A Django-style admin for SQLAlchemy models |
+| [`fjkit-charts`](packages/fjkit-charts) | Server-rendered Plotly charts |
+| [`fjkit-apidocs`](packages/fjkit-apidocs) | An API reference and console, in place of Swagger UI |
+| [`fjkit-lsp`](tools/fjkit-lsp) | A language server that links routes, response models and templates |
 
 ## Built on
 
@@ -90,13 +90,20 @@ The stylesheet is about 25 KB gzipped.
 
 ## Documentation
 
-**[liweicheng00.github.io/fjkit](https://liweicheng00.github.io/fjkit/)** — every example on the site is rendered by the kit, and you can change macro parameters and see the result.
+**[liweicheng00.github.io/fjkit](https://liweicheng00.github.io/fjkit/)**, in English and 中文. Every example on the site is rendered by the kit.
+
+| Page | Read it to |
+|---|---|
+| [Learn](https://liweicheng00.github.io/fjkit/learn.html) | wire an app, use htmx swaps, handle form errors, rebrand. Lessons 01–05 are the minimum. |
+| [Components](https://liweicheng00.github.io/fjkit/components.html) | see every macro live, with the call that produced it |
+| [Cheatsheet](https://liweicheng00.github.io/fjkit/cheatsheet.html) | look up a signature, a shell block or an htmx attribute |
+| [Plugins](https://liweicheng00.github.io/fjkit/plugins.html) | add sign-in, flash messages, charts, an API console or the admin |
 
 Rendering performance: [docs/jinja-performance.md](docs/jinja-performance.md).
 
 ## Status
 
-Pre-release (`0.1.0.dev0`). Macro signatures can change until 1.0.
+0.1.0, on PyPI. Macro signatures can change before 1.0.
 
 ## License
 

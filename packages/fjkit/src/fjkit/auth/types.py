@@ -34,7 +34,7 @@ class Session:
     `access is None` is the ordinary state for an app with no upstream API, and
     is what `LocalSource` produces. `claims` is the app's own data and must be
     JSON-serialisable: the payload is encoded with the standard library, which
-    is the price of fjkit's two runtime dependencies (CHARTER §7) and the only
+    is the price of fjkit's two runtime dependencies (CHARTER §4.1) and the only
     place that price shows.
 
     `expires_at` must carry a timezone, and is what enables refresh. A source

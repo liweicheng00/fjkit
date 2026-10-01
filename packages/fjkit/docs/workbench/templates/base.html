@@ -68,13 +68,19 @@
       and numbers nothing, and a trailing "Read next" band carries no number
       either — hence `.get`, because the Environment is StrictUndefined.
       `test_docs_site.py` compares the two lists and fails when they disagree.
+
+      `group` is optional too. A long page tags each section with the stage it
+      belongs to, and the rail shows one heading per stage, in first-seen order;
+      a page that tags nothing gets the single "On this page" group.
     #}
-    {% call sidebar_group(t.sections_group) %}
-      {% for section in sections %}
-        {{ sidebar_link(request, page.route ~ "#" ~ section.id,
-                        (section.get("num") ~ " · " ~ section.title) if section.get("num") else section.title) }}
-      {% endfor %}
-    {% endcall %}
+    {% for group in sections | map(attribute="group", default="") | unique %}
+      {% call sidebar_group(group or t.sections_group) %}
+        {% for section in sections if section.get("group", "") == group %}
+          {{ sidebar_link(request, page.route ~ "#" ~ section.id,
+                          (section.get("num") ~ " · " ~ section.title) if section.get("num") else section.title) }}
+        {% endfor %}
+      {% endcall %}
+    {% endfor %}
 
     {#
       The same page in the other language, never that language's landing page:

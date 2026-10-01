@@ -381,7 +381,7 @@ class TestSelectColumn:
         assert "data-fjkit-select-zero" not in html
 
     def test_the_script_is_opted_into_per_page(self, render):
-        """CHARTER §7: the shell downloads htmx and Basecoat and nothing else."""
+        """CHARTER §4.2: the shell downloads htmx and Basecoat and nothing else."""
         assert "js/select.js" in render(f"{TABLE}{{{{ select_scripts() }}}}")
 
 
@@ -2402,7 +2402,7 @@ class TestReveal:
         assert html.index("USD") < html.index("data-fjkit-reveal"), "the reveal sits by the field's edge"
 
     def test_the_script_is_opt_in_per_page(self, render):
-        """CHARTER §7: a page downloads htmx and Basecoat by default and nothing
+        """CHARTER §4.2: a page downloads htmx and Basecoat by default and nothing
         else. This macro is how a page says otherwise."""
         assert "js/reveal.js" not in render(f"{INPUT_GROUP}{self.CALL}")
         assert "js/reveal.js" in render(f"{INPUT_GROUP}{{{{ reveal_scripts() }}}}")

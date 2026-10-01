@@ -23,9 +23,9 @@ which is what GitHub Pages serves (*Settings → Pages → Deploy from a branch 
 
 | Output | Page | Covers |
 |---|---|---|
-| `docs/index.html` | Introduction | the landing page — what fjkit is, who it is for, five decisions, what ships in the wheel |
-| `docs/learn.html` | Learn | wiring, the htmx exchange, hx-target/hx-swap/hx-trigger, partials, `hx-swap-oob`, `hx-indicator`/`hx-disabled-elt`, rebranding, `fjkit check` |
-| `docs/plugins.html` | Plugins | the extension seam — middleware, exception handlers and template globals in one registered object, and the session plugin that needed it |
+| `docs/index.html` | Introduction | the landing page — what fjkit is, a first page in four steps, who it is for, what ships in the wheel, and which page answers which question |
+| `docs/learn.html` | Learn | fourteen lessons in three rail groups: start here (wiring, the htmx exchange, hx-target/hx-swap/hx-trigger, partials), advanced htmx (`hx-swap-oob`, `HX-Trigger`, page state, `hx-indicator`, patterns), and forms, messages, theming and `fjkit check` |
+| `docs/plugins.html` | Plugins | the ready-made plugins first (auth, flash, API console, charts, admin), then the seam for writing one — middleware, exception handlers and template globals in one registered object |
 | `docs/components.html` | Components | every macro, live, with the Jinja call and the HTML it emits — one section per file in `src/fjkit/templates/ui/`, in the order the directory lists them |
 | `docs/cheatsheet.html` | Cheatsheet | the index — every macro with its full signature, whether it is called with a block and what goes inside it, plus the shell's blocks, the template globals and the htmx attributes. Rows come from `workbench/cheatsheet.py`, one source for both languages |
 | `docs/assets/dist/`, `docs/assets/vendor/` | — | the default pack's `fjkit-vega.css`, htmx and Basecoat's JS, byte-identical to the wheel |
@@ -123,5 +123,4 @@ uv run fjkit eject <component>       # copy a component into your app to edit it
 uv run pytest
 ```
 
-Status: pre-release (0.1.0.dev0), under active development. Signatures are not
-frozen until 1.0.
+Status: 0.1.0. Signatures can change before 1.0.

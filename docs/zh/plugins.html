@@ -64,40 +64,41 @@ fjkit
   </li>
 </ul>
   </div>
-<div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>        <li>
-    <a href="plugins.html#why">      <span>01 · plugin 是什麼</span>
+<div role="group" aria-label="現成的外掛"><h3>現成的外掛</h3>    <ul>          <li>
+    <a href="plugins.html#auth">      <span>01 · auth plugin</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#mount">      <span>02 · mount()：app 那一側</span>
+          <li>
+    <a href="plugins.html#write">      <span>02 · flash plugin</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#extend">      <span>03 · extend()：Jinja 與每一次渲染</span>
+          <li>
+    <a href="plugins.html#charts">      <span>03 · 圖表</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#rules">      <span>04 · 順序、碰撞與界線</span>
+          <li>
+    <a href="plugins.html#apidocs">      <span>04 · API 主控台</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#auth">      <span>05 · auth plugin</span>
+          <li>
+    <a href="plugins.html#admin">      <span>05 · admin</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#write">      <span>06 · flash plugin</span>
+</ul>
+  </div><div role="group" aria-label="自己寫外掛"><h3>自己寫外掛</h3>    <ul>          <li>
+    <a href="plugins.html#why">      <span>06 · plugin 是什麼</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#apidocs">      <span>07 · API 主控台</span>
+          <li>
+    <a href="plugins.html#mount">      <span>07 · mount()：app 那一側</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#charts">      <span>08 · 圖表</span>
+          <li>
+    <a href="plugins.html#extend">      <span>08 · extend()：Jinja 與每一次渲染</span>
     </a>
   </li>
-        <li>
-    <a href="plugins.html#admin">      <span>09 · admin</span>
+          <li>
+    <a href="plugins.html#rules">      <span>09 · 順序、碰撞與界線</span>
     </a>
   </li>
 </ul>
@@ -116,194 +117,19 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Plugins</h1>
-<p class="text-muted-foreground text-sm">    有些東西不是 macro。plugin 加的是 middleware、exception handler，或每個模板都該拿到的值：
-    一個物件，一個地方註冊。
+<p class="text-muted-foreground text-sm">    plugin 把多數 app 都需要的常見功能整合進 fjkit app：登入、flash 訊息、圖表、API console、後台。
+    <strong>01–05</strong> 是 fjkit 內建或另行發佈的 plugin，以及各自的註冊方式。
+    <strong>06–09</strong> 說明如何自己寫 plugin。
 </p>    </div>
   </div>
 
-<div id="why">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">plugin 是什麼</h2><p class="text-muted-foreground text-sm">兩個貢獻時機，對應 kit 的兩個時機。</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        macro 只管一頁畫出什麼。handler 執行之前發生的事，以及每個模板都該知道、
-        但不該由每條路由傳過去的值，都不歸它管。session 兩者都要，
-        語系與 feature flag 只要後者，flash 訊息只要前者。
-      </p>
-      <p>
-        plugin 是一個物件，兩個方法都可選。<code>mount()</code> 在 app 建構時執行，
-        <code>extend()</code> 在 Jinja environment 建立時執行。只給每個模板一個值的 plugin
-        只寫 <code>extend()</code>；只在請求經過時處理的 plugin 只寫 <code>mount()</code>。
-      </p>
-</div>
-    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">config = FjkitConfig(
-    template_dir=APP_DIR / &#34;templates&#34;,
-    plugins=(auth, flash),
-)
-mount_fjkit(app, config)</pre>
-
-
-<div class="flex flex-col gap-3">      <p>
-        註冊到此結束。<code>mount_fjkit()</code> 本來就要讀這份 config 來掛靜態檔與建立
-        environment，所以 plugin 不需要第二個呼叫，也沒有 import 順序要記。
-      </p>
-      <p>
-        兩個時機刻意保持可見。把它藏起來的代價，是某個 plugin 的 <code>mount()</code>
-        沒有執行而沒有人發現。
-      </p>
-</div>
-</section></div></div>
-<hr class="border-border">
-
-<div id="mount">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">mount()：app 那一側</h2><p class="text-muted-foreground text-sm">middleware、handler、路由——而且都記在加它的那個 plugin 頭上。</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        <code>AppSetup</code> 把呼叫轉給 FastAPI，並多做一件事：署名。
-        出問題時錯誤訊息會指名那個 plugin，不必逐一拔掉來找。
-      </p>
-</div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>AppSetup</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>add_middleware(cls, **options)</h4><p>Starlette 依註冊的反序執行 middleware，所以 plugins= 裡排在後面的 plugin 包在前面那些的外層</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>add_exception_handler(exc, handler)</h4><p>middleware 裡拋出的例外到不了 handler：Starlette 的 handler 那一層在使用者 middleware 的內側</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>include_router(router)</h4><p>給自帶端點的 plugin</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>mount_static(url, directory)</h4><p>給自帶資產的 plugin，掛載名稱由 plugin 名字衍生</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>warn(message)</h4><p>啟動期的設定檢查；訊息會冠上 plugin 名稱，以 PluginWarning 發出</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>app, config</h4><p>活的 FastAPI app 與 FjkitConfig，給上面兩個表達不了的檢查用</p>    </section>  </div></div></div>
-  </div>
-
-<div class="flex flex-col gap-3">      <p>
-        <code>warn()</code> 用於只有這個 plugin 認得出來的組合。例如正式設定配上記憶體版
-        session store：在開發機上正常，換到四個 worker 後面會隨機把人登出，
-        而且 traceback 裡沒有一行指向原因。
-      </p>
-</div>
-</section></div></div>
-<hr class="border-border">
-
-<div id="extend">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">extend()：Jinja 與每一次渲染</h2><p class="text-muted-foreground text-sm">per-request 的 context，就是 globals 缺的那一塊。</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        <code>FjkitConfig.globals</code> 每個 process 只算一次，適合版本字串，
-        不適合「現在登入的是誰」。<code>add_context_processor()</code> 補上另一半：
-        每次渲染執行一次，拿得到當下的 request。
-      </p>
-</div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>EnvSetup</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>add_template_dir(path)</h4><p>搜尋順序排在 app 的模板之後、kit 的之前——plugin 可以蓋掉 kit 的 macro，永遠蓋不掉 app 自己寫的檔案</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>add_global(name, value)</h4><p>整個 process 一個值</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>add_filter(name, fn)</h4><p>一個 Jinja filter</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>add_context_processor(fn, provides=[…])</h4><p>併進每個模板的 context，每次渲染一次</p>    </section>  </div></div></div>
-  </div>
-
-    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="auth plugin 的 extend()，全部" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
-    setup.add_context_processor(
-        lambda request: {&#34;session&#34;: getattr(request.state, &#34;auth&#34;, None)},
-        provides=[&#34;session&#34;],
-    )</pre>
-
-
-<div class="flex flex-col gap-3">      <p>
-        兩個限制都是刻意的。processor 必須<strong>同步</strong>：它在
-        <code>Templates.page()</code> 裡執行，而那是 <code>def</code> handler 從 threadpool 進來的。
-        需要 I/O 的 plugin 在 middleware 裡做完，把結果留在 <code>request.state</code> 上，
-        上面那一行讀的正是這個。
-      </p>
-      <p>
-        <code>provides=</code> 是強制宣告，不是自動推得。沒有它，兩個 plugin 會默默搶同一個
-        <code>user</code>，只能靠渲染頁面時碰巧注意到。有了它，衝突變成一個點名雙方的啟動期錯誤。
-      </p>
-      <p>
-        <code>add_template_dir()</code> 是帶 UI 的 plugin 把 UI 帶進來的方式，第 07 節是範例。
-        它有一個附帶條件：Tailwind 的掃描範圍是 <code>fjkit.css</code> 裡一份明列的目錄清單，
-        所以 kit 內建的 plugin 要把自己的模板目錄加進那份清單。
-        漏掉不會產生任何錯誤：模板照樣渲染，但裡面的 utility class 都不在樣式表裡，頁面看起來是壞的。
-      </p>
-</div>
-</section></div></div>
-<hr class="border-border">
-
-<div id="rules">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
-</div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">順序、碰撞與界線</h2><p class="text-muted-foreground text-sm">所有可能相撞的東西都在啟動時報錯，不會留到正式環境。</p>      </div>
-      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>模板搜尋順序</h3><p>先找到的贏。</p>      </div>
-    </header>      <section>      <div class="table-container">
-      <table class="table">
-        <thead>
-          <tr>
-<th class=" ">順序</th>
-<th class=" ">屬於</th>
-<th class=" ">可以蓋掉</th>
-          </tr>
-        </thead>
-        <tbody>        <tr>
-          <td class="text-muted-foreground tabular-nums">1</td>
-          <td class="font-medium">app 的 template_dir</td>
-          <td class="">全部——這就是 fjkit eject</td>
-        </tr>
-        <tr>
-          <td class="text-muted-foreground tabular-nums">2</td>
-          <td class="font-medium">每個 plugin，依 plugins= 的順序</td>
-          <td class="">kit 的 macro，永遠不含 app 的檔案</td>
-        </tr>
-        <tr>
-          <td class="text-muted-foreground tabular-nums">3</td>
-          <td class="font-medium">kit</td>
-          <td class="">沒有</td>
-        </tr>
-</tbody>
-      </table>
-    </div>
-
-</section>
-  </div>
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>啟動時就拒絕</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>兩個 plugin 同名</h4><p>它們會在 request.state.&lt;name&gt; 上相撞，之後的錯誤訊息無法分辨是哪一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>兩個 plugin 搶同一個 global、filter 或 context key</h4><p>錯誤訊息會點名雙方，並要求改名或拿掉一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>processor 回傳沒宣告過的 key</h4><p>strict_undefined 會抓到，所以在開發階段就浮現</p>    </section>  </div></div></div>
-  </div>
-
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>plugin 做不到的事</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>注入 markup</h4><p>      沒有任何 hook 能把 markup 塞進 shell。有的話，任何 plugin 都能在每一頁放一段
-      <code>&lt;script&gt;</code>，零建置與封閉詞彙表會同時失守。要出 UI 的
-      plugin 出的是模板，而且跟其他東西一樣要過 <code>fjkit check</code>。
-</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>讀取沒宣告的同伴</h4><p>要讀別的 plugin 就先宣告——uses = (&#34;flash&#34;,)——再用 setup.plugin(&#34;flash&#34;) 拿；app 沒註冊時拿到 None。沒宣告就查是啟動錯誤，被用的 plugin 排在使用者後面也是。順序仍然是你寫的順序：host 只檢查，不重排</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>在啟動時開連線</h4><p>沒有 lifespan hook。plugin 收的是 app 已經建好的 client，RedisStore 有一個 client 參數就是這個原因</p>    </section>  </div></div></div>
-  </div>
-
-</section></div></div>
-<hr class="border-border">
-
 <div id="auth">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
 <span class="badge" data-variant="secondary">fjkit.auth</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">auth plugin</h2><p class="text-muted-foreground text-sm">瀏覽器拿 cookie，token 留在伺服器。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        內建的第一個 plugin，也是這個接縫存在的理由。瀏覽器只拿到一個不透明、簽名過的
+        htmx app 的登入機制，內建於 fjkit，模組為 <code>fjkit.auth</code>。瀏覽器只拿到一個不透明、簽名過的
         <code>HttpOnly</code> cookie。access token、refresh token 與 claims 全部留在伺服器端的
         session store。
       </p>
@@ -393,7 +219,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
 <hr class="border-border">
 
 <div id="write">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
 <span class="badge" data-variant="secondary">fjkit.flash</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">flash plugin</h2><p class="text-muted-foreground text-sm">一則活得比產生它的那個回應更久的訊息。</p>      </div>
@@ -465,14 +291,120 @@ if carried and messages.shown(request):
 </section></div></div>
 <hr class="border-border">
 
+<div id="charts">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+<span class="badge" data-variant="secondary">fjkit_charts</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">圖表</h2><p class="text-muted-foreground text-sm">圖形的形狀由 Python 決定，圖形的外裝由瀏覽器決定。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        圖表使用 <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/">Plotly</a> 繪製。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="shell" data-lang="python">uv add fjkit-charts plotly</pre>
+
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">from fjkit_charts import ChartsPlugin
+
+mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        路由回傳一組 <code>Chart</code> 物件。頁面用 <code>chart()</code> macro 逐一畫出，
+        並以 <code>chart_scripts()</code> 載入 Plotly。瀏覽器不另外抓取圖表資料。
+      </p>
+</div>
+    <div class="card">      <div class="tabs">
+    <nav role="tablist" aria-label="File"
+         aria-orientation="horizontal">
+        <button type="button" role="tab" aria-controls="charts-router"
+                aria-selected="true">app/routers/workload.py</button>
+        <button type="button" role="tab" aria-controls="charts-page"
+                aria-selected="false">app/templates/workload/page.html</button>
+    </nav><div id="charts-router" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/routers/workload.py" data-lang="python">import plotly.graph_objects as go
+from fastapi import APIRouter
+from fjkit import render
+from fjkit_charts import Chart, figure_of
+
+router = APIRouter()
+
+
+@router.get(&#34;/workload&#34;)
+@render(&#34;workload/page.html&#34;)
+def workload():
+    owners, counts = [&#34;Ana&#34;, &#34;Ben&#34;, &#34;Cy&#34;], [5, 4, 3]
+    return {&#34;charts&#34;: [
+        Chart(
+            id=&#34;by-owner&#34;,
+            title=&#34;各負責人的未結案任務&#34;,
+            summary=&#34;12 件未結案任務中，Ana 佔 5 件。&#34;,
+            figure=figure_of(go.Figure(go.Bar(x=owners, y=counts))),
+        ),
+    ]}</pre>
+
+<footer>Chart 需要設定四個欄位：id、title、summary 與 figure。summary 為必填：它是螢幕閱讀器讀出的文字，也是 JavaScript 關閉時顯示的內容。figure_of() 轉換並驗證 Plotly figure，無效的 trace 會在這裡失敗，而不是渲染出一個空框。</footer></div><div id="charts-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
+{% from &#34;charts/macros.html&#34; import chart, chart_scripts %}
+
+{% block content %}
+  {% for item in charts %}{{ chart(item) }}{% endfor %}
+{% endblock %}
+
+{% block scripts %}{{ chart_scripts() }}{% endblock %}</pre>
+
+<footer>chart(item) 把一張圖畫在一張 card 裡。chart_scripts() 只在這一頁載入 Plotly，沒有圖表的頁面不會下載它。</footer></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>figure_of()</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>用途</h4><p>把 go.Figure 或一般 dict 轉成 Chart.figure 需要的 model。每張圖在路由裡呼叫一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>移除 layout.template</h4><p>plotly.py 一定會寫入一份預設 template，其中有 111 個顏色值。移除之後，charts.js 從頁面的主題 token 設定軸文字、格線與背景，圖表因此跟著淺色與深色模式切換</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>驗證 figure</h4><p>不合法的 figure 在路由裡就拋出驗證錯誤，而不是在瀏覽器畫出一個空框</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>trace 類型</h4><p>bar、scatter 與 pie，也就是內附 Plotly build 支援的類型。其他類型無法通過驗證</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>可以設定的欄位</h4><p>Plotly 為這三種類型記載的任何屬性：<a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/bar/">bar</a>、<a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/scatter/">scatter</a>、<a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/pie/">pie</a> 與 <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/layout/">layout</a>。type、x、y、labels、values、barmode、showlegend 會檢查型別；其餘欄位不檢查，原樣傳遞</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>不要設定的欄位</h4><p>顏色：marker_color、line_color、字型顏色、背景。資料序列使用 Plotly 的色盤，其餘由主題決定。figure_of() 不會擋下這些欄位；請在測試中呼叫 assert_no_colour_in(charts) 檢查</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>誰負責什麼</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>trace，以及它們代表什麼</h4><p>Python，寫在 Chart.figure。只有算出這些數字的 service 知道其中哪一個該是長條</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>軸標文字、格線、刻度顏色、圓餅切片之間的間隙</h4><p>瀏覽器。charts.js 每次繪製時從當下的 token 解析出來，因為 Plotly 的預設是淺灰底上的深灰字——一張為白底畫的圖，卻可能落在深色頁面上。切換主題就是重畫一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>series 的顏色</h4><p>Plotly 自己的色盤，主題不動它。figure 本身完全不帶顏色：寫死色碼會違反 fjkit check 對模板的同一條規則，而且在兩種配色其中之一必定是錯的</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>高度</h4><p>Chart.height，由負責繪製的同一支腳本套用。在 markup 裡寫 style=&#34;&#34; 是 app 開始自己寫 CSS 的另一條路</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>替代文字</h4><p>Chart.summary，用建 trace 的同一批數字寫出來。Plotly 的 SVG 是上千個沒有標籤的 &lt;path&gt;，所以螢幕閱讀器讀到的是這句 caption；沒有 JavaScript 時，它就是全部的內容</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>每個參數決定什麼</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>url=&#34;/_fjkit-charts&#34;</h4><p>這個 plugin 自己的資產放在哪。要放在 config.static_url 之外：Starlette 比對的是第一個前綴吻合的 mount，所以巢狀在 kit static mount 底下的路徑會被它吃掉，然後對一個沒有這些檔案的目錄回 404</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>plotly_url=</h4><p>改從別處提供 Plotly，而不是用 wheel 裡那一份——你的 app 已經在服務的某個路徑，或一個 URL。預設是 plugin 自己 url 底下的 vendored bundle，跟其他 kit 資產一樣帶快取戳記</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>動手之前值得知道</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>summary 是必填欄位</h4><p>不是一個會被忘掉的關鍵字。沒有替代文字的圖表對螢幕閱讀器等於不存在，而 macro 沒辦法替你把那句話寫出來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>用的是 basic bundle，不是完整版</h4><p>只有 scatter、bar 與 pie。plotly.js-dist-min 是 4.85 MB 的 3D、地圖、金融與統計 trace，多數儀表板一個都不畫；而在沒有 build step 的前提下，選 bundle 是 Plotly 給的唯一一個體積旋鈕</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>在 wheel 裡不等於在頁面上</h4><p>bundle 放在哪個 distribution，決定一次安裝帶進什麼；§4.2 管的是一個頁面下載什麼。從不畫圖的 app 兩者都不付</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>版本 pin 跟著 bytes 走</h4><p>PLOTLY_VERSION 在 fjkit_charts 裡，由 scripts/vendor_plotly.py 抓取。kit 已經不知道 Plotly 的存在</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
 <div id="apidocs">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
 <span class="badge" data-variant="secondary">fjkit_apidocs</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">API 主控台</h2><p class="text-muted-foreground text-sm">在這一頁登入，底下每一次呼叫都以你的身分送出。</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         Swagger UI 的 <em>Authorize</em> 只能表達 OpenAPI 文件描述得出來的東西：API key、HTTP scheme、
-        OAuth2 flow。第 05 節那種 session——簽章過的 <code>HttpOnly</code> cookie，token 留在伺服器
+        OAuth2 flow。第 01 節那種 session——簽章過的 <code>HttpOnly</code> cookie，token 留在伺服器
         ——四種都不是。它的 <em>Try it out</em> 也送不出去：那是在瀏覽器裡跑 <code>fetch()</code>，
         而那顆 cookie 正好不給 JavaScript 讀。
       </p>
@@ -532,11 +464,6 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
           <td class="">JavaScript 摸得到的東西</td>
           <td class="">你的 session cookie，HttpOnly 也照帶</td>
         </tr>
-        <tr>
-          <td class="font-medium">這一頁怎麼擋</td>
-          <td class=""><span class="badge" data-variant="outline">不歸它管</span></td>
-          <td class="">dependencies=[Depends(auth.required)]</td>
-        </tr>
 </tbody>
       </table>
     </div>
@@ -555,7 +482,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
   </div>
 
 <div class="flex flex-col gap-3">      <p>
-        它同時是第 03 節 <code>add_template_dir()</code> 在 kit 裡的實例。主控台的模板與它的程式碼
+        它同時是第 08 節 <code>add_template_dir()</code> 在 kit 裡的實例。主控台的模板與它的程式碼
         放在一起，在 <code>fjkit_apidocs/templates/apidocs/</code>，由 <code>extend()</code> 把那個
         目錄交給 loader。裡面那層 <code>apidocs/</code> 讓模板名維持 <code>apidocs/page.html</code>，
         所以你的 app 只要寫一份自己的 <code>templates/apidocs/&lt;名稱&gt;.html</code>
@@ -575,94 +502,8 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
 </section></div></div>
 <hr class="border-border">
 
-<div id="charts">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
-<span class="badge" data-variant="secondary">fjkit_charts</span></div><section class="flex flex-col gap-6">
-      <div>
-<h2 class="text-lg font-semibold tracking-tight">圖表</h2><p class="text-muted-foreground text-sm">圖形的形狀由 Python 決定，圖形的外裝由瀏覽器決定。</p>      </div>
-      <div class="flex flex-col gap-3">      <p>
-        Basecoat 有 <code>chart</code> 元件，kit 沒有把它包進來。圖表是唯一一個沒辦法只靠 markup
-        與 token 完成的元件：總得有東西把數字變成路徑，而那個東西是 1.1&nbsp;MB 的 JavaScript。
-        把它做成 plugin，就是為了讓不畫圖的頁面不必付這個數字。
-      </p>
-      <p>
-        註冊之後，app 會得到 <code>chart</code> macro、主題橋接、Plotly bundle，以及載入它們的兩行
-        <code>&lt;script&gt;</code>。不用下載也不用另外掛載：bundle 就在這個 wheel 裡，由 plugin
-        自己的 static mount 提供。
-      </p>
-</div>
-    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="shell" data-lang="python">uv add fjkit-charts</pre>
-
-
-    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">from fjkit_charts import ChartsPlugin
-
-mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))</pre>
-
-
-<div class="flex flex-col gap-3">      <p>
-        router 每一張圖建一個 <code>Chart</code>，頁面把它們畫出來。中間沒有東西：沒有圖表端點、
-        沒有瀏覽器去抓的 JSON、沒有 client 狀態。
-      </p>
-</div>
-    <div class="card">      <div class="tabs">
-    <nav role="tablist" aria-label="File"
-         aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="charts-router"
-                aria-selected="true">router.py</button>
-        <button type="button" role="tab" aria-controls="charts-page"
-                aria-selected="false">charts/page.html</button>
-    </nav><div id="charts-router" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">from fjkit_charts import Chart, figure_of
-
-Chart(
-    id=&#34;by-owner&#34;,
-    title=&#34;工作量&#34;,
-    summary=&#34;12 件未結案任務中，Ana 佔 5 件。&#34;,
-    figure=figure_of(go.Figure(...)),
-)</pre>
-
-<footer>figure_of() 會在轉換途中丟掉 Plotly 的預設 template——7,621 bytes、111 個顏色字面值——再驗證其餘部分，所以瀏覽器畫不出來的 trace 在這裡就失敗，而不是渲染出一個空框。它以 to_plotly_json() 做 duck-typing，因此 plotly 不會進 kit 的依賴，傳一個純 dict 也可以。</footer></div><div id="charts-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="charts/page.html" data-lang="jinja">{% from &#34;charts/macros.html&#34; import chart, chart_scripts %}
-
-{% for item in charts %}{{ chart(item) }}{% endfor %}
-
-{% block scripts %}{{ chart_scripts() }}{% endblock %}</pre>
-
-<footer>chart_scripts() 由頁面呼叫，不由 shell 呼叫。plugin 不得把 markup 注入 ui/shell.html，而這正是那條規則要擋的情況：一個讓它在每頁加 &lt;script&gt; 的 hook，會把 1.1 MB 放到登入畫面上。</footer></div></div>
-  </div>
-
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>誰負責什麼</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>trace，以及它們代表什麼</h4><p>Python，寫在 Chart.figure。只有算出這些數字的 service 知道其中哪一個該是長條</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>軸標文字、格線、刻度顏色、圓餅切片之間的間隙</h4><p>瀏覽器。charts.js 每次繪製時從當下的 token 解析出來，因為 Plotly 的預設是淺灰底上的深灰字——一張為白底畫的圖，卻可能落在深色頁面上。切換主題就是重畫一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>series 的顏色</h4><p>Plotly 自己的色盤，主題不動它。figure 本身完全不帶顏色：寫死色碼會違反 fjkit check 對模板的同一條規則，而且在兩種配色其中之一必定是錯的</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>高度</h4><p>Chart.height，由負責繪製的同一支腳本套用。在 markup 裡寫 style=&#34;&#34; 是 app 開始自己寫 CSS 的另一條路</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>替代文字</h4><p>Chart.summary，用建 trace 的同一批數字寫出來。Plotly 的 SVG 是上千個沒有標籤的 &lt;path&gt;，所以螢幕閱讀器讀到的是這句 caption；沒有 JavaScript 時，它就是全部的內容</p>    </section>  </div></div></div>
-  </div>
-
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>每個參數決定什麼</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>url=&#34;/_fjkit-charts&#34;</h4><p>這個 plugin 自己的資產放在哪。要放在 config.static_url 之外：Starlette 比對的是第一個前綴吻合的 mount，所以巢狀在 kit static mount 底下的路徑會被它吃掉，然後對一個沒有這些檔案的目錄回 404</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>plotly_url=</h4><p>改從別處提供 Plotly，而不是用 wheel 裡那一份——你的 app 已經在服務的某個路徑，或一個 URL。預設是 plugin 自己 url 底下的 vendored bundle，跟其他 kit 資產一樣帶快取戳記</p>    </section>  </div></div></div>
-  </div>
-
-    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-<h3>動手之前值得知道</h3>      </div>
-    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>summary 是必填欄位</h4><p>不是一個會被忘掉的關鍵字。沒有替代文字的圖表對螢幕閱讀器等於不存在，而 macro 沒辦法替你把那句話寫出來</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>用的是 basic bundle，不是完整版</h4><p>只有 scatter、bar 與 pie。plotly.js-dist-min 是 4.85 MB 的 3D、地圖、金融與統計 trace，多數儀表板一個都不畫；而在沒有 build step 的前提下，選 bundle 是 Plotly 給的唯一一個體積旋鈕</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>在 wheel 裡不等於在頁面上</h4><p>bundle 放在哪個 distribution，決定一次安裝帶進什麼；§7 管的是一個頁面下載什麼。從不畫圖的 app 兩者都不付</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>版本 pin 跟著 bytes 走</h4><p>PLOTLY_VERSION 在 fjkit_charts 裡，由 scripts/vendor_plotly.py 抓取。kit 已經不知道 Plotly 的存在</p>    </section>  </div></div></div>
-  </div>
-
-</section></div></div>
-<hr class="border-border">
-
 <div id="admin">
-<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
 <span class="badge" data-variant="secondary">fjkit_admin</span></div><section class="flex flex-col gap-6">
       <div>
 <h2 class="text-lg font-semibold tracking-tight">admin</h2><p class="text-muted-foreground text-sm">註冊一個 model，就得到列表、表單，以及它們之間的路由。</p>      </div>
@@ -740,6 +581,182 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, admin)))</pre>
       <h4>SQLModel 跟其他 model 一樣註冊</h4><p>table=True 的類別就是一個 mapped class，送出時它自己的 validator 會透過 model_validate 執行</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>兩個依賴</h4><p>fjkit 與 sqlalchemy&gt;=2.0</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>刻意留下一個 async handler</h4><p>它要讀 htmx 從勾選欄位送出的 body，用 parse_qs 讀，因此 python-multipart 不必進依賴清單。其餘負責渲染的 handler 都是 def，交給 Starlette 丟到 threadpool</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="why">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">06</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">plugin 是什麼</h2><p class="text-muted-foreground text-sm">兩個貢獻時機，對應 kit 的兩個時機。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        macro 只管一頁畫出什麼。handler 執行之前發生的事，以及每個模板都該知道、
+        但不該由每條路由傳過去的值，都不歸它管。session 兩者都要，
+        語系與 feature flag 只要後者，flash 訊息只要前者。
+      </p>
+      <p>
+        plugin 是一個物件，兩個方法都可選。<code>mount()</code> 在 app 建構時執行，
+        <code>extend()</code> 在 Jinja environment 建立時執行。只給每個模板一個值的 plugin
+        只寫 <code>extend()</code>；只在請求經過時處理的 plugin 只寫 <code>mount()</code>。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/main.py" data-lang="python">config = FjkitConfig(
+    template_dir=APP_DIR / &#34;templates&#34;,
+    plugins=(auth, flash),
+)
+mount_fjkit(app, config)</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        註冊到此結束。<code>mount_fjkit()</code> 本來就要讀這份 config 來掛靜態檔與建立
+        environment，所以 plugin 不需要第二個呼叫，也沒有 import 順序要記。
+      </p>
+      <p>
+        兩個時機刻意保持可見。把它藏起來的代價，是某個 plugin 的 <code>mount()</code>
+        沒有執行而沒有人發現。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="mount">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">07</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">mount()：app 那一側</h2><p class="text-muted-foreground text-sm">middleware、handler、路由——而且都記在加它的那個 plugin 頭上。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>AppSetup</code> 把呼叫轉給 FastAPI，並多做一件事：署名。
+        出問題時錯誤訊息會指名那個 plugin，不必逐一拔掉來找。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>AppSetup</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>add_middleware(cls, **options)</h4><p>Starlette 依註冊的反序執行 middleware，所以 plugins= 裡排在後面的 plugin 包在前面那些的外層</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_exception_handler(exc, handler)</h4><p>middleware 裡拋出的例外到不了 handler：Starlette 的 handler 那一層在使用者 middleware 的內側</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>include_router(router)</h4><p>給自帶端點的 plugin</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>mount_static(url, directory)</h4><p>給自帶資產的 plugin，掛載名稱由 plugin 名字衍生</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>warn(message)</h4><p>啟動期的設定檢查；訊息會冠上 plugin 名稱，以 PluginWarning 發出</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>app, config</h4><p>活的 FastAPI app 與 FjkitConfig，給上面兩個表達不了的檢查用</p>    </section>  </div></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        <code>warn()</code> 用於只有這個 plugin 認得出來的組合。例如正式設定配上記憶體版
+        session store：在開發機上正常，換到四個 worker 後面會隨機把人登出，
+        而且 traceback 裡沒有一行指向原因。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="extend">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">08</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">extend()：Jinja 與每一次渲染</h2><p class="text-muted-foreground text-sm">per-request 的 context，就是 globals 缺的那一塊。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        <code>FjkitConfig.globals</code> 每個 process 只算一次，適合版本字串，
+        不適合「現在登入的是誰」。<code>add_context_processor()</code> 補上另一半：
+        每次渲染執行一次，拿得到當下的 request。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>EnvSetup</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>add_template_dir(path)</h4><p>搜尋順序排在 app 的模板之後、kit 的之前——plugin 可以蓋掉 kit 的 macro，永遠蓋不掉 app 自己寫的檔案</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_global(name, value)</h4><p>整個 process 一個值</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_filter(name, fn)</h4><p>一個 Jinja filter</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>add_context_processor(fn, provides=[…])</h4><p>併進每個模板的 context，每次渲染一次</p>    </section>  </div></div></div>
+  </div>
+
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="auth plugin 的 extend()，全部" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
+    setup.add_context_processor(
+        lambda request: {&#34;session&#34;: getattr(request.state, &#34;auth&#34;, None)},
+        provides=[&#34;session&#34;],
+    )</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        兩個限制都是刻意的。processor 必須<strong>同步</strong>：它在
+        <code>Templates.page()</code> 裡執行，而那是 <code>def</code> handler 從 threadpool 進來的。
+        需要 I/O 的 plugin 在 middleware 裡做完，把結果留在 <code>request.state</code> 上，
+        上面那一行讀的正是這個。
+      </p>
+      <p>
+        <code>provides=</code> 是強制宣告，不是自動推得。沒有它，兩個 plugin 會默默搶同一個
+        <code>user</code>，只能靠渲染頁面時碰巧注意到。有了它，衝突變成一個點名雙方的啟動期錯誤。
+      </p>
+      <p>
+        <code>add_template_dir()</code> 是帶 UI 的 plugin 把 UI 帶進來的方式，第 04 節是範例。
+        位於 fjkit repository 內的 plugin 多一個步驟：Tailwind 的掃描範圍是 <code>fjkit.css</code>
+        裡一份明列的目錄清單，所以該 plugin 要把自己的模板目錄加進那份清單。
+        漏掉不會產生任何錯誤：模板照樣渲染，但裡面的 utility class 都不在樣式表裡，頁面看起來是壞的。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="rules">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">09</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">順序、碰撞與界線</h2><p class="text-muted-foreground text-sm">所有可能相撞的東西都在啟動時報錯，不會留到正式環境。</p>      </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>模板搜尋順序</h3><p>先找到的贏。</p>      </div>
+    </header>      <section>      <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+<th class=" ">順序</th>
+<th class=" ">屬於</th>
+<th class=" ">可以蓋掉</th>
+          </tr>
+        </thead>
+        <tbody>        <tr>
+          <td class="text-muted-foreground tabular-nums">1</td>
+          <td class="font-medium">app 的 template_dir</td>
+          <td class="">全部——這就是 fjkit eject</td>
+        </tr>
+        <tr>
+          <td class="text-muted-foreground tabular-nums">2</td>
+          <td class="font-medium">每個 plugin，依 plugins= 的順序</td>
+          <td class="">kit 的 macro，永遠不含 app 的檔案</td>
+        </tr>
+        <tr>
+          <td class="text-muted-foreground tabular-nums">3</td>
+          <td class="font-medium">kit</td>
+          <td class="">沒有</td>
+        </tr>
+</tbody>
+      </table>
+    </div>
+
+</section>
+  </div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>啟動時就拒絕</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>兩個 plugin 同名</h4><p>它們會在 request.state.&lt;name&gt; 上相撞，之後的錯誤訊息無法分辨是哪一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>兩個 plugin 搶同一個 global、filter 或 context key</h4><p>錯誤訊息會點名雙方，並要求改名或拿掉一個</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>processor 回傳沒宣告過的 key</h4><p>strict_undefined 會抓到，所以在開發階段就浮現</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>plugin 做不到的事</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>注入 markup</h4><p>      沒有任何 hook 能把 markup 塞進 shell。有的話，任何 plugin 都能在每一頁放一段
+      <code>&lt;script&gt;</code>，零建置與封閉詞彙表會同時失守。要出 UI 的
+      plugin 出的是模板，而且跟其他東西一樣要過 <code>fjkit check</code>。
+</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>讀取沒宣告的同伴</h4><p>要讀別的 plugin 就先宣告——uses = (&#34;flash&#34;,)——再用 setup.plugin(&#34;flash&#34;) 拿；app 沒註冊時拿到 None。沒宣告就查是啟動錯誤，被用的 plugin 排在使用者後面也是。順序仍然是你寫的順序：host 只檢查，不重排</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>在啟動時開連線</h4><p>沒有 lifespan hook。plugin 收的是 app 已經建好的 client，RedisStore 有一個 client 參數就是這個原因</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>

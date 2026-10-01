@@ -866,7 +866,7 @@ def test_stream_in_json_mode_still_returns_json(make_app):
 
 
 def test_the_kit_imports_nothing_outside_its_declared_dependencies():
-    """CHARTER §7 budgets fjkit's runtime dependencies and §11.2 makes each one
+    """CHARTER §4.1 budgets fjkit's runtime dependencies and §6 makes each one
     a human decision. This test makes the budget real: an import nobody signed
     off on fails here rather than turning up in a wheel."""
     from pathlib import Path
@@ -902,7 +902,7 @@ def test_the_kit_imports_nothing_outside_its_declared_dependencies():
 def test_no_part_of_the_kit_imports_a_charting_library():
     """The half of the old charts exemption that still earns its keep.
 
-    `fjkit.charts` ships Plotly's JavaScript (CHARTER §7 whitelists the bundle)
+    `fjkit.charts` ships Plotly's JavaScript (CHARTER §4.1 whitelists the bundle)
     but never the Python library: `figure_of` is duck-typed on
     `to_plotly_json()`. An `import plotly` anywhere in the package would quietly
     make the 20 MB `plotly.py` a runtime dependency of every install, and the

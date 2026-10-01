@@ -149,11 +149,13 @@
 
       {% set d_learn %}<a href="{{ url_for(request, "learn") }}">各個零件怎麼接，以及 htmx 送出什麼</a>{% endset %}
       {% set d_components %}<a href="{{ url_for(request, "components") }}">每一支 macro 的實際渲染，參數可以現場調整</a>{% endset %}
+      {% set d_demo %}<a href="{{ repo("examples/fjkit-demo") }}">同一批 macro 放在一支能跑的 app 裡</a>{% endset %}
+      {% set d_tokens %}<a href="{{ repo("packages/fjkit/src/fjkit/static/src/fjkit.css") }}">每個 variant 背後那張 token 表</a>{% endset %}
       {{ defs("接著讀", [
         ("上手", d_learn),
         ("元件", d_components),
-        ("examples/fjkit-demo/", "同一批 macro 放在一支能跑的 app 裡，在 repo 中"),
-        ("src/fjkit/static/src/fjkit.css", "每個 variant 背後那張 token 表"),
+        ("examples/fjkit-demo/", d_demo),
+        ("src/fjkit/static/src/fjkit.css", d_tokens),
       ]) }}
     {% endcall %}
   {% endcall %}

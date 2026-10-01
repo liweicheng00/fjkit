@@ -64,59 +64,61 @@ fjkit
   </li>
 </ul>
   </div>
-<div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>        <li>
-    <a href="learn.html#wiring">      <span>01 · Wiring: config, mount, templates</span>
+<div role="group" aria-label="Start here"><h3>Start here</h3>    <ul>          <li>
+    <a href="learn.html#wiring">      <span>01 · Wiring: config, mount, render</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#exchange">      <span>02 · The htmx request and response</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#targets">      <span>03 · hx-target and hx-swap</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#triggers">      <span>04 · hx-trigger: typing, scrolling, polling</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#partials">      <span>05 · Partials: one file, page and swap</span>
     </a>
   </li>
-        <li>
+</ul>
+  </div><div role="group" aria-label="Advanced htmx"><h3>Advanced htmx</h3>    <ul>          <li>
     <a href="learn.html#oob">      <span>06 · One reply, many regions: hx-swap-oob</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#broadcast">      <span>07 · One id, many fragments: HX-Trigger</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#state">      <span>08 · Page state: where the selected id lives</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#pending">      <span>09 · While the request is in flight</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#patterns">      <span>10 · Nine htmx patterns, and their handlers</span>
     </a>
   </li>
-        <li>
+</ul>
+  </div><div role="group" aria-label="Forms, messages, theming"><h3>Forms, messages, theming</h3>    <ul>          <li>
     <a href="learn.html#messages">      <span>11 · Messages: three layers</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#errors">      <span>12 · When a form is rejected</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#knob">      <span>13 · Rebranding: brand and status tokens</span>
     </a>
   </li>
-        <li>
+          <li>
     <a href="learn.html#gate">      <span>14 · fjkit check: the closed vocabulary</span>
     </a>
   </li>
@@ -136,8 +138,11 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Build the interface where you build the routes</h1>
-<p class="text-muted-foreground text-sm">    Fourteen lessons: how a fjkit app is wired, what htmx sends, what a rejected form does, how a
-    rebrand works, and the command that fails a build. Every demo below is live.
+<p class="text-muted-foreground text-sm">    Fourteen lessons in three stages. <strong>01–05</strong> are enough to build a screen: the
+    wiring, what htmx sends, and the partial a page and its swaps share. <strong>06–10</strong> are
+    for a page where one action updates several regions. <strong>11–14</strong> cover messages,
+    rejected forms, rebranding and <code>fjkit check</code>, and can be read in any order. Every
+    demo below runs a real htmx request.
 </p>    </div>
   </div>
 
@@ -153,9 +158,8 @@ fjkit
         <code>@render</code> names the template a route answers with.
       </p>
       <p>
-        Click through the four files. There is no <code>package.json</code> and no watcher to keep
-        running. <code>examples/fjkit-demo</code> in the repository is the same four files in a working
-        app.
+        The four files below are a complete app. <a href="https://github.com/liweicheng00/fjkit/tree/main/examples/fjkit-demo"><code>examples/fjkit-demo</code></a>
+        is the same four files with more pages.
       </p>
 </div>
 <div class="card">            <div class="tabs">
@@ -168,12 +172,8 @@ fjkit
 
   </div>
 <div class="flex flex-col gap-3">      <p>
-        The second tab is the one worth a picture. <code>base.html</code> is four blocks long because
-        <code>ui/shell.html</code> — the template it extends — already holds everything else: the
-        <code>&lt;head&gt;</code>, the script that applies dark mode before the first paint, the links
-        to the stylesheet and the three vendored scripts, and the header/main/footer skeleton. Below is
-        that file, drawn. The regions in the brand colour are the blocks you fill; everything else the
-        shell owns, and you never see it unless you go looking.
+        <code>base.html</code> is four blocks long because <code>ui/shell.html</code>, which it
+        extends, provides the rest. The diagram below shows it.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -223,12 +223,12 @@ fjkit
 </section>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        Four words below carry a specific meaning on this page, and every later lesson leans on them.
+        The rest of this page uses four terms in the sense defined here.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>The four words this page uses precisely</h3>      </div>
+<h3>Terms</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>markup</h4><p>HTML text — what a template produces before a browser parses it, like <code>&lt;div id="board"&gt;…&lt;/div&gt;</code>. When a later lesson says a route "has markup waiting", it means a template is ready to turn the handler's return value into HTML rather than into JSON</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>the shell</h4><p><code>ui/shell.html</code>, the figure above: the document around your page — <code>&lt;head&gt;</code>, header, <code>&lt;main&gt;</code>, footer, toaster</p>    </section>  </div><div class="item" data-clamp="false">    <section>
@@ -245,14 +245,8 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">The htmx request and response</h2><p class="text-muted-foreground text-sm">The server answers a swap with HTML. Nothing is serialised for it, and no client-side state is kept in sync.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        This is the whole idea, and it is smaller than it looks. An element names the request to make
-        and where to put the answer. The server answers with a piece of HTML — the same markup it
+        An element names the request to make and where to put the answer. The server answers with a piece of HTML — the same markup it
         would have put in the page — and htmx drops that piece into the element you named.
-      </p>
-      <p>
-        Nothing is serialised for the swap, nothing is re-rendered on the client, and no state lives
-        in two places. Press the button: <strong>the request below is real</strong>. htmx is loaded on
-        this page, and a mock server in the browser plays the FastAPI side.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -345,9 +339,8 @@ fjkit
 <h2 class="text-lg font-semibold tracking-tight">hx-target and hx-swap</h2><p class="text-muted-foreground text-sm">Two attributes decide everything: which element, and how it is replaced.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-target/">hx-target</a> picks the element.
-        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-swap/">hx-swap</a> says what to do with it. This pair
-        is where most htmx confusion lives, so try it against a live board. Every combination below
-        runs a real request and swaps the real response.
+        <a class="text-foreground underline underline-offset-4" href="https://htmx.org/attributes/hx-swap/">hx-swap</a> says what to do with it.  Every combination below
+        runs a real request against a live board and swaps the real response.
       </p>
       <p>
         <code>outerHTML</code> replaces the target itself, so the response has to include the wrapper.
@@ -367,7 +360,7 @@ fjkit
   </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>What that spells, and what came back</h3>      </div>
+<h3>The template looks like:</h3>      </div>
     </header>      <div class="border-t">        <pre class="code-block scrollbar" tabindex="0" id="swap-code"></pre>
       <div class="item-group scrollbar" id="swap-log"></div>
       <footer id="swap-caption"></footer>
@@ -423,7 +416,7 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Partials: one file, page and swap</h2><p class="text-muted-foreground text-sm">The page embeds the fragment the htmx endpoint returns — so they cannot drift.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        Now the fjkit half. A partial is any template whose name starts with an underscore. It never
+        A partial is any template whose name starts with an underscore. It never
         extends the shell, it declares its own imports, and it wraps itself in the element the swap
         replaces. The full page <code>{% include %}</code>s it; every htmx
         endpoint returns it bare.
@@ -431,8 +424,8 @@ fjkit
       <p>
         That is why a fjkit app has no "update the row" code path. Every mutation re-renders the
         whole board partial and swaps it. One definition of what a board looks like, used by the
-        first paint and by every request after it. The real files are
-        <code>examples/fjkit-demo/app/templates/tasks/</code> in the repository.
+        first paint and by every request after it. The working files are in
+        <a href="https://github.com/liweicheng00/fjkit/tree/main/examples/fjkit-demo/app/templates/tasks"><code>examples/fjkit-demo/app/templates/tasks/</code></a>.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -447,7 +440,7 @@ fjkit
 </section>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        Those two handlers name the same file, and the name is the part that misleads.
+        Both handlers name the same file.
         <strong><code>_board.html</code> is not one task.</strong> It is the entire board — the create
         form, the filter bar, the stats card and every row in the table, wrapped in the one
         <code>&lt;div id="board"&gt;</code> that every control on the page targets. The leading
@@ -603,7 +596,7 @@ fjkit
       </p>
 </div>
 <div class="flex flex-col gap-3">      <p>
-        Nothing about the trigger is special, and that is the point worth seeing before the reply. One
+        The trigger is ordinary: one
         input, one <code>hx-get</code>, one <code>hx-target</code> — the same shape as lesson 03. It
         names <code>#search-matches</code> and knows about no other region on the page.
       </p>
@@ -698,11 +691,10 @@ fjkit
 </div>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        The payoff is that the page decides where a fragment lives, once. Move the facet card from the
-        aside into the main column and the router, the response model and the swap are all unchanged.
-        The working files are
-        <code>examples/fjkit-demo/app/templates/search/</code> in the repository — and the next
-        lesson is the other half of that same page, because a real screen needs both.
+        The page decides where a fragment lives, once. Move the facet card from the aside into the
+        main column and the router, the response model and the swap are all unchanged. The working
+        files are in <a href="https://github.com/liweicheng00/fjkit/tree/main/examples/fjkit-demo/app/templates/search"><code>examples/fjkit-demo/app/templates/search/</code></a>.
+        Lesson 07 covers the other half of the same page.
       </p>
 </div>
 </section></div></div>
@@ -926,8 +918,8 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
 </div>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        The working files are <code>examples/fjkit-demo/app/routers/search.py</code> and
-        <code>app/templates/search/</code> — the same page as the last lesson. Every region there
+        The working files are <a href="https://github.com/liweicheng00/fjkit/tree/main/examples/fjkit-demo/app/routers/search.py"><code>app/routers/search.py</code></a> and
+        <a href="https://github.com/liweicheng00/fjkit/tree/main/examples/fjkit-demo/app/templates/search"><code>app/templates/search/</code></a> in the demo — the same page as lesson 06. Every region there
         carries a render stamp, so the page itself shows which regions an action reached, with no
         network tab. A query is one request and six new stamps. A pick is three requests and three
         stamps — the table, the detail panel, the siblings panel — while the counters, the progress
@@ -944,9 +936,8 @@ def advance_task(service: ServiceDep, task_id: int) -&gt; DetailResponse:
       <div>
 <h2 class="text-lg font-semibold tracking-tight">Page state: where the selected id lives</h2><p class="text-muted-foreground text-sm">The last lesson moved an id between regions. This one asks where that id lives when the page is reloaded.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        A pick drives four regions. Reload the page and every one of them has to come back to the same
-        task, or the pick was a trick of the DOM. So the question the last lesson leaves open is not how
-        the id travels between regions, but where it lives between requests.
+        A pick drives four regions. After a reload, all four have to show the same task again, so the
+        id needs a place that outlives the request.
       </p>
       <p>
         The state the server reads in order to answer — which record, which page, which sort column —
@@ -988,8 +979,8 @@ def select_task(request: Request, response: Response, service: ServiceDep, task_
       </p>
 </div>
 <div class="flex flex-col gap-3">      <p>
-        The working files are <code>examples/fjkit-demo/app/routers/panels.py</code> and
-        <code>app/templates/panels/</code>. Pick a row and watch the address bar; reload, and the same
+        The working files are <a href="https://github.com/liweicheng00/fjkit/tree/main/examples/fjkit-demo/app/routers/panels.py"><code>app/routers/panels.py</code></a> and
+        <a href="https://github.com/liweicheng00/fjkit/tree/main/examples/fjkit-demo/app/templates/panels"><code>app/templates/panels/</code></a> in the demo. Pick a row and watch the address bar; reload, and the same
         task is open with the same panel showing. Open a second tab on a different task and neither one
         moves the other.
       </p>
@@ -1127,7 +1118,7 @@ def select_task(request: Request, response: Response, service: ServiceDep, task_
 <h3>Not yet, on purpose</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>dialogs</h4><p>hx-confirm until then — it is the browser&#39;s own, and it works</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>sorting</h4><p>a filter bar with different query params; the table macro learns it in 0.4</p>    </section>  </div></div></div>
+      <h4>sorting</h4><p>a filter bar with different query params until the table macro supports it</p>    </section>  </div></div></div>
   </div>
 </div>
 </section></div></div>
@@ -1234,7 +1225,7 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
         response htmx will not swap at all. htmx reads <code>HX-Trigger</code> in
         <code>handleAjaxResponse</code> <strong>before</strong> it consults
         <code>responseHandling</code> for the status code, so a 422 or a 500 can still raise a toast
-        on the page the person is looking at. That is the entire delivery mechanism for section 11.
+        on the page the person is looking at.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -1260,7 +1251,7 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
 <div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">12</span>
 <span class="badge" data-variant="secondary">fjkit.errors</span></div><section class="flex flex-col gap-6">
       <div>
-<h2 class="text-lg font-semibold tracking-tight">When a form is rejected</h2><p class="text-muted-foreground text-sm">A rejected form used to be a screen of JSON. Now it says what was wrong, under the field, and no route asked for that.</p>      </div>
+<h2 class="text-lg font-semibold tracking-tight">When a form is rejected</h2><p class="text-muted-foreground text-sm">A rejected form shows each message under its field. No route has to handle the rejection.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         FastAPI answers a rejected form with <code>{"detail":[{"type":"missing",…}]}</code> and a
         422. For an API that is right. For a page it is nothing: htmx does not swap a 4xx, so the
@@ -1311,7 +1302,7 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
 </section>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        The last row is the one worth saying out loud. A caller that did not ask for markup keeps
+        A caller that did not ask for markup keeps
         <code>{"detail": …}</code>, because turning an API's error into an HTML page would be a worse
         bug than the one this fixes. The first row is the same bytes, which is the whole design: an
         endpoint that is also somebody's API has one error contract, and the page reads it the way
@@ -1484,7 +1475,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
   </div>
 <div class="flex flex-col gap-3">      <p>
         A blocked class is information: it names the component or the parameter that does not exist
-        yet. When 0.1 landed, the pre-fjkit templates scored 258 violations; the rewrite scores 0.
+        yet. Open an issue with the class it blocked.
       </p>
 </div>
 <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -1501,9 +1492,9 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 <h3>Read next</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>Components</h4><p><a href="components.html">every signature and enumeration, live</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>examples/fjkit-demo/</h4><p>the same patterns in a working app, in the repo</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>src/fjkit/static/src/fjkit.css</h4><p>every token, defined once — the file a rebrand overrides</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>docs/jinja-performance.md</h4><p>page() against stream(), and the numbers behind the advice</p>    </section>  </div></div></div>
+      <h4>examples/fjkit-demo/</h4><p><a href="https://github.com/liweicheng00/fjkit/tree/main/examples/fjkit-demo">the same patterns in a working app</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit.css</h4><p><a href="https://github.com/liweicheng00/fjkit/tree/main/packages/fjkit/src/fjkit/static/src/fjkit.css">every token, defined once — the file a rebrand overrides</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>jinja-performance.md</h4><p><a href="https://github.com/liweicheng00/fjkit/tree/main/docs/jinja-performance.md"><code>page()</code> against <code>stream()</code>, and the numbers behind the advice</a></p>    </section>  </div></div></div>
   </div>
 </div>
 </section></div></div>

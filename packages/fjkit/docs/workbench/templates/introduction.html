@@ -1,28 +1,28 @@
 {% extends "base.html" %}
-{% from "_parts.html" import defs, lesson, prose %}
+{% from "_parts.html" import code, defs, lesson, prose %}
 {% from "ui/layout.html" import grid, page_header, stack %}
 
 {#
-  The landing page: what fjkit is, who it is for, and where to go next.
+  The landing page: what fjkit is, a first page in four steps, and which page
+  answers which question next.
 
-  Nothing is explained here for the only time. Every claim on this page is
-  demonstrated on one of the other two — the wiring on Learn, the signatures on
-  Components — so this page stays short and hands over.
+  Every claim here is demonstrated on another page — the wiring and htmx on
+  Learn, the signatures on Components — so this page stays short and hands over.
+  The one thing it must not hand over is the first run: a reader who stops after
+  01 has a working page.
 
-  House style, and the reason this page reads the way it does: one idea per
-  sentence, the takeaway first, and no aside a full stop could have replaced. A
-  reader who stops after the feature list still knows what this is.
+  House style: one idea per sentence, the takeaway first.
 #}
 {% set sections = [
-  {"id": "who",       "num": "01", "title": "Who it is for"},
-  {"id": "box",       "num": "02", "title": "What ships in the wheel"},
-  {"id": "next",      "num": "03", "title": "Where to go next"},
+  {"id": "start",     "num": "01", "title": "Get started"},
+  {"id": "who",       "num": "02", "title": "Who it is for"},
+  {"id": "box",       "num": "03", "title": "What ships in the wheel"},
+  {"id": "next",      "num": "04", "title": "Where to go next"},
 ] %}
 
 {#
-  Three, and they are the three that decide whether someone keeps reading. Every
-  other promise this project makes is on Learn, where it is demonstrated rather
-  than asserted, and in CHARTER.md §2, where the reasoning is.
+  Three, and they are the three that decide whether someone keeps reading. The
+  reasoning behind each is in CHARTER.md §2.
 
   Plain strings, not Markup: a feature that needs a <code> in it has not been
   written plainly enough for a landing page.
@@ -31,77 +31,134 @@
   ("No build step",
    "No package.json, no node_modules, no watcher. The stylesheet is compiled when fjkit is released, not when your app runs."),
   ("One colour knob",
-   "Every colour is a token. Rebranding is one file, and green still means done afterwards."),
-  ("Mounts on your existing API",
-   "Every htmx endpoint answers curl with JSON. Same route, same handler, same return annotation."),
+   "Every colour is a token. Rebranding is one stylesheet, and status colours stay put, so green still means done."),
+  ("The htmx endpoint is also the JSON API",
+   "A route that renders a partial answers htmx with HTML and every other caller with its response model as JSON."),
 ] %}
 
 {% block content %}
 {% call stack(8) %}
 
   {% set intro %}
-    An integration of Jinja, Tailwind CSS and shadcn-style components, for FastAPI.
+    Pages, tables, forms, navigation and htmx swaps for FastAPI, written as Jinja macros next to
+    your routes.
   {% endset %}
   {{ page_header("A Fast UI for FastAPI", intro) }}
 
   {{ defs("The key features are:", features) }}
 
   {# ============================================================== 01 #}
-  {% set i01 %}A back-end developer who needs a real interface and no front-end toolchain.{% endset %}
-  {% call lesson("who", "01", "Who it is for", i01) %}
+  {% set i01 %}Install one package, write a handler and a template, run the app.{% endset %}
+  {% call lesson("start", "01", "Get started", i01) %}
+    {% call prose() %}
+      <p>Requires Python 3.13 or newer.</p>
+    {% endcall %}
+
+    {{ code("uv add fjkit", "bash", label="1 · install") }}
+
+    {{ code("from pathlib import Path
+
+from fastapi import FastAPI
+from fjkit import FjkitConfig, mount_fjkit, render
+from pydantic import BaseModel
+
+app = FastAPI()
+mount_fjkit(app, FjkitConfig(template_dir=Path(__file__).parent / \"templates\"))
+
+
+class Overview(BaseModel):
+    done: int
+
+
+@app.get(\"/\")
+@render(\"overview.html\")
+def overview() -> Overview:
+    return Overview(done=18)", label="2 · app/main.py") }}
+
     {% call prose() %}
       <p>
-        You already write FastAPI. You need navigation, dark mode, a filterable table and a form that
-        validates. This is for you.
-      </p>
-      <p>
-        If you are bringing React, Vue or Svelte, this is the wrong layer. That is a decision, not a
-        gap.
+        <code>mount_fjkit</code> serves the stylesheet and the vendored JavaScript and builds the
+        Jinja environment. <code>@render</code> goes below <code>@app.get</code> and passes the
+        fields of the returned model to the template.
       </p>
     {% endcall %}
 
-    {{ defs("What it should cost you", [
-      ("a first page", "navigation and dark mode in about twenty lines of Python, with no build step"),
-      ("an admin screen", "list, filters, a create form and htmx updates in an afternoon. No CSS, no JavaScript."),
-      ("a rebrand", "one stylesheet of token overrides, loaded after the kit's"),
-      ("an upgrade", "a version bump. The stylesheet lives in the wheel, not in your repository."),
-    ]) }}
+    {{ code("{% extends \"ui/shell.html\" %}
+{% from \"ui/layout.html\" import page_header, grid %}
+{% from \"ui/data.html\" import stat %}
+
+{% block content %}
+  {{ page_header(\"Overview\", \"How the board is doing\") }}
+  {% call grid(cols=4) %}
+    {{ stat(\"Done\", done, tone=\"success\", icon_name=\"check\") }}
+  {% endcall %}
+{% endblock %}", "jinja", label="3 · app/templates/overview.html") }}
+
+    {{ code("uv run fastapi dev app/main.py", "bash", label="4 · run") }}
+
+    {% call prose() %}
+      <p>
+        Open <code>http://127.0.0.1:8000</code>. The page has a header, a dark-mode toggle and one
+        stat card. The template has no CSS classes and no colours: macros take named options such as
+        <code>tone="success"</code>, and the shipped stylesheet covers them.
+      </p>
+      <p>
+        Add <code>uv run fjkit check app/templates</code> to CI. It fails when a template uses a
+        class or a colour outside the kit's vocabulary.
+      </p>
+    {% endcall %}
   {% endcall %}
 
   {# ============================================================== 02 #}
-  {% set i02 %}One wheel, two runtime dependencies, and nothing for you to compile.{% endset %}
-  {% call lesson("box", "02", "What ships in the wheel", i02) %}
+  {% set i02 %}A back-end developer who needs a real interface and no front-end toolchain.{% endset %}
+  {% call lesson("who", "02", "Who it is for", i02) %}
+    {% call prose() %}
+      <p>
+        You write FastAPI and need navigation, dark mode, a filterable table and a form that
+        validates. If you want React, Vue or Svelte, use them instead: fjkit renders on the server
+        and has no client-side component model.
+      </p>
+    {% endcall %}
+
+    {{ defs("What it costs", [
+      ("a first page", "about twenty lines, as in 01, with no build step"),
+      ("an admin screen", "a list, filters, a create form and htmx updates, with no CSS and no JavaScript"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 03 #}
+  {% set i03 %}One wheel, two runtime dependencies, and nothing for you to compile.{% endset %}
+  {% call lesson("box", "03", "What ships in the wheel", i03) %}
     {% call grid(cols=2, gap=4) %}
       {{ defs("Shipped in the package", [
         ("templates/ui/", "the macros: layout, buttons, data, forms, tables, tabs, navigation, sidebar, feedback, icons, and the document shell"),
-        ("static/dist/fjkit-<pack>.css", "the compiled stylesheet, one per style pack. 234 KB raw, 23.9 KB gzip, under a 28 KB budget the build enforces. A page loads one."),
+        ("static/dist/fjkit-<pack>.css", "the compiled stylesheet, one per style pack. 234 KB raw, 23.9 KB gzip; the build fails above 28 KB. A page loads one."),
         ("static/vendor/", "htmx and Basecoat's JavaScript, pinned and served out of the package"),
         ("1,767 icons", "Lucide, inlined by name. No icon font, no sprite request, no runtime JS."),
       ]) }}
       {{ defs("The whole surface you touch", [
         ("FjkitConfig, mount_fjkit", "the wiring, once per app"),
-        ("@render", "name a template on the decorator; the handler returns data"),
-        ("fjkit check", "the vocabulary gate. Run it in your CI."),
-        ("fjkit eject", "the escape hatch: take one macro into your app and edit it"),
+        ("@render", "names the template; the handler returns data"),
       ]) }}
     {% endcall %}
 
     {% call prose() %}
-      <p>
-        Requirements: Python 3.13 or newer, and two runtime dependencies — FastAPI and Jinja2. Adding
-        a third needs an argument nobody has made yet.
-      </p>
+      <p>Runtime dependencies: FastAPI and Jinja2.</p>
     {% endcall %}
   {% endcall %}
 
-  {# ============================================================== 03 #}
-  {% set i03 %}Two pages. One shows you the wiring, the other shows you every macro.{% endset %}
-  {% call lesson("next", "03", "Where to go next", i03) %}
-    {% set n_learn %}<a href="{{ url_for(request, "learn") }}">how the kit is wired, what htmx sends, and the gate that fails a build</a>{% endset %}
-    {% set n_components %}<a href="{{ url_for(request, "components") }}">every macro, live, with the call that made it</a>{% endset %}
+  {# ============================================================== 04 #}
+  {% set i04 %}Pick the page by what you are trying to do.{% endset %}
+  {% call lesson("next", "04", "Where to go next", i04) %}
+    {% set n_learn %}<a href="{{ url_for(request, "learn") }}">Learn</a> — how the app is wired, how htmx swaps work, form errors, messages, rebranding and <code>fjkit check</code>. Read 01–05 first.{% endset %}
+    {% set n_components %}<a href="{{ url_for(request, "components") }}">Components</a> — every macro, live, with the call that produced it{% endset %}
+    {% set n_cheatsheet %}<a href="{{ url_for(request, "cheatsheet") }}">Cheatsheet</a> — every signature, shell block, template global and htmx attribute on one page{% endset %}
+    {% set n_plugins %}<a href="{{ url_for(request, "plugins") }}">Plugins</a> — sign-in, flash messages, charts, an API console and an admin, and how to write your own{% endset %}
     {{ defs("On this site", [
-      ("Learn", n_learn),
-      ("Components", n_components),
+      ("build my first real screen", n_learn),
+      ("find a component", n_components),
+      ("look up a parameter", n_cheatsheet),
+      ("add auth, charts or an admin", n_plugins),
     ]) }}
   {% endcall %}
 

@@ -57,7 +57,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-# Back to two. `pydantic` was the third from 0.3 (CHARTER.md §7, §11.2) and it
+# Back to two. `pydantic` was the third from 0.3 (CHARTER.md §4.1, §6) and it
 # left with `figures.py` when charts became `fjkit-charts` — that module was its
 # only importer. The kit itself never imports pydantic and says so out loud:
 # `rendering.py` duck-types rather than isinstance, and `errors.py` takes

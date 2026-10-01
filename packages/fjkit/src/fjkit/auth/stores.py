@@ -1,7 +1,7 @@
 """The two backends that ship, and an adapter for a blocking third.
 
 Neither imports a database driver. `RedisStore` takes a client the app already
-built, which keeps fjkit's runtime dependencies at two (CHARTER §7) and also
+built, which keeps fjkit's runtime dependencies at two (CHARTER §4.1) and also
 works with Valkey, fakeredis, or anything else exposing the same four methods.
 """
 

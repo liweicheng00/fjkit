@@ -4,7 +4,7 @@
 
 That gives an app the `chart` macro, the theming bridge, the Plotly bundle and
 the two `<script>` lines that load them. Nothing to download, nothing to mount:
-Plotly ships inside this wheel — one of the scripts CHARTER §7 whitelists — and
+Plotly ships inside this wheel — one of the scripts CHARTER §4.1 whitelists — and
 is served from this plugin's own static mount.
 
 **The division of labour.** Python decides the shape of the figure; the browser

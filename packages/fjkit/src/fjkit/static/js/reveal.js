@@ -22,7 +22,7 @@
   markup is authoritative, and a remembered boolean would describe the element
   that used to be there.
 
-  Loaded per page by `reveal_scripts()`, never from the shell (CHARTER §7).
+  Loaded per page by `reveal_scripts()`, never from the shell (CHARTER §4.2).
 */
 (() => {
   const BUTTON = "[data-fjkit-reveal]"

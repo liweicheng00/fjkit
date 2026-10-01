@@ -8,38 +8,39 @@
 
 {#
   「上手」的中文版。id、控制項與腳本掛點跟英文版逐字相同：learn.js 只有一支，
-  兩個語言共用，所以這裡只有文字不同。
+  兩個語言共用，所以這裡只有文字不同。`group` 是側欄把每一課歸入的閱讀階段。
 #}
 {% set sections = [
-  {"id": "wiring",   "num": "01", "title": "接線：config、mount、templates"},
-  {"id": "exchange", "num": "02", "title": "htmx 的請求與回應"},
-  {"id": "targets",  "num": "03", "title": "hx-target 與 hx-swap"},
-  {"id": "triggers", "num": "04", "title": "hx-trigger：打字、捲動、輪詢"},
-  {"id": "partials", "num": "05", "title": "partial：一份檔案，整頁與局部共用"},
-  {"id": "oob",      "num": "06", "title": "一次回應，換掉好幾塊：hx-swap-oob"},
-  {"id": "broadcast","num": "07", "title": "一個 id，好幾份 fragment：HX-Trigger"},
-  {"id": "state",    "num": "08", "title": "頁面狀態：被選取的 id 住在哪裡"},
-  {"id": "pending",  "num": "09", "title": "請求進行中的那段時間"},
-  {"id": "patterns", "num": "10", "title": "九種 htmx 模式，以及對應的 handler"},
-  {"id": "messages", "num": "11", "title": "訊息：三層"},
-  {"id": "errors",   "num": "12", "title": "表單被退回的時候"},
-  {"id": "knob",     "num": "13", "title": "換品牌：品牌 token 與狀態 token"},
-  {"id": "gate",     "num": "14", "title": "fjkit check：封閉詞彙表"},
+  {"id": "wiring",   "num": "01", "title": "接線：config、mount、render", "group": "從這裡開始"},
+  {"id": "exchange", "num": "02", "title": "htmx 的請求與回應", "group": "從這裡開始"},
+  {"id": "targets",  "num": "03", "title": "hx-target 與 hx-swap", "group": "從這裡開始"},
+  {"id": "triggers", "num": "04", "title": "hx-trigger：打字、捲動、輪詢", "group": "從這裡開始"},
+  {"id": "partials", "num": "05", "title": "partial：一份檔案，整頁與局部共用", "group": "從這裡開始"},
+  {"id": "oob",      "num": "06", "title": "一次回應，換掉好幾塊：hx-swap-oob", "group": "進階 htmx"},
+  {"id": "broadcast","num": "07", "title": "一個 id，好幾份 fragment：HX-Trigger", "group": "進階 htmx"},
+  {"id": "state",    "num": "08", "title": "頁面狀態：被選取的 id 住在哪裡", "group": "進階 htmx"},
+  {"id": "pending",  "num": "09", "title": "請求進行中的那段時間", "group": "進階 htmx"},
+  {"id": "patterns", "num": "10", "title": "九種 htmx 模式，以及對應的 handler", "group": "進階 htmx"},
+  {"id": "messages", "num": "11", "title": "訊息：三層", "group": "表單、訊息與主題"},
+  {"id": "errors",   "num": "12", "title": "表單被退回的時候", "group": "表單、訊息與主題"},
+  {"id": "knob",     "num": "13", "title": "換品牌：品牌 token 與狀態 token", "group": "表單、訊息與主題"},
+  {"id": "gate",     "num": "14", "title": "fjkit check：封閉詞彙表", "group": "表單、訊息與主題"},
 ] %}
 
 {% block content %}
 {% call stack(8) %}
 
   {% set intro %}
-    十四課：一支 fjkit app 怎麼接、htmx 實際送出什麼、表單被退回時會怎樣、換品牌怎麼換，
-    以及那個會讓 build 失敗的指令。
-    底下每個示範都會實際執行。
+    十四課，分三個階段。<strong>01–05</strong> 足以做出一個畫面：接線、htmx 送出什麼，
+    以及整頁與局部更新共用的 partial。<strong>06–10</strong> 適用於一次動作要更新好幾塊區域的頁面。
+    <strong>11–14</strong> 涵蓋訊息、被退回的表單、換品牌與 <code>fjkit check</code>，可依任意順序閱讀。
+    底下每個示範都會發出真正的 htmx 請求。
   {% endset %}
   {{ page_header("在寫路由的地方，把介面一起寫完", intro) }}
 
   {# ============================================================== 01 #}
   {% set t01 %}接觸點只有三個；其餘寫的都是你的 app，不是前端。{% endset %}
-  {% call lesson("wiring", "01", "接線：config、mount、templates", t01) %}
+  {% call lesson("wiring", "01", "接線：config、mount、render", t01) %}
     {% call prose() %}
       <p>
         一支 fjkit app 只在三個地方接觸 kit。<code>FjkitConfig</code> 收下所有設定。
@@ -47,8 +48,8 @@
         並在每個 process 建立一次 Jinja environment。<code>@render</code> 指名路由要用的模板。
       </p>
       <p>
-        底下四個檔案可以逐一點開。沒有 <code>package.json</code>，也不需要開著 watcher。
-        repo 裡的 <code>examples/fjkit-demo</code> 就是同樣這四個檔案，放在一支能跑的 app 裡。
+        底下四個檔案就是一支完整的 app。<a href="{{ repo("examples/fjkit-demo") }}"><code>examples/fjkit-demo</code></a>
+        是同樣這四個檔案，再加上更多頁面。
       </p>
     {% endcall %}
 
@@ -64,11 +65,8 @@
 
     {% call prose() %}
       <p>
-        第二個分頁值得配一張圖。<code>base.html</code> 只有四個 block，是因為它 extends 的
-        <code>ui/shell.html</code> 已經拿走其餘部分：<code>&lt;head&gt;</code>、
-        第一次繪製前就套用深色模式的那支腳本、指向 stylesheet 與三支 vendored 腳本的連結，
-        以及 header／main／footer 這副骨架。底下就是那個檔案畫出來的樣子。
-        用品牌色標起來的區塊是你要填的 block，其餘由外殼負責，你不去翻它就不會看到。
+        <code>base.html</code> 只有四個 block，其餘部分（<code>&lt;head&gt;</code>、腳本、header／main／footer）
+        由它 extends 的 <code>ui/shell.html</code> 提供，如下圖。
       </p>
     {% endcall %}
 
@@ -79,7 +77,7 @@
 
     {% call prose() %}
       <p>
-        底下四個詞在這一頁有固定的意思，後面每一課都靠它們。
+        本頁其餘部分依下列定義使用這四個詞。
       </p>
     {% endcall %}
 
@@ -87,7 +85,7 @@
     {% set w_shell %}指 <code>ui/shell.html</code>，也就是上面那張圖：包在你的頁面外面的那份文件——<code>&lt;head&gt;</code>、header、<code>&lt;main&gt;</code>、footer 與 toaster{% endset %}
     {% set w_fragment %}一段不成文件的 HTML：沒有 <code>&lt;!doctype&gt;</code>、沒有 <code>&lt;head&gt;</code>，只有那幾個元素。htmx 的回應裝的就是它{% endset %}
     {% set w_partial %}渲染出 fragment 的那份模板。檔名以底線開頭，不 extends 外殼，整頁與 htmx 端點共用同一份——第 05 課{% endset %}
-    {{ defs("這一頁固定用法的四個詞", [
+    {{ defs("用詞", [
       ("markup（標記）", w_markup),
       ("外殼 shell", w_shell),
       ("fragment（片段）", w_fragment),
@@ -102,11 +100,6 @@
       <p>
         一個元素說明要發哪個請求，以及答案要放在哪裡。伺服器回一段 HTML，
         內容就是它本來會放進整頁的那段標記。htmx 把那段放進指名的元素裡。
-      </p>
-      <p>
-        沒有東西被序列化，前端不重新渲染，狀態也不會同時存在兩個地方。
-        按下底下的按鈕會發出真正的請求：
-        這一頁載了 htmx，並由瀏覽器裡的一支 mock server 扮演 FastAPI 那一側。
       </p>
     {% endcall %}
 
@@ -143,8 +136,7 @@
       <p>
         {{ link("hx-target", "https://htmx.org/attributes/hx-target/") }} 挑元素，
         {{ link("hx-swap", "https://htmx.org/attributes/hx-swap/") }} 決定怎麼處理它。
-        htmx 最常見的誤解出在這一對上，所以底下用一塊真的板子試。
-        每一種組合都會發出真的請求，換進去的也是真的回應。
+        底下每一種組合都會對一塊真的板子發出請求，換進去的也是真的回應。
       </p>
       <p>
         <code>outerHTML</code> 換掉目標元素本身，所以回應必須包含那層外框。
@@ -161,7 +153,7 @@
       <div id="swap-live"></div>
     {% endcall %}
 
-    {% call stage("這組合怎麼寫，以及回來了什麼", padded=false) %}
+    {% call stage("模板長這樣：", padded=false) %}
       {{ code_block("", id="swap-code") }}
       <div class="item-group scrollbar" id="swap-log"></div>
       <footer id="swap-caption"></footer>
@@ -218,7 +210,7 @@
         所以 fjkit app 裡沒有「更新那一列」這條程式路徑：
         每一次異動都重新渲染整塊板子的 partial 再換進去。
         板子的樣子只有一份定義，第一次繪製與之後每個請求都用它。
-        檔案在 repo 的 <code>examples/fjkit-demo/app/templates/tasks/</code>。
+        可以動手改的檔案在 <a href="{{ repo("examples/fjkit-demo/app/templates/tasks") }}"><code>examples/fjkit-demo/app/templates/tasks/</code></a>。
       </p>
     {% endcall %}
 
@@ -238,7 +230,7 @@
 
     {% call prose() %}
       <p>
-        上面兩個 handler 指的是同一份檔案，而容易誤會的正是這個檔名。
+        上面兩個 handler 指的是同一份檔案。
         <strong><code>_board.html</code> 不是一筆任務。</strong>它是整塊板子——新增表單、篩選列、
         統計卡，以及表格裡的每一列，全部包在那個所有控制項都指著的
         <code>&lt;div id="board"&gt;</code> 裡。開頭的底線意思是「這不是一頁」，不是「這很小」。
@@ -384,7 +376,7 @@
 
     {% call prose() %}
       <p>
-        看回應之前，先看觸發的那一端：它一點都不特別，而這正是重點。一個輸入框、一個
+        觸發的那一端很普通：一個輸入框、一個
         <code>hx-get</code>、一個 <code>hx-target</code>，形狀跟第 03 課一樣。
         它指名 <code>#search-matches</code>，頁面上其他區塊它一個都不知道。
       </p>
@@ -475,10 +467,10 @@
 
     {% call prose() %}
       <p>
-        好處是版面位置由頁面決定，而且只決定一次。把 facet 卡從側欄搬到主欄，
-        router、response model 與 swap 都不用改。檔案在 repo 的
-        <code>examples/fjkit-demo/app/templates/search/</code>。下一課講同一頁的另一半，
-        因為實際畫面兩種都需要。
+        版面位置由頁面決定，而且只決定一次。把 facet 卡從側欄搬到主欄，
+        router、response model 與 swap 都不用改。可以動手改的檔案在
+        <a href="{{ repo("examples/fjkit-demo/app/templates/search") }}"><code>examples/fjkit-demo/app/templates/search/</code></a>。
+        第 07 課講同一頁的另一半。
       </p>
     {% endcall %}
   {% endcall %}
@@ -672,8 +664,8 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
 
     {% call prose() %}
       <p>
-        可以動手改的檔案在 repo 的 <code>examples/fjkit-demo/app/routers/search.py</code> 與
-        <code>app/templates/search/</code>，跟上一課同一頁。那裡每一塊區域都帶著渲染時間戳，
+        可以動手改的檔案是 demo 裡的 <a href="{{ repo("examples/fjkit-demo/app/routers/search.py") }}"><code>app/routers/search.py</code></a> 與
+        <a href="{{ repo("examples/fjkit-demo/app/templates/search") }}"><code>app/templates/search/</code></a>，跟第 06 課同一頁。那裡每一塊區域都帶著渲染時間戳，
         所以哪一次動作動到哪幾塊在頁面上就讀得出來，不必打開 network 分頁。
         一次查詢是一個請求、六個新的時間戳。一次選取是三個請求、三個時間戳——結果表、detail 面板、
         同負責人面板——計數、進度卡與 facet 卡不動。一次推進是五個，只有 facet 卡不動。
@@ -686,8 +678,8 @@ def advance_task(service: ServiceDep, task_id: int) -> DetailResponse:
   {% call lesson("state", "08", "頁面狀態：被選取的 id 住在哪裡", t08, tag="htmx") %}
     {% call prose() %}
       <p>
-        一次選取決定四塊區域的內容。重新整理之後，這四塊都必須回到同一筆任務，否則那次選取只是
-        DOM 上的假象。所以上一課留下的問題不是 id 怎麼在區域之間傳遞，而是它在兩次請求之間住在哪裡。
+        一次選取決定四塊區域的內容。重新整理之後，這四塊都必須再顯示同一筆任務，
+        所以 id 需要一個比單次請求活得更久的位置。
       </p>
       <p>
         伺服器為了回答這個請求而讀的狀態——哪一筆紀錄、第幾頁、依哪一欄排序——放在 URL 裡，
@@ -730,8 +722,8 @@ def select_task(request: Request, response: Response, service: ServiceDep, task_
 
     {% call prose() %}
       <p>
-        可以動手改的檔案在 <code>examples/fjkit-demo/app/routers/panels.py</code> 與
-        <code>app/templates/panels/</code>。選一列，看網址列；重新整理，同一筆任務、
+        可以動手改的檔案是 demo 裡的 <a href="{{ repo("examples/fjkit-demo/app/routers/panels.py") }}"><code>app/routers/panels.py</code></a> 與
+        <a href="{{ repo("examples/fjkit-demo/app/templates/panels") }}"><code>app/templates/panels/</code></a>。選一列，看網址列；重新整理，同一筆任務、
         同一個面板還在。再開第二個分頁選另一筆，兩邊互不影響。
       </p>
     {% endcall %}
@@ -863,7 +855,7 @@ def select_task(request: Request, response: Response, service: ServiceDep, task_
       ]) }}
       {{ defs("刻意還沒做的", [
         ("對話框", "先用 hx-confirm：那是瀏覽器內建的，而且可用"),
-        ("排序", "換一組 query 參數的篩選列；table macro 在 0.4 支援"),
+        ("排序", "在 table macro 支援之前，用換一組 query 參數的篩選列代替"),
       ]) }}
     {% endcall %}
   {% endcall %}
@@ -942,7 +934,7 @@ messages.add(request, \"Could not save\", \"The title is required.\", category=\
         而 toast 該待的區域在頁面上的別處。它也能用在 htmx 不會 swap 的回應上：htmx 在
         <code>handleAjaxResponse</code> 裡讀 <code>HX-Trigger</code> 的時機，早於它查
         <code>responseHandling</code> 決定這個狀態碼要不要換內容，所以一個 422 或 500 照樣能在
-        使用者正在看的那一頁上跳出 toast。第 11 節整套送達機制就是這個。
+        使用者正在看的那一頁上跳出 toast。
       </p>
     {% endcall %}
 
@@ -964,7 +956,7 @@ messages.add(request, \"Could not save\", \"The title is required.\", category=\
   {% endcall %}
 
   {# ============================================================== 12 #}
-  {% set t12 %}表單被退回時，錯誤標在欄位下面，不再是一整頁 JSON，而且不需要任何一條路由要求。{% endset %}
+  {% set t12 %}表單被退回時，每則訊息顯示在對應欄位下方。沒有任何路由需要處理退回。{% endset %}
   {% call lesson("errors", "12", "表單被退回的時候", t12, tag="fjkit.errors") %}
     {% call prose() %}
       <p>
@@ -1006,7 +998,7 @@ messages.add(request, \"Could not save\", \"The title is required.\", category=\
 
     {% call prose() %}
       <p>
-        最後那一列值得講明白。沒有要 markup 的呼叫端拿到的還是 <code>{"detail": …}</code>，
+        沒有要 markup 的呼叫端拿到的還是 <code>{"detail": …}</code>，
         因為把一個 API 的錯誤變成一頁 HTML，會是比這裡要修的問題更糟的 bug。
         第一列是同樣的位元組，這正是整個設計：一個同時也是別人 API 的端點只有一份錯誤契約，
         頁面讀它的方式跟其他客戶端一樣。
@@ -1176,7 +1168,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
     {% call prose() %}
       <p>
         被擋下來的 class 指名了還不存在的元件或參數。
-        0.1 落地時，改寫前的模板有 258 條違規，改寫後是 0。
+        請附上被擋下的 class 開一個 issue。
       </p>
     {% endcall %}
 
@@ -1188,11 +1180,14 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
         ("fjkit build-css", "fjkit 自己的發佈步驟，不是你的"),
       ]) }}
       {% set d_components %}<a href="{{ url_for(request, "components") }}">每個簽名與列舉的實際渲染</a>{% endset %}
+      {% set d_demo %}<a href="{{ repo("examples/fjkit-demo") }}">同樣這些模式放在一支能跑的 app 裡</a>{% endset %}
+      {% set d_tokens %}<a href="{{ repo("packages/fjkit/src/fjkit/static/src/fjkit.css") }}">每個 token 只定義一次；換品牌覆蓋的就是這支檔案</a>{% endset %}
+      {% set d_perf %}<a href="{{ repo("docs/jinja-performance.md") }}"><code>page()</code> 對 <code>stream()</code>，以及那些建議背後的數字</a>{% endset %}
       {{ defs("接著讀", [
         ("元件", d_components),
-        ("examples/fjkit-demo/", "同樣這些模式放在一支能跑的 app 裡，在 repo 中"),
-        ("src/fjkit/static/src/fjkit.css", "每個 token 只定義一次；換品牌覆蓋的就是這支檔案"),
-        ("docs/jinja-performance.md", "page() 對 stream()，以及那些建議背後的數字"),
+        ("examples/fjkit-demo/", d_demo),
+        ("fjkit.css", d_tokens),
+        ("jinja-performance.md", d_perf),
       ]) }}
     {% endcall %}
   {% endcall %}

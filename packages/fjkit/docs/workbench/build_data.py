@@ -432,7 +432,7 @@ live = {
 
 # ---------------------------------------------------------------- gallery
 # The macros with nothing to turn: one rendered example each, which is what
-# CHARTER §6 item 8 asks of every component. Rendered here rather than written
+# CHARTER §5 item 8 asks of every component. Rendered here rather than written
 # into components.js, for the reason every other preview is: the page must not
 # be able to show markup the kit does not emit.
 FEEDBACK = '{% from "ui/feedback.html" import spinner, dialog, alert, skeleton %}'
