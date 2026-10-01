@@ -26,7 +26,7 @@
   Not a class and not the JSON's own shape: a value that merely looks like an
   array is not a reason to rewrite somebody's field.
 
-  Loaded per page by `multiselect_scripts()`, never from the shell (CHARTER §7).
+  Loaded per page by `multiselect_scripts()`, never from the shell (CHARTER §4.2).
 */
 (() => {
   const HIDDEN = 'input[type="hidden"][data-fjkit-multi]'

@@ -4,7 +4,7 @@ Single source of truth: the vendoring script reads these to know what to
 download, and the shell's footer reads them to report what is loaded. The footer
 therefore cannot drift from the bytes on disk.
 
-These pins are also CHARTER §7's whitelist of client-side JavaScript: what is
+These pins are also CHARTER §4.1's whitelist of client-side JavaScript: what is
 listed here, and nothing else, may ship inside this wheel. Two of them reach
 every page; `HTMX_JSON_ENC_VERSION` does not, which is why it is a separate pin.
 
@@ -27,7 +27,7 @@ HTMX_VERSION = "2.0.10"
 #:
 #: **No page loads it unless that page asks for it** — `form_scripts()` in
 #: `ui/form.html`, the same page-level opt-in `chart_scripts()` uses for Plotly.
-#: CHARTER §7 budgets what a page downloads by default, and that answer has to
+#: CHARTER §4.2 budgets what a page downloads by default, and that answer has to
 #: stay "htmx and Basecoat", so 1,012 bytes that only some forms need cannot go
 #: in the shell.
 HTMX_JSON_ENC_VERSION = "2.0.3"

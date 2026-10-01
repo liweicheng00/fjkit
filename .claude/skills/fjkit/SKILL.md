@@ -224,7 +224,7 @@ that is meant to be an optimisation.
 ## Working on fjkit itself
 
 `packages/fjkit/` is the package. `examples/fjkit-demo` is the demo, and it is
-also the acceptance test. A component is done when it meets the ten-point
+also the acceptance test. A component is done when it meets the nine-point
 definition in `CHARTER.md` §5. That definition requires:
 
 - closed enumerations, and no class-string parameter

@@ -8,7 +8,7 @@
   page one.
 
   Basecoat already ships `.sidebar`: the CSS is in the stylesheet whether or
-  not anything renders it (CHARTER.md §7), and its JS is vendored. So this file
+  not anything renders it (CHARTER.md §4.1), and its JS is vendored. So this file
   is not a new widget but the fjkit-shaped door onto one already paid for —
   route names instead of hrefs, an icon by name, closed enumerations, and no
   class string anywhere in the signature.
@@ -131,7 +131,7 @@
   `<details>` rather than a scripted disclosure: the browser owns the open
   state, the Enter/Space handling and the expanded announcement, and Basecoat's
   CSS already rotates the chevron off `[open]`. Nothing is left for JavaScript
-  to add, which is the test CHARTER.md §8 sets for wrapping a native element.
+  to add, which is the test CHARTER.md §2.3 sets for wrapping a native element.
 
   Pass `open=true` for the branch the current page lives in; the router knows
   which that is, the template does not.
@@ -158,7 +158,7 @@
   `onclick` calls the method Basecoat's own script attached to the element —
   the shape the theme toggle in `ui/nav.html` uses, and for the same reason:
   the alternative is fjkit shipping a script of its own to bind one listener
-  (CHARTER.md §11.3), which costs a file and a load-order rule to save an
+  (CHARTER.md §6), which costs a file and a load-order rule to save an
   attribute. `aria-expanded` is deliberately absent: the script owns the open
   state, so a value rendered here would be a second, stale copy.
 #}

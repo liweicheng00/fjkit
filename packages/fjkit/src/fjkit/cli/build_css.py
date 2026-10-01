@@ -103,7 +103,7 @@ def main(watch: bool = False, style: str | None = None) -> int:
     return failed
 
 
-#: CHARTER.md §7. The budget is written in gzip because that is what a browser
+#: CHARTER.md §4.1. The budget is written in gzip because that is what a browser
 #: downloads, and stdlib gzip measures it with no extra dependency. The raw
 #: ceiling only catches a runaway.
 #:
