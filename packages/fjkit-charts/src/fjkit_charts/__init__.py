@@ -17,10 +17,10 @@ Then in a template:
 
 and in the router, a `Chart` per figure:
 
-    from fjkit_charts import Chart, figure_of
+    from fjkit_charts import Chart
 
     Chart(id="by-owner", title="Workload", summary="Ana has 5 of 12 open tasks.",
-          figure=figure_of(go.Figure(...)))
+          figure=go.Figure(...))
 
 That is the whole setup. Plotly's basic bundle ships in this wheel — one of the
 scripts CHARTER §4.1 whitelists, pinned here rather than in `fjkit.vendored`
@@ -34,10 +34,8 @@ from __future__ import annotations
 from fjkit_charts.figures import (
     Chart,
     PlotlyFigure,
-    PlotlyLayout,
     PlotlyTrace,
     assert_no_colour_in,
-    figure_of,
 )
 from fjkit_charts.plugin import PLOTLY_FILENAME, PLOTLY_URL, PLOTLY_VERSION, ChartsPlugin
 
@@ -48,8 +46,6 @@ __all__ = [
     "Chart",
     "ChartsPlugin",
     "PlotlyFigure",
-    "PlotlyLayout",
     "PlotlyTrace",
     "assert_no_colour_in",
-    "figure_of",
 ]
