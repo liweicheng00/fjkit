@@ -26,8 +26,10 @@
         <header class="flex items-center gap-6 py-5">…</header>
       {% endblock %}
 
-  With a sidebar, that override still renders before the aside, and without
-  `data-position="sticky"` the rail is not offset for it.
+  With a sidebar, that override renders inside the content wrapper, after the
+  aside, so it takes the sidebar's margin like the page does. Only a header
+  carrying `data-position="sticky"` renders before the aside and moves the
+  rail down.
 #}
 {% from "ui/feedback.html" import toast, toaster %}
 {% from "ui/nav.html" import theme_toggle %}
@@ -129,7 +131,10 @@
   open sidebar is a full-screen overlay, and it covers the bar as well.
 
   Captured, like the sidebar slot, because it renders in one of two places and
-  a block can be defined only once.
+  a block can be defined only once. Which place is read off the captured
+  string: Jinja cannot ask whether the `header` block was overridden, and the
+  attribute is the same hook `fjkit.css` uses for the rail offset, so the two
+  cannot disagree.
 #}
 {% set header_markup %}
   {% block header %}
@@ -144,15 +149,16 @@
     </header>
   {% endblock %}
 {% endset %}
+{% set bar_above_rail = has_sidebar and 'data-position="sticky"' in header_markup %}
 <body class="min-h-full antialiased">
-  {% if has_sidebar %}{{ header_markup }}{% endif %}
+  {% if bar_above_rail %}{{ header_markup }}{% endif %}
   {{ sidebar_slot }}
   {#
     Under a top bar the wrapper's minimum is the viewport less the bar, so a
     short page still puts the footer at the bottom without scrolling 3.5rem.
   #}
-  <div class="{% if has_sidebar %}flex min-h-[calc(100vh-3.5rem)] flex-col px-5 pt-5{% else %}mx-auto flex min-h-screen max-w-6xl flex-col px-5{% endif %}">
-    {% if not has_sidebar %}{{ header_markup }}{% endif %}
+  <div class="{% if bar_above_rail %}flex min-h-[calc(100vh-3.5rem)] flex-col px-5 pt-5{% elif has_sidebar %}flex min-h-screen flex-col px-5{% else %}mx-auto flex min-h-screen max-w-6xl flex-col px-5{% endif %}">
+    {% if not bar_above_rail %}{{ header_markup }}{% endif %}
 
     {#
       A flex column, not a block, so `ui/layout.html`'s `fill` has a main axis

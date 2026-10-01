@@ -1203,6 +1203,23 @@ class TestShellStickyHeader:
         assert "sticky" not in header
         assert "data-position" not in header
 
+    def test_with_a_sidebar_an_in_flow_header_renders_inside_the_wrapper(self, render):
+        """Basecoat's rail is `fixed inset-y-0`, and only a sticky bar moves it
+        down. An unpinned header before the aside sits under the rail; inside
+        the wrapper it gets the sidebar's margin like the page does."""
+        html = render(
+            SHELL_WITH_SIDEBAR
+            + '{% block header %}<header class="flex items-center gap-6 py-5">x</header>{% endblock %}'
+        )
+        body = html[html.index("<body") :]
+        aside_end = body.index("</aside>")
+        wrapper = body.index("<div class=", aside_end)
+        assert body.count("<header") == 1
+        assert wrapper < body.index("<header") < body.index("<main")
+        wrapper_class = body[wrapper : body.index(">", wrapper)]
+        assert "3.5rem" not in wrapper_class, "no bar above the wrapper to subtract"
+        assert "min-h-screen" in wrapper_class
+
 
 TABS = '{% from "ui/tabs.html" import tabs, tab_panel %}'
 CODE = '{% from "ui/data.html" import code_block, item_list, item %}'
