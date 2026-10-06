@@ -7,6 +7,7 @@ profiling have one location.
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +38,13 @@ __all__ = ["FJKIT_NAMESPACE", "Templates", "build_environment", "get_templates",
 #: The reserved prefix under which the kit's own templates are always reachable,
 #: whatever an app has shadowed. See `_ReservedNamespace`.
 FJKIT_NAMESPACE = "fjkit"
+
+#: The `root_path` of the request being rendered, read by `fjkit_static`.
+#: A context variable rather than a template argument: the kit's macros call
+#: `fjkit_static` from imported templates, whose context holds no `request`.
+#: `Templates.page()` and `.stream()` set it; a render outside a request (the
+#: docs builder, the benchmark) leaves it empty.
+_ROOT_PATH: ContextVar[str] = ContextVar("fjkit_root_path", default="")
 
 
 class _ReservedNamespace(PrefixLoader):
@@ -185,6 +193,11 @@ def static_url(prefix: str, root: Path | None = None, *, auto_reload: bool = Fal
     config already knows, and going through the route table would make a missing
     mount fail deep inside a template render instead of at startup.
 
+    **Every URL carries the request's `root_path`**, the same prefix
+    `url_for` adds. `mount_fjkit()` mounts the assets on the app it is given,
+    so an app mounted under `/ui`, or served behind a proxy with a
+    `root_path`, serves them under that prefix too.
+
     **Every URL carries `?v=<mtime>`.** `StaticFiles` sends `ETag` and
     `Last-Modified` but no `Cache-Control`, so a browser may apply heuristic
     caching and keep a stylesheet it was never told the lifetime of. That
@@ -215,7 +228,7 @@ def static_url(prefix: str, root: Path | None = None, *, auto_reload: bool = Fal
         stamp = stamps.get(clean)
         if stamp is None or auto_reload:
             stamp = stamps[clean] = _stamp(clean, directory)
-        return f"{base}/{clean}?v={stamp}"
+        return f"{_ROOT_PATH.get()}{base}/{clean}?v={stamp}"
 
     return fjkit_static
 
@@ -296,7 +309,11 @@ class Templates:
         headers: Mapping[str, str] | None = None,
     ) -> HTMLResponse:
         template = self.env.get_template(name)
-        html = template.render(request=request, **self._context(request, context))
+        token = _ROOT_PATH.set(request.scope.get("root_path", ""))
+        try:
+            html = template.render(request=request, **self._context(request, context))
+        finally:
+            _ROOT_PATH.reset(token)
         return HTMLResponse(html, status_code=status_code, headers=dict(headers or {}))
 
     def stream(
@@ -312,6 +329,7 @@ class Templates:
         template = self.env.get_template(name)
 
         merged = self._context(request, context)
+        root_path = request.scope.get("root_path", "")
 
         def chunks() -> Iterator[str]:
             stream = template.stream(request=request, **merged)
@@ -321,7 +339,18 @@ class Templates:
             # it is large on a page that yields thousands and small on one whose
             # body is a `{% call %}` block. See `docs/jinja-performance.md`.
             stream.enable_buffering(buffer_size)
-            yield from stream
+            # Set per chunk, not once: Starlette pulls each chunk in its own
+            # threadpool call, and each call runs in a fresh copy of the context.
+            chunk_iter = iter(stream)
+            while True:
+                token = _ROOT_PATH.set(root_path)
+                try:
+                    chunk = next(chunk_iter)
+                except StopIteration:
+                    return
+                finally:
+                    _ROOT_PATH.reset(token)
+                yield chunk
 
         return StreamingResponse(
             chunks(),
