@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import plotly.graph_objects as go
 
-from app.schemas.charts import Chart, figure_of
+from app.schemas.charts import Chart
 from app.schemas.tasks import Status, Task
 from app.services.charts.utils import clip
 
@@ -36,5 +36,5 @@ def oldest_open(tasks: list[Task], limit: int = 5, now: datetime | None = None) 
             else "Nothing is open."
         ),
         height=240,
-        figure=figure_of(fig),
+        figure=fig,
     )
