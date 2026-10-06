@@ -67,9 +67,11 @@ jobs:
       package: ${{ steps.resolve.outputs.package }}
       version: ${{ steps.resolve.outputs.version }}
       target: ${{ env.TARGET }}
+      uv-version: ${{ steps.uv.outputs.uv-version }}
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - id: uv
+        uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
       - id: resolve
@@ -118,7 +120,11 @@ jobs:
       id-token: write   # Trusted Publishing
       contents: read
     steps:
+      # No checkout here, so setup-uv cannot read `required-version` from
+      # pyproject.toml; the build job resolved it and hands it over.
       - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ needs.build.outputs.uv-version }}
       - uses: actions/download-artifact@v4
         with:
           name: dist

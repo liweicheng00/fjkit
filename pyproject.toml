@@ -4,6 +4,13 @@
 # Deliberately a virtual root (no [project] table). fjkit is the subject of this
 # repository, so nothing at the top level should look like an installable app.
 
+# The one statement of which uv this repository runs on. `astral-sh/setup-uv`
+# reads it in CI, and a local uv of any other version refuses to start, so a
+# release rehearsed by hand and the one the workflow publishes use the same uv.
+# Raise it in its own pull request: `uv self update <version>`, then edit this.
+[tool.uv]
+required-version = "==0.12.23"
+
 [tool.uv.workspace]
 # `tools/fjkit-vscode` is the editor extension — JavaScript, not a member.
 members = ["packages/*", "examples/*", "tools/fjkit-lsp"]
