@@ -14,12 +14,12 @@ This repository publishes six artefacts to two registries: `fjkit`, `fjkit-chart
 
 | Rule           | Value                                                                    |
 | -------------- | ------------------------------------------------------------------------ |
-| Branch name    | `feat/<slug>`, `fix/<slug>`, `docs/<slug>`, `chore/<slug>`, `rfc/<slug>` |
-| Scope          | One issue, one branch, one pull request                                  |
+| Branch name    | `feat/<slug>`, `fix/<slug>`, `docs/<slug>`, `chore/<slug>`, `rfc/<slug>`; `release/v<X.Y.Z>` for a release |
+| Scope          | One issue, one branch, one pull request; a release branch collects many   |
 | Size           | Split anything over roughly 400 changed lines                            |
 | Commit subject | Conventional Commits — `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`   |
 
-There is no `CHANGELOG.md`, by decision: release notes are generated from the commit subjects on `main`. A commit subject that does not name the change is therefore a release note that does not name it either.
+There is no `CHANGELOG.md`, by decision: the release notes are the release pull request's description, drafted from the commit subjects that pull request brings to `main`. A commit subject that does not name the change is therefore a release note that does not name it either.
 
 A breaking change is `feat!:`, or a `BREAKING CHANGE:` footer. Before 1.0 that needs no ceremony; after 1.0 it needs an RFC and a deprecation period spanning two minor versions (`CHARTER.md` §6).
 
@@ -27,7 +27,7 @@ A breaking change is `feat!:`, or a `BREAKING CHANGE:` footer. Before 1.0 that n
 
 ### Versions
 
-Each distribution carries its own version, and nothing in the tooling compares one against another. The weekly `0.x.0` cadence is `fjkit`'s; a plugin releases when the plugin changes. Macro signatures are not frozen until 1.0.
+Each distribution carries its own version, and nothing in the tooling compares one against another. The weekly `0.x.0` cadence is `fjkit`'s; a plugin releases when the plugin changes, on the next release branch. Macro signatures are not frozen until 1.0.
 
 Bump one package:
 
@@ -41,6 +41,47 @@ uv version --package fjkit-admin --short      # the number its tag must carry
 **Warning**: a plugin's `fjkit>=` lower bound is the only statement of which kit that release needs. Raise it in the same pull request that starts using a new macro, a new `FjkitConfig` knob or a new plugin hook — otherwise the plugin resolves against an older kit and fails at import, or renders a macro that is not there. `make verify` fails a plugin whose metadata carries no bound at all; it cannot tell whether an existing bound is high enough.
 
 `fjkit-lsp` declares no dependency on `fjkit` and has nothing to raise. `fjkit-charts`, `fjkit-apidocs` and `fjkit-admin` each declare one, with no upper bound: a plugin accepts every later kit, which stays true only while a kit release keeps its macros.
+
+### Release branch
+
+A release is one pull request from `release/v<X.Y.Z>` into `main`. `<X.Y.Z>` is the version `fjkit` will carry; the plugins that changed ride the same branch at their own versions.
+
+1. **Open the branch.** Its first commit bumps `fjkit` and nothing else, then the pull request opens as a draft:
+
+   ```bash
+   git switch main && git pull
+   git switch -c release/v0.2.0
+   uv version --package fjkit 0.2.0       # pyproject.toml and uv.lock
+   make docs                              # the site prints the kit version
+   git add packages/fjkit/pyproject.toml uv.lock docs/
+   git commit -m "chore(release): v0.2.0"
+   git push -u origin release/v0.2.0
+   gh pr create --draft --base main --title "chore(release): v0.2.0" \
+     --body-file .github/PULL_REQUEST_TEMPLATE/release.md
+   ```
+
+2. **Collect the work.** Every change for this release lands on the release branch, by either route:
+
+   | Route | How |
+   |---|---|
+   | Pull request | `gh pr create --base release/v0.2.0`; squash or merge, as into `main` |
+   | Local merge | `git switch release/v0.2.0 && git merge --no-ff feat/<slug> && git push` |
+
+   Both routes carry commit subjects to `main` unchanged, so each one follows Conventional Commits: the squashed pull request's title, or every commit of a locally merged branch.
+
+   `main` takes no other change while a release branch is open. If one lands anyway, merge `main` into the release branch.
+
+3. **Bump each plugin that changed**, one commit per plugin — `uv version --package fjkit-admin --bump minor`, subject `chore(release): fjkit-admin 0.2.0`; for `fjkit-vscode`, edit `version` in `tools/fjkit-vscode/package.json`. Raise its `fjkit>=` bound in the same branch when it uses something this release adds (see the warning above).
+
+4. **Write the description.** When the branch is complete, replace the pull request's description with the filled-in template from `.github/PULL_REQUEST_TEMPLATE/release.md`. Draft its Changes section from the previous kit tag, not from `main`, which also holds whatever merged after that tag:
+
+   ```bash
+   git log --no-merges --format='- %s' v0.1.0..release/v0.2.0
+   ```
+
+   Rehearse each distribution on TestPyPI from the release branch (see *Rehearsing on TestPyPI*), record the run IDs in the description, and mark the pull request ready.
+
+5. **Merge with "Create a merge commit".** Squash collapses every commit subject on the branch into one, and those subjects are what `main` records of the release. Then cut the tags.
 
 ### Tags
 
@@ -61,10 +102,11 @@ The kit's prefix is matched as `v[0-9]*`, because the glob `v*` also matches `vs
 
 A VS Code manifest requires a strict three-segment version, so `0.1.0.dev0` is rejected by the packager. The extension stays at `0.1.0` and marks a preview with a publish flag instead — `make publish-vsix PRE_RELEASE=1`.
 
-Cut the tag after the version bump is merged to `main`:
+Cut the tags after the release pull request is merged, on its merge commit, in the order under *Publish order*:
 
 ```bash
 git switch main && git pull
+git tag v0.2.0       && git push origin v0.2.0
 git tag admin-v0.2.0 && git push origin admin-v0.2.0
 ```
 
@@ -96,7 +138,7 @@ The arrows bind tags, not jobs. `release-pypi.yml` publishes whatever its tag na
 
 `fjkit-charts`, `fjkit-apidocs` and `fjkit-admin` declare `Requires-Dist: fjkit>=…`. `fjkit-lsp` depends only on `pygls`, so its tag is free of that order; it comes before the extension because `fjkit-vscode` starts `.venv/bin/fjkit-lsp` from the user's own workspace and installs but does nothing until the server is on PyPI.
 
-A plugin release that needs no new kit feature keeps its existing bound and can go out alone, on any day, with one tag.
+A plugin release that needs no new kit feature keeps its existing bound, and its tag waits for nothing but the merge.
 
 ### PyPI, through Trusted Publishing
 
@@ -160,8 +202,9 @@ make vsix                   # the extension archive
 
 | Step                                                | Status                                                                                                                                                                                                         |
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GitHub Release and its notes                        | Manual. Generated from the Conventional Commits subjects on `main`.                                                                                                                                            |
-| Version bumps | Manual, one `uv version --package <dist>` call per distribution. |
+| GitHub Release and its notes                        | Manual. Copied from the release pull request's Changes section.                                                                                                                                                 |
+| Version bumps | Manual: the first commit of a release branch bumps `fjkit`, then one `uv version --package <dist>` call per plugin. |
+| Release branch shape | Unchecked: the branch name, a first commit that bumps `fjkit`, and the merge method are conventions, not gates. |
 | Extension version against the Python version        | Unchecked. The two tags are independent.                                                                                                                                                                       |
 | Whether a plugin's `fjkit>=` bound is high enough | Unchecked. `make verify` fails a plugin that declares no bound; it cannot tell that an existing one is too low. |
 | End-to-end editor verification                      | Manual: install the extension in Cursor, open a project with `fjkit-lsp` installed, confirm hover and go-to-definition. This is the only check that proves the extension, the server and their wiring at once. |
