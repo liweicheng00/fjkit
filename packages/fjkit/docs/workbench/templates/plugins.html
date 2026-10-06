@@ -219,7 +219,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))", lab
       {"id": "charts-router", "label": "app/routers/workload.py", "lang": "python", "source": "import plotly.graph_objects as go
 from fastapi import APIRouter
 from fjkit import render
-from fjkit_charts import Chart, figure_of
+from fjkit_charts import Chart
 
 router = APIRouter()
 
@@ -233,10 +233,10 @@ def workload():
             id=\"by-owner\",
             title=\"Open tasks by owner\",
             summary=\"Ana has 5 of the 12 open tasks.\",
-            figure=figure_of(go.Figure(go.Bar(x=owners, y=counts))),
+            figure=go.Figure(go.Bar(x=owners, y=counts)),
         ),
     ]}",
-       "note": "A Chart has four fields you set: id, title, summary and figure. summary is required: it is the text a screen reader reads, and the text shown when JavaScript is off. figure_of() converts a Plotly figure and validates it, so an invalid trace fails here instead of rendering an empty box."},
+       "note": "A Chart has four fields you set: id, title, summary and figure. summary is required: it is the text a screen reader reads, and the text shown when JavaScript is off. figure takes the go.Figure itself; Chart validates it, so an invalid trace fails here instead of rendering an empty box."},
       {"id": "charts-page", "label": "app/templates/workload/page.html", "lang": "jinja", "source": "{% extends \"base.html\" %}
 {% from \"charts/macros.html\" import chart, chart_scripts %}
 
@@ -248,14 +248,14 @@ def workload():
        "note": "chart(item) draws one figure in a card. chart_scripts() loads Plotly for this page only, so pages without charts do not download it."},
     ]) }}
 
-    {% set f_fields %}any attribute Plotly documents for those types: {{ link("bar", "https://plotly.com/python/reference/bar/") }}, {{ link("scatter", "https://plotly.com/python/reference/scatter/") }}, {{ link("pie", "https://plotly.com/python/reference/pie/") }} and {{ link("layout", "https://plotly.com/python/reference/layout/") }}. type, x, y, labels, values, barmode and showlegend are type-checked; every other key passes through unchecked{% endset %}
-    {{ defs("figure_of()", [
-      ("what it does", "converts a go.Figure, or a plain dict, into the model Chart.figure expects. Call it once per figure, in the route"),
+    {% set f_fields %}any attribute Plotly documents for those types: {{ link("bar", "https://plotly.com/python/reference/bar/") }}, {{ link("scatter", "https://plotly.com/python/reference/scatter/") }}, {{ link("pie", "https://plotly.com/python/reference/pie/") }} and {{ link("layout", "https://plotly.com/python/reference/layout/") }}. Chart checks only the trace type; every other key passes through unchecked, so a misspelt key is silently ignored by Plotly{% endset %}
+    {{ defs("Chart.figure", [
+      ("what it accepts", "a go.Figure. A plain dict is rejected"),
       ("it removes layout.template", "plotly.py always writes a default template, and that template holds 111 colour values. Without it, charts.js sets axis text, grid lines and backgrounds from the page's theme tokens, so the chart follows light and dark mode"),
       ("it validates the figure", "an invalid figure raises a validation error in the route, instead of drawing an empty box in the browser"),
       ("trace types", "bar, scatter and pie: the types in the bundled Plotly build. Any other type fails validation"),
       ("fields you can set", f_fields),
-      ("fields to leave out", "colours: marker_color, line_color, font colours, backgrounds. The series use Plotly's palette and the theme sets the rest. figure_of() does not reject them; call assert_no_colour_in(charts) in your tests to catch them"),
+      ("fields to leave out", "colours: marker_color, line_color, font colours, backgrounds. The series use Plotly's palette and the theme sets the rest. Chart does not reject them; call assert_no_colour_in(charts) in your tests to catch them"),
     ]) }}
 
     {{ defs("The division of labour", [

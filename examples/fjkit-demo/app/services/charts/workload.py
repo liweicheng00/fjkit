@@ -6,7 +6,7 @@ from collections import Counter
 
 import plotly.graph_objects as go
 
-from app.schemas.charts import Chart, Grouping, figure_of
+from app.schemas.charts import Chart, Grouping
 from app.schemas.tasks import Priority, Status, Task
 from app.services.charts.utils import STATUS_LABEL, integer_axis, sentence
 
@@ -42,5 +42,5 @@ def workload(tasks: list[Task], grouping: Grouping) -> Chart:
         title=f"Workload by {label}",
         description="Stacked by status: the height is what someone is holding, the split is how much is finished.",
         summary=sentence(len(tasks), totals, unit=f"across {len(buckets)} {label}s"),
-        figure=figure_of(fig),
+        figure=fig,
     )

@@ -6,7 +6,7 @@ from collections import Counter
 
 import plotly.graph_objects as go
 
-from app.schemas.charts import Chart, figure_of
+from app.schemas.charts import Chart
 from app.schemas.tasks import Status, Task
 from app.services.charts.utils import STATUS_LABEL, sentence
 
@@ -40,9 +40,7 @@ def status_mix(tasks: list[Task]) -> Chart:
         title="Status mix",
         description="Every task on the board, by column.",
         summary=sentence(len(tasks), [(STATUS_LABEL[s], counts[s]) for s in statuses]),
-        figure=figure_of(
-            _donut([STATUS_LABEL[status] for status in statuses], [float(counts[status]) for status in statuses])
-        ),
+        figure=_donut([STATUS_LABEL[status] for status in statuses], [float(counts[status]) for status in statuses]),
     )
 
 
@@ -56,5 +54,5 @@ def owner_share(tasks: list[Task]) -> Chart:
         title="Share by owner",
         description="Who is carrying the board right now.",
         summary=sentence(len(tasks), [(owner, counts[owner]) for owner in owners]),
-        figure=figure_of(_donut(owners, [float(counts[owner]) for owner in owners])),
+        figure=_donut(owners, [float(counts[owner]) for owner in owners]),
     )

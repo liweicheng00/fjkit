@@ -323,7 +323,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))</pre>
     </nav><div id="charts-router" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/routers/workload.py" data-lang="python">import plotly.graph_objects as go
 from fastapi import APIRouter
 from fjkit import render
-from fjkit_charts import Chart, figure_of
+from fjkit_charts import Chart
 
 router = APIRouter()
 
@@ -337,11 +337,11 @@ def workload():
             id=&#34;by-owner&#34;,
             title=&#34;各負責人的未結案任務&#34;,
             summary=&#34;12 件未結案任務中，Ana 佔 5 件。&#34;,
-            figure=figure_of(go.Figure(go.Bar(x=owners, y=counts))),
+            figure=go.Figure(go.Bar(x=owners, y=counts)),
         ),
     ]}</pre>
 
-<footer>Chart 需要設定四個欄位：id、title、summary 與 figure。summary 為必填：它是螢幕閱讀器讀出的文字，也是 JavaScript 關閉時顯示的內容。figure_of() 轉換並驗證 Plotly figure，無效的 trace 會在這裡失敗，而不是渲染出一個空框。</footer></div><div id="charts-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
+<footer>Chart 需要設定四個欄位：id、title、summary 與 figure。summary 為必填：它是螢幕閱讀器讀出的文字，也是 JavaScript 關閉時顯示的內容。figure 直接接收 go.Figure；Chart 會驗證它，無效的 trace 會在這裡失敗，而不是渲染出一個空框。</footer></div><div id="charts-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
 {% from &#34;charts/macros.html&#34; import chart, chart_scripts %}
 
 {% block content %}
@@ -355,14 +355,14 @@ def workload():
 
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>figure_of()</h3>      </div>
+<h3>Chart.figure</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>用途</h4><p>把 go.Figure 或一般 dict 轉成 Chart.figure 需要的 model。每張圖在路由裡呼叫一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>接受的型別</h4><p>go.Figure。一般 dict 會被拒絕</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>移除 layout.template</h4><p>plotly.py 一定會寫入一份預設 template，其中有 111 個顏色值。移除之後，charts.js 從頁面的主題 token 設定軸文字、格線與背景，圖表因此跟著淺色與深色模式切換</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>驗證 figure</h4><p>不合法的 figure 在路由裡就拋出驗證錯誤，而不是在瀏覽器畫出一個空框</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>trace 類型</h4><p>bar、scatter 與 pie，也就是內附 Plotly build 支援的類型。其他類型無法通過驗證</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>可以設定的欄位</h4><p>Plotly 為這三種類型記載的任何屬性：<a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/bar/">bar</a>、<a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/scatter/">scatter</a>、<a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/pie/">pie</a> 與 <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/layout/">layout</a>。type、x、y、labels、values、barmode、showlegend 會檢查型別；其餘欄位不檢查，原樣傳遞</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>不要設定的欄位</h4><p>顏色：marker_color、line_color、字型顏色、背景。資料序列使用 Plotly 的色盤，其餘由主題決定。figure_of() 不會擋下這些欄位；請在測試中呼叫 assert_no_colour_in(charts) 檢查</p>    </section>  </div></div></div>
+      <h4>可以設定的欄位</h4><p>Plotly 為這三種類型記載的任何屬性：<a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/bar/">bar</a>、<a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/scatter/">scatter</a>、<a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/pie/">pie</a> 與 <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/layout/">layout</a>。Chart 只檢查 trace 的 type；其餘欄位不檢查，原樣傳遞，拼錯的欄位會被 Plotly 默默忽略</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>不要設定的欄位</h4><p>顏色：marker_color、line_color、字型顏色、背景。資料序列使用 Plotly 的色盤，其餘由主題決定。Chart 不會擋下這些欄位；請在測試中呼叫 assert_no_colour_in(charts) 檢查</p>    </section>  </div></div></div>
   </div>
 
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">

@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import plotly.graph_objects as go
 
-from app.schemas.charts import Chart, figure_of
+from app.schemas.charts import Chart
 from app.schemas.tasks import Status, Task
 from app.services.charts.utils import TREND_DAYS, integer_axis
 
@@ -50,7 +50,7 @@ def created_trend(tasks: list[Task], days: int = TREND_DAYS, now: datetime | Non
             f"{created} of {len(tasks)} tasks were created in the last {days} days, "
             f"peaking at {int(max(values, default=0))} in a day."
         ),
-        figure=figure_of(fig),
+        figure=fig,
     )
 
 
@@ -78,5 +78,5 @@ def intake(tasks: list[Task], days: int = TREND_DAYS, now: datetime | None = Non
             f"{int(sum(created[day] for day in window))} tasks created in the last {days} days, "
             f"{still_open} of them still open."
         ),
-        figure=figure_of(fig),
+        figure=fig,
     )

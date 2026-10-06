@@ -1,9 +1,14 @@
-"""A Plotly figure, typed down to the parts this package reads.
+"""A Plotly figure, typed down to the one field this package reads.
 
 The figure that reaches the browser is a Plotly figure: `data` and `layout`, the
-names Plotly's own documentation uses. It is not `dict[str, Any]` — the fields
-the drawing code branches on are typed, and the rest arrives through an explicit
-tail. OpenAPI can then state which fields are promised and which are Plotly's.
+names Plotly's own documentation uses. Only a trace's `type` is typed, because
+the drawing code branches on it; every other attribute is Plotly's, and
+`plotly.py` already validates those when it builds a `go.Figure`. A typed copy
+of that schema here would be a second, smaller guess at it.
+
+`Chart.figure` takes the figure as Plotly builds it: a `go.Figure`. Not a
+plain dict, because a dict skips the validation `plotly.py` does, and that
+validation is what lets this module type only `type`.
 
 A figure carries no colour.
 
@@ -18,79 +23,64 @@ it. The guard is a test that scans the rendered figure JSON, which does not care
 which field the bytes came from. `ChartsPlugin` ships that test as
 `fjkit_charts.assert_no_colour_in`, so an app gets it in one line.
 
-**plotly is not a dependency of fjkit.** `figure_of` takes anything with a
-`to_plotly_json()`, which is its whole required surface. An app that builds
-figures by hand as dicts never installs plotly.
+**plotly is not a dependency of fjkit.** `Chart` accepts anything with a
+`to_plotly_json()`, which is its whole required surface, so this package never
+imports plotly. The app that builds the figures declares it.
 """
 
 from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 __all__ = [
     "Chart",
     "PlotlyFigure",
-    "PlotlyLayout",
     "PlotlyTrace",
     "assert_no_colour_in",
-    "figure_of",
 ]
 
 
 class PlotlyTrace(BaseModel):
     """One series, in Plotly's vocabulary.
 
-    Typed down to what the drawing code reads and no further. `type` is a
-    `Literal` rather than `str` because the browser branches on it: a fourth
-    trace kind arriving unannounced renders a silent empty chart, which is how
-    `mpl_to_plotly` fails.
+    `type` is a `Literal` rather than `str` because the browser branches on it:
+    a fourth trace kind arriving unannounced renders a silent empty chart, which
+    is how `mpl_to_plotly` fails.
 
-    Everything else Plotly accepts — `mode`, `hole`, `textposition`,
-    `hovertemplate` — comes through `extra="allow"` untyped. That tail is what
-    makes the full library reachable, and why the colour check is not optional.
+    Everything else — `x`, `values`, `orientation`, `hovertemplate` — comes
+    through `extra="allow"` untyped. That tail is what makes the full library
+    reachable, and why the colour check is not optional.
     """
 
     model_config = ConfigDict(extra="allow")
 
     type: Literal["bar", "scatter", "pie"]
-    name: str | None = None
-    #: Cartesian traces. Not "category" and "value": Plotly's `x` and `y` are
-    #: axes, and a horizontal bar puts the numbers on `x` and the labels on
-    #: `y`. Typing them as `str` and `float` respectively looks right until the
-    #: first `orientation="h"` chart. That is this module's lesson in small: a
-    #: typed subset of somebody else's schema is a guess, and the tail is what
-    #: stops a wrong guess being fatal.
-    x: list[str | float] | None = None
-    y: list[str | float] | None = None
-    #: Pie traces use different names for the same two ideas.
-    labels: list[str] | None = None
-    values: list[float] | None = None
-
-
-class PlotlyLayout(BaseModel):
-    """Layout, minus everything the theme owns.
-
-    No font, no grid colour, no background: those resolve from the live tokens
-    at draw time and would be overwritten anyway. What remains is what the route
-    decides — how bars combine, whether there is a legend, what the axes are
-    called, and the tick rules the data implies.
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    barmode: Literal["stack", "group"] | None = None
-    showlegend: bool | None = None
 
 
 class PlotlyFigure(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     data: list[PlotlyTrace]
-    layout: PlotlyLayout
+    #: What the route decides — how bars combine, whether there is a legend,
+    #: what the axes are called. Font, grid colour and background resolve from
+    #: the live tokens at draw time, so a figure need not carry a layout at all.
+    layout: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("layout", mode="before")
+    @classmethod
+    def _drop_template(cls, value: Any) -> Any:
+        """`plotly.py` writes a template even when it is set to `None`, and the
+        default template is 7,621 bytes carrying 111 colour literals, each of
+        which violates this module's colour rule. Dropped here, so every path
+        into a figure drops it."""
+        if isinstance(value, Mapping):
+            return {key: item for key, item in value.items() if key != "template"}
+        return value
 
 
 class Chart(BaseModel):
@@ -110,7 +100,21 @@ class Chart(BaseModel):
     #: describe a different chart.
     summary: str
     height: int = 288
+    #: A `go.Figure`. Validated on the way in, so a trace type the browser
+    #: cannot draw fails here rather than rendering an empty box.
     figure: PlotlyFigure
+
+    @field_validator("figure", mode="before")
+    @classmethod
+    def _from_plotly(cls, value: Any) -> Any:
+        """Duck-typed on `to_plotly_json()` rather than an `isinstance` check
+        against plotly, which keeps plotly out of fjkit's dependencies. A
+        `PlotlyFigure` passes through: it is already validated."""
+        if hasattr(value, "to_plotly_json"):
+            return value.to_plotly_json()
+        if isinstance(value, PlotlyFigure):
+            return value
+        raise ValueError(f"figure must be a plotly Figure, not {type(value).__name__}")
 
     # A plain property, not a `@computed_field`: a computed field joins the JSON
     # representation, putting the same bytes on the wire twice — `figure` is
@@ -118,34 +122,8 @@ class Chart(BaseModel):
     # plain properties.
     @property
     def figure_json(self) -> str:
-        """Render the figure for an HTML attribute.
-
-        `exclude_none` because the typed fields are a superset of any one trace:
-        a bar has no `labels`, a pie has no `x`. Emitting them as nulls sends
-        Plotly keys it has to ignore, on every trace."""
-        return json.dumps(self.figure.model_dump(exclude_none=True))
-
-
-def figure_of(fig: Any) -> PlotlyFigure:
-    """Validate a `plotly.graph_objects.Figure` into the model above.
-
-    Two things happen on the way through. Both must happen exactly once, so
-    neither is left to callers:
-
-    * `template` is dropped. `plotly.py` writes one even when it is set to
-      `None`, and the default template is 7,621 bytes carrying 111 colour
-      literals, each of which violates this module's colour rule.
-    * the figure is validated, so a trace type the browser cannot draw fails
-      here rather than rendering an empty box.
-
-    Duck-typed on `to_plotly_json()` rather than imported from plotly, which
-    keeps plotly out of fjkit's dependencies. A plain dict also works.
-    """
-    payload = fig.to_plotly_json() if hasattr(fig, "to_plotly_json") else dict(fig)
-    layout = payload.get("layout")
-    if isinstance(layout, dict):
-        layout.pop("template", None)
-    return PlotlyFigure.model_validate(payload)
+        """Render the figure for an HTML attribute."""
+        return json.dumps(self.figure.model_dump())
 
 
 #: Hex literals and the CSS colour functions, in figure JSON. The same families

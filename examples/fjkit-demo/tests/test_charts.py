@@ -48,7 +48,7 @@ def test_a_status_nobody_is_in_gets_no_slice():
 
 def test_workload_stacks_one_trace_per_status(tasks):
     chart = charts.workload(tasks, Grouping.OWNER)
-    assert chart.figure.layout.barmode == "stack"
+    assert chart.figure.layout["barmode"] == "stack"
     assert [t.name for t in chart.figure.data] == ["To do", "Doing", "Done"]
     # Every trace spans both owners.
     assert all(t.x == ["livy", "mei"] for t in chart.figure.data)
@@ -119,10 +119,10 @@ def test_the_grouping_control_drives_the_swap(client):
 
 
 def test_the_figure_is_typed_with_an_explicit_tail(client):
-    """`PlotlyTrace` types the fields the app sets and stays open: Plotly reads keys the model never names."""
+    """`PlotlyTrace` types only what the browser branches on and stays open: the rest is Plotly's."""
     schemas = client.get("/openapi.json").json()["components"]["schemas"]
 
-    assert set(schemas["PlotlyTrace"]["properties"]) >= {"type", "name", "x", "y", "labels", "values"}
+    assert set(schemas["PlotlyTrace"]["properties"]) == {"type"}
     assert schemas["PlotlyTrace"]["additionalProperties"] is True
     assert set(schemas["PlotlyTrace"]["properties"]["type"]["enum"]) == {"bar", "scatter", "pie"}
 
@@ -156,7 +156,7 @@ def test_no_trace_carries_a_colour_field(tasks):
     from html import unescape
 
     for chart in charts.build(tasks, Grouping.OWNER):
-        for trace in chart.figure.model_dump(exclude_none=True)["data"]:
+        for trace in chart.figure.model_dump()["data"]:
             marker = trace.get("marker", {})
             assert "color" not in marker, f"{chart.id}: colour belongs to the browser, not the figure"
             assert "colors" not in marker, f"{chart.id}: colour belongs to the browser, not the figure"
