@@ -347,7 +347,7 @@ requires-dist = [{ name = "fjkit", editable = "packages/fjkit" }]
 
 [[package]]
 name = "fjkit-charts"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "packages/fjkit-charts" }
 dependencies = [
     { name = "fjkit" },
