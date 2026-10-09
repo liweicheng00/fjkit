@@ -2196,6 +2196,77 @@ class TestScriptedControlsAsFields:
         assert html.index("</div>") < html.index('id="s-phase-hint"')
 
 
+class TestRequiredMarker:
+    """A required field's label carries an asterisk that `fjkit.css` draws from
+    the state the control already has — native `required`, or `aria-required`
+    on the two scripted controls. No macro prints the asterisk, so these tests
+    pin the attribute each macro emits and the one rule that reads it."""
+
+    OPTIONS = '[("1", "I"), ("2", "II")]'
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            'text_field("t", label="T", required=true)',
+            'textarea_field("t", label="T", required=true)',
+            'select_field("t", label="T", options=[("a", "A")], required=true)',
+        ],
+    )
+    def test_a_native_field_carries_required(self, render, call):
+        html = render(
+            '{% from "ui/form.html" import text_field, textarea_field, select_field %}'
+            f"{{{{ {call} }}}}"
+        )
+        assert re.search(r"<(input|textarea|select)\b[^>]*\srequired\b", html)
+
+    def test_select_field_is_optional_by_default(self, render):
+        html = render(f'{FORM}{{{{ select_field("t", options=[("a", "A")]) }}}}')
+        assert "required" not in html
+
+    def test_select_menu_marks_the_listbox(self, render):
+        """The listbox, because ARIA allows `aria-required` there and not on
+        the trigger button."""
+        html = render(
+            f'{OVERLAY}{{{{ select_menu("p", {self.OPTIONS}, visible_label="P", required=true) }}}}'
+        )
+        listbox = re.search(r'<div role="listbox"[^>]*>', html).group(0)
+        assert 'aria-required="true"' in listbox
+        assert html.count("aria-required") == 1
+
+    def test_combobox_marks_its_input(self, render):
+        html = render(
+            f'{OVERLAY}{{{{ combobox("c", {self.OPTIONS}, multiple=true,'
+            ' visible_label="Continents", required=true) }}'
+        )
+        combobox = re.search(r'<input type="text" role="combobox"[^>]*>', html).group(0)
+        assert 'aria-required="true"' in combobox
+        assert html.count("aria-required") == 1
+
+    def test_required_alone_does_not_make_a_scripted_control_a_field(self, render):
+        """`visible_label`, `hint` and `error` decide the wrapper. `required`
+        changes what the control says, not what surrounds it."""
+        html = render(f'{OVERLAY}{{{{ select_menu("p", {self.OPTIONS}, required=true) }}}}')
+        assert 'class="field"' not in html
+
+    def test_scripted_controls_are_optional_by_default(self, render):
+        html = render(
+            f'{OVERLAY}{{{{ select_menu("p", {self.OPTIONS}) }}}}{{{{ combobox("c", {self.OPTIONS}) }}}}'
+        )
+        assert "aria-required" not in html
+
+    def test_the_css_rule_reads_both_attributes(self):
+        from fjkit.config import TEMPLATE_DIR
+
+        css = (TEMPLATE_DIR.parent / "static" / "src" / "fjkit.css").read_text(encoding="utf-8")
+        rule = re.search(r'\.field:has\(\[required\], \[aria-required="true"\]\) > \.label::after \{([^}]*)\}', css)
+        assert rule, "the required-marker rule moved; point this test at it"
+        body = rule.group(1)
+        # Empty alternative text: the control already announces "required".
+        assert 'content: "*" / "";' in body
+        # A role, never a hue.
+        assert "text-destructive" in body
+
+
 class TestMultipleSelection:
     """`multiple=true` is one attribute to Basecoat and a different wire format
     to the route. Both halves are asserted here, because either alone gives a

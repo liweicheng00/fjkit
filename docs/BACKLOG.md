@@ -2074,3 +2074,17 @@ sticky 加 sidebar 時，header 移出 wrapper、放在 `<aside>` 之前，橫�
 `h-14` 與 `md:top-14` 必須一致，`test_the_rail_offset_matches_the_bar` 守這一點。
 
 CSS 預算：八個包 24.4–25.1 KB gzip（上限 28 KB）。
+
+## 2026-10-09 — 必填欄位的星號
+
+`fjkit.css` 新增 `.field:has([required], [aria-required="true"]) > .label::after`，在必填欄位的 label 後畫 `*`，
+顏色用 `text-destructive`。替代文字為空（`content: "*" / ""`），因為控制項本身已宣告必填，螢幕閱讀器不需再唸一次。
+星號由 CSS 依控制項既有的狀態畫出，沒有任何 macro 輸出它，所以 label 文字不必再寫「(required)」。
+
+`select_field`、`select_menu`、`combobox` 新增 `required=false`，放在參數列最後，既有的位置參數呼叫不受影響。
+`select_field` 輸出原生 `required`；`select_menu` 把 `aria-required` 放在 listbox，`combobox` 放在 `role="combobox"` 的 input，
+這兩處是 ARIA 允許該屬性的位置。hidden input 不加 `required`：瀏覽器不驗證 hidden input。
+`required` 不會讓 scripted 控制項變成 field，wrapper 仍只由 `visible_label`、`hint`、`error` 決定。
+需求來源：poc_app（ClinicalRetriever）。
+
+CSS 預算：八個包 24.5–25.1 KB gzip（上限 28 KB）。
