@@ -236,6 +236,22 @@
     @apply flex-row;
   }
 
+  /* The required marker. Keyed off the state the control already carries, so a
+   * label never says "(required)" in its text and a macro never prints the
+   * asterisk: native `required` on an input, select or textarea, and
+   * `aria-required` on the scripted controls, where `required` on the hidden
+   * input that holds the value would mean nothing to the browser.
+   *
+   * `/ ""` is the alternative text, and it is empty because the control already
+   * announces itself as required; a screen reader reading "star" after the
+   * label would say it twice. The first declaration is the fallback for a
+   * browser that rejects the alternative-text syntax and drops the second. */
+  .field:has([required], [aria-required="true"]) > .label::after {
+    content: "*";
+    content: "*" / "";
+    @apply text-destructive;
+  }
+
   /* Tabs. `components/tabs.css` is structure only — flex direction, the tablist
    * axis, `outline-none` on the panels — but the style pack (vega) does ship a
    * skin, and it is a pill strip: `h-9 p-[3px] rounded-lg bg-muted`, with the

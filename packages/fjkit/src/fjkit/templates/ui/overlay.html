@@ -217,9 +217,15 @@
 
       {{ select_menu("phase", options=phases, multiple=true,
                      visible_label="Trial phase", hint="Post-filter") }}
+
+  `required` marks the listbox `aria-required`, and beside a `visible_label`
+  the label gets the asterisk `fjkit.css` draws for every required field. It
+  validates nothing: declare the field without a default on the route's model,
+  as for any other field.
 #}
 {% macro select_menu(name, options=(), selected=none, id=none, placeholder="Select…", width="lg", label=none,
-                     multiple=false, close_on_select=false, visible_label=none, hint=none, error=none) -%}
+                     multiple=false, close_on_select=false, visible_label=none, hint=none, error=none,
+                     required=false) -%}
   {%- set field_id = id or ("s-" ~ name) -%}
   {#
     Any one of the three turns this into a field: the `.field` wrapper, a
@@ -260,8 +266,16 @@
       {{ icon("chevron-down", 16, "text-muted-foreground shrink-0 opacity-50") }}
     </button>
     <div id="{{ field_id }}-popover" data-popover aria-hidden="true">
+      {#
+        `aria-required` on the listbox, not the trigger: ARIA allows it on a
+        listbox and not on a button. Not `required` on the hidden input
+        either — the browser validates no hidden input, so it would block
+        nothing and announce nothing. The route's model is still what
+        refuses an empty submit; this states the rule and draws the marker.
+      #}
       <div role="listbox" id="{{ field_id }}-listbox" aria-orientation="vertical"
            {%- if multiple %} aria-multiselectable="true"{% endif %}
+           {%- if required %} aria-required="true"{% endif %}
            aria-labelledby="{{ field_id }}-trigger">
         {%- for value, option_label in options %}
           <div role="option" data-value="{{ value }}"
@@ -359,11 +373,13 @@
 
   `visible_label`, `hint` and `error` behave as on `select_menu`: any one of
   them wraps the control in a `.field` and gives it the label and the message
-  paragraph an ordinary field has.
+  paragraph an ordinary field has. `required` is not one of them: it sets
+  `aria-required` on the input and, beside a `visible_label`, draws the
+  asterisk, exactly as on `select_menu`.
 #}
 {% macro combobox(name, options=(), selected=none, id=none, placeholder="Select…", empty="No results found.", label=none,
                   multiple=false, close_on_select=false, visible_label=none, hint=none, error=none,
-                  search=none, search_param="q", search_delay=250) -%}
+                  search=none, search_param="q", search_delay=250, required=false) -%}
   {%- set field_id = id or ("c-" ~ name) -%}
   {# Same three parameters as `select_menu`, same rule — see its comment. #}
   {%- set as_field = visible_label is not none or hint is not none or error is not none -%}
@@ -413,6 +429,8 @@
            hx-push-url="false"
            hx-vals='js:{"{{ search_param }}": this.value}'{% endif %}
            aria-autocomplete="list" aria-expanded="false" aria-controls="{{ field_id }}-listbox"
+           {#- On the input, which is the `combobox` role ARIA allows it on. #}
+           {%- if required %} aria-required="true"{% endif %}
            {%- if label and not visible_label %} aria-label="{{ label }}"{% endif %}
            {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}
            {%- if error %} aria-invalid="true"{% endif %}>
