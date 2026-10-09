@@ -41,12 +41,6 @@ Delete every row and line that does not apply. Merge with "Create a merge commit
 
 - `fjkit-admin`: `fjkit>=0.0.0` — unchanged / raised for <macro, knob or hook>.
 
-## Rehearsal
-
-| Distribution | TestPyPI run |
-|---|---|
-| fjkit | |
-
 ## Checklist
 
 - [ ] The first commit bumps `fjkit`, and only `fjkit`
@@ -54,7 +48,6 @@ Delete every row and line that does not apply. Merge with "Create a merge commit
 - [ ] `fjkit>=` bounds are raised wherever a plugin uses something this release adds
 - [ ] `docs/` is rebuilt
 - [ ] CI is green
-- [ ] Every distribution above installed from TestPyPI at its new version
 
 ## After merge
 

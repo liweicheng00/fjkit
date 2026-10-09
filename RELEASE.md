@@ -79,7 +79,7 @@ A release is one pull request from `release/v<X.Y.Z>` into `main`. `<X.Y.Z>` is 
    git log --no-merges --format='- %s' v0.1.0..release/v0.2.0
    ```
 
-   Rehearse each distribution on TestPyPI from the release branch (see *Rehearsing on TestPyPI*), record the run IDs in the description, and mark the pull request ready.
+   Mark the pull request ready once CI is green. There is no TestPyPI rehearsal: CI's `make build && make verify` already builds and inspects every wheel on the branch, and the `pypi` environment's reviewer is the last check before an upload.
 
 5. **Merge with "Create a merge commit".** Squash collapses every commit subject on the branch into one, and those subjects are what `main` records of the release. Then cut the tags.
 
@@ -150,25 +150,13 @@ Uploads authenticate with OIDC, so there is no token in the repository and nothi
 | Owner             | `liweicheng00`                                                       |
 | Repository name   | `fjkit`                                                              |
 | Workflow name     | `release-pypi.yml`                                                   |
-| Environment name  | `pypi`, or `testpypi` for the rehearsal                              |
+| Environment name  | `pypi`, or `testpypi` (see *TestPyPI*)                               |
 
 Create both environments under Settings → Environments. A required reviewer on `pypi` turns a tag push into an approval step, which is the only brake that exists on an irreversible upload.
 
-### Rehearsing on TestPyPI
+### TestPyPI
 
-Run `release-pypi.yml` from the Actions tab: pick the distribution in the `package` input, and leave `target` at its `testpypi` default. A manual run takes the version from that package's pyproject.toml, so there is no tag to cut for a rehearsal. TestPyPI rejects a malformed README at upload time, which is the failure worth catching before a version number is spent.
-
-TestPyPI is a separate namespace, not a mirror, and `fastapi` there is an unrelated and broken package. Installing back from it therefore depends on index order:
-
-```bash
-uv run --isolated --no-project \
-  --index https://pypi.org/simple/ \
-  --index https://test.pypi.org/simple/ \
-  --prerelease allow --with fjkit \
-  python -c "import fjkit; print(fjkit.__name__)"
-```
-
-uv's default `first-index` strategy takes the first index that carries the name: the real dependencies resolve from PyPI, and only the `fjkit*` names fall through to TestPyPI. Do not add `--index-strategy unsafe-best-match` — it compares versions across every index and selects TestPyPI's unrelated `fastapi`, which fails to build.
+A release does not go through TestPyPI. The index stays wired up — `release-pypi.yml` run by hand with `target=testpypi`, or `make publish-test` — for one case only: trying a change to the build or the upload itself before it spends a real version number.
 
 ### Open VSX
 
