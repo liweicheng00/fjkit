@@ -256,6 +256,11 @@
   A checkbox group in a `fieldset` is the third answer and often the right one:
   no JS at all, and it posts the same repeated field. It stops scaling at about
   a dozen options, which is where the two above start.
+
+  `required` is last in the signature, not beside `label` as on `text_field`,
+  because it arrived after the others and a positional call must keep meaning
+  what it meant. With `blank`, it makes the empty option a choice the browser
+  refuses to submit.
 #}
 {#
   file_field(name, label, …) — the one field `text_field` will not do.
@@ -299,11 +304,12 @@
   </div>
 {%- endmacro %}
 
-{% macro select_field(name, label=none, options=(), selected=none, id=none, blank=none, hint=none, error=none) -%}
+{% macro select_field(name, label=none, options=(), selected=none, id=none, blank=none, hint=none, error=none, required=false) -%}
   {%- set field_id = id or ("f-" ~ name) -%}
   <div class="field">
     {% if label %}<label class="label" for="{{ field_id }}">{{ label }}</label>{% endif %}
     <select class="select" id="{{ field_id }}" name="{{ name }}"
+            {%- if required %} required{% endif %}
             {%- if error %} aria-invalid="true"{% endif %}
             {%- if hint or error %} aria-describedby="{{ field_id }}-hint"{% endif %}
             {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
