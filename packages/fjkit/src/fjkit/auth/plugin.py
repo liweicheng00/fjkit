@@ -22,6 +22,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import logging
 import secrets
 import warnings
 from dataclasses import dataclass
@@ -43,6 +44,8 @@ from fjkit.htmx import is_htmx
 from fjkit.plugins import AppSetup, EnvSetup, PluginWarning
 
 __all__ = ["AuthPlugin", "CookieSpec", "safe_next"]
+
+_log = logging.getLogger("fjkit.auth")
 
 #: How often a request that lost the refresh race looks for the winner's work.
 _POLL_SECONDS = 0.05
@@ -408,7 +411,10 @@ class AuthPlugin:
         """
         if isinstance(exc, CsrfRejected):
             # No redirect to the login page: the browser is where it belongs,
-            # and the request is what is wrong.
+            # and the request is what is wrong. The reason goes to the log, not
+            # the wire — an app started on an unlisted port otherwise answers
+            # every write with a blank 403 and nothing to say why.
+            _log.warning("CSRF check refused %s %s: %s", request.method, request.url.path, exc)
             return Response(status_code=403)
 
         # Three kinds of caller, three answers — the same question `@render`
