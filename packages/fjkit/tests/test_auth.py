@@ -279,6 +279,22 @@ def test_a_write_from_another_origin_is_refused():
     assert client.post("/logout", headers={"origin": "http://evil.example.com"}).status_code == 403
 
 
+def test_a_csrf_refusal_is_logged_with_its_reason_and_the_response_stays_blank(caplog):
+    """A developer on another port sees an empty 403; the log has to say why."""
+    client = make_app(make_auth())
+    client.post("/login", headers={"origin": ORIGIN})
+
+    with caplog.at_level("WARNING", logger="fjkit.auth"):
+        response = client.post("/logout", headers={"origin": "http://evil.example.com"})
+
+    assert response.status_code == 403
+    assert response.content == b""
+    [record] = [r for r in caplog.records if r.name == "fjkit.auth"]
+    assert record.levelname == "WARNING"
+    assert "POST /logout" in record.getMessage()
+    assert "http://evil.example.com" in record.getMessage()
+
+
 def test_a_public_write_without_a_session_is_not_checked():
     """Nothing ambient is attached, so there is nothing to forge."""
     client = make_app(make_auth())
