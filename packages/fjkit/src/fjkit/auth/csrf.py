@@ -11,6 +11,16 @@ and `app.example.com` share a registrable domain, so Lax treats them as one site
 and sends the cookie. An `Origin` comparison is exact — scheme, host and port —
 so it catches exactly what Lax misses.
 
+Login is the one anonymous write that is checked. A cross-site `POST /login`
+carries no cookie, so the middleware has nothing to verify, yet it is the
+request that sets one: a foreign page that submits the attacker's credentials
+logs the visitor in as the attacker, and whatever they type next is recorded
+under that account (login CSRF). `AuthPlugin.issue` therefore runs `verify`
+whenever the request carries an `Origin`. A login without one comes from a
+non-browser client, which has no visitor to plant a session in, and is let
+through. Other anonymous writes stay unchecked, because an endpoint that is
+open to anyone has nothing for a forged request to steal.
+
 This version ships no token strategy. A token has to reach every form and every
 htmx request, so the form macro and the shell both need request-scoped data;
 shipping a token means shipping a templating feature with it. `Csrf.on_issue` is
