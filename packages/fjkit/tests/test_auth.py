@@ -302,6 +302,28 @@ def test_a_public_write_without_a_session_is_not_checked():
     assert client.post("/public").json() == {"ok": "yes"}
 
 
+def test_a_cross_origin_login_is_refused_before_a_session_exists():
+    """Login CSRF: Lax sends no cookie on a cross-site POST, so the middleware
+    has nothing to check, and the attacker's credentials would log the visitor
+    in as the attacker."""
+    client = make_app(make_auth())
+
+    response = client.post("/login", headers={"origin": "http://evil.example.com"})
+
+    assert response.status_code == 403
+    assert "set-cookie" not in response.headers
+    assert client.get("/who").text == "anonymous"
+
+
+def test_a_login_without_an_origin_is_a_non_browser_client_and_is_let_through():
+    """A browser always sends `Origin` on a POST, so no `Origin` means no
+    visitor's browser to plant a session in."""
+    client = make_app(make_auth())
+
+    assert client.post("/login").status_code == 204
+    assert client.get("/who").text == "ada"
+
+
 def test_reads_are_never_checked():
     client = make_app(make_auth())
     client.post("/login", headers={"origin": ORIGIN})
