@@ -2649,3 +2649,18 @@ class TestAvatarName:
         root, initials = elements[0], elements[1]
         assert root.get("role") == "img" and root.get("aria-label") == "Ada Lovelace"
         assert initials.get("aria-hidden") == "true"
+
+
+class TestSurfaceTokens:
+    @pytest.mark.xfail(strict=True, reason="CSS-1")
+    @pytest.mark.parametrize("scope", [":root", ".dark"])
+    def test_a_card_rebrand_reaches_popovers(self, scope):
+        """Section 1 tells an app to redefine `--card`; dropdowns, comboboxes
+        and popovers are the same surface and must follow it in both themes.
+        Basecoat redefines `--popover` in its own `.dark`, so both scopes need
+        the reference."""
+        from fjkit.config import TEMPLATE_DIR
+
+        css = (TEMPLATE_DIR.parent / "static" / "src" / "fjkit.css").read_text(encoding="utf-8")
+        block = re.search(rf"^{re.escape(scope)} \{{(.*?)^\}}", css, re.MULTILINE | re.DOTALL).group(1)
+        assert re.search(r"--popover:\s*var\(--card\);", block), scope
