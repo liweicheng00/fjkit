@@ -320,7 +320,8 @@ class ApiDocsPlugin:
             else:
                 values[key] = str(value)
 
-        path, query, headers, fields = self._compose(request, operation, values)
+        credential = self.flow.headers(request)
+        path, query, headers, fields = self._compose(request, operation, values, credential)
         files = [
             (param.name, *item)
             for param in operation.body_fields
@@ -357,19 +358,35 @@ class ApiDocsPlugin:
 
         context = self._context(request, operation=operation)
         context["result"] = result
-        context["curl"] = _curl(request, operation.method, path, query, headers, body, fields, files)
+        context["curl"] = _curl(
+            request,
+            operation.method,
+            path,
+            query,
+            headers,
+            body,
+            fields,
+            files,
+            redact=frozenset(k.lower() for k in credential),
+        )
         return self._render(request, "apidocs/_result.html", context)
 
     # --------------------------------------------------------------- the call
 
     def _compose(
-        self, request: Request, operation: spec.Operation, values: Mapping[str, str]
+        self,
+        request: Request,
+        operation: spec.Operation,
+        values: Mapping[str, str],
+        credential: Mapping[str, str],
     ) -> tuple[str, list[tuple[str, str]], dict[str, str], list[tuple[str, str]]]:
         """Turn the submitted form into a path, a query, headers and a body.
 
         One loop over every declared parameter, with `location` deciding where
         each value goes. A form body's fields arrive as `location="form"` and
         leave as the fourth return value, for the caller to encode.
+        `credential` is what the flow attaches, handed in so the caller knows
+        which header names hold a secret.
         """
         path = operation.path
         query: list[tuple[str, str]] = []
@@ -431,7 +448,7 @@ class ApiDocsPlugin:
         # The flow gets the last word: it knows what authenticates a call, and
         # a hand-typed header must not shadow it under a different
         # capitalisation.
-        headers.update(self.flow.headers(request))
+        headers.update(credential)
         return path, query, headers, fields
 
     # -------------------------------------------------------------- plumbing
@@ -598,13 +615,17 @@ def _curl(
     body: bytes,
     fields: Sequence[tuple[str, str]] = (),
     files: Sequence[tuple[str, str, str, bytes]] = (),
+    *,
+    redact: frozenset[str] = frozenset(),
 ) -> str:
     """Render the same call as a shell command, for a terminal or a bug report.
 
     Credentials become a placeholder rather than being printed. Rendering the
     caller's live session cookie into a copyable snippet would put it in every
     screenshot and every pasted bug report, and the point of this plugin is that
-    the cookie is not readable from the page.
+    the cookie is not readable from the page. `redact` names, in lowercase, the
+    headers the flow filled: an API key travels under whatever name the flow
+    was given, not only `Authorization`.
     """
     # `base_url` carries the `root_path` a proxy put in front of the app, which
     # the in-process call honours and a command typed into a terminal must too.
@@ -616,7 +637,7 @@ def _curl(
     if request.headers.get("cookie"):
         parts.append("-H 'Cookie: <your session cookie>'")
     for key, value in headers.items():
-        if key.lower() in ("cookie", "authorization"):
+        if key.lower() in ("cookie", "authorization") or key.lower() in redact:
             parts.append(f"-H {_shell(f'{key}: <redacted>')}")
         elif key.lower() == "content-type" and files:
             # curl picks its own boundary, and one pasted from here would not
