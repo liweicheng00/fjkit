@@ -2612,3 +2612,20 @@ class TestTableEmptyCase:
         )
         assert 'class="empty"' in html
         assert 'id="feed"' in html and 'hx-get="/feed"' in html and 'hx-trigger="every 5s"' in html
+
+
+class TestTabPanelNames:
+    @pytest.mark.xfail(strict=True, reason="MAC-8")
+    def test_each_panel_is_labelled_by_the_tab_that_controls_it(self, render):
+        html = render(
+            f'{TABS}{{% call tabs([{{"id": "a", "label": "A"}}, {{"id": "b", "label": "B"}}]) %}}'
+            '{% call tab_panel("a") %}x{% endcall %}{% call tab_panel("b") %}y{% endcall %}{% endcall %}'
+        )
+        elements = _Attributes(html).elements
+        tabs = {e["aria-controls"]: e for e in elements if e.get("role") == "tab"}
+        panels = [e for e in elements if e.get("role") == "tabpanel"]
+        assert len(panels) == 2
+        for panel in panels:
+            tab_id = tabs[panel["id"]].get("id")
+            assert tab_id, "the tab needs an id to be referenced"
+            assert panel.get("aria-labelledby") == tab_id
