@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlsplit
 
@@ -676,6 +678,103 @@ async def test_a_source_that_cannot_refresh_keeps_the_session_it_has():
         # The warning has its own test below.
         warnings.simplefilter("ignore", PluginWarning)
         assert await auth._refresh("sid", stale) is stale
+
+
+# ------------------------------------------------------- the refresh contract
+
+
+class FlakySource(CountingSource):
+    """An upstream whose `refresh` raises whatever `error` holds, counting every
+    attempt, so a test can turn an outage on and off between requests."""
+
+    def __init__(self, error: Exception | None, *, delay: float = 0.0) -> None:
+        super().__init__(ttl=timedelta(seconds=5), delay=delay)
+        self.error = error
+        self.attempts = 0
+
+    async def refresh(self, session: Session) -> Session:
+        self.attempts += 1
+        if self.error is not None:
+            if self.delay:
+                await asyncio.sleep(self.delay)
+            raise self.error
+        return await super().refresh(session)
+
+
+@pytest.mark.xfail(strict=True, reason="RT-6")
+def test_an_upstream_refusal_ends_the_session():
+    from fjkit.auth import RefreshRefused
+
+    source = FlakySource(RefreshRefused("the refresh token was revoked"))
+    client = make_app(make_auth(source=source))
+    client.post("/login", headers={"origin": ORIGIN})
+
+    response = client.get("/who", headers=BROWSER, follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login?next=/who"
+    source.error = None
+    assert client.get("/who").text == "anonymous", "a refused session must not come back when the upstream does"
+
+
+@pytest.mark.xfail(strict=True, reason="RT-6")
+@pytest.mark.parametrize("error", [ConnectionError("no route to host"), TimeoutError("read timed out")])
+def test_an_unreachable_upstream_keeps_the_session_and_says_when_to_retry(error):
+    """An outage is not a refusal. The user stays signed in, this one request
+    is answered 503 with a `Retry-After`, and the next request after the
+    upstream is back renews the token as if nothing had happened."""
+    source = FlakySource(error)
+    client = make_app(make_auth(source=source))
+    client.post("/login", headers={"origin": ORIGIN})
+
+    during = client.get("/who", headers=BROWSER, follow_redirects=False)
+    source.error = None
+    after = client.get("/who")
+
+    assert during.status_code == 503
+    assert during.headers["retry-after"].isdigit()
+    assert after.text == "ada"
+    assert source.refreshes == 1
+
+
+@pytest.mark.xfail(strict=True, reason="RT-6")
+def test_a_static_asset_never_waits_on_the_upstream():
+    """The stylesheet and htmx are served whatever the identity provider is
+    doing: a 503 on `/_fjkit/*` would leave a page that did load unstyled."""
+    source = FlakySource(ConnectionError("no route to host"))
+    client = make_app(make_auth(source=source))
+    client.post("/login", headers={"origin": ORIGIN})
+
+    response = client.get("/_fjkit/vendor/htmx/htmx.min.js")
+
+    assert response.status_code == 200
+    assert source.attempts == 0
+
+
+@pytest.mark.xfail(strict=True, reason="RT-6")
+def test_a_request_that_lost_the_refresh_race_learns_the_winner_failed_promptly():
+    """Two swaps notice the expiring token at once. The first holds the lock
+    and finds the upstream unreachable; the second must get the same 503 as
+    soon as the first lets go, not wait out `refresh_wait` and then send the
+    user to the login page for a session that still exists."""
+    source = FlakySource(ConnectionError("no route to host"), delay=0.3)
+    with make_app(make_auth(source=source, refresh_wait=timedelta(seconds=2))) as client:
+        client.post("/login", headers={"origin": ORIGIN})
+
+        def timed_get() -> tuple[int, float]:
+            started = time.monotonic()
+            return client.get("/who", follow_redirects=False).status_code, time.monotonic() - started
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            winner = pool.submit(timed_get)
+            time.sleep(0.1)
+            loser = pool.submit(timed_get)
+            (winner_status, _), (loser_status, loser_elapsed) = winner.result(), loser.result()
+
+    assert winner_status == 503
+    assert loser_status == 503
+    assert loser_elapsed < 1.0, "the loser must learn the outcome, not wait out refresh_wait"
+    assert source.attempts == 1, "the loser reports the winner's outcome rather than trying the upstream again"
 
 
 # ----------------------------------------------------------------- wiring
