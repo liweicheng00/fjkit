@@ -206,12 +206,18 @@ class _Queue:
         Emptying the queue stops a message being delivered twice when a
         response both carries an `HX-Trigger` and renders a toaster.
         """
-        self._mark()
+        self.mark_shown()
         taken = tuple(self._messages)
         self._messages.clear()
         return taken
 
-    def _mark(self) -> None:
+    def mark_shown(self) -> None:
+        """Record delivery without iterating.
+
+        For a response whose template iterates the queue after its headers are
+        on the wire (a streamed page): the render is certain, and the record
+        has to exist while a clearing cookie can still be added.
+        """
         if self._request is not None:
             setattr(self._request.state, _SHOWN, True)
 
@@ -223,5 +229,5 @@ class _Queue:
 
     def __iter__(self) -> Iterator[Message]:
         if self._messages:
-            self._mark()
+            self.mark_shown()
         return iter(tuple(self._messages))

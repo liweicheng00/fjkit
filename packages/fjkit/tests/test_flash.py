@@ -71,7 +71,6 @@ def test_it_is_shown_once_and_then_gone():
     assert second == ""
 
 
-@pytest.mark.xfail(strict=True, reason="RT-2")
 def test_a_streamed_page_shows_it_once_too():
     """A streamed page renders its body after the headers have gone out, which
     is after the middleware last had a chance to clear the cookie. The message

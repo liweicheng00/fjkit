@@ -377,7 +377,9 @@ def _finish(
     context.setdefault("errors", NO_ERRORS)
     status_code, headers, cookies = _response_args(request, response)
     _deliver_trigger(plan, result, call_kwargs, headers)
-    _deliver_messages(request, headers, renders_shell=name == plan.template and plan.serves_a_page)
+    _deliver_messages(
+        request, headers, renders_shell=name == plan.template and plan.serves_a_page, stream=plan.stream
+    )
     if plan.stream:
         reply = templates.stream(
             request, name, context, buffer_size=plan.buffer_size, status_code=status_code, headers=headers
@@ -462,13 +464,23 @@ def _as_events(header: str | None) -> dict[str, Any]:
     return {name.strip(): None for name in text.split(",") if name.strip()}
 
 
-def _deliver_messages(request: Request, headers: dict[str, str], *, renders_shell: bool) -> None:
+def _deliver_messages(
+    request: Request, headers: dict[str, str], *, renders_shell: bool, stream: bool = False
+) -> None:
     """Pick the channel a queued message goes out on. See `fjkit.messages`.
 
     A render of the shell carries the toaster, so the message goes in the
     document; anything else sends it as `HX-Trigger`. Never both.
     """
     if renders_shell:
+        if stream:
+            # A streamed shell iterates the queue only after its headers are on
+            # the wire, which is after `FlashPlugin` last sees the response and
+            # too late for the clearing cookie. The render is certain, so it is
+            # recorded now.
+            queue = messages.queue(request)
+            if queue:
+                queue.mark_shown()
         return
     # Case-insensitively, because `_response_args` copies out of a Starlette
     # `MutableHeaders`, which lowercases every name it was given. A handler
