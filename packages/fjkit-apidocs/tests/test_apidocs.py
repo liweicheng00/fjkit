@@ -628,6 +628,55 @@ def test_a_forged_token_cookie_is_not_a_token():
     assert "No token held" in panel.text
 
 
+@pytest.mark.xfail(strict=True, reason="APIDOCS-1")
+def test_a_header_flow_needs_trusted_origins_as_the_auth_plugin_does():
+    """The flow keeps the token in a cookie, an ambient credential, so it is
+    held to the rule `AuthPlugin` follows: name the origins, or opt out."""
+    with pytest.raises(ValueError, match="trusted_origins"):
+        HeaderFlow(secret=SECRET)
+    with pytest.raises(ValueError, match="not both"):
+        HeaderFlow(secret=SECRET, csrf=NoCsrf(), trusted_origins=["http://testserver"])
+
+
+@pytest.mark.xfail(strict=True, reason="APIDOCS-1")
+def test_the_console_refuses_a_post_whose_origin_is_not_the_app_s():
+    """`SameSite=Strict` is site-scoped: a page on a sibling origin of the same
+    site can still make the browser send the token cookie, and a forged form
+    there would run any documented operation as the victim, or plant the
+    attacker's token. The `Origin` check is exact, which is why `fjkit.auth`
+    makes it; the console's own POST routes make the same one."""
+    ours = "http://testserver"
+    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, secure=False, trusted_origins=[ours]))
+    app = build_echo_app(docs)
+    client = TestClient(app)
+    op = operation_id(app, "GET", "/echo")
+
+    assert "Token held" in client.post("/api-docs/auth", data={"token": "victim-token"}, headers={"origin": ours}).text
+
+    forged = shown(client.post(f"/api-docs/try/{op}", headers={"origin": "https://evil.example.com"}))
+    assert "victim-token" not in forged  # the endpoint never ran with the credential
+    assert "evil.example.com" in forged  # and the panel says what was refused
+
+    # The same call as a cookie-authenticated write with no `Origin` at all is
+    # refused too, as the auth middleware refuses one.
+    assert "victim-token" not in shown(client.post(f"/api-docs/try/{op}"))
+
+    own = shown(client.post(f"/api-docs/try/{op}", headers={"origin": ours}))
+    assert '"authorization": "Bearer victim-token"' in own
+
+    planted = client.post(
+        "/api-docs/auth", data={"token": "attacker-token"}, headers={"origin": "https://evil.example.com"}
+    )
+    assert "evil.example.com" in planted.text
+    assert not [h for h in planted.headers.get_list("set-cookie") if "fjkit_apidocs_token" in h]
+    # The victim's own token is still the one the console carries.
+    assert "Bearer victim-token" in shown(client.post(f"/api-docs/try/{op}", headers={"origin": ours}))
+
+    # Saving a token with no `Origin` is a non-browser client, with no visitor
+    # to plant anything on: let through, as `AuthPlugin.issue` lets a login.
+    assert "Token held" in client.post("/api-docs/auth", data={"token": "cli-token"}).text
+
+
 def test_a_flow_error_is_the_way_to_refuse_without_leaking():
     class Picky:
         name = "picky"
