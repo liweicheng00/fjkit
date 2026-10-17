@@ -254,7 +254,6 @@ def test_permissions_gate_both_the_button_and_the_route():
     assert 'hx-delete="/admin/task/1"' not in client.get("/admin/task/1").text
 
 
-@pytest.mark.xfail(strict=True, reason="ADMIN-2")
 def test_a_bulk_action_needs_the_view_permission():
     class Hidden(TaskAdmin):
         key = "task"

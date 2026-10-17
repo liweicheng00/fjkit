@@ -305,6 +305,7 @@ class AdminPlugin:
 
     def _action_handler(self, view: ModelAdmin) -> Callable[..., Any]:
         async def run_action(request: Request, action: str) -> HTMLResponse:
+            self._require(view.has_view_permission(request))
             spec = next((s for s in view.allowed_actions(request) if s["name"] == action), None)
             if spec is None:
                 raise HTTPException(status_code=404, detail=f"No action {action!r}.")
