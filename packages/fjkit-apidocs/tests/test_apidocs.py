@@ -1278,3 +1278,17 @@ def test_a_header_the_wire_cannot_carry_is_reported_in_the_panel_rather_than_as_
         assert "no response" in reply.text
         assert "x-name" in shown(reply).lower()  # which header, so it can be fixed
         assert '"x_name"' not in reply.text  # the endpoint was never reached
+
+
+@pytest.mark.xfail(strict=True, reason="APIDOCS-6")
+def test_a_hand_typed_accept_is_sent_whatever_its_capitalisation():
+    """The box says a hand-typed `Accept` is a legitimate thing to test. Header
+    names are case-insensitive, so `Accept:` and `accept:` are the same
+    request, and neither may be silently replaced by the documented one."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app)
+    op = operation_id(app, "GET", "/echo")
+
+    for spelling in ("Accept", "accept"):
+        reply = client.post(f"/api-docs/try/{op}", data={"headers": f"{spelling}: text/csv"})
+        assert '"accept": "text/csv"' in shown(reply), spelling
