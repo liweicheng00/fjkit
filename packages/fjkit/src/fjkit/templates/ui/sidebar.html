@@ -161,6 +161,10 @@
   (CHARTER.md §6), which costs a file and a load-order rule to save an
   attribute. `aria-expanded` is deliberately absent: the script owns the open
   state, so a value rendered here would be a second, stale copy.
+
+  The handler reads the id from `aria-controls` instead of having it written
+  into the script. Autoescape is an HTML escaper, and the browser undoes it
+  before a handler runs, so a quote in `target` would become code.
 #}
 {% macro sidebar_trigger(target="sidebar", label="Toggle navigation") -%}
   <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"

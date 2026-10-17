@@ -552,6 +552,9 @@
   the drawer is usually at the end of the document, the button wherever it
   belongs. Passing the id twice is the price of that — `drawer` takes it as
   `id`, this macro as `target`.
+
+  `onclick` reads the id back from `aria-controls`, for the reason
+  `sidebar_trigger` gives: an id written into the script would run as code.
 #}
 {% macro drawer_trigger(label, target, variant="outline", size="", icon_name=none) -%}
   <button type="button" class="btn" data-variant="{{ variant }}"
