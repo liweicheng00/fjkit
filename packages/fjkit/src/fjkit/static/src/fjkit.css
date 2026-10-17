@@ -68,6 +68,9 @@
    * grey beside it. They stay surface tokens, not brand tokens. */
   --background: oklch(0.995 0.002 275);
   --card: oklch(1 0 0);
+  /* A popover is a card that floats: one surface, so a `--card` rebrand
+   * repaints dropdowns, comboboxes and popovers too. */
+  --popover: var(--card);
   --muted: oklch(0.968 0.004 275);
   --accent: oklch(0.955 0.008 275);
   --border: oklch(0.918 0.005 275);
@@ -111,7 +114,8 @@
 
   --background: oklch(0.16 0.012 275);
   --card: oklch(0.21 0.014 275);
-  --popover: oklch(0.21 0.014 275);
+  /* Repeated for the reason the --sidebar-* block below gives. */
+  --popover: var(--card);
   --muted: oklch(0.27 0.014 275);
   --accent: oklch(0.32 0.02 275);
   --border: oklch(1 0 0 / 11%);

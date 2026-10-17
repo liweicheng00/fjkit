@@ -10,7 +10,9 @@
   block before changing anything here: the two skins overlapping already put a
   phantom scrollbar on the card's edge once.
 
-  This macro carries the aria wiring the script needs, and nothing else.
+  This macro carries the aria wiring the script needs, and the half it does
+  not: each tab gets the id `<panel id>-tab`, and `tab_panel` names itself
+  with `aria-labelledby` pointing there, so a panel is announced by its tab.
 
   The contract Basecoat's JS reads:
 
@@ -74,7 +76,7 @@
          aria-orientation="{{ orientations.get(orientation, "horizontal") }}"
          {%- if shape %} data-variant="{{ shape }}"{% endif %}>
       {% for item in items %}
-        <button type="button" role="tab" aria-controls="{{ item.id }}"
+        <button type="button" role="tab" id="{{ item.id }}-tab" aria-controls="{{ item.id }}"
                 aria-selected="{{ "true" if item.id == active else "false" }}">{{ item.label }}</button>
       {% endfor %}
     </nav>
@@ -139,7 +141,7 @@
   {%- set trigger %}intersect
     {%- for event in on or [] %}, {{ event }}[!this.hidden] from:body{% endfor %}
   {%- endset -%}
-  <div id="{{ id }}" role="tabpanel"
+  <div id="{{ id }}" role="tabpanel" aria-labelledby="{{ id }}-tab"
     {%- if lazy %} hx-get="{{ lazy }}" hx-trigger="{{ trigger }}"
     {%- if include %} hx-include="{{ include }}"{% endif %} hx-target="this" hx-swap="innerHTML"
     {%- endif %}
