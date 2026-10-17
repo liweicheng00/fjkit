@@ -165,6 +165,6 @@
 {% macro sidebar_trigger(target="sidebar", label="Toggle navigation") -%}
   <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
           aria-label="{{ label }}" aria-controls="{{ target }}"
-          onclick="document.getElementById('{{ target }}').toggle()"
+          onclick="document.getElementById(this.getAttribute('aria-controls')).toggle()"
     {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>{{ icon("panel-left", 16) }}</button>
 {%- endmacro %}

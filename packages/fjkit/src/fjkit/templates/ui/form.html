@@ -148,7 +148,7 @@
       It is an inline attribute, so no file is added and §4.2's per-page budget
       is unchanged.
     #}
-    {%- if progress %} hx-on::xhr:progress="if (event.detail.lengthComputable) { const p = Math.round(event.detail.loaded / event.detail.total * 100), b = document.querySelector('{{ progress }}'); b.querySelector('[role=progressbar]').setAttribute('aria-valuenow', p); b.querySelector('[data-progress-bar]').style.width = p + '%'; const n = b.querySelector('[data-progress-value]'); if (n) n.textContent = p + '%'; }"{% endif %}
+    {%- if progress %} data-progress="{{ progress }}" hx-on::xhr:progress="if (event.detail.lengthComputable) { const p = Math.round(event.detail.loaded / event.detail.total * 100), b = document.querySelector(this.dataset.progress); b.querySelector('[role=progressbar]').setAttribute('aria-valuenow', p); b.querySelector('[data-progress-bar]').style.width = p + '%'; const n = b.querySelector('[data-progress-value]'); if (n) n.textContent = p + '%'; }"{% endif %}
     {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     {% if card %}<section>{{ caller() }}</section>{% else %}{{ caller() }}{% endif %}
   </form>

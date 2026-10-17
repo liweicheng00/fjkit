@@ -557,7 +557,7 @@
   <button type="button" class="btn" data-variant="{{ variant }}"
           {%- if size %} data-size="{{ size }}"{% endif %}
           aria-haspopup="dialog" aria-controls="{{ target }}"
-          onclick="document.getElementById('{{ target }}').showModal()"
+          onclick="document.getElementById(this.getAttribute('aria-controls')).showModal()"
           {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     {%- if icon_name %}{{ icon(icon_name, 16) }}{% endif %}
     {{- label -}}

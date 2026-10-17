@@ -1094,7 +1094,6 @@ class TestSidebar:
     def test_trigger_names_what_it_controls(self, render):
         html = render(f'{SIDEBAR}{{{{ sidebar_trigger("app-nav") }}}}')
         assert 'aria-controls="app-nav"' in html
-        assert "getElementById(\'app-nav\')" in html
         assert 'aria-label="Toggle navigation"' in html
 
     def test_trigger_does_not_render_a_state_the_script_owns(self, render):
@@ -1523,7 +1522,7 @@ class TestFileUpload:
         )
         assert "hx-on::xhr:progress=" in html
         assert "event.detail.lengthComputable" in html
-        assert "document.querySelector('#bar')" in html
+        assert 'data-progress="#bar"' in html
 
     def test_progress_moves_all_three_places_the_number_is_written(self, render):
         """A bar that fills beside a label reading 0%, or fills while a screen
@@ -2510,7 +2509,6 @@ class TestCallerTextNeverBecomesScript:
     attribute runs, so caller text placed inside a JavaScript string there is
     code."""
 
-    @pytest.mark.xfail(strict=True, reason="MAC-1")
     @pytest.mark.parametrize(
         "source",
         [
