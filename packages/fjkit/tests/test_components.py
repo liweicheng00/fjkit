@@ -2643,3 +2643,13 @@ class TestSkeletonLastLine:
         ]
         assert len(bars) == 3
         assert bars[-1] <= bars[0] == bars[1], bars
+
+
+class TestAvatarName:
+    @pytest.mark.xfail(strict=True, reason="MAC-10")
+    def test_without_an_image_the_full_name_is_announced(self, render):
+        """Initials alone read as "A L"."""
+        elements = _Attributes(render(f'{AVATAR}{{{{ avatar("Ada Lovelace") }}}}')).elements
+        root, initials = elements[0], elements[1]
+        assert root.get("role") == "img" and root.get("aria-label") == "Ada Lovelace"
+        assert initials.get("aria-hidden") == "true"
