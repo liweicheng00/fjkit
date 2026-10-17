@@ -37,6 +37,7 @@ from fastapi.responses import HTMLResponse
 from fjkit import htmx, messages
 from fjkit.plugins import AppSetup, EnvSetup
 from fjkit.templating import get_templates
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from fjkit_admin.introspect import ColumnInfo, inspect_model
@@ -251,7 +252,7 @@ class AdminPlugin:
                 obj = view.model()
                 apply(view.info, obj, data, view.form_fields())
                 view.save_model(request, session, obj, data, change=False)
-                session.commit()
+                self._commit(session, view)
                 messages.add(
                     request, f"{view.verbose_name.capitalize()} added", view.label_for(obj), category="success"
                 )
@@ -276,7 +277,7 @@ class AdminPlugin:
                     raise RequestValidationError(errors)
                 apply(view.info, obj, data, view.form_fields())
                 view.save_model(request, session, obj, data, change=True)
-                session.commit()
+                self._commit(session, view)
                 messages.add(
                     request, f"{view.verbose_name.capitalize()} saved", view.label_for(obj), category="success"
                 )
@@ -333,6 +334,17 @@ class AdminPlugin:
     def _require(allowed: bool) -> None:
         if not allowed:
             raise HTTPException(status_code=403, detail="Not allowed.")
+
+    @staticmethod
+    def _commit(session: Session, view: ModelAdmin) -> None:
+        """Commit a saved form. A constraint the database enforces (unique, foreign
+        key) is the person's to fix, so it comes back as the 422 `errors.js`
+        draws, as a toast since no one field owns it."""
+        try:
+            session.commit()
+        except IntegrityError as exc:
+            msg = f"This {view.verbose_name} was refused: {exc.orig}"
+            raise RequestValidationError([{"type": "integrity_error", "loc": ("body",), "msg": msg}]) from exc
 
     def _load(
         self, request: Request, session: Session, view: ModelAdmin, raw: str, *, missing_ok: bool = False

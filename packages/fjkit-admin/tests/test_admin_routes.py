@@ -173,7 +173,6 @@ def test_a_rejected_create_is_fastapis_own_422(client: TestClient):
     assert ("body", "project_id") in locs
 
 
-@pytest.mark.xfail(strict=True, reason="ADMIN-7")
 def test_a_row_the_database_refuses_is_a_422_not_a_crash(stack):
     client = TestClient(stack[0], raise_server_exceptions=False)
     response = client.post("/admin/project", json={"name": "Core"}, headers=HX)
