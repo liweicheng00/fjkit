@@ -2600,3 +2600,16 @@ class TestRepeatedGroupHeadings:
         assert len(groups) == 2
         for group in groups:
             assert group.get("aria-label") or group.get("aria-labelledby") in ids, group
+
+
+class TestTableEmptyCase:
+    @pytest.mark.xfail(strict=True, reason="MAC-7")
+    def test_caller_attributes_survive_an_empty_list(self, render):
+        """A polling table that empties once must keep its id and trigger, or
+        it never polls again and nothing can target it."""
+        html = render(
+            f'{TABLE}{{% call table([{{"label": "A"}}], rows=[], id="feed", hx_get="/feed",'
+            ' hx_trigger="every 5s", hx_swap="outerHTML") %}{% endcall %}'
+        )
+        assert 'class="empty"' in html
+        assert 'id="feed"' in html and 'hx-get="/feed"' in html and 'hx-trigger="every 5s"' in html
