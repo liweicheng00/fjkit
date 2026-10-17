@@ -7,8 +7,12 @@ so that every recorded item carries a line and a column.
 from __future__ import annotations
 
 import ast
+import importlib.metadata
+import importlib.util
+import os
 import re
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
 
 SKIP_DIRS = {
@@ -31,8 +35,28 @@ TEMPLATE_SUFFIXES = {".html", ".jinja", ".j2", ".txt", ".xml", ".svg"}
 #: `ui/form.html`. `fjkit.templating._ReservedNamespace` is the loader that
 #: makes that true at runtime; resolution here has to agree with it.
 FJKIT_NAMESPACE = "fjkit/"
-KIT_TEMPLATES = "/src/fjkit/templates"
 ROUTE_METHODS = {"get", "post", "put", "delete", "patch", "options", "head", "api_route", "route"}
+_REQUIRES_FJKIT = re.compile(r"fjkit(?![\w.-])", re.IGNORECASE)
+
+
+def installed_packages() -> dict[str, Path]:
+    """fjkit's package directory and that of every installed distribution requiring it, by import name.
+
+    Read from the interpreter this server runs in. Started as `.venv/bin/fjkit-lsp`,
+    that is the workspace's own environment, whose site-packages the workspace
+    walk skips; an editable install points into the workspace instead.
+    """
+    names = {"fjkit"}
+    for dist in importlib.metadata.distributions():
+        if any(_REQUIRES_FJKIT.match(req) for req in dist.requires or ()):
+            names.add(re.sub(r"[-_.]+", "_", dist.metadata["Name"]).lower())
+            names.update((dist.read_text("top_level.txt") or "").split())
+    out = {}
+    for name in sorted(names):
+        spec = importlib.util.find_spec(name)
+        if spec is not None and spec.submodule_search_locations:
+            out[name] = Path(next(iter(spec.submodule_search_locations))).resolve()
+    return out
 
 
 @dataclass(frozen=True)
@@ -120,25 +144,33 @@ class Template:
     imports: dict[str, tuple[str, str]] = field(default_factory=dict)  # local -> (template, macro or "")
     locals: list[Local] = field(default_factory=list)
     ids: list[tuple[str, Loc]] = field(default_factory=list)  # id="…", as an attribute or a macro kwarg
-    _code: str | None = field(default=None, repr=False, compare=False)
 
+    # Computed once each: the same template is searched again for every field,
+    # event and target a query touches. All three keep the text's offsets.
+
+    @cached_property
+    def lines(self) -> _Lines:
+        return _Lines(self.text)
+
+    @cached_property
+    def clean(self) -> str:
+        """The text with comments blanked out, so a tag or attribute quoted in one is not found."""
+        return _COMMENT.sub(_blank, self.text)
+
+    @cached_property
     def code(self) -> str:
-        """The text with everything but Jinja code blanked out. Computed once:
-        the same template is searched again for every field a query touches."""
-        if self._code is None:
-            self._code = _code_only(self.text)
-        return self._code
+        """The text with everything but Jinja code blanked out."""
+        return _code_only(self.text)
+
+    def loc(self, offset: int, length: int = 0) -> Loc:
+        line, col = self.lines.pos(offset)
+        return Loc(self.path, line, col, col + length if length else None)
 
 
 _TAG = re.compile(r"\{%-?\s*(\w+)(.*?)-?%\}", re.DOTALL)
 _COMMENT = re.compile(r"\{#.*?#\}", re.DOTALL)
 _STRING = re.compile(r"\"([^\"]*)\"|'([^']*)'")
 _IDENT = re.compile(r"[A-Za-z_]\w*")
-
-
-def _first_string(body: str) -> str | None:
-    m = _STRING.search(body)
-    return (m.group(1) or m.group(2)) if m else None
 
 
 def _split_top(s: str) -> list[str]:
@@ -163,14 +195,14 @@ _CODE = re.compile(r"\{\{.*?\}\}|\{%.*?%\}", re.DOTALL)
 #: `id="board"` — an HTML attribute or a macro keyword, the regex does not care.
 #: `\bid` keeps `field_id=` and `task_id=` out, because `_` is a word character.
 _ID_ATTR = re.compile(r"\bid\s*=\s*\"([^\"]*)\"")
-#: The receiver a route decorator is called on: `router` in `@router.get(...)`.
-_ROUTER_PARAM = re.compile(r"\{(\w+)(?::(\w+))?\}")
+#: A path parameter: `{task_id}`, or `{rest:path}` with a convertor.
+_PATH_PARAM = re.compile(r"\{(\w+)(?::(\w+))?\}")
 
 
 def _path_pattern(path: str) -> re.Pattern[str]:
     """`/tasks/{task_id}/advance` as a regex; `{name:path}` swallows slashes like Starlette."""
     out, at = [], 0
-    for m in _ROUTER_PARAM.finditer(path):
+    for m in _PATH_PARAM.finditer(path):
         out.append(re.escape(path[at : m.start()]))
         out.append(".+" if m.group(2) == "path" else "[^/]+")
         at = m.end()
@@ -216,6 +248,12 @@ def _code_only(text: str) -> str:
     return "".join(out)
 
 
+def split_lines(text: str) -> list[str]:
+    """Lines as LSP and `_Lines` count them: `\\n` ends one, a `\\r` before it is
+    dropped. `str.splitlines()` also breaks on `\\x0c`, `\\x1c`, `\\u2028` and more."""
+    return [line.removesuffix("\r") for line in text.split("\n")]
+
+
 class _Lines:
     def __init__(self, text: str) -> None:
         self.starts = [0]
@@ -235,42 +273,35 @@ class _Lines:
 
 def scan_template(path: Path, name: str, text: str) -> Template:
     t = Template(path=path, name=name, text=text)
-    lines = _Lines(text)
-    # Blank out comments so a tag inside one is not indexed; offsets are preserved.
-    clean = _COMMENT.sub(_blank, text)
     stack: list[Macro] = []
 
-    def loc_of(offset: int, length: int = 0) -> Loc:
-        line, col = lines.pos(offset)
-        return Loc(path, line, col, col + length if length else None)
-
-    for m in _ID_ATTR.finditer(clean):
-        t.ids.append((m.group(1), loc_of(m.start(1), len(m.group(1)))))
-    for m in _TAG.finditer(clean):
+    for m in _ID_ATTR.finditer(t.clean):
+        t.ids.append((m.group(1), t.loc(m.start(1), len(m.group(1)))))
+    for m in _TAG.finditer(t.clean):
         tag, body = m.group(1), m.group(2)
         body_start = m.start(2)
         if tag in ("extends", "include"):
             s = _STRING.search(body)
             if s:
                 t.refs.append(
-                    TemplateRef(s.group(1) or s.group(2), loc_of(body_start + s.start(), len(s.group(0))), tag)
+                    TemplateRef(s.group(1) or s.group(2), t.loc(body_start + s.start(), len(s.group(0))), tag)
                 )
         elif tag == "import":
             s = _STRING.search(body)
             alias = re.search(r"\bas\s+(\w+)", body)
             if s:
                 tpl = s.group(1) or s.group(2)
-                t.refs.append(TemplateRef(tpl, loc_of(body_start + s.start(), len(s.group(0))), tag))
+                t.refs.append(TemplateRef(tpl, t.loc(body_start + s.start(), len(s.group(0))), tag))
                 if alias:
                     t.imports[alias.group(1)] = (tpl, "")
                     t.locals.append(
-                        Local(alias.group(1), loc_of(body_start + alias.start(1), len(alias.group(1))), "import")
+                        Local(alias.group(1), t.loc(body_start + alias.start(1), len(alias.group(1))), "import")
                     )
         elif tag == "from":
             s = _STRING.search(body)
             if s:
                 tpl = s.group(1) or s.group(2)
-                t.refs.append(TemplateRef(tpl, loc_of(body_start + s.start(), len(s.group(0))), tag))
+                t.refs.append(TemplateRef(tpl, t.loc(body_start + s.start(), len(s.group(0))), tag))
                 imp = re.search(r"\bimport\b", body)
                 if imp:
                     names_src = body[imp.end() :]
@@ -284,30 +315,30 @@ def scan_template(path: Path, name: str, text: str) -> Template:
                             macro, alias = mm.group(1), mm.group(2) or mm.group(1)
                             t.imports[alias] = (tpl, macro)
                             at = base + off + (mm.start(2) if mm.group(2) else mm.start(1))
-                            t.locals.append(Local(alias, loc_of(at, len(alias)), "import"))
+                            t.locals.append(Local(alias, t.loc(at, len(alias)), "import"))
                         off += len(part) + 1
         elif tag == "macro":
             mm = re.match(r"\s*(\w+)\s*\((.*)\)\s*$", body, re.DOTALL)
             if mm:
                 params = [p.split("=", 1)[0].strip() for p in _split_top(mm.group(2))]
-                mac = Macro(mm.group(1), loc_of(body_start + mm.start(1), len(mm.group(1))), params, -1)
+                mac = Macro(mm.group(1), t.loc(body_start + mm.start(1), len(mm.group(1))), params, -1)
                 t.macros[mac.name] = mac
                 stack.append(mac)
                 for p in params:
                     pm = re.search(rf"\b{re.escape(p)}\b", body[mm.start(2) :])
                     at = body_start + mm.start(2) + (pm.start() if pm else 0)
-                    t.locals.append(Local(p, loc_of(at, len(p)), "param", end_line=None))
+                    t.locals.append(Local(p, t.loc(at, len(p)), "param", end_line=None))
         elif tag == "endmacro":
             if stack:
                 mac = stack.pop()
-                mac.end_line = lines.pos(m.start())[0]
+                mac.end_line = t.lines.pos(m.start())[0]
                 for lo in t.locals:
                     if lo.kind == "param" and lo.end_line is None and lo.loc.line >= mac.loc.line:
                         lo.end_line = mac.end_line
         elif tag == "set":
             head = body.split("=", 1)[0]
             for mm in _IDENT.finditer(head):
-                t.locals.append(Local(mm.group(0), loc_of(body_start + mm.start(), len(mm.group(0))), "set"))
+                t.locals.append(Local(mm.group(0), t.loc(body_start + mm.start(), len(mm.group(0))), "set"))
         elif tag == "for":
             mm = re.match(r"\s*(.*?)\s+in\s+(.*)$", body, re.DOTALL)
             if mm:
@@ -316,7 +347,7 @@ def scan_template(path: Path, name: str, text: str) -> Template:
                     t.locals.append(
                         Local(
                             im.group(0),
-                            loc_of(body_start + mm.start(1) + im.start(), len(im.group(0))),
+                            t.loc(body_start + mm.start(1) + im.start(), len(im.group(0))),
                             "for",
                             source=src.group(0) if src else None,
                         )
@@ -326,14 +357,14 @@ def scan_template(path: Path, name: str, text: str) -> Template:
             if mm:
                 for im in _IDENT.finditer(mm.group(1)):
                     t.locals.append(
-                        Local(im.group(0), loc_of(body_start + mm.start(1) + im.start(), len(im.group(0))), "call")
+                        Local(im.group(0), t.loc(body_start + mm.start(1) + im.start(), len(im.group(0))), "call")
                     )
         elif tag == "with":
             for part in _split_top(body):
                 im = _IDENT.match(part.strip())
                 if im:
                     t.locals.append(
-                        Local(im.group(0), loc_of(body_start + body.find(part) + im.start(), len(im.group(0))), "set")
+                        Local(im.group(0), t.loc(body_start + body.find(part) + im.start(), len(im.group(0))), "set")
                     )
     return t
 
@@ -381,10 +412,11 @@ class Index:
 
     def __init__(self, roots: list[Path]) -> None:
         self.roots = [r.resolve() for r in roots]
+        self.packages = installed_packages()
         self.template_roots: list[Path] = []
         self.app_roots: list[Path] = []  # one per application, in path order
         self.shared_roots: list[Path] = []  # the kit's and every plugin's
-        self.kit_root: Path | None = None  # packages/fjkit/src/fjkit/templates
+        self.kit_root: Path | None = None  # the `templates` directory of the installed fjkit
         #: Every app in path order, then the shared roots. Used when nothing
         #: says which application is asking, so a name two apps share at least
         #: resolves to the same one every time.
@@ -402,40 +434,43 @@ class Index:
         self.prefixes: dict[Path, dict[str, str]] = {}  # module -> {router variable: APIRouter(prefix=…)}
         self._chains: dict[Path, list[Path]] = {}  # module -> chain_for, memoised
         self._events: dict[str, list[tuple[Route, Emit]]] | None = None  # resolved lazily
-        self.rebuild()
+        self._build()
 
     # ---- building -------------------------------------------------------
 
-    def _walk(self, suffixes: set[str]):
-        for root in self.roots:
-            for p in root.rglob("*"):
-                if any(part in SKIP_DIRS or part.startswith(".") for part in p.relative_to(root).parts[:-1]):
+    def _files(self) -> tuple[list[Path], list[Path]]:
+        """Templates and Python modules under every root and installed package, in
+        one walk that never enters a skipped directory: a `.venv` alone can hold
+        tens of thousands of files, of which only the packages above are wanted."""
+        templates: list[Path] = []
+        modules: list[Path] = []
+        seen: set[str] = set()
+        for root in self.roots + list(self.packages.values()):
+            for dirpath, dirnames, filenames in os.walk(root):
+                if dirpath in seen:  # an editable install, already walked from the workspace
+                    dirnames[:] = []
                     continue
-                if p.is_file() and p.suffix in suffixes:
-                    yield p
+                seen.add(dirpath)
+                dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.startswith("."))
+                for f in sorted(filenames):
+                    suffix = os.path.splitext(f)[1]
+                    if suffix == ".py":
+                        modules.append(Path(dirpath, f))
+                    elif suffix in TEMPLATE_SUFFIXES:
+                        templates.append(Path(dirpath, f))
+        return templates, modules
 
-    def rebuild(self) -> None:
-        self.templates.clear()
-        self.by_root.clear()
-        self.by_path.clear()
-        self.routes.clear()
-        self.models.clear()
-        self.literals.clear()
-        self.globals.clear()
-        self.imports.clear()
-        self.constants.clear()
-        self.prefixes.clear()
-        self._chains.clear()
-        self._events = None
-        self._classify_roots()
-        for p in self._walk(TEMPLATE_SUFFIXES):
+    def _build(self) -> None:
+        templates, modules = self._files()
+        self._classify_roots(templates)
+        for p in templates:
             root = next((r for r in self.template_roots if p.is_relative_to(r)), None)
             if root is None:
                 continue
             name = p.relative_to(root).as_posix()
             try:
                 text = p.read_text(encoding="utf-8")
-            except OSError:
+            except (OSError, UnicodeDecodeError):
                 continue
             t = scan_template(p, name, text)
             t.root = root
@@ -444,26 +479,28 @@ class Index:
         for root in self.default_chain:
             for name, t in self.by_root.get(root, {}).items():
                 self.templates.setdefault(name, t)
-        for p in self._walk({".py"}):
+        for p in modules:
             self._index_python(p)
 
-    def _classify_roots(self) -> None:
+    def _classify_roots(self, templates: list[Path]) -> None:
         """Split every `templates` directory into the app roots and the shared ones.
 
-        A directory under a package's `src/` belongs to a distribution — the kit
-        or a plugin — and `mount_fjkit` puts it in every app's chain. Any other
-        one is an application's own, seen by that application alone.
+        The `templates` of an installed distribution, the kit or a plugin, is one
+        `mount_fjkit` puts in every app's chain. Any other one is an
+        application's own, seen by that application alone.
         """
         roots = set()
-        for p in self._walk(TEMPLATE_SUFFIXES):
+        for p in templates:
             for parent in p.parents:
                 if parent.name == "templates":
                     roots.add(parent)
                     break
         self.template_roots = sorted(roots)
-        self.shared_roots = [r for r in self.template_roots if "/src/" in f"{r}/"]
-        self.app_roots = [r for r in self.template_roots if r not in self.shared_roots]
-        self.kit_root = next((r for r in self.shared_roots if str(r).endswith(KIT_TEMPLATES)), None)
+        shipped = {package / "templates" for package in self.packages.values()}
+        self.shared_roots = [r for r in self.template_roots if r in shipped]
+        self.app_roots = [r for r in self.template_roots if r not in shipped]
+        kit = self.packages.get("fjkit")
+        self.kit_root = kit / "templates" if kit and kit / "templates" in self.shared_roots else None
         # The kit last, so a plugin can replace one of its macros but never the
         # other way round — the order `build_environment` gives the ChoiceLoader.
         self.shared_roots.sort(key=lambda r: (r == self.kit_root, str(r)))
@@ -476,7 +513,8 @@ class Index:
 
     def _index_python(self, path: Path) -> None:
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            # Bytes, so a PEP 263 coding cookie decides the encoding as it does for Python.
+            tree = ast.parse(path.read_bytes(), filename=str(path))
         except (OSError, SyntaxError):
             return
         imports: dict[str, str] = {}
@@ -802,10 +840,6 @@ class Index:
             self._events = out
         return self._events
 
-    def event_constants(self, name: str) -> list[Loc]:
-        """Where the constants holding this event's string are defined."""
-        return [loc for consts in self.constants.values() for v, loc in consts.values() if v == name]
-
     def listeners(self, name: str, near: Template | Path | None = None) -> list[Loc]:
         """Every template place that names this event: a token of an `hx-trigger`
         value, or a string in code such as `subscribe(request, x, ["task-changed"])`.
@@ -813,11 +847,10 @@ class Index:
         pat = rf"(?<![\w-]){re.escape(name)}(?![\w-])"
         out: list[Loc] = []
         for t in self._templates_in(self.chain_for(near)):
-            lines = _Lines(t.text)
             # Comments blanked first: prose has apostrophes, and `sibling's … it's`
             # would otherwise read as one single-quoted string. Outside Jinja code
             # only double quotes count, for the same reason.
-            text = _COMMENT.sub(_blank, t.text)
+            text = t.clean
             code = [(m.start(), m.end()) for m in _CODE.finditer(text)]
             spans = [
                 (m.start(), m.end())
@@ -826,8 +859,7 @@ class Index:
             ]
             for m in re.finditer(pat, text):
                 if any(a < m.start() and m.end() < b for a, b in spans):
-                    line, col = lines.pos(m.start())
-                    out.append(Loc(t.path, line, col, col + len(name)))
+                    out.append(t.loc(m.start(), len(name)))
         return out
 
     def ids_named(self, name: str, near: Template | Path | None = None) -> list[Loc]:
@@ -848,17 +880,13 @@ class Index:
 
     def target_references(self, name: str, near: Template | Path | None = None) -> list[Loc]:
         """Every `#name` a template writes into an `hx-*` value, attribute or kwarg."""
-        pat = rf"\bhx[-_]\w+\s*=\s*[\"']#{re.escape(name.split('{{', 1)[0])}"
+        pat = rf"\bhx[-_]\w+\s*=\s*[\"'](#){re.escape(name.split('{{', 1)[0])}"
         out: list[Loc] = []
         for t in self._templates_in(self.chain_for(near)):
             # Attributes and kwargs both, so the raw text — with comments blanked,
             # or a macro's signature note quoting `hx_target="#board"` would count.
-            text = _COMMENT.sub(_blank, t.text)
-            lines = _Lines(t.text)
-            for m in re.finditer(pat, text):
-                line, col = lines.pos(m.start())
-                hash_at = t.text.splitlines()[line].index("#", col)
-                out.append(Loc(t.path, line, hash_at, hash_at + 1 + len(name)))
+            for m in re.finditer(pat, t.clean):
+                out.append(t.loc(m.start(1), 1 + len(name)))
         return out
 
     def _templates_in(self, chain: list[Path]) -> list[Template]:
@@ -879,11 +907,6 @@ class Index:
     @staticmethod
     def word_occurrences(t: Template, patterns: list[str], code_only: bool = True) -> list[Loc]:
         """Matches of `patterns`; by default only inside `{{ }}` / `{% %}` and outside string literals."""
-        lines = _Lines(t.text)
-        text = t.code() if code_only else t.text
-        out = []
-        for pat in patterns:
-            for m in re.finditer(pat, text):
-                line, col = lines.pos(m.start())
-                out.append(Loc(t.path, line, col, col + len(m.group(0))))
+        text = t.code if code_only else t.text
+        out = [t.loc(m.start(), len(m.group(0))) for pat in patterns for m in re.finditer(pat, text)]
         return sorted(out, key=lambda loc: (loc.line, loc.col))

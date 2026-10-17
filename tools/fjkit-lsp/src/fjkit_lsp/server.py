@@ -58,6 +58,12 @@ def on_save(ls: FjkitServer, _params: t.DidSaveTextDocumentParams) -> None:
     ls.build(ls.roots())
 
 
+@server.feature(t.WORKSPACE_DID_CHANGE_WATCHED_FILES)
+def on_files_changed(ls: FjkitServer, _params: t.DidChangeWatchedFilesParams) -> None:
+    """A create, delete or rename on disk, or a checkout: no save follows any of them."""
+    ls.build(ls.roots())
+
+
 @server.feature(t.TEXT_DOCUMENT_DEFINITION)
 def on_definition(ls: FjkitServer, params: t.DefinitionParams):
     sym = _symbol(ls, params)

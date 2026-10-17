@@ -45,7 +45,12 @@ mirroring the `ChoiceLoader` that `build_environment` assembles:
 | Kind of root | Who sees it | Here |
 |---|---|---|
 | an application's own `templates/` | that application only | each demo, the docs workbench |
-| a distribution's, under `src/` | every application, plugins before the kit | `fjkit-admin`, `fjkit-apidocs`, `fjkit-charts`, then `fjkit` |
+| an installed distribution's: `fjkit`, and each package that requires it | every application, plugins before the kit | `fjkit-admin`, `fjkit-apidocs`, `fjkit-charts`, then `fjkit` |
+
+The distributions are the ones installed in the interpreter the server runs in.
+Started as `.venv/bin/fjkit-lsp`, that is the project's own environment, so the
+kit's templates are found in its `site-packages`, or in the workspace when the
+install is editable, as it is in this repository.
 
 Every lookup is made from the file that wrote the name, so `base.html` in a demo
 page means that demo's, and `admin/page.html` means the one fjkit-admin ships.
