@@ -33,7 +33,7 @@ from urllib.parse import unquote, urlencode
 from fastapi import Request
 from fjkit.rendering import SCOPE_RENDER_MODE
 
-from fjkit_apidocs.spec import within
+from fjkit_apidocs.spec import tone_for, within
 
 __all__ = ["Recorded", "RecursionRefused", "call"]
 
@@ -119,16 +119,8 @@ class Recorded:
 
     @property
     def tone(self) -> str:
-        """Map the status to a badge variant. Closed set — see `ui/data.html`."""
-        if self.error:
-            return "destructive"
-        if self.status >= 500:
-            return "destructive"
-        if self.status >= 400:
-            return "warning"
-        if self.status >= 300:
-            return "info"
-        return "success"
+        """The badge variant: an escaped exception is destructive whatever the status."""
+        return "destructive" if self.error else tone_for(self.status)
 
     @property
     def shown_headers(self) -> tuple[tuple[str, str], ...]:
