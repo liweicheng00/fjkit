@@ -346,9 +346,11 @@ class AuthPlugin:
             try:
                 fresh = await self.source.refresh(current)  # type: ignore[attr-defined]
             except Exception as exc:
-                # Only the upstream refusing ends a session. Otherwise a store
-                # that failed a moment ago logs every user out over a blip,
-                # which is worse than one retried request.
+                # Any failure ends the session, a refusal and a transport error
+                # alike: a source signals both by raising, and nothing here
+                # tells them apart. An unreachable upstream therefore signs out
+                # every user whose token enters the leeway while it is down.
+                # The store's own failures are outside this block on purpose.
                 await self.store.delete(sid)
                 raise RefreshFailed(f"could not renew the session: {exc}") from exc
 
