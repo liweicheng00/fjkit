@@ -43,7 +43,8 @@ PALETTE = re.compile(
     _COLOUR_UTILITY + r"(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|"
     r"blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b"
 )
-HEX = re.compile(r"#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b")
+#: Not after `&`, so a numeric entity such as `&#160;` is not a colour.
+HEX = re.compile(r"(?<![&\w])#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b")
 FUNCS = re.compile(r"\b(?:rgb|rgba|hsl|hsla|hwb|oklch|oklab|lab|lch|color)\(")
 ABSOLUTES = re.compile(_COLOUR_UTILITY + r"(?:white|black)\b")
 
@@ -94,14 +95,22 @@ _JINJA_EXPR = re.compile(r"\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}", re.DOTALL)
 _JINJA_COMMENT = re.compile(r"\{#.*?#\}", re.DOTALL)
 _NOT_NEWLINE = re.compile(r"[^\n]")
 
+#: An attribute or kwarg whose value is a URL or a CSS selector, blanked before
+#: the colour checks: `hx-target="#feed"` names an element, not a hex colour.
+_SELECTOR_VALUE = re.compile(
+    r"""(?<![\w-])(?:href|action|formaction|xlink:href|usemap|"""
+    r"""hx[-_](?:target|select|select[-_]oob|include|indicator|disabled[-_]elt|sync))\s*=\s*(["']).*?\1""",
+    re.DOTALL,
+)
 
-def _without_comments(text: str) -> str:
-    """Replace every `{# … #}` with spaces of the same shape.
+
+def _blank(pattern: re.Pattern[str], text: str) -> str:
+    """Replace every match with spaces of the same shape.
 
     Blanked rather than removed so every remaining character keeps its line
     number; the violation report is useful only if it points at the right line.
     """
-    return _JINJA_COMMENT.sub(lambda m: _NOT_NEWLINE.sub(" ", m.group(0)), text)
+    return pattern.sub(lambda m: _NOT_NEWLINE.sub(" ", m.group(0)), text)
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,9 +182,9 @@ def check_templates(template_dir: Path) -> list[Violation]:
 
     paths = sorted(template_dir.rglob("*.html")) + sorted(template_dir.rglob("*.jinja"))
     for path in paths:
-        text = _without_comments(path.read_text(encoding="utf-8"))
+        text = _blank(_JINJA_COMMENT, path.read_text(encoding="utf-8"))
 
-        for lineno, line in enumerate(text.splitlines(), 1):
+        for lineno, line in enumerate(_blank(_SELECTOR_VALUE, text).splitlines(), 1):
             for pattern, reason in COLOUR_CHECKS:
                 for match in pattern.finditer(line):
                     violations.append(Violation(path, lineno, match.group(0), reason))

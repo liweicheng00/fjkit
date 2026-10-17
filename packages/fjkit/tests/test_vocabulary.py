@@ -116,7 +116,6 @@ class TestCheck:
         (tmp_path / "page.html").write_text(f'<p style="{style}">x</p>')
         assert [v.token for v in check_templates(tmp_path)] == tokens
 
-    @pytest.mark.xfail(strict=True, reason="CLI-4")
     @pytest.mark.parametrize(
         "markup",
         [
