@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 import warnings
 from concurrent.futures import ThreadPoolExecutor
@@ -689,8 +690,8 @@ class FlakySource(CountingSource):
     """An upstream whose `refresh` raises whatever `error` holds, counting every
     attempt, so a test can turn an outage on and off between requests."""
 
-    def __init__(self, error: Exception | None, *, delay: float = 0.0) -> None:
-        super().__init__(ttl=timedelta(seconds=5), delay=delay)
+    def __init__(self, error: Exception | None, *, delay: float = 0.0, ttl: timedelta = timedelta(seconds=5)) -> None:
+        super().__init__(ttl=ttl, delay=delay)
         self.error = error
         self.attempts = 0
 
@@ -748,12 +749,10 @@ def test_a_static_asset_never_waits_on_the_upstream():
     assert source.attempts == 0
 
 
-def test_a_request_that_lost_the_refresh_race_learns_the_winner_failed_promptly():
-    """Two swaps notice the expiring token at once. The first holds the lock
-    and finds the upstream unreachable; the second must get the same 503 as
-    soon as the first lets go, not wait out `refresh_wait` and then send the
-    user to the login page for a session that still exists."""
-    source = FlakySource(ConnectionError("no route to host"), delay=0.3)
+def race_two_requests(source: FlakySource) -> tuple[int, int, float]:
+    """Log in, then send two `GET /who` so the second arrives while the first
+    holds the refresh lock. Returns the winner's status, the loser's status and
+    how long the loser waited."""
     with make_app(make_auth(source=source, refresh_wait=timedelta(seconds=2))) as client:
         client.post("/login", headers={"origin": ORIGIN})
 
@@ -766,11 +765,104 @@ def test_a_request_that_lost_the_refresh_race_learns_the_winner_failed_promptly(
             time.sleep(0.1)
             loser = pool.submit(timed_get)
             (winner_status, _), (loser_status, loser_elapsed) = winner.result(), loser.result()
+    return winner_status, loser_status, loser_elapsed
+
+
+def test_a_request_that_lost_the_refresh_race_learns_the_winner_failed_promptly():
+    """Two swaps notice the expiring token at once. The first holds the lock
+    and finds the upstream unreachable; the second must get the same 503 as
+    soon as the first lets go, not wait out `refresh_wait` and then send the
+    user to the login page for a session that still exists."""
+    source = FlakySource(ConnectionError("no route to host"), delay=0.3)
+
+    winner_status, loser_status, loser_elapsed = race_two_requests(source)
 
     assert winner_status == 503
     assert loser_status == 503
     assert loser_elapsed < 1.0, "the loser must learn the outcome, not wait out refresh_wait"
     assert source.attempts == 1, "the loser reports the winner's outcome rather than trying the upstream again"
+
+
+# ------------------------------------------ an outage while the token is good
+
+
+@pytest.mark.xfail(strict=True, reason="the fix lands in the next commit")
+def test_an_outage_inside_the_leeway_serves_the_token_that_is_still_good(caplog):
+    """The refresh runs `refresh_leeway` ahead of expiry, while the token is
+    still valid. An upstream that cannot be reached in that window costs the
+    user nothing: the request is served on the token they have, the attempt is
+    logged, and the next request tries again."""
+    source = FlakySource(ConnectionError("no route to host"))
+    client = make_app(make_auth(source=source))
+    client.post("/login", headers={"origin": ORIGIN})
+
+    with caplog.at_level(logging.WARNING, logger="fjkit.auth"):
+        first = client.get("/who", follow_redirects=False)
+        second = client.get("/who", follow_redirects=False)
+    attempts_during = source.attempts
+    source.error = None
+    after = client.get("/who")
+
+    assert (first.status_code, first.text) == (200, "ada")
+    assert (second.status_code, second.text) == (200, "ada")
+    assert attempts_during == 2, "every request inside the leeway tries again"
+    assert len(caplog.records) == 2, "one warning per attempt, so an operator sees the outage"
+    assert after.text == "ada"
+    assert source.refreshes == 1
+
+
+@pytest.mark.parametrize("path", ["/who", "/private/thing"])
+def test_an_outage_past_expiry_answers_503_wherever_the_session_is_needed(path):
+    """Once the token has expired there is nothing to serve the request on. A
+    page that reads the session and a route behind `required` both wait for
+    the upstream; the session itself is kept for when it returns."""
+    source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
+    client = make_app(make_auth(source=source))
+    client.post("/login", headers={"origin": ORIGIN})
+
+    during = client.get(path, headers=BROWSER, follow_redirects=False)
+    source.error = None
+    after = client.get("/who")
+
+    assert during.status_code == 503
+    assert during.headers["retry-after"].isdigit()
+    assert after.text == "ada", "the session survives the outage"
+    assert source.refreshes == 1
+
+
+@pytest.mark.xfail(strict=True, reason="the fix lands in the next commit")
+def test_logging_out_needs_no_upstream():
+    """Logout deletes a row and clears a cookie, neither of which needs the
+    identity provider. A user whose token expired during an outage must still
+    be able to leave, and the session must be gone on both sides."""
+    source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
+    auth = make_auth(source=source)
+    client = make_app(auth)
+    client.post("/login", headers={"origin": ORIGIN})
+    cookie = client.cookies[auth.cookie.name]
+
+    response = client.post("/logout", headers={"origin": ORIGIN})
+
+    assert response.status_code == 204
+    assert auth.cookie.name not in client.cookies, "the browser's cookie is cleared"
+    source.error = None
+    client.cookies.set(auth.cookie.name, cookie)
+    assert client.get("/who").text == "anonymous", "the store's row is gone, so the old cookie is worthless"
+
+
+@pytest.mark.xfail(strict=True, reason="the fix lands in the next commit")
+def test_a_request_that_lost_the_refresh_race_is_served_when_its_token_is_still_good():
+    """The loser's version of the leeway rule: the winner found the upstream
+    unreachable, the token is still valid, so the loser proceeds on it as soon
+    as the winner lets go."""
+    source = FlakySource(ConnectionError("no route to host"), delay=0.3)
+
+    winner_status, loser_status, loser_elapsed = race_two_requests(source)
+
+    assert winner_status == 200
+    assert loser_status == 200
+    assert loser_elapsed < 1.0, "the loser must learn the outcome, not wait out refresh_wait"
+    assert source.attempts == 1
 
 
 # ----------------------------------------------------------------- wiring
