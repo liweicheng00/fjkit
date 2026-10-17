@@ -111,7 +111,13 @@ class SessionStore(Protocol):
 
 
 class TokenSource(Protocol):
-    """Turns whatever the user submitted into a `Session`."""
+    """Turns whatever the user submitted into a `Session`.
+
+    `exchange` raises whatever the login route wants to catch: a bad password
+    is the route's business, not the plugin's. `refresh`, on the source that
+    has one, is read by the plugin and has a contract; see
+    `RefreshableTokenSource`.
+    """
 
     async def exchange(self, credentials: Any) -> Session: ...
 
@@ -124,6 +130,18 @@ class RefreshableTokenSource(TokenSource, Protocol):
     neither `refresh()` nor `expires_at` is an ordinary configuration. A source
     that reports `expires_at` and has no `refresh()` gets one warning, and its
     sessions end when the token does.
+
+    `refresh` has three outcomes, and the plugin acts on the difference:
+
+    * It returns the renewed `Session`, which replaces the stored one.
+    * It raises `RefreshRefused`: the upstream answered and said no. The
+      session is deleted and the user is sent to log in again.
+    * It raises anything else: the upstream could not be asked. The session is
+      kept, this request is answered 503 with a `Retry-After`, and the next
+      request tries again.
+
+    So a source maps the upstream's "invalid_grant" to `RefreshRefused` and
+    lets a connection error or timeout propagate as it is.
     """
 
     async def refresh(self, session: Session) -> Session: ...

@@ -19,6 +19,8 @@ from fjkit.auth import (
     MemoryStore,
     NoCsrf,
     RefreshFailed,
+    RefreshRefused,
+    RefreshUnavailable,
     Session,
 )
 from fjkit.auth.plugin import safe_next
@@ -623,10 +625,10 @@ async def test_a_request_holding_a_spent_token_does_not_spend_it_again():
 
 
 @pytest.mark.asyncio
-async def test_a_failed_refresh_ends_the_session():
+async def test_a_refused_refresh_ends_the_session():
     class Broken(CountingSource):
         async def refresh(self, session: Session) -> Session:
-            raise RuntimeError("upstream said no")
+            raise RefreshRefused("upstream said no")
 
     auth = make_auth(source=Broken(), store=MemoryStore())
     stale = Session(access="a", expires_at=datetime.now(UTC) + timedelta(seconds=5))
@@ -647,7 +649,7 @@ async def test_the_lock_is_released_even_when_the_upstream_fails():
     auth = make_auth(source=Broken(), store=MemoryStore())
     sid = await seed(auth, Session(access="a", expires_at=datetime.now(UTC) + timedelta(seconds=5)))
 
-    with pytest.raises(RefreshFailed):
+    with pytest.raises(RefreshUnavailable):
         await auth._refresh(sid, Session(access="a", expires_at=datetime.now(UTC) + timedelta(seconds=5)))
 
     assert await auth.store.acquire_refresh_lock(sid, 10) is True
@@ -701,10 +703,7 @@ class FlakySource(CountingSource):
         return await super().refresh(session)
 
 
-@pytest.mark.xfail(strict=True, reason="RT-6")
 def test_an_upstream_refusal_ends_the_session():
-    from fjkit.auth import RefreshRefused
-
     source = FlakySource(RefreshRefused("the refresh token was revoked"))
     client = make_app(make_auth(source=source))
     client.post("/login", headers={"origin": ORIGIN})
@@ -717,7 +716,6 @@ def test_an_upstream_refusal_ends_the_session():
     assert client.get("/who").text == "anonymous", "a refused session must not come back when the upstream does"
 
 
-@pytest.mark.xfail(strict=True, reason="RT-6")
 @pytest.mark.parametrize("error", [ConnectionError("no route to host"), TimeoutError("read timed out")])
 def test_an_unreachable_upstream_keeps_the_session_and_says_when_to_retry(error):
     """An outage is not a refusal. The user stays signed in, this one request
@@ -737,7 +735,6 @@ def test_an_unreachable_upstream_keeps_the_session_and_says_when_to_retry(error)
     assert source.refreshes == 1
 
 
-@pytest.mark.xfail(strict=True, reason="RT-6")
 def test_a_static_asset_never_waits_on_the_upstream():
     """The stylesheet and htmx are served whatever the identity provider is
     doing: a 503 on `/_fjkit/*` would leave a page that did load unstyled."""
@@ -751,7 +748,6 @@ def test_a_static_asset_never_waits_on_the_upstream():
     assert source.attempts == 0
 
 
-@pytest.mark.xfail(strict=True, reason="RT-6")
 def test_a_request_that_lost_the_refresh_race_learns_the_winner_failed_promptly():
     """Two swaps notice the expiring token at once. The first holds the lock
     and finds the upstream unreachable; the second must get the same 503 as

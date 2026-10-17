@@ -34,7 +34,14 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from fjkit.auth.csrf import NoCsrf, OriginCsrf
-from fjkit.auth.errors import AuthError, CsrfRejected, NotAuthenticated, RefreshFailed
+from fjkit.auth.errors import (
+    AuthError,
+    CsrfRejected,
+    NotAuthenticated,
+    RefreshFailed,
+    RefreshRefused,
+    RefreshUnavailable,
+)
 from fjkit.auth.sources import LocalSource
 from fjkit.auth.stores import MemoryStore
 from fjkit.auth.types import Csrf, Session, SessionStore, TokenSource, decode, encode
@@ -49,6 +56,12 @@ _log = logging.getLogger("fjkit.auth")
 
 #: How often a request that lost the refresh race looks for the winner's work.
 _POLL_SECONDS = 0.05
+
+#: What a 503 for an unreachable upstream tells the caller. Advisory: a browser
+#: ignores it and a person reloads when they like. Short, because the next
+#: request retries the refresh anyway and an outage that is over should not
+#: keep a script waiting.
+_RETRY_AFTER_SECONDS = 5
 
 #: How long a browser has to come back from the identity provider after
 #: `start_login`. Long enough for a password and a second factor; short enough
@@ -190,9 +203,10 @@ class AuthPlugin:
             if isinstance(found, FlashPlugin):
                 self.flash = found
 
-        setup.add_middleware(_SessionMiddleware, plugin=self)
+        setup.add_middleware(_SessionMiddleware, plugin=self, static_url=setup.config.static_url)
         setup.add_exception_handler(NotAuthenticated, self._handle)
         setup.add_exception_handler(CsrfRejected, self._handle)
+        setup.add_exception_handler(RefreshUnavailable, self._handle)
 
         if isinstance(self.store, MemoryStore) and not setup.config.auto_reload:
             setup.warn(
@@ -437,16 +451,18 @@ class AuthPlugin:
             if not self._expiring(current):
                 return current
 
+            # Only the upstream refusing ends a session. Anything else the
+            # source raises is an outage: the session stays, this request is
+            # told to come back, and the next one tries again. The store's own
+            # failures are outside this block on purpose, so a store that
+            # failed a moment ago does not log every user out over a blip.
             try:
                 fresh = await self.source.refresh(current)  # type: ignore[attr-defined]
-            except Exception as exc:
-                # Any failure ends the session, a refusal and a transport error
-                # alike: a source signals both by raising, and nothing here
-                # tells them apart. An unreachable upstream therefore signs out
-                # every user whose token enters the leeway while it is down.
-                # The store's own failures are outside this block on purpose.
+            except RefreshRefused as exc:
                 await self.store.delete(sid)
-                raise RefreshFailed(f"could not renew the session: {exc}") from exc
+                raise RefreshFailed(f"the upstream refused to renew the session: {exc}") from exc
+            except Exception as exc:
+                raise RefreshUnavailable(f"could not reach the upstream to renew the session: {exc}") from exc
 
             await self._write(sid, fresh)
             return fresh
@@ -454,7 +470,15 @@ class AuthPlugin:
             await self.store.release_refresh_lock(sid)
 
     async def _await_refresh(self, sid: str, stale: Session) -> Session:
-        """Wait for whoever won the lock, then read what they wrote."""
+        """Wait for whoever won the lock, then read what they wrote.
+
+        The store is the only channel to the winner, which may be in another
+        process, so the outcome is read off it: a renewed row means success, a
+        missing row means the upstream refused, and a lock released with the
+        row still expiring means the winner reached nobody. That last case is
+        found by taking the lock, which only succeeds once the winner let go.
+        """
+        ttl = int(self.refresh_lock_ttl.total_seconds())
         deadline = asyncio.get_running_loop().time() + self.refresh_wait.total_seconds()
         while asyncio.get_running_loop().time() < deadline:
             await asyncio.sleep(_POLL_SECONDS)
@@ -464,7 +488,13 @@ class AuthPlugin:
             session = decode(payload)
             if not self._expiring(session):
                 return session
-        raise RefreshFailed(
+            if await self.store.acquire_refresh_lock(sid, ttl):
+                # Not a second attempt: the upstream was unreachable a moment
+                # ago, and a retry here would make the user wait out a second
+                # timeout. The next request retries.
+                await self.store.release_refresh_lock(sid)
+                raise RefreshUnavailable("another request could not reach the upstream to renew the session")
+        raise RefreshUnavailable(
             "timed out waiting for another request to renew this session; "
             "raise `refresh_wait` if the upstream is slower than that"
         )
@@ -524,6 +554,19 @@ class AuthPlugin:
             _log.warning("CSRF check refused %s %s: %s", request.method, request.url.path, exc)
             return Response(status_code=403)
 
+        if isinstance(exc, RefreshUnavailable):
+            # The session is intact and the request was fine; the identity
+            # provider was not. One answer for every caller, because none of
+            # them should move: a login page would need the same upstream.
+            _log.warning("session not renewed for %s %s: %s", request.method, request.url.path, exc)
+            return Response(
+                "Your session could not be renewed because the sign-in service did not answer. "
+                "Try again in a moment.",
+                status_code=503,
+                media_type="text/plain",
+                headers={"retry-after": str(_RETRY_AFTER_SECONDS)},
+            )
+
         # Three kinds of caller, three answers — the same question `@render`
         # asks about what to put on the wire, asked about how to refuse.
         #
@@ -577,13 +620,19 @@ class AuthPlugin:
 class _SessionMiddleware(BaseHTTPMiddleware):
     """Verify, load and renew — before the handler, so routes see a plain session."""
 
-    def __init__(self, app: Any, *, plugin: AuthPlugin) -> None:
+    def __init__(self, app: Any, *, plugin: AuthPlugin, static_url: str) -> None:
         super().__init__(app)
         self.plugin = plugin
+        self.static_prefix = static_url.rstrip("/") + "/"
 
     async def dispatch(self, request: Request, call_next: Any) -> Response:
         plugin = self.plugin
         request.state.auth = None
+        if request.url.path.startswith(self.static_prefix):
+            # The kit's own assets need no session, and must not wait on the
+            # upstream: a page that loaded would otherwise arrive unstyled
+            # during an outage, or cost a store read per stylesheet without one.
+            return await call_next(request)
         try:
             if plugin._read_cookie(request) is not None:
                 # Only when the browser attached a credential. A public POST
