@@ -108,6 +108,22 @@ class TestCheck:
         assert check_main(tmp_path) == 0
         assert "3 template(s) clean" in capsys.readouterr().out
 
+    @pytest.mark.xfail(strict=True, reason="CLI-8")
+    def test_a_directory_named_like_a_template_is_skipped(self, tmp_path, capsys):
+        from fjkit.cli.check import main as check_main
+
+        (tmp_path / "vendor.html").mkdir()
+        (tmp_path / "page.html").write_text('<div class="card">x</div>')
+        assert check_main(tmp_path) == 0
+        assert "1 template(s) clean" in capsys.readouterr().out
+
+    @pytest.mark.xfail(strict=True, reason="CLI-8")
+    def test_a_template_that_is_not_utf8_is_reported_not_raised(self, tmp_path):
+        """Jinja reads templates as UTF-8, so such a file cannot load; the gate
+        says where rather than crashing on it."""
+        (tmp_path / "latin1.html").write_bytes(b"<p>ok</p>\n<p>caf\xe9</p>\n")
+        assert [(v.path.name, v.line) for v in check_templates(tmp_path)] == [("latin1.html", 2)]
+
     def test_violation_reports_a_line_number(self, tmp_path):
         (tmp_path / "page.html").write_text('<div>a</div>\n<div>b</div>\n<div class="flex">c</div>')
         assert check_templates(tmp_path)[0].line == 3
