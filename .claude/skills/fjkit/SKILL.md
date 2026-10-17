@@ -39,7 +39,7 @@ It renders wrong markup silently.
 | validation errors, toasts, the 500 page | `src/fjkit/errors.py`, `forms.py`, `messages.py`, `static/js/errors.js` |
 | a message that survives a redirect | `src/fjkit/flash.py` |
 | icons | `ui/icon.html`, `src/fjkit/icons.py` |
-| tokens, rebranding, dark mode, style packs | `src/fjkit/static/src/fjkit.css`, `src/fjkit/styles.py` |
+| tokens, rebranding, dark mode, style packs | `src/fjkit/static/src/fjkit.css`, `src/fjkit/styles.py`, `FjkitConfig.color_scheme` in `src/fjkit/config.py` |
 | a blocked class, `eject`, building the CSS | `src/fjkit/cli/` |
 | what the benchmarks measured | `docs/jinja-performance.md` |
 

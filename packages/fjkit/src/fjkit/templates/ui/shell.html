@@ -53,7 +53,7 @@
   a position underneath the pinned bar (WCAG 2.4.11). 4rem clears the bar's
   fixed `h-14` (3.5rem) with room to spare.
 #}
-<html lang="{% block lang %}en{% endblock %}" class="h-full scroll-pt-16">
+<html lang="{% block lang %}en{% endblock %}" class="h-full scroll-pt-16{% if fjkit_color_scheme.html_class %} {{ fjkit_color_scheme.html_class }}{% endif %}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -61,8 +61,11 @@
   {#
     Theme is applied before first paint so a dark-mode reload never flashes
     white. Basecoat's dark variant keys off `html.dark`, which is the only
-    thing this script touches.
+    thing this script touches. Only under `color_scheme="system"`: a fixed
+    scheme is already on <html>, and this script would replace it with a
+    `theme` key a visitor saved earlier.
   #}
+  {% if fjkit_color_scheme.prepaint_script %}
   <script>
     (() => {
       const saved = localStorage.getItem("theme");
@@ -70,6 +73,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
+  {% endif %}
   {#
     One stylesheet, named after the style pack `FjkitConfig.style` selected.
     All eight ship built in the wheel; exactly one is ever requested.
@@ -144,7 +148,7 @@
       {% block brand %}{% endblock %}
       {% block nav %}{% endblock %}
       <div class="ml-auto">
-        {% block header_actions %}{{ theme_toggle() }}{% endblock %}
+        {% block header_actions %}{% if fjkit_color_scheme.toggle %}{{ theme_toggle() }}{% endif %}{% endblock %}
       </div>
     </header>
   {% endblock %}

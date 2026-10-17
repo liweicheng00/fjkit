@@ -584,8 +584,9 @@ GROUPS = [
                     _m(
                         "theme_toggle()",
                         en="The shell renders one already; call it only when you have replaced "
-                        "header_actions.",
-                        zh="外殼已經放了一顆；只有在你換掉 header_actions 時才需要自己呼叫。",
+                        "header_actions, inside {% if fjkit_color_scheme.toggle %}.",
+                        zh="外殼已經放了一顆；只有在你換掉 header_actions 時才需要自己呼叫，"
+                        "並包在 {% if fjkit_color_scheme.toggle %} 裡。",
                     ),
                     _m(
                         'breadcrumb(trail, separator="chevron", label="Breadcrumb")',
@@ -865,8 +866,10 @@ SHELL_BLOCKS = [
     },
     {
         "name": "header_actions",
-        "en": "The right-hand end of the header. Defaults to theme_toggle().",
-        "zh": "標頭右端。預設是 theme_toggle()。",
+        "en": "The right-hand end of the header. Defaults to theme_toggle() under "
+        'color_scheme="system", and to nothing under "light" or "dark".',
+        "zh": '標頭右端。color_scheme="system" 時預設是 theme_toggle()，'
+        '"light" 或 "dark" 時預設是空的。',
     },
     {
         "name": "sidebar_trigger",
@@ -920,6 +923,13 @@ GLOBALS = [
         "name": "fjkit_version",
         "en": "The versions in the footer: fjkit, fastapi, jinja2, basecoat, htmx.",
         "zh": "頁尾那幾個版本號：fjkit、fastapi、jinja2、basecoat、htmx。",
+    },
+    {
+        "name": "fjkit_color_scheme",
+        "en": "What FjkitConfig.color_scheme renders: .prepaint_script, .html_class and .toggle. "
+        "A header_actions override asks .toggle before it offers theme_toggle().",
+        "zh": "FjkitConfig.color_scheme 的渲染結果：.prepaint_script、.html_class、.toggle。"
+        "覆寫 header_actions 時，先問 .toggle 再放 theme_toggle()。",
     },
     {
         "name": "fjkit_icon_path(name)",
