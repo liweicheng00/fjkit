@@ -33,6 +33,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping
+from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -122,8 +123,24 @@ class Chart(BaseModel):
     # plain properties.
     @property
     def figure_json(self) -> str:
-        """Render the figure for an HTML attribute."""
-        return json.dumps(self.figure.model_dump())
+        """Render the figure for an HTML attribute, as Plotly's own
+        `fig.to_json()` would. `to_plotly_json()` keeps dates, `Decimal`s and
+        arrays as Python values, and leaves `NaN`, which `JSON.parse` rejects."""
+        blob = json.dumps(self.figure.model_dump(), default=_plotly_value)
+        if "NaN" in blob or "Infinity" in blob:
+            blob = json.dumps(json.loads(blob, parse_constant=lambda _: None))
+        return blob
+
+
+def _plotly_value(value: Any) -> Any:
+    """`PlotlyJSONEncoder.default`, without importing plotly: the same methods,
+    tried in the same order."""
+    for method in ("to_plotly_json", "isoformat", "tolist"):
+        if hasattr(value, method):
+            return getattr(value, method)()
+    if isinstance(value, Decimal):
+        return float(value)
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
 
 #: Hex literals and the CSS colour functions, in figure JSON. The same families

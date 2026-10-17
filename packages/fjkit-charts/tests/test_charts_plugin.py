@@ -144,7 +144,6 @@ class TestFigureJson:
         ],
         ids=["date", "datetime", "Decimal", "NaN", "array"],
     )
-    @pytest.mark.xfail(strict=True, reason="CHARTS-1")
     def test_values_plotly_serialises_reach_the_browser(self, value, sent):
         chart = a_chart(figure={"data": [{"type": "bar", "x": ["a"], "y": [value]}], "layout": {}})
         assert figure_the_browser_parses(chart)["data"][0]["y"] == [sent]
