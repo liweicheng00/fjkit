@@ -254,6 +254,22 @@ def test_permissions_gate_both_the_button_and_the_route():
     assert 'hx-delete="/admin/task/1"' not in client.get("/admin/task/1").text
 
 
+@pytest.mark.xfail(strict=True, reason="ADMIN-2")
+def test_a_bulk_action_needs_the_view_permission():
+    class Hidden(TaskAdmin):
+        key = "task"
+
+        def has_view_permission(self, request: Request, obj=None) -> bool:
+            return False
+
+    app, db, _ = make_app(Hidden)
+    client = TestClient(app)
+    assert client.get("/admin/task").status_code == 403
+    assert client.post("/admin/task/action/mark_done", content="selected=2", headers=FORM).status_code == 403
+    with db() as session:
+        assert session.get(Task, 2).done is False
+
+
 def test_get_queryset_scopes_every_route_and_the_count():
     class CoreTasks(TaskAdmin):
         key = "task"
