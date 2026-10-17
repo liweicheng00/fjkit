@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import sys
 from functools import cached_property
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -48,6 +49,10 @@ class Settings(BaseSettings):
     #: `False` because the demo is served over plain HTTP on localhost. A real
     #: app leaves this alone and gets `Secure` cookies.
     cookie_secure: bool = False
+
+    #: `FjkitConfig.color_scheme`. `FJKIT_DEMO_COLOR_SCHEME=dark` shows the
+    #: demo with the scheme fixed and the toggle gone.
+    color_scheme: Literal["system", "light", "dark"] = "system"
 
     @cached_property
     def port(self) -> str:

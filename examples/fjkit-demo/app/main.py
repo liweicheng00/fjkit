@@ -50,6 +50,7 @@ config = FjkitConfig(
     globals={"style_sheets": STYLE_SHEETS},
     catch_unexpected_errors=True,
     unexpected_error=exception_handler,
+    color_scheme=settings.color_scheme,
 )
 
 
