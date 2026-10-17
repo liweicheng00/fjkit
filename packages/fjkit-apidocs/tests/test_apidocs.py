@@ -1248,7 +1248,6 @@ def shown(reply) -> str:
     return html.unescape(reply.text)
 
 
-@pytest.mark.xfail(strict=True, reason="APIDOCS-2")
 def test_a_path_value_reaches_the_endpoint_as_a_direct_request_delivers_it():
     """`scope["path"]` is decoded by definition; the encoded form is `raw_path`.
 

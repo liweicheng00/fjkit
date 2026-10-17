@@ -28,7 +28,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import unquote, urlencode
 
 from fastapi import Request
 from fjkit.rendering import SCOPE_RENDER_MODE
@@ -181,7 +181,12 @@ async def call(
         # `path` includes `root_path`: that is what a server sends and what
         # Starlette's router strips. Getting this wrong stays invisible until
         # the app is mounted under a prefix, and then every call 404s.
-        "path": f"{root_path}{target}",
+        #
+        # Decoded, as ASGI defines it and as a server fills it in from the
+        # request line; `raw_path` keeps the escapes. A path parameter arrives
+        # here percent-encoded, and leaving it so would hand the endpoint
+        # `my%20report.txt` where a direct request delivers `my report.txt`.
+        "path": f"{root_path}{unquote(target)}",
         "raw_path": f"{root_path}{target}".encode(),
         "root_path": root_path,
         "query_string": query_string,
