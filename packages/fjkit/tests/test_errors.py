@@ -603,7 +603,6 @@ def test_a_field_that_is_fine_renders_no_message():
     assert NO_ERRORS.title is None
 
 
-@pytest.mark.xfail(strict=True, reason="MAC-11")
 def test_the_kit_error_page_links_home_under_the_root_path():
     """An app mounted under a prefix, or behind a proxy, has its start page
     there; `/` is someone else's."""
