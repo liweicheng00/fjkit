@@ -541,6 +541,17 @@ class TestMacroEject:
         self._eject(tmp_path, "shell")
         self._eject(tmp_path, "shell.head", expect=1)
 
+    @pytest.mark.xfail(strict=True, reason="CLI-9")
+    @pytest.mark.parametrize("name", ["form._message", "_message"])
+    def test_a_private_macro_cannot_be_taken_on_its_own(self, tmp_path, capsys, name):
+        """A copy of `_message` alone changes nothing: the kit's macros keep
+        calling the kit's copy. It comes along with a public macro that calls
+        it, and the refusal has to say which."""
+        self._eject(tmp_path, name, expect=1)
+
+        assert not (tmp_path / "ui" / "form.html").exists()
+        assert "text_field" in capsys.readouterr().err
+
 
 class TestPerMacroStamp:
     """The digest is per macro, so the report can name which one moved."""
