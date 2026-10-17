@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi import APIRouter, FastAPI, Response
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, FlashMessage, FlashPlugin, mount_fjkit, render
@@ -28,6 +29,11 @@ def make_app(**kwargs):
     @router.get("/quiet")
     @render("quiet.html")
     def quiet() -> dict[str, str]:
+        return {}
+
+    @router.get("/streamed")
+    @render("page.html", stream=True)
+    def streamed() -> dict[str, str]:
         return {}
 
     @router.post("/raise")
@@ -60,6 +66,20 @@ def test_it_is_shown_once_and_then_gone():
 
     first = client.get("/page").text
     second = client.get("/page").text
+
+    assert first == "[success:Saved:Two rows changed.]"
+    assert second == ""
+
+
+def test_a_streamed_page_shows_it_once_too():
+    """A streamed page renders its body after the headers have gone out, which
+    is after the middleware last had a chance to clear the cookie. The message
+    must still be shown exactly once."""
+    _, client = make_app()
+    client.post("/raise")
+
+    first = client.get("/streamed").text
+    second = client.get("/streamed").text
 
     assert first == "[success:Saved:Two rows changed.]"
     assert second == ""
@@ -107,6 +127,22 @@ def test_a_tampered_message_is_dropped():
     client.cookies.set("fjkit_flash", f"{body}x.{signature}")
 
     assert client.get("/page").text == ""
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["café.x", "abc.café"],
+    ids=["non-ascii-body", "non-ascii-signature"],
+)
+def test_a_non_ascii_cookie_is_dropped_not_an_error(value):
+    """The middleware runs on every route, so a cookie that makes the verifier
+    raise takes the whole app down for that browser."""
+    _, client = make_app()
+
+    response = client.get("/page", headers=[(b"cookie", f"fjkit_flash={value}".encode())])
+
+    assert response.status_code == 200
+    assert response.text == ""
 
 
 def test_a_cookie_signed_with_another_secret_is_dropped():

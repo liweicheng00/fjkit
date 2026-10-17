@@ -139,7 +139,8 @@ def render(
     `FjkitConfig.render_mode`. `"auto"` renders for htmx and for a page
     route's navigation, and serialises the model otherwise.
     :param stream: render through `templates.stream()` rather than `page()`.
-    :param buffer_size: chunk size when `stream=True`. Never 0.
+    :param buffer_size: chunk size when `stream=True`. At least 2, which is
+    what Jinja's buffered stream accepts.
     :param hx_trigger: an event to raise in the browser on this response, as
     `HX-Trigger`. Usually a callable, which receives the handler's own
     parameters and `result` **by name**:
@@ -188,6 +189,11 @@ def render(
     The handler may return a Pydantic model, a dataclass, a mapping, `None`, or
     a `Response`; a `Response` is passed through untouched.
     """
+    if stream and buffer_size < 2:
+        # Jinja raises the same refusal inside the body generator, after the
+        # 200 and its headers have gone out; here it lands where the route is
+        # declared.
+        raise ValueError(f"buffer_size={buffer_size}: a streamed render needs a buffer of at least 2")
     plan = _Plan(
         template=template,
         partial=partial,
@@ -377,7 +383,9 @@ def _finish(
     context.setdefault("errors", NO_ERRORS)
     status_code, headers, cookies = _response_args(request, response)
     _deliver_trigger(plan, result, call_kwargs, headers)
-    _deliver_messages(request, headers, renders_shell=name == plan.template and plan.serves_a_page)
+    _deliver_messages(
+        request, headers, renders_shell=name == plan.template and plan.serves_a_page, stream=plan.stream
+    )
     if plan.stream:
         reply = templates.stream(
             request, name, context, buffer_size=plan.buffer_size, status_code=status_code, headers=headers
@@ -423,10 +431,18 @@ def _write_trigger(
     value = spec.resolve(result, call_kwargs) if spec is not None else literal
     if value is None:
         return
-    # Case-insensitively, because `_response_args` copies out of a Starlette
-    # `MutableHeaders`, which lowercases every name it was given.
-    existing = next((key for key in headers if key.lower() == name.lower()), None)
+    existing = _header_key(headers, name)
     headers[existing or name] = _merge_trigger(headers.get(existing) if existing else None, value)
+
+
+def _header_key(headers: Mapping[str, str], name: str) -> str | None:
+    """The key `name` is stored under, or `None`.
+
+    Case-insensitive, because `_response_args` copies out of a Starlette
+    `MutableHeaders`, which lowercases every name it was given. A handler
+    writes `HX-Trigger`; what arrives here is `hx-trigger`.
+    """
+    return next((key for key in headers if key.lower() == name.lower()), None)
 
 
 def _merge_trigger(existing: str | None, value: Mapping[str, Any] | str) -> str:
@@ -438,42 +454,30 @@ def _merge_trigger(existing: str | None, value: Mapping[str, Any] | str) -> str:
     """
     if existing is None and isinstance(value, str):
         return value
-    events = _as_events(existing)
+    events = messages.trigger_events(existing)
     events.update({value: None} if isinstance(value, str) else value)
     return json.dumps(events, separators=(",", ":"))
 
 
-def _as_events(header: str | None) -> dict[str, Any]:
-    """Read an `HX-Trigger` value as the mapping htmx reads it as.
-
-    The same promotion `messages.trigger_header` does, for the same reason: htmx
-    accepts a bare event name or a comma-separated list as well as JSON, and
-    neither may be discarded because something else wants to be in the header
-    too.
-    """
-    if not header:
-        return {}
-    text = header.strip()
-    if text.startswith("{"):
-        try:
-            return dict(json.loads(text))
-        except ValueError:
-            return {text: None}
-    return {name.strip(): None for name in text.split(",") if name.strip()}
-
-
-def _deliver_messages(request: Request, headers: dict[str, str], *, renders_shell: bool) -> None:
+def _deliver_messages(
+    request: Request, headers: dict[str, str], *, renders_shell: bool, stream: bool = False
+) -> None:
     """Pick the channel a queued message goes out on. See `fjkit.messages`.
 
     A render of the shell carries the toaster, so the message goes in the
     document; anything else sends it as `HX-Trigger`. Never both.
     """
     if renders_shell:
+        if stream:
+            # A streamed shell iterates the queue only after its headers are on
+            # the wire, which is after `FlashPlugin` last sees the response and
+            # too late for the clearing cookie. The render is certain, so it is
+            # recorded now.
+            queue = messages.queue(request)
+            if queue:
+                queue.mark_shown()
         return
-    # Case-insensitively, because `_response_args` copies out of a Starlette
-    # `MutableHeaders`, which lowercases every name it was given. A handler
-    # writes `HX-Trigger`; what arrives here is `hx-trigger`.
-    existing = next((key for key in headers if key.lower() == "hx-trigger"), None)
+    existing = _header_key(headers, "HX-Trigger")
     trigger = messages.trigger_header(request, headers.get(existing) if existing else None)
     if trigger is not None:
         headers[existing or "HX-Trigger"] = trigger
