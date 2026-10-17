@@ -1069,6 +1069,15 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
         狀態標籤不動。狀態顏色刻意不接到品牌 token 上，
         因為「綠色代表完成」必須撐過一次改版。
       </p>
+      <p>
+        「配色」那排按鈕是訪客的選擇，預設也交給訪客：
+        <code>FjkitConfig(color_scheme="system")</code> 先看訪客存過的選擇，再看作業系統，
+        並在標頭放一顆切換鈕。只用淺色或只用深色的 app 設成 <code>color_scheme="light"</code>
+        或 <code>"dark"</code>，伺服器就直接把配色寫在 <code>&lt;html&gt;</code> 上，
+        切換鈕與首次繪製前的腳本都不輸出，訪客先前存過的選擇也不再有人讀取。
+        自己填 <code>header_actions</code> 的 app，要把 <code>theme_toggle()</code> 包在
+        <code>{% raw %}{% if fjkit_color_scheme.toggle %}{% endraw %}</code> 裡。
+      </p>
     {% endcall %}
 
     {#
