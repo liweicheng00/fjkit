@@ -2584,8 +2584,14 @@ class TestRepeatedGroupHeadings:
     """A row-actions menu renders once per row, so two menus with the same
     group heading are the normal case."""
 
-    MENU = '{% call dropdown_menu(ID, "Row") %}{% call menu_group("Actions") %}{{ menu_item("Edit") }}{% endcall %}{% endcall %}'
-    COMMAND = '{% call command(ID) %}{% call command_group("Suggestions") %}{{ command_item("Open") }}{% endcall %}{% endcall %}'
+    MENU = (
+        '{% call dropdown_menu(ID, "Row") %}{% call menu_group("Actions") %}'
+        '{{ menu_item("Edit") }}{% endcall %}{% endcall %}'
+    )
+    COMMAND = (
+        '{% call command(ID) %}{% call command_group("Suggestions") %}'
+        '{{ command_item("Open") }}{% endcall %}{% endcall %}'
+    )
 
     @pytest.mark.parametrize("block", [MENU, COMMAND], ids=["menu_group", "command_group"])
     def test_two_groups_with_one_heading_share_no_id_and_keep_a_name(self, render, block):
