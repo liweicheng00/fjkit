@@ -2560,3 +2560,13 @@ class TestPassThroughSaysNo:
         )
         assert 'hx-on::after-request="this.reset()"' in html
         assert 'data-row-id="3"' in html and 'aria-label="Close"' in html
+
+
+class TestSubmittedValuesRoundTrip:
+    @pytest.mark.xfail(strict=True, reason="MAC-4")
+    def test_range_field_takes_the_strings_a_form_posted(self, render):
+        """Every other field redraws from the submitted strings; a slider that
+        needs ints turns that redraw into a 500."""
+        html = render(f'{RANGE}{{{{ range_field("volume", value="40", min="0", max="200") }}}}')
+        assert 'value="40"' in html
+        assert "--slider-value: 20.0%" in html
