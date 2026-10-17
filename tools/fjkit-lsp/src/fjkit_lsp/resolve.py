@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from fjkit_lsp.index import _STRING, Index, Loc, Model, Template, _split_top, scan_template
+from fjkit_lsp.index import _STRING, Index, Loc, Model, Template, _split_top, scan_template, split_lines
 
 _WORD = re.compile(r"[A-Za-z_]\w*")
 #: An htmx event name: `task-changed` is one token, so hyphens belong to it.
@@ -82,7 +82,7 @@ class Resolver:
     # ---- what is here ---------------------------------------------------
 
     def symbol(self, path: Path, text: str, line: int, col: int) -> Symbol:
-        lines = text.splitlines()
+        lines = split_lines(text)
         line_text = lines[line] if line < len(lines) else ""
         span = _string_span_at(line_text, col)
         if span is not None:
@@ -329,7 +329,7 @@ class Resolver:
                     t = ix.by_path.get(loc.path)
                     if t is None:
                         continue
-                    line_text = t.text.splitlines()[loc.line]
+                    line_text = split_lines(t.text)[loc.line]
                     head = _chain_head(line_text, loc.col + 1)
                     if head and any(x in types for x in self._types_of(t, head, loc.line)):
                         out.append(Loc(loc.path, loc.line, loc.col + 1, loc.end_col))
@@ -488,7 +488,7 @@ class Resolver:
 
 def _call_argument(text: str, call: Loc, param: str, position: int) -> str | None:
     """The head identifier of the argument a call passes for `param` (by keyword, else by position)."""
-    lines = text.splitlines()
+    lines = split_lines(text)
     if call.line >= len(lines):
         return None
     src = "\n".join(lines[call.line :])

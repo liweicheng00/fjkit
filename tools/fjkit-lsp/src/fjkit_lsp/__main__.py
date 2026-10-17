@@ -14,7 +14,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from fjkit_lsp.index import Index, Loc
+from fjkit_lsp.index import Index, Loc, split_lines
 from fjkit_lsp.resolve import Resolver, Symbol, _rel
 
 
@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         if not tpl:
             print(f"unknown template {rest[0]}")
             return 1
-        sym = Symbol("ident", ident, template=tpl, line=len(tpl.text.splitlines()))
+        sym = Symbol("ident", ident, template=tpl, line=len(split_lines(tpl.text)))
         print(rs.hover(sym))
         for loc in rs.definition(sym):
             print("  ", _fmt(loc))

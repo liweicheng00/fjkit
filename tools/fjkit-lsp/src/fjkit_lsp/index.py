@@ -211,6 +211,12 @@ def _code_only(text: str) -> str:
     return "".join(out)
 
 
+def split_lines(text: str) -> list[str]:
+    """Lines as LSP and `_Lines` count them: `\\n` ends one, a `\\r` before it is
+    dropped. `str.splitlines()` also breaks on `\\x0c`, `\\x1c`, `\\u2028` and more."""
+    return [line.removesuffix("\r") for line in text.split("\n")]
+
+
 class _Lines:
     def __init__(self, text: str) -> None:
         self.starts = [0]
