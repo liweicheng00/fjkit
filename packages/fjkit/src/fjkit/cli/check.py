@@ -179,7 +179,7 @@ _TEMPLATE_SUFFIXES = frozenset({".html", ".htm", ".jinja", ".jinja2", ".j2"})
 
 def _template_files(template_dir: Path) -> list[Path]:
     """The files `fjkit check` scans, in the order it reports them."""
-    return sorted(p for p in template_dir.rglob("*") if p.suffix in _TEMPLATE_SUFFIXES)
+    return sorted(p for p in template_dir.rglob("*") if p.suffix in _TEMPLATE_SUFFIXES and p.is_file())
 
 
 def check_templates(template_dir: Path) -> list[Violation]:
@@ -190,7 +190,14 @@ def check_templates(template_dir: Path) -> list[Violation]:
     violations: list[Violation] = []
 
     for path in _template_files(template_dir):
-        text = _blank(_JINJA_COMMENT, path.read_text(encoding="utf-8"))
+        try:
+            source = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError as error:
+            line = error.object.count(b"\n", 0, error.start) + 1
+            reason = "not UTF-8 — Jinja reads templates as UTF-8, so this file cannot load. Re-save it as UTF-8."
+            violations.append(Violation(path, line, f"0x{error.object[error.start]:02x}", reason))
+            continue
+        text = _blank(_JINJA_COMMENT, source)
 
         for lineno, line in enumerate(_blank(_SELECTOR_VALUE, text).splitlines(), 1):
             for pattern, reason in COLOUR_CHECKS:
