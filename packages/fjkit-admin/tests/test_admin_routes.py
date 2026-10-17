@@ -173,6 +173,15 @@ def test_a_rejected_create_is_fastapis_own_422(client: TestClient):
     assert ("body", "project_id") in locs
 
 
+@pytest.mark.xfail(strict=True, reason="ADMIN-7")
+def test_a_row_the_database_refuses_is_a_422_not_a_crash(stack):
+    client = TestClient(stack[0], raise_server_exceptions=False)
+    response = client.post("/admin/project", json={"name": "Core"}, headers=HX)
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body"]
+    assert "2 projects" in client.get("/admin").text
+
+
 def test_change_form_shows_the_row_and_update_saves_it(client: TestClient, db: sessionmaker):
     html = client.get("/admin/task/1").text
     assert 'value="Alpha brief"' in html
