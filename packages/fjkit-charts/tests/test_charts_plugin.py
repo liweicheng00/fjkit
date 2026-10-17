@@ -8,6 +8,11 @@ in exactly one of the two themes.
 
 from __future__ import annotations
 
+import datetime as dt
+import json
+import re
+from decimal import Decimal
+from html import unescape
 from pathlib import Path
 
 import pytest
@@ -99,6 +104,54 @@ class TestChart:
     def test_a_summary_is_required_because_it_is_the_text_alternative(self):
         with pytest.raises(ValueError, match="summary"):
             Chart(id="c", title="t", figure=FakeFigure(BAR))
+
+
+class FakeArray:
+    """A numpy array or pandas Series, seen from `Chart`'s side."""
+
+    def __init__(self, items: list) -> None:
+        self._items = items
+
+    def tolist(self) -> list:
+        return self._items
+
+
+def figure_the_browser_parses(chart: Chart) -> dict:
+    """Render `chart()` and read `data-figure` the way `charts.js` does:
+    unescape the attribute, then `JSON.parse`, which rejects `NaN`."""
+    env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), auto_reload=False))
+    html = env.from_string('{% from "charts/macros.html" import chart %}{{ chart(item) }}').render(item=chart)
+    attribute = re.search(r'data-figure="([^"]*)"', html).group(1)
+
+    def reject(constant: str) -> None:
+        raise ValueError(f"JSON.parse rejects {constant}")
+
+    return json.loads(unescape(attribute), parse_constant=reject)
+
+
+class TestFigureJson:
+    """`go.Figure.to_plotly_json()` keeps Python values as they were given. The
+    attribute has to hold them as Plotly's own `fig.to_json()` would."""
+
+    @pytest.mark.parametrize(
+        ("value", "sent"),
+        [
+            (dt.date(2026, 1, 1), "2026-01-01"),
+            (dt.datetime(2026, 1, 1, 9, 30), "2026-01-01T09:30:00"),
+            (Decimal("1.5"), 1.5),
+            (float("nan"), None),
+            (FakeArray([1, 2]), [1, 2]),
+        ],
+        ids=["date", "datetime", "Decimal", "NaN", "array"],
+    )
+    def test_values_plotly_serialises_reach_the_browser(self, value, sent):
+        chart = a_chart(figure={"data": [{"type": "bar", "x": ["a"], "y": [value]}], "layout": {}})
+        assert figure_the_browser_parses(chart)["data"][0]["y"] == [sent]
+
+    def test_markup_in_the_figure_stays_inside_the_attribute(self):
+        text = '</script><script>alert("x")</script>" onload="alert(1)'
+        chart = a_chart(figure={"data": [{"type": "bar", "hovertemplate": text}], "layout": {}})
+        assert figure_the_browser_parses(chart)["data"][0]["hovertemplate"] == text
 
 
 class TestColourRule:
@@ -237,9 +290,10 @@ class TestPlugin:
 
 
 def test_this_package_ships_exactly_the_whitelisted_plotly():
-    """CHARTER §4.1 whitelists the JavaScript a wheel may carry, and Plotly's
-    basic bundle is on it: one copy, at the pinned version, under this package's
-    own `static/vendor/` where `scripts/vendor_plotly.py` writes it."""
+    """CHARTER A11(1) lets a plugin distribution pin, vendor and serve its own
+    bundle, and Plotly's basic bundle is this one's: one copy, at the pinned
+    version, under this package's own `static/vendor/` where
+    `scripts/vendor_plotly.py` writes it."""
     import fjkit_charts
 
     root = Path(fjkit_charts.__file__).parent
