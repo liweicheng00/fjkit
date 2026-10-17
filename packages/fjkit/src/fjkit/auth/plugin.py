@@ -211,15 +211,9 @@ class AuthPlugin:
         The login route is therefore `async def`, which is correct because it
         does network I/O. Every rendering route stays `def`.
         """
-        if request.headers.get("origin") is not None:
-            # Login CSRF. `SameSite=Lax` keeps the cookie off a cross-site
-            # POST, so the middleware sees an anonymous request and checks
-            # nothing, yet this is the request that creates the cookie: a
-            # foreign page could log the visitor in as the attacker. Checked
-            # before `exchange`, so a refused request never reaches the
-            # upstream. No `Origin` means no browser, hence no visitor to
-            # plant a session in.
-            await self.csrf.verify(request)
+        # Checked before `exchange`, so a refused request never reaches the
+        # upstream.
+        await self._verify_if_browser(request)
 
         session = await self.source.exchange(credentials)
 
@@ -238,6 +232,7 @@ class AuthPlugin:
 
     async def revoke(self, request: Request, response: Response) -> None:
         """Log out: forget the session server-side and clear the cookie."""
+        await self._verify_if_browser(request)
         sid = self._read_cookie(request)
         if sid is not None:
             await self.store.delete(sid)
@@ -266,6 +261,18 @@ class AuthPlugin:
         return getattr(request.state, "auth", None)
 
     # -------------------------------------------------------------- internals
+
+    async def _verify_if_browser(self, request: Request) -> None:
+        """Login and logout CSRF, the two anonymous writes that touch the cookie.
+
+        `SameSite=Lax` keeps the cookie off a cross-site POST, so the middleware
+        sees an anonymous request and checks nothing, yet these are the
+        requests that create and clear the cookie: a foreign page could log the
+        visitor in as the attacker, or sign them out. No `Origin` means no
+        browser, hence no visitor to act on.
+        """
+        if request.headers.get("origin") is not None:
+            await self.csrf.verify(request)
 
     async def load(self, request: Request) -> Session | None:
         """Return the session for this request, refreshed if it is near expiry.

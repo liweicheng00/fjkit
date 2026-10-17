@@ -343,7 +343,6 @@ def test_a_cross_origin_login_is_refused_before_a_session_exists():
     assert client.get("/who").text == "anonymous"
 
 
-@pytest.mark.xfail(strict=True, reason="RT-4")
 def test_a_cross_origin_logout_is_refused():
     """Logout CSRF, the mirror of login CSRF. A cross-site POST carries no
     cookie under Lax, so the middleware checks nothing, yet the response would
