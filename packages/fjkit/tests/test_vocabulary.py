@@ -513,6 +513,21 @@ class TestMacroEject:
         self._eject(tmp_path, "data")
         self._eject(tmp_path, "badge", expect=1)
 
+    @pytest.mark.xfail(strict=True, reason="CLI-10")
+    def test_asking_for_the_whole_file_over_a_macro_override_says_what_it_owns(self, tmp_path, capsys):
+        """The refusal has to describe the file that is there. Calling a
+        one-macro override "a copy of the whole component" invites editing
+        macros that are only re-exports."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        before = target.read_text()
+
+        self._eject(tmp_path, "data", expect=1)
+
+        err = capsys.readouterr().err
+        assert "`badge`" in err
+        assert "whole component" not in err
+        assert target.read_text() == before
+
     def test_a_file_name_still_means_the_whole_file(self, tmp_path):
         """`table` is both a component and a macro inside it. Nothing that worked
         before may change meaning, so the file wins."""
