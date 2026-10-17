@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 import warnings
 from pathlib import Path
 
@@ -256,3 +258,30 @@ def test_a_router_on_a_taken_path_is_reported_at_startup():
     with pytest.warns(PluginWarning, match="/docs is already routed"):
         config = FjkitConfig(plugins=(Docs(),))
         mount_fjkit(FastAPI(docs_url="/docs"), config)
+
+
+@pytest.mark.xfail(strict=True, reason="CH-3")
+def test_an_app_that_registers_no_plugin_imports_none():
+    """CHARTER §2.3 gate 4: a subsystem is a plugin, and an app that does not
+    register it imports nothing of it. Flash is one because it needs a secret,
+    so `fjkit.flash` and the signing it brings along stay out of the process
+    until an app asks for `FlashPlugin`. A subprocess, because this test
+    process imported both long ago."""
+    code = (
+        "import sys; from fastapi import FastAPI; from fjkit import FjkitConfig, mount_fjkit; "
+        "mount_fjkit(FastAPI(), FjkitConfig()); "
+        "print(sorted(m for m in sys.modules if m in ('fjkit.flash', 'fjkit.signing')))"
+    )
+    loaded = subprocess.run([sys.executable, "-c", code], check=True, capture_output=True, text=True).stdout
+
+    assert loaded.strip() == "[]"
+
+
+def test_the_flash_plugin_is_still_importable_from_the_package():
+    """The lazy import above must not cost the documented spelling."""
+    import fjkit
+    from fjkit.flash import FlashMessage, FlashPlugin
+
+    assert fjkit.FlashPlugin is FlashPlugin
+    assert fjkit.FlashMessage is FlashMessage
+    assert {"FlashPlugin", "FlashMessage"} <= set(fjkit.__all__)
