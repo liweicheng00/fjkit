@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import re
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
 
 SKIP_DIRS = {
@@ -120,14 +121,27 @@ class Template:
     imports: dict[str, tuple[str, str]] = field(default_factory=dict)  # local -> (template, macro or "")
     locals: list[Local] = field(default_factory=list)
     ids: list[tuple[str, Loc]] = field(default_factory=list)  # id="…", as an attribute or a macro kwarg
-    _code: str | None = field(default=None, repr=False, compare=False)
 
+    # Computed once each: the same template is searched again for every field,
+    # event and target a query touches. All three keep the text's offsets.
+
+    @cached_property
+    def lines(self) -> _Lines:
+        return _Lines(self.text)
+
+    @cached_property
+    def clean(self) -> str:
+        """The text with comments blanked out, so a tag or attribute quoted in one is not found."""
+        return _COMMENT.sub(_blank, self.text)
+
+    @cached_property
     def code(self) -> str:
-        """The text with everything but Jinja code blanked out. Computed once:
-        the same template is searched again for every field a query touches."""
-        if self._code is None:
-            self._code = _code_only(self.text)
-        return self._code
+        """The text with everything but Jinja code blanked out."""
+        return _code_only(self.text)
+
+    def loc(self, offset: int, length: int = 0) -> Loc:
+        line, col = self.lines.pos(offset)
+        return Loc(self.path, line, col, col + length if length else None)
 
 
 _TAG = re.compile(r"\{%-?\s*(\w+)(.*?)-?%\}", re.DOTALL)
@@ -236,42 +250,35 @@ class _Lines:
 
 def scan_template(path: Path, name: str, text: str) -> Template:
     t = Template(path=path, name=name, text=text)
-    lines = _Lines(text)
-    # Blank out comments so a tag inside one is not indexed; offsets are preserved.
-    clean = _COMMENT.sub(_blank, text)
     stack: list[Macro] = []
 
-    def loc_of(offset: int, length: int = 0) -> Loc:
-        line, col = lines.pos(offset)
-        return Loc(path, line, col, col + length if length else None)
-
-    for m in _ID_ATTR.finditer(clean):
-        t.ids.append((m.group(1), loc_of(m.start(1), len(m.group(1)))))
-    for m in _TAG.finditer(clean):
+    for m in _ID_ATTR.finditer(t.clean):
+        t.ids.append((m.group(1), t.loc(m.start(1), len(m.group(1)))))
+    for m in _TAG.finditer(t.clean):
         tag, body = m.group(1), m.group(2)
         body_start = m.start(2)
         if tag in ("extends", "include"):
             s = _STRING.search(body)
             if s:
                 t.refs.append(
-                    TemplateRef(s.group(1) or s.group(2), loc_of(body_start + s.start(), len(s.group(0))), tag)
+                    TemplateRef(s.group(1) or s.group(2), t.loc(body_start + s.start(), len(s.group(0))), tag)
                 )
         elif tag == "import":
             s = _STRING.search(body)
             alias = re.search(r"\bas\s+(\w+)", body)
             if s:
                 tpl = s.group(1) or s.group(2)
-                t.refs.append(TemplateRef(tpl, loc_of(body_start + s.start(), len(s.group(0))), tag))
+                t.refs.append(TemplateRef(tpl, t.loc(body_start + s.start(), len(s.group(0))), tag))
                 if alias:
                     t.imports[alias.group(1)] = (tpl, "")
                     t.locals.append(
-                        Local(alias.group(1), loc_of(body_start + alias.start(1), len(alias.group(1))), "import")
+                        Local(alias.group(1), t.loc(body_start + alias.start(1), len(alias.group(1))), "import")
                     )
         elif tag == "from":
             s = _STRING.search(body)
             if s:
                 tpl = s.group(1) or s.group(2)
-                t.refs.append(TemplateRef(tpl, loc_of(body_start + s.start(), len(s.group(0))), tag))
+                t.refs.append(TemplateRef(tpl, t.loc(body_start + s.start(), len(s.group(0))), tag))
                 imp = re.search(r"\bimport\b", body)
                 if imp:
                     names_src = body[imp.end() :]
@@ -285,30 +292,30 @@ def scan_template(path: Path, name: str, text: str) -> Template:
                             macro, alias = mm.group(1), mm.group(2) or mm.group(1)
                             t.imports[alias] = (tpl, macro)
                             at = base + off + (mm.start(2) if mm.group(2) else mm.start(1))
-                            t.locals.append(Local(alias, loc_of(at, len(alias)), "import"))
+                            t.locals.append(Local(alias, t.loc(at, len(alias)), "import"))
                         off += len(part) + 1
         elif tag == "macro":
             mm = re.match(r"\s*(\w+)\s*\((.*)\)\s*$", body, re.DOTALL)
             if mm:
                 params = [p.split("=", 1)[0].strip() for p in _split_top(mm.group(2))]
-                mac = Macro(mm.group(1), loc_of(body_start + mm.start(1), len(mm.group(1))), params, -1)
+                mac = Macro(mm.group(1), t.loc(body_start + mm.start(1), len(mm.group(1))), params, -1)
                 t.macros[mac.name] = mac
                 stack.append(mac)
                 for p in params:
                     pm = re.search(rf"\b{re.escape(p)}\b", body[mm.start(2) :])
                     at = body_start + mm.start(2) + (pm.start() if pm else 0)
-                    t.locals.append(Local(p, loc_of(at, len(p)), "param", end_line=None))
+                    t.locals.append(Local(p, t.loc(at, len(p)), "param", end_line=None))
         elif tag == "endmacro":
             if stack:
                 mac = stack.pop()
-                mac.end_line = lines.pos(m.start())[0]
+                mac.end_line = t.lines.pos(m.start())[0]
                 for lo in t.locals:
                     if lo.kind == "param" and lo.end_line is None and lo.loc.line >= mac.loc.line:
                         lo.end_line = mac.end_line
         elif tag == "set":
             head = body.split("=", 1)[0]
             for mm in _IDENT.finditer(head):
-                t.locals.append(Local(mm.group(0), loc_of(body_start + mm.start(), len(mm.group(0))), "set"))
+                t.locals.append(Local(mm.group(0), t.loc(body_start + mm.start(), len(mm.group(0))), "set"))
         elif tag == "for":
             mm = re.match(r"\s*(.*?)\s+in\s+(.*)$", body, re.DOTALL)
             if mm:
@@ -317,7 +324,7 @@ def scan_template(path: Path, name: str, text: str) -> Template:
                     t.locals.append(
                         Local(
                             im.group(0),
-                            loc_of(body_start + mm.start(1) + im.start(), len(im.group(0))),
+                            t.loc(body_start + mm.start(1) + im.start(), len(im.group(0))),
                             "for",
                             source=src.group(0) if src else None,
                         )
@@ -327,14 +334,14 @@ def scan_template(path: Path, name: str, text: str) -> Template:
             if mm:
                 for im in _IDENT.finditer(mm.group(1)):
                     t.locals.append(
-                        Local(im.group(0), loc_of(body_start + mm.start(1) + im.start(), len(im.group(0))), "call")
+                        Local(im.group(0), t.loc(body_start + mm.start(1) + im.start(), len(im.group(0))), "call")
                     )
         elif tag == "with":
             for part in _split_top(body):
                 im = _IDENT.match(part.strip())
                 if im:
                     t.locals.append(
-                        Local(im.group(0), loc_of(body_start + body.find(part) + im.start(), len(im.group(0))), "set")
+                        Local(im.group(0), t.loc(body_start + body.find(part) + im.start(), len(im.group(0))), "set")
                     )
     return t
 
@@ -798,11 +805,10 @@ class Index:
         pat = rf"(?<![\w-]){re.escape(name)}(?![\w-])"
         out: list[Loc] = []
         for t in self._templates_in(self.chain_for(near)):
-            lines = _Lines(t.text)
             # Comments blanked first: prose has apostrophes, and `sibling's … it's`
             # would otherwise read as one single-quoted string. Outside Jinja code
             # only double quotes count, for the same reason.
-            text = _COMMENT.sub(_blank, t.text)
+            text = t.clean
             code = [(m.start(), m.end()) for m in _CODE.finditer(text)]
             spans = [
                 (m.start(), m.end())
@@ -811,8 +817,7 @@ class Index:
             ]
             for m in re.finditer(pat, text):
                 if any(a < m.start() and m.end() < b for a, b in spans):
-                    line, col = lines.pos(m.start())
-                    out.append(Loc(t.path, line, col, col + len(name)))
+                    out.append(t.loc(m.start(), len(name)))
         return out
 
     def ids_named(self, name: str, near: Template | Path | None = None) -> list[Loc]:
@@ -838,11 +843,8 @@ class Index:
         for t in self._templates_in(self.chain_for(near)):
             # Attributes and kwargs both, so the raw text — with comments blanked,
             # or a macro's signature note quoting `hx_target="#board"` would count.
-            text = _COMMENT.sub(_blank, t.text)
-            lines = _Lines(t.text)
-            for m in re.finditer(pat, text):
-                line, col = lines.pos(m.start(1))
-                out.append(Loc(t.path, line, col, col + 1 + len(name)))
+            for m in re.finditer(pat, t.clean):
+                out.append(t.loc(m.start(1), 1 + len(name)))
         return out
 
     def _templates_in(self, chain: list[Path]) -> list[Template]:
@@ -863,11 +865,6 @@ class Index:
     @staticmethod
     def word_occurrences(t: Template, patterns: list[str], code_only: bool = True) -> list[Loc]:
         """Matches of `patterns`; by default only inside `{{ }}` / `{% %}` and outside string literals."""
-        lines = _Lines(t.text)
-        text = t.code() if code_only else t.text
-        out = []
-        for pat in patterns:
-            for m in re.finditer(pat, text):
-                line, col = lines.pos(m.start())
-                out.append(Loc(t.path, line, col, col + len(m.group(0))))
+        text = t.code if code_only else t.text
+        out = [t.loc(m.start(), len(m.group(0))) for pat in patterns for m in re.finditer(pat, text)]
         return sorted(out, key=lambda loc: (loc.line, loc.col))
