@@ -307,6 +307,27 @@ def test_permissions_gate_both_the_button_and_the_route():
     assert 'hx-delete="/admin/task/1"' not in client.get("/admin/task/1").text
 
 
+@pytest.mark.xfail(strict=True, reason="ADMIN-8")
+def test_a_caller_without_the_permission_learns_nothing_else():
+    class Locked(TaskAdmin):
+        key = "task"
+
+        def has_add_permission(self, request: Request) -> bool:
+            return False
+
+        def has_change_permission(self, request: Request, obj=None) -> bool:
+            return False
+
+        def has_delete_permission(self, request: Request, obj=None) -> bool:
+            return False
+
+    client = TestClient(make_app(Locked)[0])
+    # Neither the form's field list (a 422) nor whether id 999 exists (a 404).
+    assert client.post("/admin/task", json={"bogus": 1}).status_code == 403
+    assert client.post("/admin/task/999", json={"bogus": 1}).status_code == 403
+    assert client.delete("/admin/task/999").status_code == 403
+
+
 def test_a_bulk_action_needs_the_view_permission():
     class Hidden(TaskAdmin):
         key = "task"
