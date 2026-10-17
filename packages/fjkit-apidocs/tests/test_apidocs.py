@@ -1262,3 +1262,20 @@ def test_a_path_value_reaches_the_endpoint_as_a_direct_request_delivers_it():
         assert direct == value  # what any client gets
         reply = client.post(f"/api-docs/try/{op}", data={"p.path.name": value})
         assert f'"name": "{value}"' in shown(reply)
+
+
+@pytest.mark.xfail(strict=True, reason="APIDOCS-3")
+def test_a_header_the_wire_cannot_carry_is_reported_in_the_panel_rather_than_as_a_500():
+    """A header value is Latin-1 on the wire, so `名` can never be sent. The
+    answer is the panel saying so, not a 500 that loses the typed request."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app, raise_server_exceptions=False)
+    op = operation_id(app, "GET", "/echo")
+    header_field = next(p.field_name for p in specmod.build(app.openapi()).index[op].params if p.location == "header")
+
+    for data in ({"headers": "X-Name: 名"}, {header_field: "李"}):
+        reply = client.post(f"/api-docs/try/{op}", data=data)
+        assert reply.status_code == 200
+        assert "no response" in reply.text
+        assert "x-name" in shown(reply).lower()  # which header, so it can be fixed
+        assert '"x_name"' not in reply.text  # the endpoint was never reached
