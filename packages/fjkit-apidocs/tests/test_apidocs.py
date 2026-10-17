@@ -293,7 +293,6 @@ def test_a_route_that_merely_shares_the_console_s_prefix_string_is_documented():
     assert [o.path for o in document.index.values()] == ["/api-docs-v2/thing"]
 
 
-@pytest.mark.xfail(strict=True, reason="APIDOCS-7")
 def test_a_ref_to_a_shared_parameter_body_or_response_is_followed():
     """OpenAPI lets a document share these through `components` exactly as it
     shares schemas. FastAPI never writes them, a hand-maintained document does,

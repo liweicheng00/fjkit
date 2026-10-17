@@ -710,6 +710,9 @@ def _operation(
 
 
 def _param(raw: Mapping[str, Any], components: Mapping[str, Any]) -> Param:
+    # The parameter object itself may be a `$ref` into `components.parameters`,
+    # the same way its schema may be one into `components.schemas`.
+    raw = _resolve(raw, components, 0)
     resolved = _effective(raw.get("schema") or {}, components)
     kind = _type_of(resolved)
     default = resolved.get("default", raw.get("example"))
@@ -780,8 +783,9 @@ def _named(entry: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
 def _request_body(
     raw: Any, components: Mapping[str, Any]
 ) -> tuple[str, bool, str, tuple[Param, ...], Shape | None, tuple[str, ...], tuple[tuple[str, str], ...]]:
-    if not isinstance(raw, Mapping):
-        return "", False, "", (), None, (), ()
+    # A `$ref` into `components.requestBodies` resolves to the body object;
+    # anything that is not a mapping resolves to nothing.
+    raw = _resolve(raw, components, 0)
     content = raw.get("content") or {}
     if not isinstance(content, Mapping) or not content:
         return "", False, "", (), None, (), ()
@@ -853,6 +857,7 @@ def _responses(raw: Mapping[str, Any], components: Mapping[str, Any]) -> tuple[R
     for status, entry in raw.items():
         if not isinstance(entry, Mapping):
             continue
+        entry = _resolve(entry, components, 0)  # a `$ref` into `components.responses`
         content = entry.get("content") or {}
         media = next((m for m in content if "json" in m), next(iter(content), ""))
         payload = (content.get(media) or {}) if media else {}
