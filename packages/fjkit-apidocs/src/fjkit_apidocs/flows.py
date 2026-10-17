@@ -105,7 +105,7 @@ class FlowState:
 class AuthFlow(Protocol):
     """What `ApiDocsPlugin(flow=…)` accepts.
 
-    A flow that leaves the browser holding an ambient credential — a cookie —
+    A flow that leaves the browser holding an ambient credential (a cookie)
     also carries a `csrf` attribute, a `fjkit.auth.types.Csrf`, and the console
     runs its `verify` on every POST it answers. `SessionFlow` hands over the
     `AuthPlugin`'s own policy and `HeaderFlow` is given one, exactly as
