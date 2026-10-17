@@ -308,8 +308,9 @@
   initials once it loads, so the fallback costs nothing and needs no
   JavaScript.
 
-  `name` also becomes the `alt` text, so the accessible name and the visible
-  initials cannot disagree.
+  `name` is also the accessible name: the `alt` text when there is an image,
+  and an `aria-label` on the root when there is not. The initials and the
+  name come from one parameter, so they cannot disagree.
 
   The badge is a status dot. Upstream's example writes `bg-green-600` on it;
   here the colour is a role (A3), because a dot meaning "online" has to survive
@@ -330,14 +331,14 @@
     a handle, a non-Latin script.
   #}
   {%- set letters = initials if initials is not none else (name.split() | map("first") | join)[:2] | upper -%}
-  <span class="avatar"{% if size %} data-size="{{ size }}"{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+  <span class="avatar"{% if size %} data-size="{{ size }}"{% endif %}
+    {%- if not src %} role="img" aria-label="{{ name }}"{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     {%- if src %}<img src="{{ src }}" alt="{{ name }}">{% endif %}
     {#
-      The initials carry the accessible name when there is no image, and are
-      hidden from the tree when there is: otherwise the avatar is announced
-      twice, once as the alt text and once as two stray letters.
+      Hidden from the tree either way. Read aloud, "AL" is two stray letters;
+      the name is carried by the alt text or by the root's `aria-label`.
     #}
-    <span{% if src %} aria-hidden="true"{% endif %}>{{ letters }}</span>
+    <span aria-hidden="true">{{ letters }}</span>
     {%- if badge_tone or badge_icon %}
       <span class="avatar-badge {{ _AVATAR_BADGE_TONES.get(badge_tone, "bg-muted-foreground") }}">
         {%- if badge_icon %}{{ icon(badge_icon, 12) }}{% endif -%}

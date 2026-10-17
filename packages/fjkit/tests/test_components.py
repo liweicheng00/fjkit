@@ -1805,9 +1805,6 @@ class TestAvatar:
         html = render(f'{AVATAR}{{{{ avatar("Ada Lovelace", src="/a.png") }}}}')
         assert 'aria-hidden="true">AL<' in html
 
-    def test_initials_stay_in_the_tree_when_there_is_no_image(self, render):
-        assert 'aria-hidden="true">AL<' not in render(f'{AVATAR}{{{{ avatar("Ada Lovelace") }}}}')
-
     @pytest.mark.parametrize("size", ["sm", "lg"])
     def test_every_size_renders(self, render, size):
         assert f'data-size="{size}"' in render(f'{AVATAR}{{{{ avatar("Ada", size="{size}") }}}}')
@@ -2646,7 +2643,6 @@ class TestSkeletonLastLine:
 
 
 class TestAvatarName:
-    @pytest.mark.xfail(strict=True, reason="MAC-10")
     def test_without_an_image_the_full_name_is_announced(self, render):
         """Initials alone read as "A L"."""
         elements = _Attributes(render(f'{AVATAR}{{{{ avatar("Ada Lovelace") }}}}')).elements
