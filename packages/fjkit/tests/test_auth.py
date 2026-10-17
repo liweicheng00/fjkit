@@ -343,6 +343,20 @@ def test_a_cross_origin_login_is_refused_before_a_session_exists():
     assert client.get("/who").text == "anonymous"
 
 
+@pytest.mark.xfail(strict=True, reason="RT-4")
+def test_a_cross_origin_logout_is_refused():
+    """Logout CSRF, the mirror of login CSRF. A cross-site POST carries no
+    cookie under Lax, so the middleware checks nothing, yet the response would
+    carry a clearing Set-Cookie that the browser applies on a top-level
+    navigation: a foreign page could sign the visitor out."""
+    client = make_app(make_auth())
+
+    response = client.post("/logout", headers={"origin": "http://evil.example.com"})
+
+    assert response.status_code == 403
+    assert "set-cookie" not in response.headers
+
+
 def test_a_login_without_an_origin_is_a_non_browser_client_and_is_let_through():
     """A browser always sends `Origin` on a POST, so no `Origin` means no
     visitor's browser to plant a session in."""
