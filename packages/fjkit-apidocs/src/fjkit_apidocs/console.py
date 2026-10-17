@@ -172,6 +172,20 @@ async def call(
     query_string = urlencode(list(_pairs(query)), doseq=False).encode("ascii")
     sent = _headers(request, headers or {}, body)
 
+    recorded = Recorded(
+        method=method.upper(),
+        url=_display(target, query_string),
+        status=0,
+        request_headers=tuple(sent),
+    )
+    unsendable = _unsendable(sent)
+    if unsendable:
+        # Reported like a timeout: the call produced no response because it
+        # could not be made. Not an exception — a typed `名` is not a bug in
+        # the app, and the person needs the panel, not a 500 and a lost form.
+        recorded.error = unsendable
+        return recorded
+
     scope: dict[str, Any] = {
         "type": "http",
         "asgi": {"version": "3.0", "spec_version": "2.3"},
@@ -219,12 +233,6 @@ async def call(
         received = True
         return {"type": "http.request", "body": body, "more_body": False}
 
-    recorded = Recorded(
-        method=method.upper(),
-        url=_display(target, query_string),
-        status=0,
-        request_headers=tuple(sent),
-    )
     chunks: list[bytes] = []
     size = 0
 
@@ -293,6 +301,24 @@ def _headers(request: Request, extra: Mapping[str, str], body: bytes) -> list[tu
     if body:
         out.append(("content-length", str(len(body))))
     return out
+
+
+def _unsendable(headers: Iterable[tuple[str, str]]) -> str:
+    """Name the first header HTTP cannot carry, or return nothing.
+
+    A header is Latin-1 on the wire — every client encodes it so, and the ASGI
+    scope holds the same bytes — so a character beyond U+00FF has no spelling
+    in it. Found before the scope is built, so the person is told which header
+    rather than shown a traceback.
+    """
+    for name, value in headers:
+        for text in (name, value):
+            try:
+                text.encode("latin-1")
+            except UnicodeEncodeError as exc:
+                held = text[exc.start : exc.end]
+                return f"the header {name!r} holds {held!r}, which an HTTP header cannot carry (Latin-1 only)"
+    return ""
 
 
 def _pairs(query: Mapping[str, list[str]] | Iterable[tuple[str, str]]) -> Iterable[tuple[str, str]]:

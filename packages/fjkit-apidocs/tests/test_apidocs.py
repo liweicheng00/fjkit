@@ -1264,7 +1264,6 @@ def test_a_path_value_reaches_the_endpoint_as_a_direct_request_delivers_it():
         assert f'"name": "{value}"' in shown(reply)
 
 
-@pytest.mark.xfail(strict=True, reason="APIDOCS-3")
 def test_a_header_the_wire_cannot_carry_is_reported_in_the_panel_rather_than_as_a_500():
     """A header value is Latin-1 on the wire, so `名` can never be sent. The
     answer is the panel saying so, not a 500 that loses the typed request."""
