@@ -73,7 +73,6 @@ def test_list_and_create_work_unchanged(client: TestClient):
     assert "Rusty-Man" in response.text
 
 
-@pytest.mark.xfail(strict=True, reason="ADMIN-5")
 def test_a_blank_defaulted_column_takes_its_default(client: TestClient):
     response = client.post("/admin/mission", json={"name": "Moon", "status": ""}, headers=HX)
     assert response.status_code == 200, response.text
