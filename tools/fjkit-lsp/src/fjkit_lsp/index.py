@@ -7,6 +7,8 @@ so that every recorded item carries a line and a column.
 from __future__ import annotations
 
 import ast
+import importlib.metadata
+import importlib.util
 import os
 import re
 from dataclasses import dataclass, field
@@ -33,8 +35,28 @@ TEMPLATE_SUFFIXES = {".html", ".jinja", ".j2", ".txt", ".xml", ".svg"}
 #: `ui/form.html`. `fjkit.templating._ReservedNamespace` is the loader that
 #: makes that true at runtime; resolution here has to agree with it.
 FJKIT_NAMESPACE = "fjkit/"
-KIT_TEMPLATES = "/src/fjkit/templates"
 ROUTE_METHODS = {"get", "post", "put", "delete", "patch", "options", "head", "api_route", "route"}
+_REQUIRES_FJKIT = re.compile(r"fjkit(?![\w.-])", re.IGNORECASE)
+
+
+def installed_packages() -> dict[str, Path]:
+    """fjkit's package directory and that of every installed distribution requiring it, by import name.
+
+    Read from the interpreter this server runs in. Started as `.venv/bin/fjkit-lsp`,
+    that is the workspace's own environment, whose site-packages the workspace
+    walk skips; an editable install points into the workspace instead.
+    """
+    names = {"fjkit"}
+    for dist in importlib.metadata.distributions():
+        if any(_REQUIRES_FJKIT.match(req) for req in dist.requires or ()):
+            names.add(re.sub(r"[-_.]+", "_", dist.metadata["Name"]).lower())
+            names.update((dist.read_text("top_level.txt") or "").split())
+    out = {}
+    for name in sorted(names):
+        spec = importlib.util.find_spec(name)
+        if spec is not None and spec.submodule_search_locations:
+            out[name] = Path(next(iter(spec.submodule_search_locations))).resolve()
+    return out
 
 
 @dataclass(frozen=True)
@@ -390,10 +412,11 @@ class Index:
 
     def __init__(self, roots: list[Path]) -> None:
         self.roots = [r.resolve() for r in roots]
+        self.packages = installed_packages()
         self.template_roots: list[Path] = []
         self.app_roots: list[Path] = []  # one per application, in path order
         self.shared_roots: list[Path] = []  # the kit's and every plugin's
-        self.kit_root: Path | None = None  # packages/fjkit/src/fjkit/templates
+        self.kit_root: Path | None = None  # the `templates` directory of the installed fjkit
         #: Every app in path order, then the shared roots. Used when nothing
         #: says which application is asking, so a name two apps share at least
         #: resolves to the same one every time.
@@ -416,12 +439,18 @@ class Index:
     # ---- building -------------------------------------------------------
 
     def _files(self) -> tuple[list[Path], list[Path]]:
-        """Templates and Python modules under every root, in one walk that never
-        enters a skipped directory: a `.venv` alone can hold tens of thousands of files."""
+        """Templates and Python modules under every root and installed package, in
+        one walk that never enters a skipped directory: a `.venv` alone can hold
+        tens of thousands of files, of which only the packages above are wanted."""
         templates: list[Path] = []
         modules: list[Path] = []
-        for root in self.roots:
+        seen: set[str] = set()
+        for root in self.roots + list(self.packages.values()):
             for dirpath, dirnames, filenames in os.walk(root):
+                if dirpath in seen:  # an editable install, already walked from the workspace
+                    dirnames[:] = []
+                    continue
+                seen.add(dirpath)
                 dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.startswith("."))
                 for f in sorted(filenames):
                     suffix = os.path.splitext(f)[1]
@@ -456,9 +485,9 @@ class Index:
     def _classify_roots(self, templates: list[Path]) -> None:
         """Split every `templates` directory into the app roots and the shared ones.
 
-        A directory under a package's `src/` belongs to a distribution — the kit
-        or a plugin — and `mount_fjkit` puts it in every app's chain. Any other
-        one is an application's own, seen by that application alone.
+        The `templates` of an installed distribution, the kit or a plugin, is one
+        `mount_fjkit` puts in every app's chain. Any other one is an
+        application's own, seen by that application alone.
         """
         roots = set()
         for p in templates:
@@ -467,9 +496,11 @@ class Index:
                     roots.add(parent)
                     break
         self.template_roots = sorted(roots)
-        self.shared_roots = [r for r in self.template_roots if "/src/" in f"{r}/"]
-        self.app_roots = [r for r in self.template_roots if r not in self.shared_roots]
-        self.kit_root = next((r for r in self.shared_roots if str(r).endswith(KIT_TEMPLATES)), None)
+        shipped = {package / "templates" for package in self.packages.values()}
+        self.shared_roots = [r for r in self.template_roots if r in shipped]
+        self.app_roots = [r for r in self.template_roots if r not in shipped]
+        kit = self.packages.get("fjkit")
+        self.kit_root = kit / "templates" if kit and kit / "templates" in self.shared_roots else None
         # The kit last, so a plugin can replace one of its macros but never the
         # other way round — the order `build_environment` gives the ChoiceLoader.
         self.shared_roots.sort(key=lambda r: (r == self.kit_root, str(r)))

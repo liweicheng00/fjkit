@@ -9,7 +9,6 @@ import sys
 import time
 from pathlib import Path
 
-import pytest
 from fjkit_lsp.index import Index
 from fjkit_lsp.resolve import Resolver
 
@@ -88,7 +87,6 @@ def test_the_index_does_not_read_inside_a_virtualenv(tmp_path: Path) -> None:
     assert build_ms() - without < 150
 
 
-@pytest.mark.xfail(strict=True, reason="LSP-2")
 def test_a_checkout_under_a_src_directory_keeps_its_applications_apart(tmp_path: Path) -> None:
     """`~/src/<repo>` is a common place to clone into; it does not make every app a distribution."""
     files = {}
@@ -105,7 +103,6 @@ def test_a_checkout_under_a_src_directory_keeps_its_applications_apart(tmp_path:
 SITE = ".venv/lib/python3.13/site-packages"
 
 
-@pytest.mark.xfail(strict=True, reason="LSP-1")
 def test_the_kit_and_a_plugin_installed_in_the_workspace_venv_are_found(tmp_path: Path) -> None:
     """The deployment the editor extension starts: `.venv/bin/fjkit-lsp` in the user's
     project, with fjkit and its plugins in that venv's site-packages."""
