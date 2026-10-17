@@ -583,8 +583,13 @@ def test_signing_out_drops_the_session(client: TestClient):
     assert client.post("/api-docs/try/whoami_whoami_get").text.count("&#34;sub&#34;: null") == 1
 
 
+def header_flow(**kwargs) -> HeaderFlow:
+    """A `HeaderFlow` for tests about something other than its Origin check."""
+    return HeaderFlow(secret=SECRET, secure=False, csrf=NoCsrf(), **kwargs)
+
+
 def test_a_header_flow_holds_the_token_where_the_page_cannot_read_it():
-    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, secure=False))
+    docs = ApiDocsPlugin(flow=header_flow())
     client = TestClient(build_app(docs))
 
     saved = client.post("/api-docs/auth", data={"token": "s3cr3t-token-value"})
@@ -603,7 +608,7 @@ def test_a_header_flow_puts_the_token_on_every_call():
     name you ask for and compares it to the raw bytes. So `Authorization`
     spelled with a capital A rides on the wire and is invisible to
     `request.headers["authorization"]`, with nothing anywhere saying so."""
-    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, secure=False))
+    docs = ApiDocsPlugin(flow=header_flow())
     app = build_app(docs)
 
     @app.get("/echo-auth", tags=["debug"])
@@ -619,7 +624,7 @@ def test_a_header_flow_puts_the_token_on_every_call():
 
 
 def test_a_forged_token_cookie_is_not_a_token():
-    flow = HeaderFlow(secret=SECRET, secure=False)
+    flow = header_flow()
     docs = ApiDocsPlugin(flow=flow)
     client = TestClient(build_app(docs))
 
@@ -628,7 +633,6 @@ def test_a_forged_token_cookie_is_not_a_token():
     assert "No token held" in panel.text
 
 
-@pytest.mark.xfail(strict=True, reason="APIDOCS-1")
 def test_a_header_flow_needs_trusted_origins_as_the_auth_plugin_does():
     """The flow keeps the token in a cookie, an ambient credential, so it is
     held to the rule `AuthPlugin` follows: name the origins, or opt out."""
@@ -638,7 +642,6 @@ def test_a_header_flow_needs_trusted_origins_as_the_auth_plugin_does():
         HeaderFlow(secret=SECRET, csrf=NoCsrf(), trusted_origins=["http://testserver"])
 
 
-@pytest.mark.xfail(strict=True, reason="APIDOCS-1")
 def test_the_console_refuses_a_post_whose_origin_is_not_the_app_s():
     """`SameSite=Strict` is site-scoped: a page on a sibling origin of the same
     site can still make the browser send the token cookie, and a forged form
@@ -1408,7 +1411,7 @@ def test_the_curl_snippet_keeps_the_prefix_a_proxy_put_in_front_of_the_app():
 def test_the_curl_snippet_redacts_whichever_header_the_flow_puts_the_token_in():
     """`HeaderFlow` promises the token never reaches the DOM. An API-key header
     is the flow's own documented case, and the snippet is part of the DOM."""
-    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, header="X-API-Key", scheme="", secure=False))
+    docs = ApiDocsPlugin(flow=header_flow(header="X-API-Key", scheme=""))
     app = build_echo_app(docs)
     client = TestClient(app)
     client.post("/api-docs/auth", data={"token": "SUPER-SECRET-KEY-123"})
