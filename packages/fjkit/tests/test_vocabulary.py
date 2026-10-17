@@ -39,6 +39,14 @@ class TestVocabulary:
         for name in ("flex", "gap-4", "grid-cols-3", "text-muted-foreground"):
             assert name not in classes
 
+    @pytest.mark.xfail(strict=True, reason="CLI-6")
+    def test_names_from_css_comments_and_utility_overrides_are_rejected(self, tmp_path):
+        """A file extension in a CSS comment is not a class, and a stylesheet
+        rule that adjusts a Tailwind utility does not make it a component."""
+        junk = ["css", "html", "md", "py", "venv", "org", "w3", "group", "animate-spin"]
+        (tmp_path / "page.html").write_text(f'<div class="{" ".join(junk)}">x</div>')
+        assert [v.token for v in check_templates(tmp_path)] == junk
+
 
 class TestCheck:
     def test_component_classes_pass(self, tmp_path):
