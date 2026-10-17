@@ -513,7 +513,6 @@ class TestMacroEject:
         self._eject(tmp_path, "data")
         self._eject(tmp_path, "badge", expect=1)
 
-    @pytest.mark.xfail(strict=True, reason="CLI-10")
     def test_asking_for_the_whole_file_over_a_macro_override_says_what_it_owns(self, tmp_path, capsys):
         """The refusal has to describe the file that is there. Calling a
         one-macro override "a copy of the whole component" invites editing

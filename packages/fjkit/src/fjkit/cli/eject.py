@@ -544,6 +544,16 @@ def main(name: str, into: Path) -> int:
         return 1
 
     if macro is None:
+        if stamp is not None and stamp["macros"]:
+            owned = [n for n in _stamped_macros(stamp["macros"]) if not n.startswith("_")]
+            print(
+                f"fjkit eject: {target} already exists and owns {_and(owned)}; the other macros in\n"
+                f"{component_name}.html are re-exported from the kit. Edit your copy there, or run\n"
+                f"`fjkit eject <macro>` to take another. To copy the whole file instead, delete it\n"
+                f"first and re-run; that discards your copy of {_and(owned)}.",
+                file=sys.stderr,
+            )
+            return 1
         if existing is not None:
             print(
                 f"fjkit eject: {target} already exists — it is a copy of the whole component,\n"
