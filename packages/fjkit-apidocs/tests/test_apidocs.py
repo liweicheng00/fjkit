@@ -293,6 +293,42 @@ def test_a_route_that_merely_shares_the_console_s_prefix_string_is_documented():
     assert [o.path for o in document.index.values()] == ["/api-docs-v2/thing"]
 
 
+@pytest.mark.xfail(strict=True, reason="APIDOCS-7")
+def test_a_ref_to_a_shared_parameter_body_or_response_is_followed():
+    """OpenAPI lets a document share these through `components` exactly as it
+    shares schemas. FastAPI never writes them, a hand-maintained document does,
+    and reading the `$ref` object as if it were the thing yields a parameter
+    with no name and a body the console cannot send."""
+    document = specmod.build(
+        {
+            "info": {"title": "T", "version": "1"},
+            "paths": {
+                "/x": {
+                    "post": {
+                        "operationId": "x",
+                        "parameters": [{"$ref": "#/components/parameters/Limit"}],
+                        "requestBody": {"$ref": "#/components/requestBodies/Note"},
+                        "responses": {"404": {"$ref": "#/components/responses/Missing"}},
+                    }
+                }
+            },
+            "components": {
+                "parameters": {"Limit": {"name": "limit", "in": "query", "schema": {"type": "integer"}}},
+                "requestBodies": {
+                    "Note": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Note"}}}}
+                },
+                "schemas": {"Note": {"type": "object", "properties": {"text": {"type": "string"}}}},
+                "responses": {"Missing": {"description": "no such thing"}},
+            },
+        }
+    )
+    operation = document.index["x"]
+    assert [(p.name, p.location) for p in operation.params] == [("limit", "query")]
+    assert operation.has_body
+    assert '"text"' in operation.body_example
+    assert [(r.status, r.description) for r in operation.responses] == [("404", "no such thing")]
+
+
 # ------------------------------------------------------------------ mounting
 
 
