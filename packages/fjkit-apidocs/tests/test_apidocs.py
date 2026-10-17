@@ -1334,7 +1334,6 @@ def test_the_curl_snippet_redacts_whichever_header_the_flow_puts_the_token_in():
     assert "X-API-Key: <redacted>" in text  # the header is named, so the reader knows what to fill in
 
 
-@pytest.mark.xfail(strict=True, reason="APIDOCS-5")
 def test_a_set_cookie_the_endpoint_answers_with_is_shown_without_its_value():
     """An HttpOnly cookie is one no script on a page may read. The console
     swallows the response, so printing the header verbatim into the DOM would

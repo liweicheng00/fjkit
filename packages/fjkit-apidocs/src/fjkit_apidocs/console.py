@@ -131,6 +131,18 @@ class Recorded:
         return "success"
 
     @property
+    def shown_headers(self) -> tuple[tuple[str, str], ...]:
+        """The response headers as the panel prints them.
+
+        A `Set-Cookie` keeps its name and attributes and loses its value. The
+        console swallows the response rather than relaying the cookie to the
+        browser, so the only way the value could reach the page is this
+        panel — and an `HttpOnly` cookie is one no script on the page may
+        read. `headers` stays complete for a caller that is not a page.
+        """
+        return tuple((k, _without_value(v) if k.lower() == "set-cookie" else v) for k, v in self.headers)
+
+    @property
     def pretty(self) -> str:
         """Return the body, re-indented when it is JSON and unchanged otherwise."""
         if "json" not in self.media_type or not self.body:
@@ -303,6 +315,13 @@ def _headers(request: Request, extra: Mapping[str, str], body: bytes) -> list[tu
     if body:
         out.append(("content-length", str(len(body))))
     return out
+
+
+def _without_value(cookie: str) -> str:
+    """Return `name=<redacted>; attributes` for one `Set-Cookie` value."""
+    name, _, rest = cookie.partition("=")
+    _, semicolon, attributes = rest.partition(";")
+    return f"{name}=<redacted>{semicolon}{attributes}"
 
 
 def _unsendable(headers: Iterable[tuple[str, str]]) -> str:
