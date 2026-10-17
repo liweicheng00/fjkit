@@ -648,10 +648,11 @@ async def test_the_lock_is_released_even_when_the_upstream_fails():
             raise RuntimeError("upstream said no")
 
     auth = make_auth(source=Broken(), store=MemoryStore())
-    sid = await seed(auth, Session(access="a", expires_at=datetime.now(UTC) + timedelta(seconds=5)))
+    expired = Session(access="a", expires_at=datetime.now(UTC) - timedelta(seconds=1))
+    sid = await seed(auth, expired)
 
     with pytest.raises(RefreshUnavailable):
-        await auth._refresh(sid, Session(access="a", expires_at=datetime.now(UTC) + timedelta(seconds=5)))
+        await auth._refresh(sid, expired)
 
     assert await auth.store.acquire_refresh_lock(sid, 10) is True
 
@@ -719,10 +720,11 @@ def test_an_upstream_refusal_ends_the_session():
 
 @pytest.mark.parametrize("error", [ConnectionError("no route to host"), TimeoutError("read timed out")])
 def test_an_unreachable_upstream_keeps_the_session_and_says_when_to_retry(error):
-    """An outage is not a refusal. The user stays signed in, this one request
-    is answered 503 with a `Retry-After`, and the next request after the
-    upstream is back renews the token as if nothing had happened."""
-    source = FlakySource(error)
+    """An outage is not a refusal. The user stays signed in, this one request,
+    whose token has expired, is answered 503 with a `Retry-After`, and the
+    next request after the upstream is back renews the token as if nothing
+    had happened."""
+    source = FlakySource(error, ttl=timedelta(seconds=-1))
     client = make_app(make_auth(source=source))
     client.post("/login", headers={"origin": ORIGIN})
 
@@ -769,11 +771,11 @@ def race_two_requests(source: FlakySource) -> tuple[int, int, float]:
 
 
 def test_a_request_that_lost_the_refresh_race_learns_the_winner_failed_promptly():
-    """Two swaps notice the expiring token at once. The first holds the lock
+    """Two swaps notice the expired token at once. The first holds the lock
     and finds the upstream unreachable; the second must get the same 503 as
     soon as the first lets go, not wait out `refresh_wait` and then send the
     user to the login page for a session that still exists."""
-    source = FlakySource(ConnectionError("no route to host"), delay=0.3)
+    source = FlakySource(ConnectionError("no route to host"), delay=0.3, ttl=timedelta(seconds=-1))
 
     winner_status, loser_status, loser_elapsed = race_two_requests(source)
 
@@ -786,7 +788,6 @@ def test_a_request_that_lost_the_refresh_race_learns_the_winner_failed_promptly(
 # ------------------------------------------ an outage while the token is good
 
 
-@pytest.mark.xfail(strict=True, reason="the fix lands in the next commit")
 def test_an_outage_inside_the_leeway_serves_the_token_that_is_still_good(caplog):
     """The refresh runs `refresh_leeway` ahead of expiry, while the token is
     still valid. An upstream that cannot be reached in that window costs the
@@ -830,7 +831,6 @@ def test_an_outage_past_expiry_answers_503_wherever_the_session_is_needed(path):
     assert source.refreshes == 1
 
 
-@pytest.mark.xfail(strict=True, reason="the fix lands in the next commit")
 def test_logging_out_needs_no_upstream():
     """Logout deletes a row and clears a cookie, neither of which needs the
     identity provider. A user whose token expired during an outage must still
@@ -850,7 +850,6 @@ def test_logging_out_needs_no_upstream():
     assert client.get("/who").text == "anonymous", "the store's row is gone, so the old cookie is worthless"
 
 
-@pytest.mark.xfail(strict=True, reason="the fix lands in the next commit")
 def test_a_request_that_lost_the_refresh_race_is_served_when_its_token_is_still_good():
     """The loser's version of the leeway rule: the winner found the upstream
     unreachable, the token is still valid, so the loser proceeds on it as soon

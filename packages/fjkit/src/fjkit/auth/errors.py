@@ -4,7 +4,8 @@ Three shapes rather than one. `NotAuthenticated` sends the browser to the login
 screen. `CsrfRejected` leaves the browser where it is and answers 403, because
 the request may come from an attacker and its victim has no login to do.
 `RefreshUnavailable` leaves the session in place and answers 503, because the
-request was fine and the identity provider was not.
+request was fine and the identity provider was not, and the token has expired
+so there is nothing left to serve the request on.
 
 `RefreshRefused` is the one exception here a `TokenSource` raises rather than
 the plugin: it is how `refresh` says the upstream said no.
@@ -46,6 +47,11 @@ class RefreshUnavailable(AuthError):
     the login page would be wrong, because they are still logged in and the
     login page needs the same upstream. The request is answered 503 with a
     `Retry-After`, and the next request tries the refresh again.
+
+    Raised only once the token has expired. Renewal starts `refresh_leeway`
+    ahead of that, and a request inside the leeway is served on the token it
+    still has. Logout never raises it: the plugin defers the refusal to
+    whatever asks for the session, and a logout asks for nothing.
     """
 
 

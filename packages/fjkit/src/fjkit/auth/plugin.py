@@ -220,10 +220,7 @@ class AuthPlugin:
             setup.warn("CSRF checking is off. Every cookie-authenticated write is unprotected.")
 
     def extend(self, setup: EnvSetup) -> None:
-        setup.add_context_processor(
-            lambda request: {"session": getattr(request.state, "auth", None)},
-            provides=["session"],
-        )
+        setup.add_context_processor(lambda request: {"session": self._session(request)}, provides=["session"])
 
     # ------------------------------------------------------------- app-facing
 
@@ -334,12 +331,17 @@ class AuthPlugin:
         self._set_cookie(response, sid)
         self.csrf.on_issue(response, sid)
         # So a login that renders rather than redirects sees the session it
-        # just created.
+        # just created, and not an outage the previous session hit.
         request.state.auth = session
+        request.state.auth_unavailable = None
         return session
 
     async def revoke(self, request: Request, response: Response) -> None:
-        """Log out: forget the session server-side and clear the cookie."""
+        """Log out: forget the session server-side and clear the cookie.
+
+        Needs nothing from the upstream, and runs during an outage that has
+        every other page answering 503 (see `_SessionMiddleware`).
+        """
         await self._verify_if_browser(request)
         sid = self._read_cookie(request)
         if sid is not None:
@@ -350,6 +352,7 @@ class AuthPlugin:
             domain=self.cookie.domain,
         )
         request.state.auth = None
+        request.state.auth_unavailable = None
 
     async def required(self, request: Request) -> Session:
         """Dependency. Refuse an anonymous request.
@@ -359,16 +362,27 @@ class AuthPlugin:
         Returns the session as well as raising, so a handler can take it as a
         parameter instead of reading `request.state`.
         """
-        session = getattr(request.state, "auth", None)
+        session = self._session(request)
         if session is None:
             raise NotAuthenticated(f"{request.url.path} needs a session")
         return session
 
     async def optional(self, request: Request) -> Session | None:
         """Dependency. The session, or `None`."""
-        return getattr(request.state, "auth", None)
+        return self._session(request)
 
     # -------------------------------------------------------------- internals
+
+    def _session(self, request: Request) -> Session | None:
+        """What the middleware found, for everything that asks about the session.
+
+        Raises the `RefreshUnavailable` the middleware deferred (see
+        `_SessionMiddleware`), so asking is what turns an outage into a 503.
+        """
+        unavailable = getattr(request.state, "auth_unavailable", None)
+        if unavailable is not None:
+            raise unavailable
+        return getattr(request.state, "auth", None)
 
     async def _verify_if_browser(self, request: Request) -> None:
         """Login and logout CSRF, the two anonymous writes that touch the cookie.
@@ -386,8 +400,10 @@ class AuthPlugin:
         """Return the session for this request, refreshed if it is near expiry.
 
         Called by the middleware. Raises `NotAuthenticated` only for a session
-        that existed and could not be renewed; an absent or unreadable cookie is
-        an anonymous request, not an error.
+        that existed and the upstream refused to renew, and `RefreshUnavailable`
+        only for one whose token has expired while the upstream cannot be
+        reached; an absent or unreadable cookie is an anonymous request, not an
+        error.
         """
         sid = self._read_cookie(request)
         if sid is None:
@@ -413,6 +429,12 @@ class AuthPlugin:
         Self-guarding: a session that is not near expiry, or a source that
         cannot renew, is returned unchanged, so callers need not know which case
         they are in.
+
+        Renewal starts `refresh_leeway` ahead of expiry, so an upstream that
+        cannot be reached inside that window has cost nothing yet: the request
+        is served on the token it has, which is still good, and the next one
+        tries again. `RefreshUnavailable` is for the request that has no good
+        token to be served on.
 
         The session id does not change here. Rotating it would give several
         concurrent swaps a different `Set-Cookie` each; the last wins, the rest
@@ -452,17 +474,20 @@ class AuthPlugin:
                 return current
 
             # Only the upstream refusing ends a session. Anything else the
-            # source raises is an outage: the session stays, this request is
-            # told to come back, and the next one tries again. The store's own
-            # failures are outside this block on purpose, so a store that
-            # failed a moment ago does not log every user out over a blip.
+            # source raises is an outage: the session stays and the next
+            # request tries again. The store's own failures are outside this
+            # block on purpose, so a store that failed a moment ago does not
+            # log every user out over a blip.
             try:
                 fresh = await self.source.refresh(current)  # type: ignore[attr-defined]
             except RefreshRefused as exc:
                 await self.store.delete(sid)
                 raise RefreshFailed(f"the upstream refused to renew the session: {exc}") from exc
             except Exception as exc:
-                raise RefreshUnavailable(f"could not reach the upstream to renew the session: {exc}") from exc
+                if self._expired(current):
+                    raise RefreshUnavailable(f"could not reach the upstream to renew the session: {exc}") from exc
+                _log.warning("could not reach the upstream to renew a session ahead of expiry: %s", exc)
+                return current
 
             await self._write(sid, fresh)
             return fresh
@@ -477,27 +502,35 @@ class AuthPlugin:
         missing row means the upstream refused, and a lock released with the
         row still expiring means the winner reached nobody. That last case is
         found by taking the lock, which only succeeds once the winner let go.
+
+        The winner's failure is read the same way the winner read it: a token
+        that is still good is served, one that has expired is not.
         """
         ttl = int(self.refresh_lock_ttl.total_seconds())
         deadline = asyncio.get_running_loop().time() + self.refresh_wait.total_seconds()
+        current = stale
         while asyncio.get_running_loop().time() < deadline:
             await asyncio.sleep(_POLL_SECONDS)
             payload = await self.store.get(sid)
             if payload is None:
                 raise RefreshFailed("the session was dropped while its token was being renewed")
-            session = decode(payload)
-            if not self._expiring(session):
-                return session
+            current = decode(payload)
+            if not self._expiring(current):
+                return current
             if await self.store.acquire_refresh_lock(sid, ttl):
                 # Not a second attempt: the upstream was unreachable a moment
                 # ago, and a retry here would make the user wait out a second
                 # timeout. The next request retries.
                 await self.store.release_refresh_lock(sid)
-                raise RefreshUnavailable("another request could not reach the upstream to renew the session")
-        raise RefreshUnavailable(
-            "timed out waiting for another request to renew this session; "
-            "raise `refresh_wait` if the upstream is slower than that"
-        )
+                if self._expired(current):
+                    raise RefreshUnavailable("another request could not reach the upstream to renew the session")
+                return current
+        if self._expired(current):
+            raise RefreshUnavailable(
+                "timed out waiting for another request to renew this session; "
+                "raise `refresh_wait` if the upstream is slower than that"
+            )
+        return current
 
     def _expiring(self, session: Session) -> bool:
         """Report whether the token is inside the leeway, or already past it.
@@ -508,6 +541,10 @@ class AuthPlugin:
         if session.expires_at is None:
             return False
         return session.expires_at - datetime.now(UTC) <= self.refresh_leeway
+
+    def _expired(self, session: Session) -> bool:
+        """Report whether the token is past expiry, so nothing can be served on it."""
+        return session.expires_at is not None and session.expires_at <= datetime.now(UTC)
 
     async def _write(self, sid: str, session: Session) -> None:
         await self.store.put(sid, encode(session), int(self.cookie.max_age.total_seconds()))
@@ -618,7 +655,15 @@ class AuthPlugin:
 
 
 class _SessionMiddleware(BaseHTTPMiddleware):
-    """Verify, load and renew — before the handler, so routes see a plain session."""
+    """Verify, load and renew — before the handler, so routes see a plain session.
+
+    One outcome is not settled here. A session whose token has expired while
+    the upstream is unreachable leaves `request.state.auth` empty and the
+    `RefreshUnavailable` on `request.state.auth_unavailable`, and the handler
+    runs. `required`, `optional` and the template context raise it, so a page
+    that needs the session still answers 503; a handler that needs none,
+    which is what a logout is, gets through.
+    """
 
     def __init__(self, app: Any, *, plugin: AuthPlugin, static_url: str) -> None:
         super().__init__(app)
@@ -628,6 +673,7 @@ class _SessionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Any) -> Response:
         plugin = self.plugin
         request.state.auth = None
+        request.state.auth_unavailable = None
         if request.url.path.startswith(self.static_prefix):
             # The kit's own assets need no session, and must not wait on the
             # upstream: a page that loaded would otherwise arrive unstyled
@@ -640,6 +686,11 @@ class _SessionMiddleware(BaseHTTPMiddleware):
                 # refusing it would break endpoints meant to be open.
                 await plugin.csrf.verify(request)
                 request.state.auth = await plugin.load(request)
+        except RefreshUnavailable as exc:
+            # Deferred, not answered. The handler may be a logout, which needs
+            # the cookie and the store and nothing from the upstream; the
+            # refusal is raised by whatever asks for the session instead.
+            request.state.auth_unavailable = exc
         except AuthError as exc:
             return plugin._handle(request, exc)
         return await call_next(request)

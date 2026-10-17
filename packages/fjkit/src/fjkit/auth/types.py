@@ -137,8 +137,9 @@ class RefreshableTokenSource(TokenSource, Protocol):
     * It raises `RefreshRefused`: the upstream answered and said no. The
       session is deleted and the user is sent to log in again.
     * It raises anything else: the upstream could not be asked. The session is
-      kept, this request is answered 503 with a `Retry-After`, and the next
-      request tries again.
+      kept and the next request tries again. Renewal starts ahead of expiry,
+      so while the token is still good the request is served on it; once the
+      token has expired the request is answered 503 with a `Retry-After`.
 
     So a source maps the upstream's "invalid_grant" to `RefreshRefused` and
     lets a connection error or timeout propagate as it is.
