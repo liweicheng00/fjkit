@@ -6,7 +6,6 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-import pytest
 from fjkit_lsp.index import Index
 from fjkit_lsp.resolve import Resolver
 
@@ -64,7 +63,6 @@ def test_a_file_that_is_not_utf8_does_not_stop_the_index(tmp_path: Path) -> None
     assert [(r.func, r.path) for r in ix.routes if r.module.is_relative_to(ws)] == [("legacy", "/caf\xe9")]
 
 
-@pytest.mark.xfail(strict=True, reason="LSP-5")
 def test_the_index_does_not_read_inside_a_virtualenv(tmp_path: Path) -> None:
     """The server rebuilds on every save, so a 10,000-file `.venv` must cost nothing."""
     ws = _workspace(tmp_path, {"app/templates/page.html": "<p></p>\n", "app/main.py": "x = 1\n"})

@@ -7,6 +7,7 @@ so that every recorded item carries a line and a column.
 from __future__ import annotations
 
 import ast
+import os
 import re
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -414,17 +415,26 @@ class Index:
 
     # ---- building -------------------------------------------------------
 
-    def _walk(self, suffixes: set[str]):
+    def _files(self) -> tuple[list[Path], list[Path]]:
+        """Templates and Python modules under every root, in one walk that never
+        enters a skipped directory: a `.venv` alone can hold tens of thousands of files."""
+        templates: list[Path] = []
+        modules: list[Path] = []
         for root in self.roots:
-            for p in root.rglob("*"):
-                if any(part in SKIP_DIRS or part.startswith(".") for part in p.relative_to(root).parts[:-1]):
-                    continue
-                if p.is_file() and p.suffix in suffixes:
-                    yield p
+            for dirpath, dirnames, filenames in os.walk(root):
+                dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.startswith("."))
+                for f in sorted(filenames):
+                    suffix = os.path.splitext(f)[1]
+                    if suffix == ".py":
+                        modules.append(Path(dirpath, f))
+                    elif suffix in TEMPLATE_SUFFIXES:
+                        templates.append(Path(dirpath, f))
+        return templates, modules
 
     def _build(self) -> None:
-        self._classify_roots()
-        for p in self._walk(TEMPLATE_SUFFIXES):
+        templates, modules = self._files()
+        self._classify_roots(templates)
+        for p in templates:
             root = next((r for r in self.template_roots if p.is_relative_to(r)), None)
             if root is None:
                 continue
@@ -440,10 +450,10 @@ class Index:
         for root in self.default_chain:
             for name, t in self.by_root.get(root, {}).items():
                 self.templates.setdefault(name, t)
-        for p in self._walk({".py"}):
+        for p in modules:
             self._index_python(p)
 
-    def _classify_roots(self) -> None:
+    def _classify_roots(self, templates: list[Path]) -> None:
         """Split every `templates` directory into the app roots and the shared ones.
 
         A directory under a package's `src/` belongs to a distribution — the kit
@@ -451,7 +461,7 @@ class Index:
         one is an application's own, seen by that application alone.
         """
         roots = set()
-        for p in self._walk(TEMPLATE_SUFFIXES):
+        for p in templates:
             for parent in p.parents:
                 if parent.name == "templates":
                     roots.add(parent)
