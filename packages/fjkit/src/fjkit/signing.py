@@ -1,9 +1,10 @@
 """`<body>.<mac>` — the one cookie format the kit signs with.
 
-Two plugins keep a value in a cookie the browser must not be able to write: a
+Three plugins keep a value in a cookie the browser must not be able to write: a
 flash message (otherwise a way to make a site display any text an attacker
-likes) and the API console's credential. Neither value has to stay secret — one
-is about to be printed on the page, the other is the caller's own token — so
+likes), the API console's credential, and the session id. None of the values
+has to stay secret — one is about to be printed on the page, one is the
+caller's own token, one is a random id that is useless without the store — so
 this signs and does not encrypt.
 
 One implementation rather than one per plugin: signing and verifying drifting

@@ -19,9 +19,6 @@ than leaving it to the app.
 from __future__ import annotations
 
 import asyncio
-import base64
-import hashlib
-import hmac
 import logging
 import secrets
 import warnings
@@ -42,6 +39,7 @@ from fjkit.auth.types import Csrf, Session, SessionStore, TokenSource, decode, e
 from fjkit.flash import FlashPlugin
 from fjkit.htmx import is_htmx
 from fjkit.plugins import AppSetup, EnvSetup, PluginWarning
+from fjkit.signing import sign_text, unsign_text
 
 __all__ = ["AuthPlugin", "CookieSpec", "safe_next"]
 
@@ -384,17 +382,13 @@ class AuthPlugin:
     # ------------------------------------------------------------- the cookie
 
     def _sign(self, sid: str) -> str:
-        mac = hmac.new(self.secret, sid.encode("ascii"), hashlib.sha256).digest()
-        return f"{sid}.{base64.urlsafe_b64encode(mac).decode('ascii').rstrip('=')}"
+        return sign_text(self.secret, sid)
 
     def _read_cookie(self, request: Request) -> str | None:
         raw = request.cookies.get(self.cookie.name)
         if not raw:
             return None
-        sid, _, _ = raw.partition(".")
-        if not sid or not hmac.compare_digest(raw, self._sign(sid)):
-            return None
-        return sid
+        return unsign_text(self.secret, raw) or None
 
     def _set_cookie(self, response: Response, sid: str) -> None:
         response.set_cookie(
