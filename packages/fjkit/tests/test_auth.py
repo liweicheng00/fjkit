@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import warnings
 from datetime import UTC, datetime, timedelta
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from fastapi import APIRouter, Depends, FastAPI, Request, Response
@@ -23,6 +24,7 @@ from fjkit.auth.types import decode, encode
 from jinja2 import DictLoader
 
 ORIGIN = "http://testserver"
+IDP = "https://idp.example/authorize"
 
 #: What a browser navigating to a page sends. `TestClient` sends `Accept: */*`,
 #: which is the programmatic caller, so a test about browser behaviour has to
@@ -66,6 +68,22 @@ def make_app(auth: AuthPlugin, **config_kwargs) -> TestClient:
     @router.post("/public")
     def public() -> dict[str, str]:
         return {"ok": "yes"}
+
+    # The OpenID Connect shape: a redirect out to the provider, and a GET back
+    # carrying the authorization code. The code is the credential.
+    @router.get("/oidc/start")
+    def oidc_start(response: Response) -> Response:
+        state = auth.start_login(response)
+        response.status_code = 303
+        response.headers["location"] = f"{IDP}?state={state}"
+        return response
+
+    @router.get("/oidc/callback")
+    async def oidc_callback(request: Request, response: Response, code: str, state: str) -> Response:
+        auth.check_state(request, response, state)
+        await auth.issue(request, response, code)
+        response.status_code = 204
+        return response
 
     private = APIRouter(prefix="/private", dependencies=[Depends(auth.required)])
 
@@ -370,6 +388,124 @@ def test_reads_are_never_checked():
     client.post("/login", headers={"origin": ORIGIN})
 
     assert client.get("/who").text == "ada"
+
+
+class CodeSource:
+    """An upstream that trades an authorization code for a session, counting
+    how often it is asked."""
+
+    def __init__(self) -> None:
+        self.exchanges = 0
+
+    async def exchange(self, code: str) -> Session:
+        self.exchanges += 1
+        return Session(claims={"name": f"owner-of-{code}"})
+
+
+def state_of(start) -> str:
+    """The `state` the app put in its redirect to the provider."""
+    assert start.status_code == 303
+    return parse_qs(urlsplit(start.headers["location"]).query)["state"][0]
+
+
+def login_cookie_header(response) -> tuple[str, str]:
+    """The name and raw value of the one cookie `start_login` set."""
+    header = response.headers["set-cookie"]
+    name, _, value = header.split(";", 1)[0].partition("=")
+    return name, value
+
+
+def test_an_oidc_login_round_trips_through_state():
+    source = CodeSource()
+    client = make_app(make_auth(source=source))
+
+    start = client.get("/oidc/start", follow_redirects=False)
+    state = state_of(start)
+    callback = client.get("/oidc/callback", params={"code": "c1", "state": state})
+
+    assert "HttpOnly" in start.headers["set-cookie"]
+    assert callback.status_code == 204
+    assert client.get("/who").text == "owner-of-c1"
+    assert source.exchanges == 1
+
+
+def test_a_callback_the_browser_never_started_is_refused_before_the_exchange():
+    """Login CSRF on a GET. The attacker sends the victim to the callback with
+    the attacker's own code and state. The victim's browser never visited
+    `/oidc/start`, so it holds no nonce, and the request must die before the
+    upstream is asked to turn the code into the attacker's session."""
+    source = CodeSource()
+    client = make_app(make_auth(source=source))
+
+    response = client.get("/oidc/callback", params={"code": "attacker", "state": "attacker-state"})
+
+    assert response.status_code == 403
+    assert "set-cookie" not in response.headers
+    assert client.get("/who").text == "anonymous"
+    assert source.exchanges == 0
+
+
+def test_a_callback_with_someone_elses_state_is_refused_and_the_victims_own_login_survives():
+    """The victim is mid-flow, so their browser holds a nonce, and the forged
+    callback carries a different one. Refusing it must not break the login the
+    victim is in the middle of."""
+    source = CodeSource()
+    client = make_app(make_auth(source=source))
+    state = state_of(client.get("/oidc/start", follow_redirects=False))
+
+    forged = client.get("/oidc/callback", params={"code": "attacker", "state": "attacker-state"})
+    honest = client.get("/oidc/callback", params={"code": "c1", "state": state})
+
+    assert forged.status_code == 403
+    assert honest.status_code == 204
+    assert client.get("/who").text == "owner-of-c1"
+    assert source.exchanges == 1
+
+
+def test_a_callback_cannot_be_replayed_after_it_succeeded():
+    source = CodeSource()
+    client = make_app(make_auth(source=source))
+    state = state_of(client.get("/oidc/start", follow_redirects=False))
+    client.get("/oidc/callback", params={"code": "c1", "state": state})
+
+    replay = client.get("/oidc/callback", params={"code": "c2", "state": state})
+
+    assert replay.status_code == 403
+    assert client.get("/who").text == "owner-of-c1", "the replay must not replace the session either"
+    assert source.exchanges == 1
+
+
+def test_a_tampered_login_cookie_is_refused():
+    source = CodeSource()
+    client = make_app(make_auth(source=source))
+    start = client.get("/oidc/start", follow_redirects=False)
+    state = state_of(start)
+    name, value = login_cookie_header(start)
+    client.cookies.set(name, value[:-1] + ("A" if value[-1] != "A" else "B"))
+
+    response = client.get("/oidc/callback", params={"code": "c1", "state": state})
+
+    assert response.status_code == 403
+    assert client.get("/who").text == "anonymous"
+    assert source.exchanges == 0
+
+
+def test_a_login_cookie_older_than_its_ttl_is_refused(monkeypatch):
+    """The cookie's own `Max-Age` makes a browser drop it, which the client here
+    does too, so the expired cookie is put back by hand: the server has to
+    refuse it on its own evidence, not the browser's."""
+    monkeypatch.setattr("fjkit.auth.plugin._LOGIN_TTL", timedelta(seconds=-1))
+    source = CodeSource()
+    client = make_app(make_auth(source=source))
+    start = client.get("/oidc/start", follow_redirects=False)
+    state = state_of(start)
+    name, value = login_cookie_header(start)
+    client.cookies.set(name, value)
+
+    response = client.get("/oidc/callback", params={"code": "c1", "state": state})
+
+    assert response.status_code == 403
+    assert source.exchanges == 0
 
 
 def test_no_csrf_lets_everything_through_and_says_so():
