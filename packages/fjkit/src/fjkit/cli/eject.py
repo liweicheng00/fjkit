@@ -326,21 +326,22 @@ def resolve(name: str) -> tuple[str, str | None]:
     """
     if "." in name:
         component, _, macro = name.partition(".")
-        if component not in components():
+        if component not in components() or macro not in parse_or_none(components()[component]):
             raise Unknown(name)
-        if macro not in parse_or_none(components()[component]):
-            raise Unknown(name)
-        return component, macro
-
-    if name in components():
+        holders = [component]
+    elif name in components():
         return name, None
+    else:
+        macro = name
+        holders = [component for component, path in components().items() if macro in parse_or_none(path)]
+        if not holders:
+            raise Unknown(name)
 
-    holders = [component for component, path in components().items() if name in parse_or_none(path)]
-    if not holders:
-        raise Unknown(name)
+    if macro.startswith("_"):
+        raise Private(macro, holders)
     if len(holders) > 1:
         raise Ambiguous(name, holders)
-    return holders[0], name
+    return holders[0], macro
 
 
 class Unknown(Exception):
@@ -353,6 +354,29 @@ class Unknown(Exception):
             f"fjkit eject: nothing named {self.name!r}.\n"
             f"Components: {', '.join(components())}\n"
             f"Macros: {', '.join(macros)}"
+        )
+
+
+class Private(Exception):
+    """A `_`-prefixed macro asked for on its own. A copy of one changes nothing:
+    the kit's macros keep calling the kit's copy (see the module docstring), so
+    the only way to take it is with a public macro that calls it."""
+
+    def __init__(self, macro: str, holders: list[str]) -> None:
+        self.macro = macro
+        self.holders = holders
+
+    def __str__(self) -> str:
+        callers = [
+            f"{component}.{name}"
+            for component in self.holders
+            for name, held in parse_or_none(components()[component]).items()
+            if self.macro in held.uses and not held.is_private
+        ]
+        return (
+            f"fjkit eject: {self.macro!r} is private, so a copy of it on its own changes nothing:\n"
+            f"the kit's macros keep calling the kit's copy. It comes along with any public macro\n"
+            f"that calls it. Take one of those instead: {', '.join(callers)}"
         )
 
 
@@ -506,7 +530,7 @@ def main(name: str, into: Path) -> int:
     """Run the `fjkit eject` command."""
     try:
         component_name, macro = resolve(name)
-    except (Unknown, Ambiguous) as exc:
+    except (Unknown, Private, Ambiguous) as exc:
         print(str(exc), file=sys.stderr)
         return 1
 

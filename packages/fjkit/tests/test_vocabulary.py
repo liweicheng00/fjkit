@@ -541,7 +541,6 @@ class TestMacroEject:
         self._eject(tmp_path, "shell")
         self._eject(tmp_path, "shell.head", expect=1)
 
-    @pytest.mark.xfail(strict=True, reason="CLI-9")
     @pytest.mark.parametrize("name", ["form._message", "_message"])
     def test_a_private_macro_cannot_be_taken_on_its_own(self, tmp_path, capsys, name):
         """A copy of `_message` alone changes nothing: the kit's macros keep
