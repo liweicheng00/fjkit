@@ -174,6 +174,14 @@ def _ejected_paths(template_dir: Path) -> frozenset[Path]:
     return frozenset(e.path for e in find_ejected(template_dir) if e.path == template_dir / "ui" / f"{e.name}.html")
 
 
+_TEMPLATE_SUFFIXES = frozenset({".html", ".htm", ".jinja", ".jinja2", ".j2"})
+
+
+def _template_files(template_dir: Path) -> list[Path]:
+    """The files `fjkit check` scans, in the order it reports them."""
+    return sorted(p for p in template_dir.rglob("*") if p.suffix in _TEMPLATE_SUFFIXES)
+
+
 def check_templates(template_dir: Path) -> list[Violation]:
     """Collect every violation in an app's template directory, in file order."""
     allowed = component_classes()
@@ -181,8 +189,7 @@ def check_templates(template_dir: Path) -> list[Violation]:
     ejected = _ejected_paths(template_dir)
     violations: list[Violation] = []
 
-    paths = sorted(template_dir.rglob("*.html")) + sorted(template_dir.rglob("*.jinja"))
-    for path in paths:
+    for path in _template_files(template_dir):
         text = _blank(_JINJA_COMMENT, path.read_text(encoding="utf-8"))
 
         for lineno, line in enumerate(_blank(_SELECTOR_VALUE, text).splitlines(), 1):
@@ -246,7 +253,7 @@ def main(template_dir: Path) -> int:
         print(f"{len(violations)} violation(s) in {template_dir}:\n")
         print("\n".join(v.render(template_dir) for v in violations))
     else:
-        count = len(list(template_dir.rglob("*.html")))
+        count = len(_template_files(template_dir))
         print(f"{count} template(s) clean — every class is part of the fjkit vocabulary")
 
     # Printed either way, and never changes the exit code. Ejecting is a

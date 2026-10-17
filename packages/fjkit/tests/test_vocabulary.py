@@ -95,13 +95,11 @@ class TestCheck:
         )
         assert check_templates(tmp_path) == []
 
-    @pytest.mark.xfail(strict=True, reason="CLI-7")
     @pytest.mark.parametrize("suffix", [".htm", ".j2", ".jinja2"])
     def test_every_common_template_extension_is_scanned(self, tmp_path, suffix):
         (tmp_path / f"page{suffix}").write_text('<div class="flex">x</div>')
         assert [v.token for v in check_templates(tmp_path)] == ["flex"]
 
-    @pytest.mark.xfail(strict=True, reason="CLI-7")
     def test_the_clean_count_is_the_number_of_files_scanned(self, tmp_path, capsys):
         from fjkit.cli.check import main as check_main
 
