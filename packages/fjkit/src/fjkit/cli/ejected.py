@@ -166,8 +166,8 @@ def find_ejected(template_dir: Path) -> list[Ejected]:
     from fjkit.cli.eject import kit_macro_digests
 
     found: list[Ejected] = []
-    for path in sorted(template_dir.rglob("*.html")):
-        with path.open(encoding="utf-8") as handle:
+    for path in sorted(p for p in template_dir.rglob("*.html") if p.is_file()):
+        with path.open(encoding="utf-8", errors="replace") as handle:
             first = handle.readline()
         match = STAMP.match(first.strip())
         if match is None:

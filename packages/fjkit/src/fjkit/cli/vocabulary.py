@@ -26,9 +26,13 @@ from functools import cache
 from fjkit.config import STATIC_DIR
 from fjkit.vendored import DEFAULT_STYLE, STYLE_PACKS
 
-#: `@apply flex gap-4;` inside a component definition names utilities, not
-#: component classes. Strip those lines before harvesting.
-_APPLY = re.compile(r"@apply[^;]*;")
+#: Text that is not a selector but can still hold `.name`: a comment's
+#: `tabs.css`, a string, a `url(…)`. Blanked before harvesting.
+_NOT_CSS = re.compile(r"""/\*.*?\*/|"[^"]*"|'[^']*'|url\([^)]*\)""", re.DOTALL)
+_COMPONENTS_LAYER = re.compile(r"@layer\s+components\s*\{")
+#: The selector before a `{`. A declaration such as `@apply flex gap-4;` ends
+#: in `;` or `}` first, so its utilities never reach a prelude.
+_PRELUDE = re.compile(r"([^{};]*)\{")
 _CLASS_SELECTOR = re.compile(r"\.(-?[A-Za-z_][\w-]*)")
 
 #: Classes fjkit's own shell and layout macros emit that an app needs to write
@@ -50,15 +54,34 @@ def component_classes() -> frozenset[str]:
 
     sources = [
         *(STATIC_DIR / "vendor" / "basecoat" / "components").glob("*.css"),
-        *(STATIC_DIR / "vendor" / "basecoat" / "base").glob("*.css"),
         STATIC_DIR / "src" / "fjkit.css",
     ]
     for path in sources:
         if not path.exists():
             continue
-        names.update(_CLASS_SELECTOR.findall(_APPLY.sub("", path.read_text(encoding="utf-8"))))
+        names.update(_layer_classes(path.read_text(encoding="utf-8")))
 
     return frozenset(names)
+
+
+def _layer_classes(css: str) -> set[str]:
+    """The classes a stylesheet's `@layer components` blocks define.
+
+    Only that layer. A rule outside it adjusts something else, such as the
+    unlayered `.animate-spin` motion rule in fjkit.css, which tunes a Tailwind
+    utility and does not make it a component.
+    """
+    css = _NOT_CSS.sub(" ", css)
+    names: set[str] = set()
+    for opening in _COMPONENTS_LAYER.finditer(css):
+        depth, end = 1, opening.end()
+        while depth:
+            depth += {"{": 1, "}": -1}.get(css[end], 0)
+            end += 1
+        for prelude in _PRELUDE.findall(css, opening.end(), end - 1):
+            if not prelude.lstrip().startswith("@"):
+                names.update(_CLASS_SELECTOR.findall(prelude))
+    return names
 
 
 @cache

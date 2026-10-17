@@ -39,6 +39,13 @@ class TestVocabulary:
         for name in ("flex", "gap-4", "grid-cols-3", "text-muted-foreground"):
             assert name not in classes
 
+    def test_names_from_css_comments_and_utility_overrides_are_rejected(self, tmp_path):
+        """A file extension in a CSS comment is not a class, and a stylesheet
+        rule that adjusts a Tailwind utility does not make it a component."""
+        junk = ["css", "html", "md", "py", "venv", "org", "w3", "group", "animate-spin"]
+        (tmp_path / "page.html").write_text(f'<div class="{" ".join(junk)}">x</div>')
+        assert [v.token for v in check_templates(tmp_path)] == junk
+
 
 class TestCheck:
     def test_component_classes_pass(self, tmp_path):
@@ -78,6 +85,43 @@ class TestCheck:
         (tmp_path / "page.html").write_text('<div class="card\n            flex">x</div>')
         assert [v.token for v in check_templates(tmp_path)] == ["flex"]
 
+    def test_a_single_quoted_class_attribute_is_scanned(self, tmp_path):
+        (tmp_path / "page.html").write_text("<div class='card flex'>x</div>")
+        assert [v.token for v in check_templates(tmp_path)] == ["flex"]
+
+    def test_an_attribute_that_ends_in_class_is_not_a_class_attribute(self, tmp_path):
+        (tmp_path / "page.html").write_text(
+            '<div class="card" data-class="admin-only">x</div>\n{{ badge("x", data_subclass="admin") }}'
+        )
+        assert check_templates(tmp_path) == []
+
+    @pytest.mark.parametrize("suffix", [".htm", ".j2", ".jinja2"])
+    def test_every_common_template_extension_is_scanned(self, tmp_path, suffix):
+        (tmp_path / f"page{suffix}").write_text('<div class="flex">x</div>')
+        assert [v.token for v in check_templates(tmp_path)] == ["flex"]
+
+    def test_the_clean_count_is_the_number_of_files_scanned(self, tmp_path, capsys):
+        from fjkit.cli.check import main as check_main
+
+        for name in ("a.html", "b.jinja", "c.j2"):
+            (tmp_path / name).write_text('<div class="card">x</div>')
+        assert check_main(tmp_path) == 0
+        assert "3 template(s) clean" in capsys.readouterr().out
+
+    def test_a_directory_named_like_a_template_is_skipped(self, tmp_path, capsys):
+        from fjkit.cli.check import main as check_main
+
+        (tmp_path / "vendor.html").mkdir()
+        (tmp_path / "page.html").write_text('<div class="card">x</div>')
+        assert check_main(tmp_path) == 0
+        assert "1 template(s) clean" in capsys.readouterr().out
+
+    def test_a_template_that_is_not_utf8_is_reported_not_raised(self, tmp_path):
+        """Jinja reads templates as UTF-8, so such a file cannot load; the gate
+        says where rather than crashing on it."""
+        (tmp_path / "latin1.html").write_bytes(b"<p>ok</p>\n<p>caf\xe9</p>\n")
+        assert [(v.path.name, v.line) for v in check_templates(tmp_path)] == [("latin1.html", 2)]
+
     def test_violation_reports_a_line_number(self, tmp_path):
         (tmp_path / "page.html").write_text('<div>a</div>\n<div>b</div>\n<div class="flex">c</div>')
         assert check_templates(tmp_path)[0].line == 3
@@ -101,6 +145,47 @@ class TestCheck:
     def test_a_colour_outside_a_comment_is_still_caught(self, tmp_path):
         (tmp_path / "page.html").write_text('{# fine #}\n<div class="bg-green-600">x</div>')
         assert {v.token for v in check_templates(tmp_path)} == {"bg-green-600"}
+
+    @pytest.mark.parametrize(
+        ("style", "tokens"),
+        [
+            ("color: hwb(0 0% 0%)", ["hwb("]),
+            ("color: color(display-p3 1 0 0)", ["color("]),
+            ("background: color-mix(in srgb, red 50%, blue)", ["red", "blue"]),
+            ("background: crimson", ["crimson"]),
+            ("border: 1px solid Red", ["Red"]),
+        ],
+    )
+    def test_a_colour_in_a_style_attribute_is_caught(self, tmp_path, style, tokens):
+        (tmp_path / "page.html").write_text(f'<p style="{style}">x</p>')
+        assert [v.token for v in check_templates(tmp_path)] == tokens
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<p>a&#160;b &#8212; 3&#215;4</p>",
+            '<button hx-get="/x" hx-target="#feed" hx-select="#feed" hx-include="#add">x</button>',
+            '<a href="#add">x</a>',
+            '{{ card("x", hx_target="#c0ffee") }}',
+        ],
+    )
+    def test_an_entity_or_a_selector_is_not_a_hex_colour(self, tmp_path, markup):
+        """`&#160;` and `hx-target="#feed"` are ordinary htmx markup; neither is
+        a colour, however hex its digits look."""
+        (tmp_path / "page.html").write_text(markup)
+        assert check_templates(tmp_path) == []
+
+    def test_a_hex_colour_in_a_value_is_still_caught(self, tmp_path):
+        (tmp_path / "page.html").write_text(
+            '<p style="border: 1px solid #ccc">x</p>\n<rect fill="#0f172a"/>\n{% set brand = "#abc" %}'
+        )
+        assert [v.token for v in check_templates(tmp_path)] == ["#ccc", "#0f172a", "#abc"]
+
+    def test_keywords_that_are_not_hues_pass_in_a_style_attribute(self, tmp_path):
+        (tmp_path / "page.html").write_text(
+            '<p style="color: currentColor; background: color-mix(in srgb, var(--primary) 50%, transparent)">x</p>'
+        )
+        assert check_templates(tmp_path) == []
 
 
 class TestLoaderOverride:
@@ -269,12 +354,46 @@ class TestEjectStamp:
 
         assert [v.token for v in check_templates(tmp_path)] == ["bg-green-600"]
 
+    @pytest.mark.parametrize(
+        "hue",
+        [
+            "border-t-red-500",
+            "border-x-emerald-300",
+            "ring-offset-blue-500",
+            "placeholder-gray-400",
+            "from-black",
+            "outline-white",
+            "divide-white",
+            "shadow-black",
+            "decoration-white",
+            "accent-black",
+        ],
+    )
+    def test_every_utility_form_of_a_hue_is_caught_in_an_ejected_file(self, tmp_path, hue):
+        """In an ejected file the colour rule is the only guard, so it has to
+        know every prefix and side a Tailwind colour utility can take."""
+        target = self._eject(tmp_path)
+        target.write_text(target.read_text() + f'\n<div class="{hue}">x</div>\n')
+        assert [v.token for v in check_templates(tmp_path)] == [hue]
+
     def test_an_unstamped_copy_gets_no_amnesty(self, tmp_path):
         """The stamp is what says "the kit wrote this". A macro pasted in by
         hand is an app template, and the closed vocabulary still applies."""
         ui = tmp_path / "ui"
         ui.mkdir()
         (ui / "button.html").write_text('<div class="flex gap-4">x</div>')
+        assert {v.token for v in check_templates(tmp_path)} == {"flex", "gap-4"}
+
+    @pytest.mark.parametrize(
+        ("where", "name"),
+        [("orders/page.html", "anything"), ("orders/page.html", "button"), ("ui/data.html", "button")],
+    )
+    def test_a_stamp_away_from_the_file_it_names_gets_no_amnesty(self, tmp_path, where, name):
+        """`fjkit eject <name>` writes `ui/<name>.html` and nothing else, so a
+        stamp anywhere else is a comment, not a reason to skip the class rule."""
+        target = tmp_path / where
+        target.parent.mkdir(parents=True)
+        target.write_text(f'{{# fjkit:eject {name} 0.1.0 sha256:000000000000 #}}\n<div class="flex gap-4">x</div>')
         assert {v.token for v in check_templates(tmp_path)} == {"flex", "gap-4"}
 
     def test_a_stale_eject_does_not_fail_the_check(self, tmp_path, capsys):
