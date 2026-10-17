@@ -511,7 +511,15 @@ def safe_next(value: str | None, fallback: str = "/") -> str:
     scheme), so `Location: /\\evil.example.com` lands on `//evil.example.com`.
     The check reads the second character rather than scanning the whole value:
     a backslash anywhere later is still inside a path on this site.
+
+    A control character anywhere refuses the value. The same parser strips tab,
+    newline and carriage return before it reads the slashes, so the second
+    character of `/\t/evil.example.com` is not the one the browser sees. A
+    legitimate `next` has no raw control character in it: a URL carries one
+    percent-encoded.
     """
     if not value or value[:1] != "/" or value[1:2] in ("/", "\\"):
+        return fallback
+    if any(ord(char) < 0x20 or char == "\x7f" for char in value):
         return fallback
     return value
