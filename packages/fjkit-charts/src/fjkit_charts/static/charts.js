@@ -14,7 +14,7 @@
   The division of labour with the server: Python decides the shape, this file
   decides the chrome.
 
-  Loaded only by charts/page.html. Plotly is 1.1 MB — no other page pays for it.
+  Loaded only via chart_scripts(). Plotly is 1.1 MB — no other page pays for it.
 */
 (() => {
   "use strict";
