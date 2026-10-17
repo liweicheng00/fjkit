@@ -8,11 +8,15 @@
 
   `true` renders a bare boolean attribute; `none` and `false` render nothing.
 
+  `class`, `style`, and a key that is not one attribute name raise ValueError
+  (CHARTER A4): the parameter list is the contract, and pass-through is for
+  HTML and `hx-*` attributes, not for restyling the component.
+
   This seam keeps htmx out of the macro definitions: no component needs to know
   an `hx-*` attribute exists, and adding one never changes fjkit.
 #}
 {%- macro attrs(mapping) -%}
 {%- for key, value in mapping.items() if value is not none and value is not false -%}
-{{ " " }}{{ key.replace("_", "-") }}{% if value is not true %}="{{ value }}"{% endif %}
+{{ " " }}{{ fjkit_attr_name(key) }}{% if value is not true %}="{{ value }}"{% endif %}
 {%- endfor -%}
 {%- endmacro -%}

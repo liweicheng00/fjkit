@@ -8,6 +8,7 @@ a breaking change loud.
 
 from __future__ import annotations
 
+import json
 import re
 from html.parser import HTMLParser
 
@@ -1094,7 +1095,6 @@ class TestSidebar:
     def test_trigger_names_what_it_controls(self, render):
         html = render(f'{SIDEBAR}{{{{ sidebar_trigger("app-nav") }}}}')
         assert 'aria-controls="app-nav"' in html
-        assert "getElementById(\'app-nav\')" in html
         assert 'aria-label="Toggle navigation"' in html
 
     def test_trigger_does_not_render_a_state_the_script_owns(self, render):
@@ -1523,7 +1523,7 @@ class TestFileUpload:
         )
         assert "hx-on::xhr:progress=" in html
         assert "event.detail.lengthComputable" in html
-        assert "document.querySelector('#bar')" in html
+        assert 'data-progress="#bar"' in html
 
     def test_progress_moves_all_three_places_the_number_is_written(self, render):
         """A bar that fills beside a label reading 0%, or fills while a screen
@@ -2477,3 +2477,86 @@ class TestReveal:
         else. This macro is how a page says otherwise."""
         assert "js/reveal.js" not in render(f"{INPUT_GROUP}{self.CALL}")
         assert "js/reveal.js" in render(f"{INPUT_GROUP}{{{{ reveal_scripts() }}}}")
+
+
+class _Attributes(HTMLParser):
+    """Every start tag's attributes, decoded the way a browser decodes them
+    before an event handler is compiled."""
+
+    def __init__(self, html):
+        super().__init__()
+        self.elements: list[dict[str, str | None]] = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        self.elements.append(dict(attrs))
+
+
+HOSTILE_ID = "x');alert(document.domain);('"
+
+
+def _handlers(html):
+    """(handler source, element attributes) for every inline event handler."""
+    return [
+        (value, element)
+        for element in _Attributes(html).elements
+        for name, value in element.items()
+        if value and (name.startswith("on") or name.startswith("hx-on"))
+    ]
+
+
+class TestCallerTextNeverBecomesScript:
+    """Autoescape is an HTML escaper. The browser undoes it before an `on…`
+    attribute runs, so caller text placed inside a JavaScript string there is
+    code."""
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            f'{OVERLAY}{{{{ drawer_trigger("Edit", target) }}}}',
+            f"{SIDEBAR}{{{{ sidebar_trigger(target) }}}}",
+            f'{FORM}{{% call form(action="/up", target="#r", progress=target) %}}x{{% endcall %}}',
+        ],
+        ids=["drawer_trigger", "sidebar_trigger", "form-progress"],
+    )
+    def test_a_hostile_id_reaches_no_handler(self, render, source):
+        handlers = _handlers(render(source, target=HOSTILE_ID))
+        assert handlers, "each of these macros writes an inline handler"
+        for code, element in handlers:
+            assert "alert(" not in code, code
+            assert HOSTILE_ID in element.values(), "the handler still needs the id, from an attribute"
+
+    def test_a_hostile_search_param_stays_one_key(self, render):
+        """htmx evaluates a `js:` hx-vals as an object literal, so the name has
+        to arrive as a quoted key and nothing else."""
+        hostile = 'q": alert(1), "z'
+        html = render(f'{OVERLAY}{{{{ combobox("c", search="/s", search_param=p) }}}}', p=hostile)
+        [vals] = [e["hx-vals"] for e in _Attributes(html).elements if "hx-vals" in e]
+        assert vals.startswith("js:")
+        literal = json.loads(vals.removeprefix("js:").replace("this.value", "null"))
+        assert literal == {hostile: None}
+
+
+class TestPassThroughSaysNo:
+    """CHARTER A4: `**attrs` passes through HTML and `hx-*` only, and a
+    parameter list must be able to say no."""
+
+    @pytest.mark.parametrize("key", ["onmouseover=alert(1) data-x", "data-x>", 'a"b', "data x"])
+    def test_a_key_that_is_not_one_attribute_name_is_refused(self, render, key):
+        with pytest.raises(ValueError):
+            render(f'{BUTTON}{{{{ button("x", **extra) }}}}', extra={key: "y"})
+
+    @pytest.mark.parametrize("key", ["class", "style"])
+    def test_class_and_style_are_refused(self, render, key):
+        """A second `class` is ignored by the browser and an inline `style` is
+        a colour `fjkit check` cannot see once it arrives from Python."""
+        with pytest.raises(ValueError):
+            render(f'{BUTTON}{{{{ button("x", **extra) }}}}', extra={key: "bg-red-500"})
+
+    def test_ordinary_attributes_still_pass(self, render):
+        html = render(
+            f'{BUTTON}{{{{ button("x", **extra) }}}}',
+            extra={"hx-on::after-request": "this.reset()", "data_row_id": 3, "aria-label": "Close"},
+        )
+        assert 'hx-on::after-request="this.reset()"' in html
+        assert 'data-row-id="3"' in html and 'aria-label="Close"' in html

@@ -427,7 +427,7 @@
            hx-trigger="input changed delay:{{ search_delay }}ms"
            hx-target="#{{ field_id }}-listbox" hx-swap="innerHTML"
            hx-push-url="false"
-           hx-vals='js:{"{{ search_param }}": this.value}'{% endif %}
+           hx-vals='js:{ {{- search_param | tojson -}} : this.value}'{% endif %}
            aria-autocomplete="list" aria-expanded="false" aria-controls="{{ field_id }}-listbox"
            {#- On the input, which is the `combobox` role ARIA allows it on. #}
            {%- if required %} aria-required="true"{% endif %}
@@ -552,12 +552,15 @@
   the drawer is usually at the end of the document, the button wherever it
   belongs. Passing the id twice is the price of that — `drawer` takes it as
   `id`, this macro as `target`.
+
+  `onclick` reads the id back from `aria-controls`, for the reason
+  `sidebar_trigger` gives: an id written into the script would run as code.
 #}
 {% macro drawer_trigger(label, target, variant="outline", size="", icon_name=none) -%}
   <button type="button" class="btn" data-variant="{{ variant }}"
           {%- if size %} data-size="{{ size }}"{% endif %}
           aria-haspopup="dialog" aria-controls="{{ target }}"
-          onclick="document.getElementById('{{ target }}').showModal()"
+          onclick="document.getElementById(this.getAttribute('aria-controls')).showModal()"
           {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     {%- if icon_name %}{{ icon(icon_name, 16) }}{% endif %}
     {{- label -}}
