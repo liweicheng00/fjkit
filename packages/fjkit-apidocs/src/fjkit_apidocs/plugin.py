@@ -373,6 +373,9 @@ class ApiDocsPlugin:
         """
         path = operation.path
         query: list[tuple[str, str]] = []
+        #: Keyed by lowercase name, which is what the `setdefault`s below look
+        #: up: a hand-typed `Accept` under its own capitalisation would sit
+        #: beside the documented `accept` and lose to it on the wire.
         headers: dict[str, str] = {}
         cookies: list[str] = []
         fields: list[tuple[str, str]] = []
@@ -395,7 +398,7 @@ class ApiDocsPlugin:
             elif param.location == "query":
                 query.extend((param.name, one) for one in many)
             elif param.location == "header":
-                headers[param.name] = value
+                headers[param.name.lower()] = value
             elif param.location == "cookie":
                 cookies.append(f"{param.name}={value}")
             elif param.location == "form":
@@ -404,7 +407,7 @@ class ApiDocsPlugin:
         for line in (values.get(_HEADERS_FIELD) or "").splitlines():
             name, sep, value = line.partition(":")
             if sep and name.strip():
-                headers[name.strip()] = value.strip()
+                headers[name.strip().lower()] = value.strip()
 
         if cookies:
             # Merged with what the browser sent rather than replacing it: the
