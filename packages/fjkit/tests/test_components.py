@@ -2603,7 +2603,6 @@ class TestRepeatedGroupHeadings:
 
 
 class TestTableEmptyCase:
-    @pytest.mark.xfail(strict=True, reason="MAC-7")
     def test_caller_attributes_survive_an_empty_list(self, render):
         """A polling table that empties once must keep its id and trigger, or
         it never polls again and nothing can target it."""
