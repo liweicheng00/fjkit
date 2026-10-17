@@ -102,7 +102,6 @@ class TestCheck:
         (tmp_path / "page.html").write_text('{# fine #}\n<div class="bg-green-600">x</div>')
         assert {v.token for v in check_templates(tmp_path)} == {"bg-green-600"}
 
-    @pytest.mark.xfail(strict=True, reason="CLI-3")
     @pytest.mark.parametrize(
         ("style", "tokens"),
         [
@@ -290,7 +289,6 @@ class TestEjectStamp:
 
         assert [v.token for v in check_templates(tmp_path)] == ["bg-green-600"]
 
-    @pytest.mark.xfail(strict=True, reason="CLI-3")
     @pytest.mark.parametrize(
         "hue",
         [

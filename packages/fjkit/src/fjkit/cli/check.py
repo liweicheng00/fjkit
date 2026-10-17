@@ -32,15 +32,20 @@ from pathlib import Path
 from fjkit.cli.ejected import find_ejected, stale_ejects
 from fjkit.cli.vocabulary import component_classes, emitted_classes
 
+#: Every Tailwind utility that takes a colour, with the side or offset some of
+#: them put first: bg-, border-t-, ring-offset- …
+_COLOUR_UTILITY = (
+    r"\b(?:bg|text|border|ring|outline|fill|stroke|from|via|to|divide|shadow|accent|caret|decoration|placeholder)"
+    r"-(?:(?:[trblxyse]|offset)-)?"
+)
 #: Tailwind palette hues used as a colour utility: bg-blue-600, text-red-500 …
 PALETTE = re.compile(
-    r"\b(?:bg|text|border|ring|outline|fill|stroke|from|via|to|divide|shadow|accent|caret|decoration)"
-    r"-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|"
+    _COLOUR_UTILITY + r"(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|"
     r"blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b"
 )
 HEX = re.compile(r"#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b")
-FUNCS = re.compile(r"\b(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch)\(")
-ABSOLUTES = re.compile(r"\b(?:bg|text|border|ring|fill|stroke)-(?:white|black)\b")
+FUNCS = re.compile(r"\b(?:rgb|rgba|hsl|hsla|hwb|oklch|oklab|lab|lch|color)\(")
+ABSOLUTES = re.compile(_COLOUR_UTILITY + r"(?:white|black)\b")
 
 COLOUR_CHECKS = [
     (PALETTE, "Tailwind palette hue — name a role instead (primary / muted / destructive / success …)"),
@@ -48,6 +53,32 @@ COLOUR_CHECKS = [
     (FUNCS, "raw colour function — colours live in the token layer, not in markup"),
     (ABSOLUTES, "absolute white/black — use the matching -foreground token"),
 ]
+
+#: A CSS named colour is only a colour where a property reads one, so these are
+#: looked for in `style="…"` declarations rather than everywhere: `red` in prose
+#: is a word.
+_STYLE_ATTR = re.compile(r"""(?<![\w-])style\s*=\s*(["'])(.*?)\1""", re.DOTALL)
+_DECLARATION = re.compile(r"([\w-]+)\s*:\s*([^;]*)")
+_COLOUR_PROPERTY = re.compile(r"colou?r|background|border|outline|fill|stroke|shadow|decoration|column-rule")
+_WORD = re.compile(r"(?<![\w-])[A-Za-z]+(?![\w-])")
+_CSS_NAMED_COLOURS = """
+    aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown
+    burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan
+    darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid
+    darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet
+    deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro
+    ghostwhite gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki
+    lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow
+    lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray
+    lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine
+    mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise
+    mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab
+    orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru
+    pink plum powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown
+    seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan
+    teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen
+"""
+NAMED_COLOURS = frozenset(_CSS_NAMED_COLOURS.split())
 
 #: `class="…"` including the multi-line form, which templates use a lot.
 CLASS_ATTR = re.compile(r"""class\s*=\s*"([^"]*)\"""", re.DOTALL)
@@ -83,6 +114,26 @@ class Violation:
     def render(self, root: Path) -> str:
         rel = self.path.relative_to(root).as_posix()
         return f"  {rel}:{self.line}  {self.token!r}\n      {self.reason}"
+
+
+def _named_colours(path: Path, text: str) -> list[Violation]:
+    found = []
+    for attr in _STYLE_ATTR.finditer(text):
+        for decl in _DECLARATION.finditer(attr.group(2)):
+            if not _COLOUR_PROPERTY.search(decl.group(1)):
+                continue
+            for word in _WORD.finditer(decl.group(2)):
+                if word.group(0).lower() in NAMED_COLOURS:
+                    at = attr.start(2) + decl.start(2) + word.start()
+                    found.append(
+                        Violation(
+                            path,
+                            text.count("\n", 0, at) + 1,
+                            word.group(0),
+                            "named colour — colours live in the token layer, not in markup",
+                        )
+                    )
+    return found
 
 
 def _ejected_paths(template_dir: Path) -> frozenset[Path]:
@@ -128,6 +179,7 @@ def check_templates(template_dir: Path) -> list[Violation]:
             for pattern, reason in COLOUR_CHECKS:
                 for match in pattern.finditer(line):
                     violations.append(Violation(path, lineno, match.group(0), reason))
+        violations.extend(_named_colours(path, text))
 
         if path in ejected:
             continue
