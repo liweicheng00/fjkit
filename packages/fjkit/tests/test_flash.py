@@ -31,6 +31,11 @@ def make_app(**kwargs):
     def quiet() -> dict[str, str]:
         return {}
 
+    @router.get("/streamed")
+    @render("page.html", stream=True)
+    def streamed() -> dict[str, str]:
+        return {}
+
     @router.post("/raise")
     def raise_one(response: Response) -> Response:
         flash.add(response, "Saved", "Two rows changed.", category="success")
@@ -61,6 +66,21 @@ def test_it_is_shown_once_and_then_gone():
 
     first = client.get("/page").text
     second = client.get("/page").text
+
+    assert first == "[success:Saved:Two rows changed.]"
+    assert second == ""
+
+
+@pytest.mark.xfail(strict=True, reason="RT-2")
+def test_a_streamed_page_shows_it_once_too():
+    """A streamed page renders its body after the headers have gone out, which
+    is after the middleware last had a chance to clear the cookie. The message
+    must still be shown exactly once."""
+    _, client = make_app()
+    client.post("/raise")
+
+    first = client.get("/streamed").text
+    second = client.get("/streamed").text
 
     assert first == "[success:Saved:Two rows changed.]"
     assert second == ""
