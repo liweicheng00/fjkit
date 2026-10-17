@@ -35,7 +35,7 @@ The line is drawn there because a UI kit that knows your schema has to be re-tau
 | Proposal | Verdict | Why |
 |---|---|---|
 | `table(columns, rows)` | in | Knows `columns` is a sequence. Does not know what a column means. |
-| Admin generator over your ORM models | out | Must read your schema. |
+| Admin generator over your ORM models, inside the `fjkit` distribution | out | Must read your schema. The admin that exists is `fjkit-admin`, its own distribution (§2.5). |
 | `fjkit.auth` — cookie ⇄ token, CSRF, refresh | in | Moves a credential between a cookie and a store. Holds no user, no password, no role. |
 | `@requires("admin")` | out | Roles are domain vocabulary. |
 | `chart()` macro and the figure contract | in | Renders a figure the app built. |
@@ -81,7 +81,7 @@ Measured corollary: Basecoat's CSS covers 38 components, and **CSS without a mac
 | Not doing | Why |
 |---|---|
 | ORM, migrations, query builder | Requires your schema (§2.1). |
-| Admin generator | Requires your schema, and generates a screen that is correct once. |
+| Admin generator in the `fjkit` distribution | Requires your schema, and generates a screen that is correct once. `fjkit-admin` is a separate distribution (§2.5). |
 | Identity: users, passwords, roles, permissions | `fjkit.auth` carries an identity the app issued; it never issues one. |
 | React / Vue / Svelte adapters | The cost model in §1 assumes the server renders. |
 | Any build step on the user's side | The constraint everything else protects (A1). |
@@ -98,6 +98,7 @@ Measured corollary: Basecoat's CSS covers 38 components, and **CSS without a mac
 | `fjkit.auth` | Cookie ⇄ token transport and CSRF. `TokenSource` and `SessionStore` are seams the app fills; the kit never sees a credential's meaning. |
 | `fjkit-apidocs` | A page, replacing Swagger UI. It owns `/api-docs` under §2.3. Its own distribution. |
 | `fjkit-charts` | The `chart()` macro, the asset loader, and the figure contract. Data, service and route stay in the app — 370 of the demo's 517 chart lines. Its own distribution. |
+| `fjkit-admin` | A Django-style admin over SQLAlchemy models, added on the project owner's decision of 2026-09-04 (`docs/BACKLOG.md`). It reads your schema, so it stays out of the `fjkit` wheel: its own distribution, carrying the `sqlalchemy>=2.0` runtime dependency, so `fjkit` itself still does not touch the data layer (§2.1). It lives in this repository because `fjkit` was unpublished when it was built, and a change to a macro and to its first consumer was one commit. |
 | Four `.js` files fjkit wrote | See §4.2. |
 
 ---
