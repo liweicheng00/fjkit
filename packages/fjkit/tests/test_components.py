@@ -2628,3 +2628,27 @@ class TestTabPanelNames:
             tab_id = tabs[panel["id"]].get("id")
             assert tab_id, "the tab needs an id to be referenced"
             assert panel.get("aria-labelledby") == tab_id
+
+
+class TestSkeletonLastLine:
+    FRACTION = {"w-full": 1, "w-3/4": 3 / 4, "w-1/2": 1 / 2, "w-1/3": 1 / 3, "w-1/4": 1 / 4}
+
+    @pytest.mark.parametrize(
+        "width",
+        [
+            "full",
+            "three-quarters",
+            pytest.param("half", marks=pytest.mark.xfail(strict=True, reason="MAC-9")),
+            pytest.param("third", marks=pytest.mark.xfail(strict=True, reason="MAC-9")),
+            pytest.param("quarter", marks=pytest.mark.xfail(strict=True, reason="MAC-9")),
+        ],
+    )
+    def test_the_last_line_is_never_wider_than_the_rest(self, render, width):
+        html = render(f'{SKELETON}{{{{ skeleton(width="{width}", lines=3) }}}}')
+        bars = [
+            next(self.FRACTION[c] for c in e["class"].split() if c in self.FRACTION)
+            for e in _Attributes(html).elements
+            if "skeleton" in (e.get("class") or "").split()
+        ]
+        assert len(bars) == 3
+        assert bars[-1] <= bars[0] == bars[1], bars
