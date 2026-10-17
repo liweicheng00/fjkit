@@ -344,17 +344,8 @@ class ResponseDoc:
 
     @property
     def tone(self) -> str:
-        """Map the status to a badge variant. Closed set — see `ui/data.html`."""
-        if not self.status.isdigit():
-            return "secondary"
-        code = int(self.status)
-        if code >= 500:
-            return "destructive"
-        if code >= 400:
-            return "warning"
-        if code >= 300:
-            return "info"
-        return "success"
+        """The badge variant for a documented status; `default` and `5XX` get a neutral one."""
+        return tone_for(int(self.status)) if self.status.isdigit() else "secondary"
 
 
 @dataclass(frozen=True, slots=True)
@@ -569,7 +560,7 @@ def build(schema: Mapping[str, Any], *, skip_prefix: str = "") -> Spec:
     index: dict[str, Operation] = {}
 
     for path, item in (schema.get("paths") or {}).items():
-        if skip_prefix and str(path).startswith(skip_prefix):
+        if skip_prefix and within(str(path), skip_prefix):
             continue
         if not isinstance(item, Mapping):
             continue
@@ -641,6 +632,32 @@ def build(schema: Mapping[str, Any], *, skip_prefix: str = "") -> Spec:
     )
 
 
+def tone_for(status: int) -> str:
+    """Map a status code to a badge variant. Closed set — see `ui/data.html`.
+
+    One mapping for the documented statuses in the reference and the recorded
+    one in the result panel, so a 404 wears the same badge in both places.
+    """
+    if status >= 500:
+        return "destructive"
+    if status >= 400:
+        return "warning"
+    if status >= 300:
+        return "info"
+    return "success"
+
+
+def within(path: str, prefix: str) -> bool:
+    """Report whether `path` is `prefix` or lies under it.
+
+    On a segment boundary, not a string one: `/api-docs-v2/x` is the app's own
+    route, and a `startswith` would hide it from the reference while the
+    console refused to call it. The console's recursion guard uses this same
+    test, so the two agree on what the plugin owns.
+    """
+    return path == prefix or path.startswith(f"{prefix}/")
+
+
 def _external(raw: Any) -> tuple[str, str]:
     """Read an `externalDocs` object as (url, label).
 
@@ -699,10 +716,13 @@ def _operation(
 
 
 def _param(raw: Mapping[str, Any], components: Mapping[str, Any]) -> Param:
+    # The parameter object itself may be a `$ref` into `components.parameters`,
+    # the same way its schema may be one into `components.schemas`.
+    raw = _resolve(raw, components, 0)
     resolved = _effective(raw.get("schema") or {}, components)
     kind = _type_of(resolved)
     default = resolved.get("default", raw.get("example"))
-    choices = tuple(_scalar(v) for v in resolved.get("enum", ()) if v is not None)
+    choices = _choices(resolved)
     if not choices and kind == "boolean":
         # A checkbox cannot express the third state a query parameter has:
         # absent. A select of `true`/`false`/blank can, and "leave it out" is
@@ -725,6 +745,12 @@ def _param(raw: Mapping[str, Any], components: Mapping[str, Any]) -> Param:
         constraints=_constraints(resolved),
         example="" if example is None or example == default else _scalar(example),
     )
+
+
+def _choices(schema: Mapping[str, Any]) -> tuple[str, ...]:
+    """Read the schema's `enum` as strings, dropping the `null` member an
+    optional enum carries. Shared by a parameter and a model's field."""
+    return tuple(_scalar(v) for v in (schema.get("enum") or ()) if v is not None)
 
 
 def _format_of(schema: Mapping[str, Any]) -> str:
@@ -766,11 +792,33 @@ def _named(entry: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
     return tuple(out)
 
 
+def _example_text(
+    entry: Mapping[str, Any], components: Mapping[str, Any], schema: Any
+) -> tuple[str, tuple[tuple[str, str], ...]]:
+    """Pick the example a media-type object shows first, and the named ones left.
+
+    The document's own `example` first, then the first one it named, then one
+    worked out from `schema` when there is one: a value somebody wrote beats
+    one this module invented. The remaining named examples stay, as tabs
+    beside it. One order of preference for a request body and a response, so
+    the two cannot drift.
+    """
+    named = _named(entry)
+    if entry.get("example") is not None:
+        return _pretty(entry["example"]), named
+    if named:
+        return named[0][1], named[1:]
+    if schema is not None:
+        return _pretty(_example(schema, components, 0)), ()
+    return "", ()
+
+
 def _request_body(
     raw: Any, components: Mapping[str, Any]
 ) -> tuple[str, bool, str, tuple[Param, ...], Shape | None, tuple[str, ...], tuple[tuple[str, str], ...]]:
-    if not isinstance(raw, Mapping):
-        return "", False, "", (), None, (), ()
+    # A `$ref` into `components.requestBodies` resolves to the body object;
+    # anything that is not a mapping resolves to nothing.
+    raw = _resolve(raw, components, 0)
     content = raw.get("content") or {}
     if not isinstance(content, Mapping) or not content:
         return "", False, "", (), None, (), ()
@@ -789,23 +837,13 @@ def _request_body(
     entry = content.get(media) or {}
     required = bool(raw.get("required", False))
     shape = _shape(entry.get("schema"), components)
-    named = _named(entry)
 
     if media in _FIELD_MEDIA:
         fields = _form_fields(entry.get("schema") or {}, components)
         if fields:
-            return str(media), required, "", fields, shape, offered, named
+            return str(media), required, "", fields, shape, offered, _named(entry)
 
-    # The document's own example first, then the first one it named, then one
-    # worked out from the schema: a value somebody wrote beats one this module
-    # invented.
-    if entry.get("example") is not None:
-        text = _pretty(entry["example"])
-        rest = named
-    elif named:
-        text, rest = named[0][1], named[1:]
-    else:
-        text, rest = _pretty(_example(entry.get("schema") or {}, components, 0)), ()
+    text, rest = _example_text(entry, components, entry.get("schema") or {})
     return str(media), required, text, (), shape, offered, rest
 
 
@@ -842,21 +880,11 @@ def _responses(raw: Mapping[str, Any], components: Mapping[str, Any]) -> tuple[R
     for status, entry in raw.items():
         if not isinstance(entry, Mapping):
             continue
+        entry = _resolve(entry, components, 0)  # a `$ref` into `components.responses`
         content = entry.get("content") or {}
         media = next((m for m in content if "json" in m), next(iter(content), ""))
         payload = (content.get(media) or {}) if media else {}
-        # Same order of preference as a request body: what the document showed,
-        # then the first thing it named, then something worked out from the
-        # schema. The remaining named ones stay, as tabs beside it.
-        named = _named(payload)
-        if payload.get("example") is not None:
-            text = _pretty(payload["example"])
-        elif named:
-            text, named = named[0][1], named[1:]
-        elif payload.get("schema") is not None:
-            text = _pretty(_example(payload["schema"], components, 0))
-        else:
-            text = ""
+        text, named = _example_text(payload, components, payload.get("schema"))
         docs.append(
             ResponseDoc(
                 status=str(status),
@@ -982,7 +1010,7 @@ def _fields(schema: Mapping[str, Any], components: Mapping[str, Any]) -> tuple[F
                 description=str(resolved.get("description", "")),
                 format=_format_of(resolved),
                 constraints=_constraints(resolved),
-                choices=tuple(_scalar(v) for v in (resolved.get("enum") or ()) if v is not None),
+                choices=_choices(resolved),
                 default="" if default is None else _scalar(default),
                 ref=ref,
                 nullable=nullable,
