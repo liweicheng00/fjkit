@@ -53,15 +53,22 @@ class ListParams:
             raw = params.get(FILTER_PREFIX + column.key, "")
             if raw != "":
                 filters[column.key] = raw
-        page = params.get("page", "1")
-        per_page = params.get("per_page")
         return cls(
             q=params.get("q", "").strip(),
             o=params.get("o") or None,
-            page=int(page) if page.isdigit() else 1,
-            per_page=int(per_page) if per_page and per_page.isdigit() else None,
+            page=_int_or_none(params.get("page")) or 1,
+            per_page=_int_or_none(params.get("per_page")),
             filters=filters,
         )
+
+
+def _int_or_none(raw: str | None) -> int | None:
+    """`int(raw)`, or None for text `int()` refuses. `str.isdigit` is not that
+    test: it accepts `²`, and a digit string past Python's conversion limit."""
+    try:
+        return int(raw) if raw else None
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True, slots=True)

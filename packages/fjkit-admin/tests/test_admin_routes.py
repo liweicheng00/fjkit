@@ -80,7 +80,6 @@ def test_pagination_walks_the_rows_and_clamps(client: TestClient):
     assert "1–10 of 12" in sized
 
 
-@pytest.mark.xfail(strict=True, reason="ADMIN-3")
 def test_a_page_knob_that_is_not_a_number_falls_back(stack):
     client = TestClient(stack[0], raise_server_exceptions=False)
     for query in ("page=%C2%B2", "per_page=%C2%B2", "page=" + "9" * 5000):
