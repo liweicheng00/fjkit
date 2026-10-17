@@ -2535,3 +2535,30 @@ class TestCallerTextNeverBecomesScript:
         assert vals.startswith("js:")
         literal = json.loads(vals.removeprefix("js:").replace("this.value", "null"))
         assert literal == {hostile: None}
+
+
+class TestPassThroughSaysNo:
+    """CHARTER A4: `**attrs` passes through HTML and `hx-*` only, and a
+    parameter list must be able to say no."""
+
+    @pytest.mark.xfail(strict=True, reason="MAC-3")
+    @pytest.mark.parametrize("key", ["onmouseover=alert(1) data-x", "data-x>", 'a"b', "data x"])
+    def test_a_key_that_is_not_one_attribute_name_is_refused(self, render, key):
+        with pytest.raises(ValueError):
+            render(f'{BUTTON}{{{{ button("x", **extra) }}}}', extra={key: "y"})
+
+    @pytest.mark.xfail(strict=True, reason="CH-5")
+    @pytest.mark.parametrize("key", ["class", "style"])
+    def test_class_and_style_are_refused(self, render, key):
+        """A second `class` is ignored by the browser and an inline `style` is
+        a colour `fjkit check` cannot see once it arrives from Python."""
+        with pytest.raises(ValueError):
+            render(f'{BUTTON}{{{{ button("x", **extra) }}}}', extra={key: "bg-red-500"})
+
+    def test_ordinary_attributes_still_pass(self, render):
+        html = render(
+            f'{BUTTON}{{{{ button("x", **extra) }}}}',
+            extra={"hx-on::after-request": "this.reset()", "data_row_id": 3, "aria-label": "Close"},
+        )
+        assert 'hx-on::after-request="this.reset()"' in html
+        assert 'data-row-id="3"' in html and 'aria-label="Close"' in html
