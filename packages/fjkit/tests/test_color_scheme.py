@@ -11,8 +11,6 @@ from __future__ import annotations
 import pytest
 from fjkit import FjkitConfig, build_environment
 
-pytestmark = pytest.mark.xfail(strict=True, reason="FjkitConfig.color_scheme is not implemented yet")
-
 PAGE = """
 {% extends "ui/shell.html" %}
 {% block content %}<main-content/>{% endblock %}
