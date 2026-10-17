@@ -8,6 +8,7 @@ a breaking change loud.
 
 from __future__ import annotations
 
+import json
 import re
 from html.parser import HTMLParser
 
@@ -2524,3 +2525,14 @@ class TestCallerTextNeverBecomesScript:
         for code, element in handlers:
             assert "alert(" not in code, code
             assert HOSTILE_ID in element.values(), "the handler still needs the id, from an attribute"
+
+    @pytest.mark.xfail(strict=True, reason="MAC-2")
+    def test_a_hostile_search_param_stays_one_key(self, render):
+        """htmx evaluates a `js:` hx-vals as an object literal, so the name has
+        to arrive as a quoted key and nothing else."""
+        hostile = 'q": alert(1), "z'
+        html = render(f'{OVERLAY}{{{{ combobox("c", search="/s", search_param=p) }}}}', p=hostile)
+        [vals] = [e["hx-vals"] for e in _Attributes(html).elements if "hx-vals" in e]
+        assert vals.startswith("js:")
+        literal = json.loads(vals.removeprefix("js:").replace("this.value", "null"))
+        assert literal == {hostile: None}
