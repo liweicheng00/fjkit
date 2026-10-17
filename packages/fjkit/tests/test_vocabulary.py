@@ -277,6 +277,19 @@ class TestEjectStamp:
         (ui / "button.html").write_text('<div class="flex gap-4">x</div>')
         assert {v.token for v in check_templates(tmp_path)} == {"flex", "gap-4"}
 
+    @pytest.mark.xfail(strict=True, reason="CLI-2")
+    @pytest.mark.parametrize(
+        ("where", "name"),
+        [("orders/page.html", "anything"), ("orders/page.html", "button"), ("ui/data.html", "button")],
+    )
+    def test_a_stamp_away_from_the_file_it_names_gets_no_amnesty(self, tmp_path, where, name):
+        """`fjkit eject <name>` writes `ui/<name>.html` and nothing else, so a
+        stamp anywhere else is a comment, not a reason to skip the class rule."""
+        target = tmp_path / where
+        target.parent.mkdir(parents=True)
+        target.write_text(f'{{# fjkit:eject {name} 0.1.0 sha256:000000000000 #}}\n<div class="flex gap-4">x</div>')
+        assert {v.token for v in check_templates(tmp_path)} == {"flex", "gap-4"}
+
     def test_a_stale_eject_does_not_fail_the_check(self, tmp_path, capsys):
         from fjkit.cli.check import main as check_main
 
