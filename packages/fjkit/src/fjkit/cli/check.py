@@ -104,8 +104,13 @@ def _ejected_paths(template_dir: Path) -> frozenset[Path]:
     built stylesheet `emitted_classes()` is empty and every utility looks like a
     typo, so allowing utilities while still catching typos would report a clean
     eject as broken on any machine that has not run `fjkit build-css`.
+
+    Only at `ui/<name>.html`, the one path `eject` writes for that name. A stamp
+    anywhere else marks nothing the kit wrote, so it exempts nothing. An
+    orphaned copy at its own path keeps the exemption: the app cannot rewrite a
+    kit macro without utilities, so failing it would leave no way back to green.
     """
-    return frozenset(e.path for e in find_ejected(template_dir))
+    return frozenset(e.path for e in find_ejected(template_dir) if e.path == template_dir / "ui" / f"{e.name}.html")
 
 
 def check_templates(template_dir: Path) -> list[Violation]:

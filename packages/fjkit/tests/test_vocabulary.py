@@ -277,7 +277,6 @@ class TestEjectStamp:
         (ui / "button.html").write_text('<div class="flex gap-4">x</div>')
         assert {v.token for v in check_templates(tmp_path)} == {"flex", "gap-4"}
 
-    @pytest.mark.xfail(strict=True, reason="CLI-2")
     @pytest.mark.parametrize(
         ("where", "name"),
         [("orders/page.html", "anything"), ("orders/page.html", "button"), ("ui/data.html", "button")],
