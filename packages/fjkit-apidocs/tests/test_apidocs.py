@@ -1319,3 +1319,17 @@ def test_the_curl_snippet_keeps_the_prefix_a_proxy_put_in_front_of_the_app():
     text = shown(client.post(f"/api-docs/try/{op}"))
     assert "200" in text  # the call itself found the route
     assert "curl -X GET 'http://testserver/svc/echo'" in text
+
+
+@pytest.mark.xfail(strict=True, reason="APIDOCS-4")
+def test_the_curl_snippet_redacts_whichever_header_the_flow_puts_the_token_in():
+    """`HeaderFlow` promises the token never reaches the DOM. An API-key header
+    is the flow's own documented case, and the snippet is part of the DOM."""
+    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, header="X-API-Key", scheme="", secure=False))
+    app = build_echo_app(docs)
+    client = TestClient(app)
+    client.post("/api-docs/auth", data={"token": "SUPER-SECRET-KEY-123"})
+
+    text = shown(client.post(f"/api-docs/try/{operation_id(app, 'GET', '/files/{name}')}", data={"p.path.name": "x"}))
+    assert "SUPER-SECRET-KEY-123" not in text
+    assert "X-API-Key: <redacted>" in text  # the header is named, so the reader knows what to fill in
