@@ -39,7 +39,6 @@ class TestVocabulary:
         for name in ("flex", "gap-4", "grid-cols-3", "text-muted-foreground"):
             assert name not in classes
 
-    @pytest.mark.xfail(strict=True, reason="CLI-6")
     def test_names_from_css_comments_and_utility_overrides_are_rejected(self, tmp_path):
         """A file extension in a CSS comment is not a class, and a stylesheet
         rule that adjusts a Tailwind utility does not make it a component."""
