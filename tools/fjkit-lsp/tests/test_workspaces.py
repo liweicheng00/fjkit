@@ -3,9 +3,13 @@ formatting, encodings and layouts the demos never exercise."""
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import time
 from pathlib import Path
 
+import pytest
 from fjkit_lsp.index import Index
 from fjkit_lsp.resolve import Resolver
 
@@ -82,3 +86,61 @@ def test_the_index_does_not_read_inside_a_virtualenv(tmp_path: Path) -> None:
         for j in range(100):
             (package / f"m{j}.py").touch()
     assert build_ms() - without < 150
+
+
+@pytest.mark.xfail(strict=True, reason="LSP-2")
+def test_a_checkout_under_a_src_directory_keeps_its_applications_apart(tmp_path: Path) -> None:
+    """`~/src/<repo>` is a common place to clone into; it does not make every app a distribution."""
+    files = {}
+    for app in ("alpha", "beta"):
+        files[f"src/repo/{app}/app/templates/base.html"] = f"{app}\n"
+        files[f"src/repo/{app}/app/templates/page.html"] = '{% extends "base.html" %}\n'
+    repo = _workspace(tmp_path, files) / "src/repo"
+    ix = Index([repo])
+    page = ix.by_path[repo / "beta/app/templates/page.html"]
+    hit = ix.resolve_template("base.html", page)
+    assert hit is not None and hit.path == repo / "beta/app/templates/base.html"
+
+
+SITE = ".venv/lib/python3.13/site-packages"
+
+
+@pytest.mark.xfail(strict=True, reason="LSP-1")
+def test_the_kit_and_a_plugin_installed_in_the_workspace_venv_are_found(tmp_path: Path) -> None:
+    """The deployment the editor extension starts: `.venv/bin/fjkit-lsp` in the user's
+    project, with fjkit and its plugins in that venv's site-packages."""
+    page = (
+        '{% from "ui/button.html" import button %}\n'
+        '{% include "acme/card.html" %}\n'
+        '{% import "fjkit/ui/button.html" as kit %}\n'
+    )
+    plugin_metadata = "Metadata-Version: 2.1\nName: acme-cards\nVersion: 1.0\nRequires-Dist: fjkit>=0.1\n"
+    ws = _workspace(
+        tmp_path,
+        {
+            f"{SITE}/fjkit/__init__.py": "",
+            f"{SITE}/fjkit/templates/ui/button.html": "{% macro button() %}{% endmacro %}\n",
+            f"{SITE}/acme_cards/__init__.py": "",
+            f"{SITE}/acme_cards/templates/acme/card.html": "<div></div>\n",
+            f"{SITE}/acme_cards-1.0.dist-info/METADATA": plugin_metadata,
+            "app/templates/page.html": page,
+        },
+    )
+    # The server runs on that venv's interpreter; PYTHONPATH puts its site-packages first.
+    env = {**os.environ, "PYTHONPATH": str(ws / SITE)}
+
+    def definition(line: int, needle: str) -> str:
+        col = page.split("\n")[line - 1].index(needle) + 2
+        out = subprocess.run(
+            [sys.executable, "-m", "fjkit_lsp", "at", "app/templates/page.html", str(line), str(col)],
+            cwd=ws,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        return out.split("definition:", 1)[1].split("references:", 1)[0].strip()
+
+    assert definition(1, "ui/button.html") == f"{SITE}/fjkit/templates/ui/button.html:1:1"
+    assert definition(2, "acme/card.html") == f"{SITE}/acme_cards/templates/acme/card.html:1:1"
+    assert definition(3, "fjkit/ui/button.html") == f"{SITE}/fjkit/templates/ui/button.html:1:1"
