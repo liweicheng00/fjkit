@@ -290,9 +290,10 @@ class TestPlugin:
 
 
 def test_this_package_ships_exactly_the_whitelisted_plotly():
-    """CHARTER §4.1 whitelists the JavaScript a wheel may carry, and Plotly's
-    basic bundle is on it: one copy, at the pinned version, under this package's
-    own `static/vendor/` where `scripts/vendor_plotly.py` writes it."""
+    """CHARTER A11(1) lets a plugin distribution pin, vendor and serve its own
+    bundle, and Plotly's basic bundle is this one's: one copy, at the pinned
+    version, under this package's own `static/vendor/` where
+    `scripts/vendor_plotly.py` writes it."""
     import fjkit_charts
 
     root = Path(fjkit_charts.__file__).parent
