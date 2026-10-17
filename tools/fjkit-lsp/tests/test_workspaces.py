@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from fjkit_lsp.index import Index
 from fjkit_lsp.resolve import Resolver
 
@@ -27,7 +26,6 @@ def _cursor(text: str, needle: str, on: str) -> tuple[int, int]:
     return text.count("\n", 0, start), start - (text.rfind("\n", 0, start) + 1)
 
 
-@pytest.mark.xfail(strict=True, reason="LSP-3")
 def test_an_hx_target_wrapped_onto_the_next_line_is_still_a_reference(tmp_path: Path) -> None:
     text = '<button hx-post="/go" hx-target=\n  "#board">go</button>\n<div id="board"></div>\n'
     ws = _workspace(tmp_path, {"app/templates/page.html": text})

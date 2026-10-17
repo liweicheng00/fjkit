@@ -827,7 +827,7 @@ class Index:
 
     def target_references(self, name: str, near: Template | Path | None = None) -> list[Loc]:
         """Every `#name` a template writes into an `hx-*` value, attribute or kwarg."""
-        pat = rf"\bhx[-_]\w+\s*=\s*[\"']#{re.escape(name.split('{{', 1)[0])}"
+        pat = rf"\bhx[-_]\w+\s*=\s*[\"'](#){re.escape(name.split('{{', 1)[0])}"
         out: list[Loc] = []
         for t in self._templates_in(self.chain_for(near)):
             # Attributes and kwargs both, so the raw text — with comments blanked,
@@ -835,9 +835,8 @@ class Index:
             text = _COMMENT.sub(_blank, t.text)
             lines = _Lines(t.text)
             for m in re.finditer(pat, text):
-                line, col = lines.pos(m.start())
-                hash_at = t.text.splitlines()[line].index("#", col)
-                out.append(Loc(t.path, line, hash_at, hash_at + 1 + len(name)))
+                line, col = lines.pos(m.start(1))
+                out.append(Loc(t.path, line, col, col + 1 + len(name)))
         return out
 
     def _templates_in(self, chain: list[Path]) -> list[Template]:
