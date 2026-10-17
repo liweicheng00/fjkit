@@ -847,7 +847,6 @@ def test_stream_produces_a_streaming_response(make_app):
 
 
 @pytest.mark.parametrize("buffer_size", [0, 1])
-@pytest.mark.xfail(strict=True, reason="RT-7")
 def test_a_buffer_too_small_to_stream_is_refused_where_the_route_is_declared(buffer_size):
     """Jinja refuses a buffer under 2 inside the body generator, after the 200
     and its headers have gone out, so every request would start a page and
@@ -856,7 +855,6 @@ def test_a_buffer_too_small_to_stream_is_refused_where_the_route_is_declared(buf
         render("rows.html", stream=True, buffer_size=buffer_size)
 
 
-@pytest.mark.xfail(strict=True, reason="RT-7")
 def test_templates_stream_refuses_a_buffer_too_small_before_the_response_starts():
     templates = Templates.create(FjkitConfig())
     templates.env.loader = DictLoader(TEMPLATES)

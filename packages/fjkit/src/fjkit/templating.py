@@ -326,6 +326,10 @@ class Templates:
         status_code: int = 200,
         headers: Mapping[str, str] | None = None,
     ) -> StreamingResponse:
+        if buffer_size < 2:
+            # The same refusal Jinja's `enable_buffering` gives, raised before
+            # the response exists rather than inside its body generator.
+            raise ValueError(f"buffer_size={buffer_size}: a streamed render needs a buffer of at least 2")
         template = self.env.get_template(name)
 
         merged = self._context(request, context)

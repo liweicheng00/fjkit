@@ -139,7 +139,8 @@ def render(
     `FjkitConfig.render_mode`. `"auto"` renders for htmx and for a page
     route's navigation, and serialises the model otherwise.
     :param stream: render through `templates.stream()` rather than `page()`.
-    :param buffer_size: chunk size when `stream=True`. Never 0.
+    :param buffer_size: chunk size when `stream=True`. At least 2, which is
+    what Jinja's buffered stream accepts.
     :param hx_trigger: an event to raise in the browser on this response, as
     `HX-Trigger`. Usually a callable, which receives the handler's own
     parameters and `result` **by name**:
@@ -188,6 +189,11 @@ def render(
     The handler may return a Pydantic model, a dataclass, a mapping, `None`, or
     a `Response`; a `Response` is passed through untouched.
     """
+    if stream and buffer_size < 2:
+        # Jinja raises the same refusal inside the body generator, after the
+        # 200 and its headers have gone out; here it lands where the route is
+        # declared.
+        raise ValueError(f"buffer_size={buffer_size}: a streamed render needs a buffer of at least 2")
     plan = _Plan(
         template=template,
         partial=partial,
