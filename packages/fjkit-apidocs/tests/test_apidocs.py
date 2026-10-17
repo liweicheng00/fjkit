@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import re
 import subprocess
 import sys
@@ -11,9 +12,10 @@ import warnings
 from datetime import timedelta
 from enum import StrEnum
 from typing import Annotated, Literal
+from urllib.parse import quote
 
 import pytest
-from fastapi import Body, Depends, FastAPI, File, Form, Query, Request, UploadFile
+from fastapi import Body, Depends, FastAPI, File, Form, Header, Query, Request, Response, UploadFile
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, PluginWarning, mount_fjkit, render
 from fjkit.auth import AuthPlugin, CookieSpec, NoCsrf
@@ -1204,3 +1206,60 @@ def test_every_class_in_the_console_s_templates_exists_in_the_stylesheet():
                     unknown.add(f"{path.name}: {token}")
 
     assert not unknown, f"classes absent from the stylesheet: {sorted(unknown)}"
+
+
+# ------------------------------------------------- what the endpoint receives
+#
+# The console's claim is that a call made from the page is the call a client
+# would make. These routes report what arrived, so the claim is checked against
+# a direct request rather than against the panel alone.
+
+
+def build_echo_app(*plugins):
+    """Build an app whose routes report what the console delivered to them."""
+    app = FastAPI(docs_url=None, redoc_url=None)
+
+    @app.get("/files/{name}", tags=["echo"])
+    def file(name: str) -> dict:
+        return {"name": name}
+
+    @app.get("/echo", tags=["echo"])
+    def echo(request: Request, x_name: Annotated[str | None, Header()] = None) -> dict:
+        return {"headers": dict(request.headers), "x_name": x_name}
+
+    @app.post("/login", tags=["echo"])
+    def login(response: Response) -> dict:
+        response.set_cookie("app_session", "LIVE-SESSION-ID", httponly=True)
+        return {}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", PluginWarning)
+        mount_fjkit(app, FjkitConfig(plugins=tuple(plugins), auto_reload=False))
+    return app
+
+
+def operation_id(app: FastAPI, method: str, path: str) -> str:
+    document = specmod.build(app.openapi(), skip_prefix="/api-docs")
+    return next(o.id for o in document.index.values() if o.method == method and o.path == path)
+
+
+def shown(reply) -> str:
+    """The panel's text as a person reads it, with the HTML escaping undone."""
+    return html.unescape(reply.text)
+
+
+@pytest.mark.xfail(strict=True, reason="APIDOCS-2")
+def test_a_path_value_reaches_the_endpoint_as_a_direct_request_delivers_it():
+    """`scope["path"]` is decoded by definition; the encoded form is `raw_path`.
+
+    A space or an accent in a path parameter is otherwise tested against the
+    percent-escaped spelling, which no real client's request would carry."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app)
+    op = operation_id(app, "GET", "/files/{name}")
+
+    for value in ("my report.txt", "café"):
+        direct = client.get("/files/" + quote(value, safe="")).json()["name"]
+        assert direct == value  # what any client gets
+        reply = client.post(f"/api-docs/try/{op}", data={"p.path.name": value})
+        assert f'"name": "{value}"' in shown(reply)
