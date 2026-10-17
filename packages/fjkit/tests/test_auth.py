@@ -415,7 +415,6 @@ def login_cookie_header(response) -> tuple[str, str]:
     return name, value
 
 
-@pytest.mark.xfail(strict=True, reason="RT-5")
 def test_an_oidc_login_round_trips_through_state():
     source = CodeSource()
     client = make_app(make_auth(source=source))
@@ -430,7 +429,6 @@ def test_an_oidc_login_round_trips_through_state():
     assert source.exchanges == 1
 
 
-@pytest.mark.xfail(strict=True, reason="RT-5")
 def test_a_callback_the_browser_never_started_is_refused_before_the_exchange():
     """Login CSRF on a GET. The attacker sends the victim to the callback with
     the attacker's own code and state. The victim's browser never visited
@@ -447,7 +445,6 @@ def test_a_callback_the_browser_never_started_is_refused_before_the_exchange():
     assert source.exchanges == 0
 
 
-@pytest.mark.xfail(strict=True, reason="RT-5")
 def test_a_callback_with_someone_elses_state_is_refused_and_the_victims_own_login_survives():
     """The victim is mid-flow, so their browser holds a nonce, and the forged
     callback carries a different one. Refusing it must not break the login the
@@ -465,7 +462,6 @@ def test_a_callback_with_someone_elses_state_is_refused_and_the_victims_own_logi
     assert source.exchanges == 1
 
 
-@pytest.mark.xfail(strict=True, reason="RT-5")
 def test_a_callback_cannot_be_replayed_after_it_succeeded():
     source = CodeSource()
     client = make_app(make_auth(source=source))
@@ -479,7 +475,6 @@ def test_a_callback_cannot_be_replayed_after_it_succeeded():
     assert source.exchanges == 1
 
 
-@pytest.mark.xfail(strict=True, reason="RT-5")
 def test_a_tampered_login_cookie_is_refused():
     source = CodeSource()
     client = make_app(make_auth(source=source))
@@ -495,7 +490,6 @@ def test_a_tampered_login_cookie_is_refused():
     assert source.exchanges == 0
 
 
-@pytest.mark.xfail(strict=True, reason="RT-5")
 def test_a_login_cookie_older_than_its_ttl_is_refused(monkeypatch):
     """The cookie's own `Max-Age` makes a browser drop it, which the client here
     does too, so the expired cookie is put back by hand: the server has to

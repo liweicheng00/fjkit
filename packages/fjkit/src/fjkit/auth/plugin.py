@@ -19,8 +19,10 @@ than leaving it to the app.
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 import secrets
+import time
 import warnings
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -47,6 +49,12 @@ _log = logging.getLogger("fjkit.auth")
 
 #: How often a request that lost the refresh race looks for the winner's work.
 _POLL_SECONDS = 0.05
+
+#: How long a browser has to come back from the identity provider after
+#: `start_login`. Long enough for a password and a second factor; short enough
+#: that a nonce left in a browser does not outlive the authorization code it
+#: was issued for.
+_LOGIN_TTL = timedelta(minutes=10)
 
 #: What the user is told, per reason. Two entries, because they are different
 #: events: never signed in here, versus signed in and the session ran out. Only
@@ -146,6 +154,10 @@ class AuthPlugin:
         self.store: SessionStore = store if store is not None else MemoryStore()
         self.source: TokenSource = source if source is not None else LocalSource()
         self.cookie = cookie or CookieSpec()
+        #: Derived from the session cookie's name, so two fjkit apps on one
+        #: host that renamed their session cookies to coexist keep their login
+        #: cookies apart as well.
+        self._login_cookie = f"{self.cookie.name}_login"
         #: Optional. Filled at `mount` from the sibling registered as "flash"
         #: unless the app passed one: an explicit argument outranks the lookup,
         #: so an app can hand auth a flash configured differently from the one
@@ -200,6 +212,88 @@ class AuthPlugin:
         )
 
     # ------------------------------------------------------------- app-facing
+
+    def start_login(self, response: Response) -> str:
+        """Begin a login that completes on a GET, and bind this browser to it.
+
+        An OpenID Connect or OAuth login ends with the provider sending the
+        browser to `GET /callback?code=…&state=…`. A navigation carries no
+        `Origin`, so nothing in `issue` can tell the visitor's own callback
+        from one an attacker sent them to with the attacker's code (login
+        CSRF; see `fjkit.auth.csrf`). The `state` parameter closes it: a nonce
+        this browser holds in a signed, HttpOnly cookie and the provider echoes
+        back, which `check_state` compares in the callback.
+
+            @router.get("/login/oidc")
+            def start(response: Response) -> Response:
+                state = auth.start_login(response)
+                response.status_code = 303
+                response.headers["location"] = f"{AUTHORIZE_URL}?client_id=…&state={state}"
+                return response
+
+        Returns the value to put in the authorization URL's `state=`. The nonce
+        is the whole secret: nothing is kept server-side, and the cookie's
+        signature is what stops a browser presenting a nonce it was not given.
+
+        The cookie is `SameSite=Lax` even when the session cookie is `Strict`,
+        because the callback is a top-level navigation from the provider's
+        site, which `Strict` would strip the cookie from. `None` is kept as
+        `None`: an app embedded in another site's iframe cannot set a `Lax`
+        cookie from there at all.
+        """
+        nonce = secrets.token_urlsafe(32)
+        expires = int(time.time() + _LOGIN_TTL.total_seconds())
+        response.set_cookie(
+            self._login_cookie,
+            sign_text(self.secret, f"{nonce}:{expires}"),
+            max_age=int(_LOGIN_TTL.total_seconds()),
+            path=self.cookie.path,
+            domain=self.cookie.domain,
+            secure=self.cookie.secure,
+            httponly=True,
+            samesite="none" if self.cookie.same_site == "none" else "lax",
+        )
+        return nonce
+
+    def check_state(self, request: Request, response: Response, state: str) -> None:
+        """Finish what `start_login` began. Call it in the callback, before `issue`.
+
+            @router.get("/callback")
+            async def callback(request: Request, response: Response, code: str, state: str) -> Response:
+                auth.check_state(request, response, state)
+                await auth.issue(request, response, code)
+                response.status_code = 303
+                response.headers["location"] = "/"
+                return response
+
+        Raises `CsrfRejected`, answered 403 like any other refused request,
+        unless the browser holds the cookie `start_login` set, it is intact and
+        younger than its TTL, and its nonce equals `state`. The comparison is
+        constant-time; the rest is a signature check and a clock.
+
+        Takes `response` because a passed check consumes the cookie, so the
+        callback cannot be replayed with the same `state`. A refused check
+        leaves the cookie alone: the browser may be in the middle of its own
+        honest login, and a forged callback must not break it. The clearing
+        lives here rather than in `issue` so a password login, which never
+        set the cookie, does not emit a header deleting it.
+        """
+        raw = request.cookies.get(self._login_cookie)
+        if not raw:
+            raise CsrfRejected(f"GET {request.url.path} completes a login this browser never started")
+        body = unsign_text(self.secret, raw)
+        if body is None:
+            raise CsrfRejected("the login cookie is not one this app signed")
+        nonce, _, expires = body.partition(":")
+        if not expires.isdigit() or int(expires) <= time.time():
+            raise CsrfRejected("the login cookie is older than its TTL")
+        if not hmac.compare_digest(nonce.encode("utf-8"), state.encode("utf-8")):
+            raise CsrfRejected("`state` is not the one this browser's login started with")
+        response.delete_cookie(
+            self._login_cookie,
+            path=self.cookie.path,
+            domain=self.cookie.domain,
+        )
 
     async def issue(self, request: Request, response: Response, credentials: Any) -> Session:
         """Log in: exchange `credentials`, store the session, set the cookie.
