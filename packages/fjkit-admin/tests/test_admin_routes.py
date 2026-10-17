@@ -12,6 +12,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
+#: The headers htmx sends when a checkbox column posts its selection.
+FORM = {**HX, "Content-Type": "application/x-www-form-urlencoded"}
+
 
 def rows_of(html: str) -> list[str]:
     """The first link text of every body row: the title cell, in page order."""
@@ -249,6 +252,30 @@ def test_permissions_gate_both_the_button_and_the_route():
     assert client.post("/admin/task", json={"title": "x", "project_id": 1}).status_code == 403
     assert client.delete("/admin/task/1").status_code == 403
     assert 'hx-delete="/admin/task/1"' not in client.get("/admin/task/1").text
+
+
+@pytest.mark.xfail(strict=True, reason="ADMIN-1")
+def test_get_queryset_scopes_every_route_and_the_count():
+    class CoreTasks(TaskAdmin):
+        key = "task"
+
+        def get_queryset(self, request: Request, stmt):
+            return stmt.where(Task.project_id == 1)
+
+    app, db, _ = make_app(CoreTasks)
+    client = TestClient(app)
+    with db() as session:
+        hidden = session.scalar(select(Task.id).where(Task.project_id == 2))
+
+    assert "6 tasks" in client.get("/admin").text
+    assert client.get(f"/admin/task/{hidden}").status_code == 404
+    assert client.post(f"/admin/task/{hidden}", json={"title": "x", "project_id": 1}).status_code == 404
+    assert client.delete(f"/admin/task/{hidden}").status_code == 404
+    response = client.post("/admin/task/action/mark_done", content=f"selected={hidden}", headers=FORM)
+    assert "Nothing was selected" in response.headers["HX-Trigger"]
+    with db() as session:
+        task = session.get(Task, hidden)
+        assert task is not None and task.done is False
 
 
 def test_dependencies_gate_every_route():
