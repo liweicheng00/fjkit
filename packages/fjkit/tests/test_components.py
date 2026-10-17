@@ -2541,13 +2541,11 @@ class TestPassThroughSaysNo:
     """CHARTER A4: `**attrs` passes through HTML and `hx-*` only, and a
     parameter list must be able to say no."""
 
-    @pytest.mark.xfail(strict=True, reason="MAC-3")
     @pytest.mark.parametrize("key", ["onmouseover=alert(1) data-x", "data-x>", 'a"b', "data x"])
     def test_a_key_that_is_not_one_attribute_name_is_refused(self, render, key):
         with pytest.raises(ValueError):
             render(f'{BUTTON}{{{{ button("x", **extra) }}}}', extra={key: "y"})
 
-    @pytest.mark.xfail(strict=True, reason="CH-5")
     @pytest.mark.parametrize("key", ["class", "style"])
     def test_class_and_style_are_refused(self, render, key):
         """A second `class` is ignored by the browser and an inline `style` is
