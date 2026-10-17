@@ -133,10 +133,10 @@ Hard numbers. CI checks them; over budget is a red build.
 
 The CSS budget is **per page**: eight packs ship, a page loads one.
 
-| Item | Budget | Measured 2026-09-05 |
+| Item | Budget | Measured 2026-10-17 |
 |---|---|---|
-| `fjkit-<pack>.css`, gzip — **the governed number** | ≤ 28 KB | 24.3–24.9 KB across eight packs (vega 24.7) |
-| `fjkit-<pack>.css`, uncompressed — blowout guard | ≤ 260 KB | 219.1–237.2 KB (sera smallest, nova largest) |
+| `fjkit-<pack>.css`, gzip — **the governed number** | ≤ 28 KB | 24.5–25.1 KB across eight packs (vega 24.9) |
+| `fjkit-<pack>.css`, uncompressed — blowout guard | ≤ 260 KB | 219.9–238.0 KB (sera smallest, nova largest) |
 | fjkit runtime dependencies | `fastapi`, `jinja2`. A third needs an RFC | 2 |
 | Third-party JS permitted in the wheel — **whitelist** | Only what `fjkit/vendored.py` pins: `htmx.org`, `htmx-ext-json-enc`, `idiomorph`, `basecoat-css` (with `all.min.js`). Adding one edits this cell (A11) | 4 |
 | Single-page render regression | No more than 10% slower than the previous version | Threshold definition still open |
@@ -151,16 +151,16 @@ The only real lever left is subsetting Basecoat, and `styles/<pack>.css` is one 
 
 ### 4.2 JavaScript
 
-**Every page downloads:** htmx and Basecoat (both vendored), `js/errors.js` (4,223 bytes raw / 1,798 gzip), and two inline blocks in `ui/shell.html` totalling 517 bytes — theme anti-flash, and the listener that turns an `HX-Trigger` event into a toast.
+**Every page downloads:** htmx and Basecoat (both vendored), `js/errors.js` (4,223 bytes raw / 1,788 gzip), and two inline blocks in `ui/shell.html` totalling 517 bytes — theme anti-flash, and the listener that turns an `HX-Trigger` event into a toast.
 
 **Everything else loads only on a page that asks for it**, through a `*_scripts()` macro the page calls in `{% block scripts %}`. No component emits its own `<script>`:
 
-| File | Loaded by | raw / gzip |
+| File | Loaded by | raw / gzip, measured 2026-10-17 |
 |---|---|---|
-| `reveal.js` | `reveal_scripts()`, in `ui/form.html` | 2,506 / 1,280 |
-| `select.js` | `select_scripts()`, in `ui/table.html` | 5,353 / 2,252 |
-| `multiselect.js` | `multiselect_scripts()`, in `ui/overlay.html` | 5,459 / 2,470 |
-| `charts.js` | `chart_scripts()` | 8,953 / 3,822, in `fjkit-charts` |
+| `reveal.js` | `reveal_scripts()`, in `ui/form.html` | 2,508 / 1,273 |
+| `select.js` | `select_scripts()`, in `ui/table.html` | 5,172 / 2,151 |
+| `multiselect.js` | `multiselect_scripts()`, in `ui/overlay.html` | 5,461 / 2,456 |
+| `charts.js` | `chart_scripts()` | 8,953 / 3,810, in `fjkit-charts` |
 | `json-enc.js` | `form_scripts()` | vendored, 1,012 raw |
 | `idiomorph-ext.min.js` | `morph_scripts()` | vendored, 11,037 / 3,924 |
 
