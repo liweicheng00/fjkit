@@ -2572,7 +2572,6 @@ class TestSubmittedValuesRoundTrip:
 
 
 class TestToaster:
-    @pytest.mark.xfail(strict=True, reason="MAC-5")
     def test_a_plain_call_renders_under_strict_undefined(self, render):
         """The shell's `toasts` block is the documented place to call it this
         way, and `FjkitConfig` is strict by default."""

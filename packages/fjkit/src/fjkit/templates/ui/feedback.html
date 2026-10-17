@@ -171,7 +171,7 @@
   know in advance one was coming.
 #}
 {% macro toaster(align="end") -%}
-  <div id="toaster" class="toaster" data-align="{{ align }}">{{ caller() if caller else "" }}</div>
+  <div id="toaster" class="toaster" data-align="{{ align }}">{{ caller() if caller is defined }}</div>
 {%- endmacro %}
 
 {#
