@@ -80,6 +80,15 @@ def test_pagination_walks_the_rows_and_clamps(client: TestClient):
     assert "1–10 of 12" in sized
 
 
+@pytest.mark.xfail(strict=True, reason="ADMIN-3")
+def test_a_page_knob_that_is_not_a_number_falls_back(stack):
+    client = TestClient(stack[0], raise_server_exceptions=False)
+    for query in ("page=%C2%B2", "per_page=%C2%B2", "page=" + "9" * 5000):
+        response = client.get(f"/admin/task?{query}", headers=HX)
+        assert response.status_code == 200, query
+        assert rows_of(response.text) == sorted(TITLES)[:5]
+
+
 def test_search_matches_the_declared_columns_only(client: TestClient):
     by_title = client.get("/admin/task?q=alpha", headers=HX).text
     assert rows_of(by_title) == ["Alpha brief"]
