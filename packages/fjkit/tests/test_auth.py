@@ -586,6 +586,22 @@ async def test_an_expiring_token_with_no_way_to_renew_warns_once():
     assert "has no `refresh()`" in str(caught[0].message)
 
 
+@pytest.mark.asyncio
+@pytest.mark.xfail(strict=True, reason="RT-9")
+async def test_memory_store_forgets_sessions_nobody_reads_again():
+    """A login whose user never returns (a closed browser, a script) leaves a
+    row that only its own `get` would remove. Nothing reads it, so the process
+    grows with every login unless the store sweeps on its own. The rows are
+    the store's memory, which is what the assertion looks at."""
+    store = MemoryStore()
+    for i in range(100):
+        await store.put(f"gone-{i}", b"x", 0)
+    await store.put("live", b"x", 3600)
+
+    assert await store.get("live") == b"x"
+    assert set(store._items) == {"live"}
+
+
 def test_trusted_origins_are_required_unless_csrf_is_chosen():
     with pytest.raises(ValueError, match="needs `trusted_origins"):
         AuthPlugin(secret="s")
