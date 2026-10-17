@@ -2652,7 +2652,6 @@ class TestAvatarName:
 
 
 class TestSurfaceTokens:
-    @pytest.mark.xfail(strict=True, reason="CSS-1")
     @pytest.mark.parametrize("scope", [":root", ".dark"])
     def test_a_card_rebrand_reaches_popovers(self, scope):
         """Section 1 tells an app to redefine `--card`; dropdowns, comboboxes
