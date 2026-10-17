@@ -260,7 +260,6 @@ def test_a_router_on_a_taken_path_is_reported_at_startup():
         mount_fjkit(FastAPI(docs_url="/docs"), config)
 
 
-@pytest.mark.xfail(strict=True, reason="CH-3")
 def test_an_app_that_registers_no_plugin_imports_none():
     """CHARTER §2.3 gate 4: a subsystem is a plugin, and an app that does not
     register it imports nothing of it. Flash is one because it needs a secret,
