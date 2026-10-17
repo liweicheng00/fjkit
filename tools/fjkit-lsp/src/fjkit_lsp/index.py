@@ -136,11 +136,6 @@ _STRING = re.compile(r"\"([^\"]*)\"|'([^']*)'")
 _IDENT = re.compile(r"[A-Za-z_]\w*")
 
 
-def _first_string(body: str) -> str | None:
-    m = _STRING.search(body)
-    return (m.group(1) or m.group(2)) if m else None
-
-
 def _split_top(s: str) -> list[str]:
     """Split on commas that are not nested in brackets."""
     out, depth, cur = [], 0, []
@@ -402,7 +397,7 @@ class Index:
         self.prefixes: dict[Path, dict[str, str]] = {}  # module -> {router variable: APIRouter(prefix=…)}
         self._chains: dict[Path, list[Path]] = {}  # module -> chain_for, memoised
         self._events: dict[str, list[tuple[Route, Emit]]] | None = None  # resolved lazily
-        self.rebuild()
+        self._build()
 
     # ---- building -------------------------------------------------------
 
@@ -414,19 +409,7 @@ class Index:
                 if p.is_file() and p.suffix in suffixes:
                     yield p
 
-    def rebuild(self) -> None:
-        self.templates.clear()
-        self.by_root.clear()
-        self.by_path.clear()
-        self.routes.clear()
-        self.models.clear()
-        self.literals.clear()
-        self.globals.clear()
-        self.imports.clear()
-        self.constants.clear()
-        self.prefixes.clear()
-        self._chains.clear()
-        self._events = None
+    def _build(self) -> None:
         self._classify_roots()
         for p in self._walk(TEMPLATE_SUFFIXES):
             root = next((r for r in self.template_roots if p.is_relative_to(r)), None)
@@ -801,10 +784,6 @@ class Index:
                         out.setdefault(name, []).append((r, e))
             self._events = out
         return self._events
-
-    def event_constants(self, name: str) -> list[Loc]:
-        """Where the constants holding this event's string are defined."""
-        return [loc for consts in self.constants.values() for v, loc in consts.values() if v == name]
 
     def listeners(self, name: str, near: Template | Path | None = None) -> list[Loc]:
         """Every template place that names this event: a token of an `hx-trigger`

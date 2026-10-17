@@ -44,11 +44,6 @@ class Symbol:
         return self.template or self.path
 
 
-def _string_at(line_text: str, col: int) -> str | None:
-    span = _string_span_at(line_text, col)
-    return span[0] if span else None
-
-
 def _string_span_at(line_text: str, col: int) -> tuple[str, int, int] | None:
     """(content, start, end) of the quoted string the cursor is inside."""
     for m in _STRING.finditer(line_text):
