@@ -1332,3 +1332,17 @@ def test_the_curl_snippet_redacts_whichever_header_the_flow_puts_the_token_in():
     text = shown(client.post(f"/api-docs/try/{operation_id(app, 'GET', '/files/{name}')}", data={"p.path.name": "x"}))
     assert "SUPER-SECRET-KEY-123" not in text
     assert "X-API-Key: <redacted>" in text  # the header is named, so the reader knows what to fill in
+
+
+@pytest.mark.xfail(strict=True, reason="APIDOCS-5")
+def test_a_set_cookie_the_endpoint_answers_with_is_shown_without_its_value():
+    """An HttpOnly cookie is one no script on a page may read. The console
+    swallows the response, so printing the header verbatim into the DOM would
+    be the one place that property is undone."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app)
+
+    text = shown(client.post(f"/api-docs/try/{operation_id(app, 'POST', '/login')}")).lower()
+    assert "live-session-id" not in text
+    assert "set-cookie: app_session=" in text  # what was set, and how, stays readable
+    assert "httponly" in text
