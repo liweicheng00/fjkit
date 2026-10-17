@@ -37,6 +37,16 @@ class HeroAdmin(ModelAdmin, model=Hero):
     search_fields = ("name",)
 
 
+class Mission(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    status: str = Field(default="planned")
+
+
+class MissionAdmin(ModelAdmin, model=Mission):
+    pass
+
+
 @pytest.fixture
 def client() -> TestClient:
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -46,7 +56,7 @@ def client() -> TestClient:
         session.add(Hero(name="Deadpond", age=48))
         session.commit()
     app = FastAPI()
-    mount_fjkit(app, FjkitConfig(plugins=(AdminPlugin(factory, views=(HeroAdmin,)),)))
+    mount_fjkit(app, FjkitConfig(plugins=(AdminPlugin(factory, views=(HeroAdmin, MissionAdmin)),)))
     return TestClient(app)
 
 
@@ -61,6 +71,13 @@ def test_list_and_create_work_unchanged(client: TestClient):
     response = client.post("/admin/hero", json={"name": "Rusty-Man", "age": ""}, headers=HX)
     assert response.status_code == 200
     assert "Rusty-Man" in response.text
+
+
+@pytest.mark.xfail(strict=True, reason="ADMIN-5")
+def test_a_blank_defaulted_column_takes_its_default(client: TestClient):
+    response = client.post("/admin/mission", json={"name": "Moon", "status": ""}, headers=HX)
+    assert response.status_code == 200, response.text
+    assert ">planned<" in response.text
 
 
 def test_the_classs_own_validator_runs_on_submit(client: TestClient):
