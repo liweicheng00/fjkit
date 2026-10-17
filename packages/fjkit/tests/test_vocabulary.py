@@ -116,6 +116,28 @@ class TestCheck:
         (tmp_path / "page.html").write_text(f'<p style="{style}">x</p>')
         assert [v.token for v in check_templates(tmp_path)] == tokens
 
+    @pytest.mark.xfail(strict=True, reason="CLI-4")
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<p>a&#160;b &#8212; 3&#215;4</p>",
+            '<button hx-get="/x" hx-target="#feed" hx-select="#feed" hx-include="#add">x</button>',
+            '<a href="#add">x</a>',
+            '{{ card("x", hx_target="#c0ffee") }}',
+        ],
+    )
+    def test_an_entity_or_a_selector_is_not_a_hex_colour(self, tmp_path, markup):
+        """`&#160;` and `hx-target="#feed"` are ordinary htmx markup; neither is
+        a colour, however hex its digits look."""
+        (tmp_path / "page.html").write_text(markup)
+        assert check_templates(tmp_path) == []
+
+    def test_a_hex_colour_in_a_value_is_still_caught(self, tmp_path):
+        (tmp_path / "page.html").write_text(
+            '<p style="border: 1px solid #ccc">x</p>\n<rect fill="#0f172a"/>\n{% set brand = "#abc" %}'
+        )
+        assert [v.token for v in check_templates(tmp_path)] == ["#ccc", "#0f172a", "#abc"]
+
     def test_keywords_that_are_not_hues_pass_in_a_style_attribute(self, tmp_path):
         (tmp_path / "page.html").write_text(
             '<p style="color: currentColor; background: color-mix(in srgb, var(--primary) 50%, transparent)">x</p>'
