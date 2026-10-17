@@ -431,10 +431,18 @@ def _write_trigger(
     value = spec.resolve(result, call_kwargs) if spec is not None else literal
     if value is None:
         return
-    # Case-insensitively, because `_response_args` copies out of a Starlette
-    # `MutableHeaders`, which lowercases every name it was given.
-    existing = next((key for key in headers if key.lower() == name.lower()), None)
+    existing = _header_key(headers, name)
     headers[existing or name] = _merge_trigger(headers.get(existing) if existing else None, value)
+
+
+def _header_key(headers: Mapping[str, str], name: str) -> str | None:
+    """The key `name` is stored under, or `None`.
+
+    Case-insensitive, because `_response_args` copies out of a Starlette
+    `MutableHeaders`, which lowercases every name it was given. A handler
+    writes `HX-Trigger`; what arrives here is `hx-trigger`.
+    """
+    return next((key for key in headers if key.lower() == name.lower()), None)
 
 
 def _merge_trigger(existing: str | None, value: Mapping[str, Any] | str) -> str:
@@ -446,28 +454,9 @@ def _merge_trigger(existing: str | None, value: Mapping[str, Any] | str) -> str:
     """
     if existing is None and isinstance(value, str):
         return value
-    events = _as_events(existing)
+    events = messages.trigger_events(existing)
     events.update({value: None} if isinstance(value, str) else value)
     return json.dumps(events, separators=(",", ":"))
-
-
-def _as_events(header: str | None) -> dict[str, Any]:
-    """Read an `HX-Trigger` value as the mapping htmx reads it as.
-
-    The same promotion `messages.trigger_header` does, for the same reason: htmx
-    accepts a bare event name or a comma-separated list as well as JSON, and
-    neither may be discarded because something else wants to be in the header
-    too.
-    """
-    if not header:
-        return {}
-    text = header.strip()
-    if text.startswith("{"):
-        try:
-            return dict(json.loads(text))
-        except ValueError:
-            return {text: None}
-    return {name.strip(): None for name in text.split(",") if name.strip()}
 
 
 def _deliver_messages(
@@ -488,10 +477,7 @@ def _deliver_messages(
             if queue:
                 queue.mark_shown()
         return
-    # Case-insensitively, because `_response_args` copies out of a Starlette
-    # `MutableHeaders`, which lowercases every name it was given. A handler
-    # writes `HX-Trigger`; what arrives here is `hx-trigger`.
-    existing = next((key for key in headers if key.lower() == "hx-trigger"), None)
+    existing = _header_key(headers, "HX-Trigger")
     trigger = messages.trigger_header(request, headers.get(existing) if existing else None)
     if trigger is not None:
         headers[existing or "HX-Trigger"] = trigger
