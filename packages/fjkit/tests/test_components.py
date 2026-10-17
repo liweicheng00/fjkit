@@ -2477,3 +2477,52 @@ class TestReveal:
         else. This macro is how a page says otherwise."""
         assert "js/reveal.js" not in render(f"{INPUT_GROUP}{self.CALL}")
         assert "js/reveal.js" in render(f"{INPUT_GROUP}{{{{ reveal_scripts() }}}}")
+
+
+class _Attributes(HTMLParser):
+    """Every start tag's attributes, decoded the way a browser decodes them
+    before an event handler is compiled."""
+
+    def __init__(self, html):
+        super().__init__()
+        self.elements: list[dict[str, str | None]] = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        self.elements.append(dict(attrs))
+
+
+HOSTILE_ID = "x');alert(document.domain);('"
+
+
+def _handlers(html):
+    """(handler source, element attributes) for every inline event handler."""
+    return [
+        (value, element)
+        for element in _Attributes(html).elements
+        for name, value in element.items()
+        if value and (name.startswith("on") or name.startswith("hx-on"))
+    ]
+
+
+class TestCallerTextNeverBecomesScript:
+    """Autoescape is an HTML escaper. The browser undoes it before an `on…`
+    attribute runs, so caller text placed inside a JavaScript string there is
+    code."""
+
+    @pytest.mark.xfail(strict=True, reason="MAC-1")
+    @pytest.mark.parametrize(
+        "source",
+        [
+            f'{OVERLAY}{{{{ drawer_trigger("Edit", target) }}}}',
+            f"{SIDEBAR}{{{{ sidebar_trigger(target) }}}}",
+            f'{FORM}{{% call form(action="/up", target="#r", progress=target) %}}x{{% endcall %}}',
+        ],
+        ids=["drawer_trigger", "sidebar_trigger", "form-progress"],
+    )
+    def test_a_hostile_id_reaches_no_handler(self, render, source):
+        handlers = _handlers(render(source, target=HOSTILE_ID))
+        assert handlers, "each of these macros writes an inline handler"
+        for code, element in handlers:
+            assert "alert(" not in code, code
+            assert HOSTILE_ID in element.values(), "the handler still needs the id, from an attribute"
