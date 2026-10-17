@@ -197,6 +197,19 @@ def test_missing_rows_are_404(client: TestClient):
     assert client.get("/admin/task/abc").status_code == 404
 
 
+@pytest.mark.xfail(strict=True, reason="ADMIN-4")
+def test_a_key_the_column_cannot_hold_is_not_a_row(stack):
+    client = TestClient(stack[0], raise_server_exceptions=False)
+    huge = "99999999999999999999999"
+    assert client.get(f"/admin/task/{huge}").status_code == 404
+    response = client.post("/admin/task/action/mark_done", content=f"selected={huge}", headers=FORM)
+    assert response.status_code == 200
+    assert "Nothing was selected" in response.headers["HX-Trigger"]
+    filtered = client.get(f"/admin/task?f_project_id={huge}", headers=HX)
+    assert filtered.status_code == 200
+    assert rows_of(filtered.text) == sorted(TITLES)[:5]
+
+
 def test_delete_removes_the_row_and_pushes_the_list_url(client: TestClient, db: sessionmaker):
     response = client.delete("/admin/task/1?o=-title&per_page=10", headers=HX)
     assert response.status_code == 200
