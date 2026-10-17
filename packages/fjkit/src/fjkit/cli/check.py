@@ -81,8 +81,9 @@ _CSS_NAMED_COLOURS = """
 """
 NAMED_COLOURS = frozenset(_CSS_NAMED_COLOURS.split())
 
-#: `class="…"` including the multi-line form, which templates use a lot.
-CLASS_ATTR = re.compile(r"""class\s*=\s*"([^"]*)\"""", re.DOTALL)
+#: `class="…"` or `class='…'`, including the multi-line form, which templates use
+#: a lot. Not `data-class=` or a `data_subclass=` kwarg.
+CLASS_ATTR = re.compile(r"""(?<![\w-])class\s*=\s*(["'])(.*?)\1""", re.DOTALL)
 
 #: Jinja expressions are removed from a class attribute before it is split into
 #: tokens. Splitting first is wrong: `class="card {{ extra }}"` tokenises to
@@ -195,7 +196,7 @@ def check_templates(template_dir: Path) -> list[Violation]:
 
         for match in CLASS_ATTR.finditer(text):
             lineno = text.count("\n", 0, match.start()) + 1
-            for token in _JINJA_EXPR.sub(" ", match.group(1)).split():
+            for token in _JINJA_EXPR.sub(" ", match.group(2)).split():
                 if "{" in token or "}" in token:
                     continue  # an unbalanced fragment of an expression
                 # Strip Tailwind variant prefixes so `sm:grid-cols-2` is judged

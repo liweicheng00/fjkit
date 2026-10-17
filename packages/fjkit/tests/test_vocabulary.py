@@ -78,12 +78,10 @@ class TestCheck:
         (tmp_path / "page.html").write_text('<div class="card\n            flex">x</div>')
         assert [v.token for v in check_templates(tmp_path)] == ["flex"]
 
-    @pytest.mark.xfail(strict=True, reason="CLI-5")
     def test_a_single_quoted_class_attribute_is_scanned(self, tmp_path):
         (tmp_path / "page.html").write_text("<div class='card flex'>x</div>")
         assert [v.token for v in check_templates(tmp_path)] == ["flex"]
 
-    @pytest.mark.xfail(strict=True, reason="CLI-5")
     def test_an_attribute_that_ends_in_class_is_not_a_class_attribute(self, tmp_path):
         (tmp_path / "page.html").write_text(
             '<div class="card" data-class="admin-only">x</div>\n{{ badge("x", data_subclass="admin") }}'
