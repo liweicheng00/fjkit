@@ -307,7 +307,6 @@ def test_permissions_gate_both_the_button_and_the_route():
     assert 'hx-delete="/admin/task/1"' not in client.get("/admin/task/1").text
 
 
-@pytest.mark.xfail(strict=True, reason="ADMIN-8")
 def test_a_caller_without_the_permission_learns_nothing_else():
     class Locked(TaskAdmin):
         key = "task"

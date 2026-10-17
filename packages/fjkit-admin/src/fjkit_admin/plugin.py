@@ -163,28 +163,51 @@ class AdminPlugin:
     def _router(self) -> APIRouter:
         router = APIRouter(prefix=self.url, include_in_schema=False, dependencies=self.dependencies)
 
-        def add(path: str, handler: Callable[..., Any], method: str, name: str) -> None:
+        def add(
+            path: str,
+            handler: Callable[..., Any],
+            method: str,
+            name: str,
+            gate: Callable[[Request], bool] | None = None,
+        ) -> None:
+            # `gate` is the model-level permission, as a route dependency: it
+            # runs before FastAPI validates the body and before the row is
+            # loaded, so a refused caller gets 403 and neither the form's 422
+            # field list nor a 404 that says which ids exist.
+            dependencies = [self._gate(gate)] if gate else None
             # Every GET page answers with and without a trailing slash, so the
             # admin never issues a redirect for one. Django's admin lives at
             # `/admin/` and redirects the other spelling with a permanent 301,
             # which browsers cache per host and port; a Django project that ran
             # on this port earlier leaves that 301 behind, and an admin that
             # redirected `/admin/` back to `/admin` would loop with it forever.
-            router.add_api_route(path, handler, methods=[method], name=name)
+            router.add_api_route(path, handler, methods=[method], name=name, dependencies=dependencies)
             if method == "GET":
-                router.add_api_route(path + "/", handler, methods=[method], name=f"{name}_slash")
+                router.add_api_route(
+                    path + "/", handler, methods=[method], name=f"{name}_slash", dependencies=dependencies
+                )
 
         add("", self._index, "GET", self._route(None, "index"))
         for key, view in self.views.items():
-            add(f"/{key}", self._list_handler(view), "GET", self._route(view, "list"))
-            add(f"/{key}", self._create_handler(view), "POST", self._route(view, "create"))
-            # `/new` before `/{pk}`: Starlette takes the first route that fits.
-            add(f"/{key}/new", self._add_handler(view), "GET", self._route(view, "add"))
-            add(f"/{key}/action/{{action}}", self._action_handler(view), "POST", self._route(view, "action"))
-            add(f"/{key}/{{pk}}", self._change_handler(view), "GET", self._route(view, "change"))
-            add(f"/{key}/{{pk}}", self._update_handler(view), "POST", self._route(view, "update"))
-            add(f"/{key}/{{pk}}", self._delete_handler(view), "DELETE", self._route(view, "delete"))
+            routes = (
+                ("", self._list_handler, "GET", "list", view.has_view_permission),
+                ("", self._create_handler, "POST", "create", view.has_add_permission),
+                # `/new` before `/{pk}`: Starlette takes the first route that fits.
+                ("/new", self._add_handler, "GET", "add", view.has_add_permission),
+                ("/action/{action}", self._action_handler, "POST", "action", view.has_view_permission),
+                ("/{pk}", self._change_handler, "GET", "change", view.has_view_permission),
+                ("/{pk}", self._update_handler, "POST", "update", view.has_change_permission),
+                ("/{pk}", self._delete_handler, "DELETE", "delete", view.has_delete_permission),
+            )
+            for path, make, method, suffix, gate in routes:
+                add(f"/{key}{path}", make(view), method, self._route(view, suffix), gate)
         return router
+
+    def _gate(self, check: Callable[[Request], bool]) -> Any:
+        def allowed(request: Request) -> None:
+            self._require(check(request))
+
+        return Depends(allowed)
 
     def _index(self, request: Request) -> HTMLResponse:
         models = []
@@ -212,7 +235,6 @@ class AdminPlugin:
 
     def _list_handler(self, view: ModelAdmin) -> Callable[..., HTMLResponse]:
         def list_rows(request: Request) -> HTMLResponse:
-            self._require(view.has_view_permission(request))
             params = ListParams.from_request(request, view)
             with self.session_factory() as session:
                 context = self._list_context(request, session, view, params)
@@ -222,7 +244,6 @@ class AdminPlugin:
 
     def _add_handler(self, view: ModelAdmin) -> Callable[..., HTMLResponse]:
         def add(request: Request) -> HTMLResponse:
-            self._require(view.has_add_permission(request))
             with self.session_factory() as session:
                 context = self._form_context(request, session, view, None)
             return self._render(request, "admin/_form.html", context)
@@ -243,7 +264,6 @@ class AdminPlugin:
         payload_model = view.form_model
 
         def create(request: Request, payload: Any) -> HTMLResponse:
-            self._require(view.has_add_permission(request))
             data = payload.model_dump()
             with self.session_factory() as session:
                 errors = sqlmodel_errors(view.model, None, data, view.info)
@@ -306,7 +326,6 @@ class AdminPlugin:
 
     def _action_handler(self, view: ModelAdmin) -> Callable[..., Any]:
         def run_action(request: Request, action: str, selected: Selected) -> HTMLResponse:
-            self._require(view.has_view_permission(request))
             spec = next((s for s in view.allowed_actions(request) if s["name"] == action), None)
             if spec is None:
                 raise HTTPException(status_code=404, detail=f"No action {action!r}.")
@@ -346,9 +365,7 @@ class AdminPlugin:
             msg = f"This {view.verbose_name} was refused: {exc.orig}"
             raise RequestValidationError([{"type": "integrity_error", "loc": ("body",), "msg": msg}]) from exc
 
-    def _load(
-        self, request: Request, session: Session, view: ModelAdmin, raw: str, *, missing_ok: bool = False
-    ) -> Any:
+    def _load(self, request: Request, session: Session, view: ModelAdmin, raw: str, *, missing_ok: bool = False) -> Any:
         """The row `raw` names, or 404. A row `get_queryset` hides does not exist here."""
         ok, pk = coerce_filter(view.info.pk, raw)
         obj = None
