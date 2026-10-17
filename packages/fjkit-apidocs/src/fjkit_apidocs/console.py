@@ -129,7 +129,7 @@ class Recorded:
         A `Set-Cookie` keeps its name and attributes and loses its value. The
         console swallows the response rather than relaying the cookie to the
         browser, so the only way the value could reach the page is this
-        panel — and an `HttpOnly` cookie is one no script on the page may
+        panel, and an `HttpOnly` cookie is one no script on the page may
         read. `headers` stays complete for a caller that is not a page.
         """
         return tuple((k, _without_value(v) if k.lower() == "set-cookie" else v) for k, v in self.headers)
@@ -187,7 +187,7 @@ async def call(
     unsendable = _unsendable(sent)
     if unsendable:
         # Reported like a timeout: the call produced no response because it
-        # could not be made. Not an exception — a typed `名` is not a bug in
+        # could not be made. Not an exception: a typed `名` is not a bug in
         # the app, and the person needs the panel, not a 500 and a lost form.
         recorded.error = unsendable
         return recorded
@@ -319,8 +319,8 @@ def _without_value(cookie: str) -> str:
 def _unsendable(headers: Iterable[tuple[str, str]]) -> str:
     """Name the first header HTTP cannot carry, or return nothing.
 
-    A header is Latin-1 on the wire — every client encodes it so, and the ASGI
-    scope holds the same bytes — so a character beyond U+00FF has no spelling
+    A header is Latin-1 on the wire. Every client encodes it so, and the ASGI
+    scope holds the same bytes, so a character beyond U+00FF has no spelling
     in it. Found before the scope is built, so the person is told which header
     rather than shown a traceback.
     """
