@@ -431,7 +431,7 @@ class Index:
             name = p.relative_to(root).as_posix()
             try:
                 text = p.read_text(encoding="utf-8")
-            except OSError:
+            except (OSError, UnicodeDecodeError):
                 continue
             t = scan_template(p, name, text)
             t.root = root
@@ -472,7 +472,8 @@ class Index:
 
     def _index_python(self, path: Path) -> None:
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            # Bytes, so a PEP 263 coding cookie decides the encoding as it does for Python.
+            tree = ast.parse(path.read_bytes(), filename=str(path))
         except (OSError, SyntaxError):
             return
         imports: dict[str, str] = {}

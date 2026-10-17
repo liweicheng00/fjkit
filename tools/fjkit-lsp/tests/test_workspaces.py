@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from fjkit_lsp.index import Index
 from fjkit_lsp.resolve import Resolver
 
@@ -47,7 +46,6 @@ def test_a_form_feed_does_not_shift_the_line_under_the_cursor(tmp_path: Path) ->
     assert sym.target is not None and sym.target.path == ws / "app/templates/base.html"
 
 
-@pytest.mark.xfail(strict=True, reason="LSP-4")
 def test_a_file_that_is_not_utf8_does_not_stop_the_index(tmp_path: Path) -> None:
     """A coding cookie is valid Python; a Latin-1 mail template is skipped, not fatal."""
     legacy = '# -*- coding: latin-1 -*-\n@router.get("/caf\xe9")\ndef legacy(): ...\n'
