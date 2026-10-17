@@ -44,7 +44,19 @@ class MemoryStore:
         return payload
 
     async def put(self, sid: str, payload: bytes, ttl: int) -> None:
+        self._sweep()
         self._items[sid] = (payload, monotonic() + ttl)
+
+    def _sweep(self) -> None:
+        """Drop what has expired, on every write.
+
+        `get` removes only the row it was asked for, and a login whose user
+        never returns is never asked for again. A write is rare next to a read
+        (a login, a refresh), so a scan of the live rows is the cheap place.
+        """
+        now = monotonic()
+        self._items = {sid: entry for sid, entry in self._items.items() if entry[1] > now}
+        self._locks = {sid: held for sid, held in self._locks.items() if held > now}
 
     async def delete(self, sid: str) -> None:
         self._items.pop(sid, None)

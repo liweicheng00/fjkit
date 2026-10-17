@@ -587,7 +587,6 @@ async def test_an_expiring_token_with_no_way_to_renew_warns_once():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(strict=True, reason="RT-9")
 async def test_memory_store_forgets_sessions_nobody_reads_again():
     """A login whose user never returns (a closed browser, a script) leaves a
     row that only its own `get` would remove. Nothing reads it, so the process
