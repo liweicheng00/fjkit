@@ -4,6 +4,7 @@ no-build promise rests on.
 
 from __future__ import annotations
 
+import re
 import shutil
 
 import pytest
@@ -428,6 +429,78 @@ class TestMacroEject:
         assert "{% set badge = _fjkit.badge %}" not in text
         owned = STAMP.match(text.splitlines()[0])["macros"]
         assert sorted(e.split("=")[0] for e in owned.split(",")) == ["badge", "stat"]
+
+    def _edit_badge(self, tmp_path):
+        """Stand in for an app author: change the owned macro and add one of
+        their own below it."""
+        target = tmp_path / "ui" / "data.html"
+        text = target.read_text()
+        assert text.count('<span class="badge') == 1
+        text = text.replace('<span class="badge', '<span data-my-edit="1" class="badge')
+        text += "\n{% macro my_helper() %}helper{% endmacro %}\n"
+        target.write_text(text)
+        return target
+
+    @pytest.mark.xfail(strict=True, reason="CLI-1")
+    def test_a_second_eject_keeps_your_edits(self, tmp_path):
+        """The file exists to be edited. Taking a second macro adds it and
+        leaves everything the author wrote, inside the owned macro and beside
+        it, exactly as it was."""
+        self._eject(tmp_path, "badge")
+        self._edit_badge(tmp_path)
+
+        text = (self._eject(tmp_path, "stat") / "ui" / "data.html").read_text()
+
+        assert 'data-my-edit="1"' in text
+        assert "{% macro my_helper() %}" in text
+        assert "{% macro stat(" in text
+        assert "{% set stat = _fjkit.stat %}" not in text
+        html = self._render(
+            tmp_path,
+            '{% from "ui/data.html" import badge, stat, my_helper %}'
+            '{{ badge("Done") }}{{ stat("Revenue", "42", tone="success") }}{{ my_helper() }}',
+        )
+        assert 'data-my-edit="1"' in html
+        assert "42" in html and "helper" in html
+
+    @pytest.mark.xfail(strict=True, reason="CLI-1")
+    def test_a_second_eject_keeps_the_digests_you_took(self, tmp_path):
+        """The stamp records the kit's `badge` as it was when taken. Writing the
+        kit's current digest over it would hide that the kit has moved since."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        target.write_text(re.sub(r"badge=[0-9a-f]+", "badge=000000000000", target.read_text(), count=1))
+        assert [e.moved for e in stale_ejects(tmp_path)] == [("badge",)]
+
+        self._eject(tmp_path, "stat")
+
+        assert [e.moved for e in stale_ejects(tmp_path)] == [("badge",)]
+        owned = STAMP.match(target.read_text().splitlines()[0])["macros"]
+        assert sorted(e.split("=")[0] for e in owned.split(",")) == ["badge", "stat"]
+
+    @pytest.mark.xfail(strict=True, reason="CLI-1")
+    def test_a_second_eject_refuses_when_the_re_export_line_is_gone(self, tmp_path, capsys):
+        """Without the `{% set stat = _fjkit.stat %}` line there is no place
+        fjkit knows is its own to put the macro, so it leaves the file alone."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        before = target.read_text().replace("{% set stat = _fjkit.stat %}\n", "")
+        target.write_text(before)
+
+        self._eject(tmp_path, "stat", expect=1)
+
+        assert target.read_text() == before
+        assert "{% set stat = _fjkit.stat %}" in capsys.readouterr().err
+
+    @pytest.mark.xfail(strict=True, reason="CLI-1")
+    def test_a_second_eject_refuses_content_it_cannot_take_apart(self, tmp_path):
+        """A top-level `{% if %}` is not a macro or a statement. fjkit cannot
+        tell what it owns in such a file, so it refuses rather than guess."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        before = target.read_text() + "\n{% if true %}<p>mine</p>{% endif %}\n"
+        target.write_text(before)
+
+        self._eject(tmp_path, "stat", expect=1)
+
+        assert target.read_text() == before
 
     def test_taking_a_macro_you_already_own_is_refused(self, tmp_path):
         self._eject(tmp_path, "badge")
