@@ -112,10 +112,7 @@ def test_a_tampered_message_is_dropped():
 
 @pytest.mark.parametrize(
     "value",
-    [
-        "café.x",
-        pytest.param("abc.café", marks=pytest.mark.xfail(strict=True, reason="RT-1")),
-    ],
+    ["café.x", "abc.café"],
     ids=["non-ascii-body", "non-ascii-signature"],
 )
 def test_a_non_ascii_cookie_is_dropped_not_an_error(value):
