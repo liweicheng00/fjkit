@@ -196,6 +196,45 @@
   is allowed — otherwise "I cleared it" and "I never opened it" are both a 422.
 #}
 {#
+  _options(options, values) and _hidden_value(…) — the halves `select_menu`
+  and `combobox` share. Private, like `_message`: each is only correct inside
+  one of those two listboxes.
+#}
+{% macro _options(options, values) -%}
+  {%- for value, option_label in options %}
+    <div role="option" data-value="{{ value }}"
+         {%- if value in values %} aria-selected="true"{% endif %}>{{ option_label }}</div>
+  {%- endfor %}
+{%- endmacro %}
+
+{#
+  Pre-filled rather than empty: upstream's example ships `value=""` and lets
+  its JS write the value on first interaction, so a form submitted without
+  touching the control posts nothing — and the round trip that re-renders the
+  partial would lose the selection it was given.
+
+  Single-quoted in the multiple case because `tojson` escapes `<`, `>`, `&` and
+  `'` but not `"`, and `["a","b"]` inside a double-quoted attribute is a
+  truncated value rather than an error.
+
+  `aria-describedby` on the hidden input as well as the visible control, and it
+  is not for a screen reader — a hidden input is not exposed to one. It is for
+  `js/errors.js`, which finds the control a 422 names by `[name]`, and that is
+  this input. Pointed at the reserved paragraph, a rejected `continents` draws
+  red text under the field; unpointed, the script builds its own paragraph and
+  inserts it inside the widget's box.
+#}
+{% macro _hidden_value(name, field_id, multiple, values, selected, described) -%}
+  {%- if multiple %}
+  <input type="hidden" name="{{ name }}" data-fjkit-multi value='{{ values | tojson }}'
+         {%- if described %} aria-describedby="{{ field_id }}-hint"{% endif %}>
+  {%- else %}
+  <input type="hidden" name="{{ name }}" value="{{ selected if selected is not none else "" }}"
+         {%- if described %} aria-describedby="{{ field_id }}-hint"{% endif %}>
+  {%- endif %}
+{%- endmacro %}
+
+{#
   select_menu(name, options, …) — the scripted listbox.
 
   Prefer `select_field`. A native `<select>` is keyboard- and screen-reader-
@@ -283,37 +322,10 @@
            {%- if multiple %} aria-multiselectable="true"{% endif %}
            {%- if required %} aria-required="true"{% endif %}
            aria-labelledby="{{ field_id }}-trigger">
-        {%- for value, option_label in options %}
-          <div role="option" data-value="{{ value }}"
-               {%- if value in values %} aria-selected="true"{% endif %}>{{ option_label }}</div>
-        {%- endfor %}
+        {{- _options(options, values) }}
       </div>
     </div>
-    {#
-      Pre-filled rather than empty: upstream's example ships `value=""` and
-      lets its JS write the value on first interaction, so a form submitted
-      without touching the select posts nothing — and the round trip that
-      re-renders this partial would lose the selection it was given.
-
-      Single-quoted in the multiple case because `tojson` escapes `<`, `>`, `&`
-      and `'` but not `"`, and `["a","b"]` inside a double-quoted attribute is
-      a truncated value rather than an error.
-    #}
-    {#
-      `aria-describedby` on the hidden input as well as the trigger, and it is
-      not for a screen reader — a hidden input is not exposed to one. It is for
-      `js/errors.js`, which finds the control a 422 names by `[name]`, and that
-      is this input. Pointed at the reserved paragraph, a rejected `continents`
-      draws red text under the field; unpointed, the script builds its own
-      paragraph and inserts it here, inside the `.select` box.
-    #}
-    {%- if multiple %}
-    <input type="hidden" name="{{ name }}" data-fjkit-multi value='{{ values | tojson }}'
-           {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}>
-    {%- else %}
-    <input type="hidden" name="{{ name }}" value="{{ selected if selected is not none else "" }}"
-           {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}>
-    {%- endif %}
+    {{ _hidden_value(name, field_id, multiple, values, selected, as_field) }}
   </div>
   {%- if as_field %}
   {{ _message(field_id, hint, error) }}
@@ -444,20 +456,10 @@
     <div id="{{ field_id }}-popover" data-popover aria-hidden="true">
       <div role="listbox" id="{{ field_id }}-listbox" aria-orientation="vertical" data-empty="{{ empty }}"
            {%- if multiple %} aria-multiselectable="true"{% endif %}>
-        {%- for value, option_label in options %}
-          <div role="option" data-value="{{ value }}"
-               {%- if value in values %} aria-selected="true"{% endif %}>{{ option_label }}</div>
-        {%- endfor %}
+        {{- _options(options, values) }}
       </div>
     </div>
-    {# The hidden input carries the 422, same as in `select_menu`. #}
-    {%- if multiple %}
-    <input type="hidden" name="{{ name }}" data-fjkit-multi value='{{ values | tojson }}'
-           {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}>
-    {%- else %}
-    <input type="hidden" name="{{ name }}" value="{{ selected if selected is not none else "" }}"
-           {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}>
-    {%- endif %}
+    {{ _hidden_value(name, field_id, multiple, values, selected, as_field) }}
   </div>
   {%- if as_field %}
   {{ _message(field_id, hint, error) }}
