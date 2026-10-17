@@ -41,7 +41,7 @@ from sqlalchemy.orm import Session
 
 from fjkit_admin.introspect import ColumnInfo, inspect_model
 from fjkit_admin.options import ModelAdmin, relation_options_query
-from fjkit_admin.queries import FILTER_PREFIX, ListParams, count_rows, run_list, scoped_select
+from fjkit_admin.queries import FILTER_PREFIX, ListParams, coerce_filter, count_rows, run_list, scoped_select
 from fjkit_admin.schema import apply, enum_options, sqlmodel_errors
 
 __all__ = ["REGION", "TEMPLATE_DIR", "AdminPlugin"]
@@ -342,13 +342,9 @@ class AdminPlugin:
         self, request: Request, session: Session, view: ModelAdmin, raw: str, *, missing_ok: bool = False
     ) -> Any:
         """The row `raw` names, or 404. A row `get_queryset` hides does not exist here."""
-        py = view.info.pk.python_type or str
-        try:
-            pk = py(raw)
-        except (TypeError, ValueError):
-            pk = None
+        ok, pk = coerce_filter(view.info.pk, raw)
         obj = None
-        if pk is not None:
+        if ok:
             stmt = scoped_select(view, request).where(getattr(view.model, view.info.pk.key) == pk)
             obj = session.scalars(stmt).unique().one_or_none()
         if obj is None and not missing_ok:

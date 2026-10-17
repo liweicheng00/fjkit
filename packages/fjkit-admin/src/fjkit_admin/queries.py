@@ -97,11 +97,17 @@ def parse_page_size(view: ModelAdmin, value: int | None) -> int:
     return value if value in view.sizes() else view.list_per_page
 
 
+#: SQL's widest integer column is a signed 64-bit BIGINT, so an int outside it
+#: names no row and the driver would refuse to bind it.
+_INT_RANGE = range(-(2**63), 2**63)
+
+
 def coerce_filter(column: ColumnInfo, raw: str) -> tuple[bool, Any]:
     """Turn the query-string text into a value the column compares to.
 
     Returns `(ok, value)`; a value the column cannot take is `(False, None)`
     and the filter is ignored, for the same reason an unknown sort key is.
+    A primary key from the URL goes through here too.
     """
     if column.kind == "boolean":
         if raw in ("1", "true", "yes"):
@@ -118,9 +124,12 @@ def coerce_filter(column: ColumnInfo, raw: str) -> tuple[bool, Any]:
     if py is None or py is str:
         return True, raw
     try:
-        return True, py(raw)
+        value = py(raw)
     except (TypeError, ValueError):
         return False, None
+    if isinstance(value, int) and value not in _INT_RANGE:
+        return False, None
+    return True, value
 
 
 def scoped_select(view: ModelAdmin, request: Request) -> Select:

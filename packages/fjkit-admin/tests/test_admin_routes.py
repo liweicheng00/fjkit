@@ -197,7 +197,6 @@ def test_missing_rows_are_404(client: TestClient):
     assert client.get("/admin/task/abc").status_code == 404
 
 
-@pytest.mark.xfail(strict=True, reason="ADMIN-4")
 def test_a_key_the_column_cannot_hold_is_not_a_row(stack):
     client = TestClient(stack[0], raise_server_exceptions=False)
     huge = "99999999999999999999999"
