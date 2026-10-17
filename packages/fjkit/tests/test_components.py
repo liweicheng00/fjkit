@@ -1434,7 +1434,7 @@ class TestLazyTabPanel:
             f'{TABS}{{% call tab_panel("p", on=["task-selected"], include="[name=task_id]") %}}S{{% endcall %}}'
         )
         assert "hx-" not in html
-        assert html.strip() == '<div id="p" role="tabpanel">S</div>'
+        assert html.strip() == '<div id="p" role="tabpanel" aria-labelledby="p-tab">S</div>'
 
     def test_pass_through_attributes_still_reach_the_panel(self, render):
         html = render(f'{TABS}{{% call tab_panel("p", lazy="/x", aria_label="Detail") %}}S{{% endcall %}}')
@@ -2615,7 +2615,6 @@ class TestTableEmptyCase:
 
 
 class TestTabPanelNames:
-    @pytest.mark.xfail(strict=True, reason="MAC-8")
     def test_each_panel_is_labelled_by_the_tab_that_controls_it(self, render):
         html = render(
             f'{TABS}{{% call tabs([{{"id": "a", "label": "A"}}, {{"id": "b", "label": "B"}}]) %}}'
