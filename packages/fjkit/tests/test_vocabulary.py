@@ -102,6 +102,27 @@ class TestCheck:
         (tmp_path / "page.html").write_text('{# fine #}\n<div class="bg-green-600">x</div>')
         assert {v.token for v in check_templates(tmp_path)} == {"bg-green-600"}
 
+    @pytest.mark.xfail(strict=True, reason="CLI-3")
+    @pytest.mark.parametrize(
+        ("style", "tokens"),
+        [
+            ("color: hwb(0 0% 0%)", ["hwb("]),
+            ("color: color(display-p3 1 0 0)", ["color("]),
+            ("background: color-mix(in srgb, red 50%, blue)", ["red", "blue"]),
+            ("background: crimson", ["crimson"]),
+            ("border: 1px solid Red", ["Red"]),
+        ],
+    )
+    def test_a_colour_in_a_style_attribute_is_caught(self, tmp_path, style, tokens):
+        (tmp_path / "page.html").write_text(f'<p style="{style}">x</p>')
+        assert [v.token for v in check_templates(tmp_path)] == tokens
+
+    def test_keywords_that_are_not_hues_pass_in_a_style_attribute(self, tmp_path):
+        (tmp_path / "page.html").write_text(
+            '<p style="color: currentColor; background: color-mix(in srgb, var(--primary) 50%, transparent)">x</p>'
+        )
+        assert check_templates(tmp_path) == []
+
 
 class TestLoaderOverride:
     def test_app_templates_shadow_the_kit(self, tmp_path):
@@ -268,6 +289,29 @@ class TestEjectStamp:
         target.write_text(target.read_text() + '\n<div class="bg-green-600 flex gap-4">x</div>\n')
 
         assert [v.token for v in check_templates(tmp_path)] == ["bg-green-600"]
+
+    @pytest.mark.xfail(strict=True, reason="CLI-3")
+    @pytest.mark.parametrize(
+        "hue",
+        [
+            "border-t-red-500",
+            "border-x-emerald-300",
+            "ring-offset-blue-500",
+            "placeholder-gray-400",
+            "from-black",
+            "outline-white",
+            "divide-white",
+            "shadow-black",
+            "decoration-white",
+            "accent-black",
+        ],
+    )
+    def test_every_utility_form_of_a_hue_is_caught_in_an_ejected_file(self, tmp_path, hue):
+        """In an ejected file the colour rule is the only guard, so it has to
+        know every prefix and side a Tailwind colour utility can take."""
+        target = self._eject(tmp_path)
+        target.write_text(target.read_text() + f'\n<div class="{hue}">x</div>\n')
+        assert [v.token for v in check_templates(tmp_path)] == [hue]
 
     def test_an_unstamped_copy_gets_no_amnesty(self, tmp_path):
         """The stamp is what says "the kit wrote this". A macro pasted in by
