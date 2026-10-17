@@ -254,7 +254,6 @@ def test_permissions_gate_both_the_button_and_the_route():
     assert 'hx-delete="/admin/task/1"' not in client.get("/admin/task/1").text
 
 
-@pytest.mark.xfail(strict=True, reason="ADMIN-1")
 def test_get_queryset_scopes_every_route_and_the_count():
     class CoreTasks(TaskAdmin):
         key = "task"

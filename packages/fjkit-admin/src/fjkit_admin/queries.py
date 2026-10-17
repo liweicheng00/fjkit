@@ -14,13 +14,22 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import Request
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import Select, String, cast, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from fjkit_admin.introspect import ColumnInfo
 from fjkit_admin.options import ModelAdmin
 
-__all__ = ["ListParams", "ListResult", "coerce_filter", "parse_page_size", "parse_sort", "run_list"]
+__all__ = [
+    "ListParams",
+    "ListResult",
+    "coerce_filter",
+    "count_rows",
+    "parse_page_size",
+    "parse_sort",
+    "run_list",
+    "scoped_select",
+]
 
 #: Query-string prefix for a filter on column `status`: `?f_status=done`.
 FILTER_PREFIX = "f_"
@@ -107,11 +116,21 @@ def coerce_filter(column: ColumnInfo, raw: str) -> tuple[bool, Any]:
         return False, None
 
 
+def scoped_select(view: ModelAdmin, request: Request) -> Select:
+    """`select(Model)` through `get_queryset`: every read of the model starts
+    here, so a scope the hook adds covers one row and the count, not only the list."""
+    return view.get_queryset(request, select(view.model))
+
+
+def count_rows(session: Session, stmt: Select) -> int:
+    return session.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
+
+
 def run_list(view: ModelAdmin, request: Request, session: Session, params: ListParams) -> ListResult:
     """Execute the list for one view and one page."""
     model = view.model
     info = view.info
-    stmt = view.get_queryset(request, select(model))
+    stmt = scoped_select(view, request)
 
     if params.q and view.search_fields:
         clauses = []
@@ -142,7 +161,7 @@ def run_list(view: ModelAdmin, request: Request, session: Session, params: ListP
         if relation is not None:
             stmt = stmt.options(selectinload(getattr(model, name)))
 
-    total = session.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
+    total = count_rows(session, stmt)
 
     sort_key, descending = parse_sort(view, params.o)
     order_attr = getattr(model, sort_key)

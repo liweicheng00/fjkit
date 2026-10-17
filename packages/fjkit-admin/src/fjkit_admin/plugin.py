@@ -37,12 +37,11 @@ from fastapi.responses import HTMLResponse
 from fjkit import htmx, messages
 from fjkit.plugins import AppSetup, EnvSetup
 from fjkit.templating import get_templates
-from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from fjkit_admin.introspect import ColumnInfo, inspect_model
 from fjkit_admin.options import ModelAdmin, relation_options_query
-from fjkit_admin.queries import FILTER_PREFIX, ListParams, run_list
+from fjkit_admin.queries import FILTER_PREFIX, ListParams, count_rows, run_list, scoped_select
 from fjkit_admin.schema import apply, enum_options, sqlmodel_errors
 
 __all__ = ["REGION", "TEMPLATE_DIR", "AdminPlugin"]
@@ -192,7 +191,7 @@ class AdminPlugin:
             for view in self.views.values():
                 if not view.has_view_permission(request):
                     continue
-                count = session.scalar(select(func.count()).select_from(view.model)) or 0
+                count = count_rows(session, scoped_select(view, request))
                 models.append(
                     {
                         "label": view.verbose_name_plural,
@@ -232,7 +231,7 @@ class AdminPlugin:
     def _change_handler(self, view: ModelAdmin) -> Callable[..., HTMLResponse]:
         def change(request: Request, pk: str) -> HTMLResponse:
             with self.session_factory() as session:
-                obj = self._load(session, view, pk)
+                obj = self._load(request, session, view, pk)
                 self._require(view.has_view_permission(request, obj))
                 context = self._form_context(request, session, view, obj)
             return self._render(request, "admin/_form.html", context)
@@ -270,7 +269,7 @@ class AdminPlugin:
         def update(request: Request, pk: str, payload: Any) -> HTMLResponse:
             data = payload.model_dump()
             with self.session_factory() as session:
-                obj = self._load(session, view, pk)
+                obj = self._load(request, session, view, pk)
                 self._require(view.has_change_permission(request, obj))
                 errors = sqlmodel_errors(view.model, obj, data, view.info)
                 if errors:
@@ -291,7 +290,7 @@ class AdminPlugin:
         def delete(request: Request, pk: str) -> HTMLResponse:
             params = ListParams.from_request(request, view)
             with self.session_factory() as session:
-                obj = self._load(session, view, pk)
+                obj = self._load(request, session, view, pk)
                 self._require(view.has_delete_permission(request, obj))
                 label = view.label_for(obj)
                 view.delete_model(request, session, obj)
@@ -317,7 +316,7 @@ class AdminPlugin:
             with self.session_factory() as session:
                 objs = [
                     obj
-                    for obj in (self._load(session, view, value, missing_ok=True) for value in raw)
+                    for obj in (self._load(request, session, view, value, missing_ok=True) for value in raw)
                     if obj is not None
                 ]
                 if not objs:
@@ -338,13 +337,19 @@ class AdminPlugin:
         if not allowed:
             raise HTTPException(status_code=403, detail="Not allowed.")
 
-    def _load(self, session: Session, view: ModelAdmin, raw: str, *, missing_ok: bool = False) -> Any:
+    def _load(
+        self, request: Request, session: Session, view: ModelAdmin, raw: str, *, missing_ok: bool = False
+    ) -> Any:
+        """The row `raw` names, or 404. A row `get_queryset` hides does not exist here."""
         py = view.info.pk.python_type or str
         try:
             pk = py(raw)
         except (TypeError, ValueError):
             pk = None
-        obj = session.get(view.model, pk) if pk is not None else None
+        obj = None
+        if pk is not None:
+            stmt = scoped_select(view, request).where(getattr(view.model, view.info.pk.key) == pk)
+            obj = session.scalars(stmt).unique().one_or_none()
         if obj is None and not missing_ok:
             raise HTTPException(status_code=404, detail=f"No {view.verbose_name} {raw!r}.")
         return obj
