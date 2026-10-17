@@ -240,6 +240,32 @@ def test_bulk_actions_run_over_the_ticked_rows(client: TestClient, db: sessionma
         assert session.get(Task, 2) is None
 
 
+@pytest.mark.xfail(strict=True, reason="ADMIN-6")
+def test_an_action_runs_in_the_threadpool_like_every_other_handler():
+    import asyncio
+
+    from fjkit_admin import action
+
+    seen = {}
+
+    class Probing(TaskAdmin):
+        key = "task"
+        actions = ("probe",)
+
+        @action("Probe")
+        def probe(self, request: Request, session, tasks) -> None:
+            try:
+                asyncio.get_running_loop()
+                seen["on_loop"] = True
+            except RuntimeError:
+                seen["on_loop"] = False
+
+    app, _, _ = make_app(Probing)
+    response = TestClient(app).post("/admin/task/action/probe", content="selected=1", headers=FORM)
+    assert response.status_code == 200
+    assert seen == {"on_loop": False}
+
+
 def test_an_empty_selection_is_a_warning_not_an_error(client: TestClient):
     response = client.post(
         "/admin/task/action/mark_done", content="", headers={**HX, "Content-Type": "application/x-www-form-urlencoded"}
