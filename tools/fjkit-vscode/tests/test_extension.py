@@ -39,7 +39,6 @@ def test_the_client_drives_the_server_end_to_end() -> None:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-@pytest.mark.xfail(strict=True, reason="LSP-6")
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is not on the PATH")
 def test_a_file_created_or_deleted_on_disk_reaches_the_server() -> None:
     """A checkout, a rename in the explorer, a file another tool wrote: no save follows any of them."""
