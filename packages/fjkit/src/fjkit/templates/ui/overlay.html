@@ -96,8 +96,8 @@
   dropdown_menu(id, label, …) — a menu of commands.
 
   The panel holds a `role="menu"` labelled by the trigger, and the items are
-  `menu_item` / `menu_group` / `menu_separator` below. Four ids have to line
-  up for that: trigger, popover, menu, and the group headings. All derived.
+  `menu_item` / `menu_group` / `menu_separator` below. Three ids have to line
+  up for that: trigger, popover and menu. All derived.
 
   A menu is not a `<select>`. If the items set a value rather than run a
   command, `select_menu` or `select_field` is the component — this one leaves
@@ -148,14 +148,20 @@
 {#
   menu_group(heading) — a labelled run of items.
 
-  The heading is a `role="heading"` referenced by the group's
-  `aria-labelledby`, so it is announced as the group's name rather than read
-  as a menu item nobody can activate.
+  The heading is a `role="heading"`, and the group is named after it, so it is
+  announced as the group's name rather than read as a menu item nobody can
+  activate.
+
+  The name is `aria-label`, not `aria-labelledby` pointing at an id made from
+  the heading, for the reason `sidebar_group` gives: a menu rendered once per
+  table row repeats every heading, the ids collide, and a colliding reference
+  resolves to the first row's heading. Pass `id` to get `aria-labelledby`
+  instead; that id is then yours to keep unique.
 #}
 {% macro menu_group(heading=none, id=none) -%}
-  {%- set heading_id = id or ("h-" ~ (heading | replace(" ", "-") | lower) if heading else none) -%}
-  <div role="group"{% if heading %} aria-labelledby="{{ heading_id }}"{% endif %}>
-    {%- if heading %}<div role="heading" id="{{ heading_id }}">{{ heading }}</div>{% endif %}
+  <div role="group"
+    {%- if heading and id %} aria-labelledby="{{ id }}"{% elif heading %} aria-label="{{ heading }}"{% endif %}>
+    {%- if heading %}<div role="heading"{% if id %} id="{{ id }}"{% endif %}>{{ heading }}</div>{% endif %}
     {{- caller() -}}
   </div>
 {%- endmacro %}
@@ -634,12 +640,12 @@
 
   A `<span role="heading">`, not the `<div>` `menu_group` uses: that is what
   upstream's command markup does, and its CSS selects on it. Otherwise the
-  same shape.
+  same shape, naming included.
 #}
 {% macro command_group(heading=none, id=none) -%}
-  {%- set heading_id = id or ("ch-" ~ (heading | replace(" ", "-") | lower) if heading else none) -%}
-  <div role="group"{% if heading %} aria-labelledby="{{ heading_id }}"{% endif %}>
-    {%- if heading %}<span role="heading" id="{{ heading_id }}">{{ heading }}</span>{% endif %}
+  <div role="group"
+    {%- if heading and id %} aria-labelledby="{{ id }}"{% elif heading %} aria-label="{{ heading }}"{% endif %}>
+    {%- if heading %}<span role="heading"{% if id %} id="{{ id }}"{% endif %}>{{ heading }}</span>{% endif %}
     {{- caller() -}}
   </div>
 {%- endmacro %}

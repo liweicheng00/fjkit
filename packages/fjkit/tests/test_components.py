@@ -2074,8 +2074,12 @@ class TestMenuItem:
 
     def test_a_group_heading_labels_the_group(self, render):
         html = render(f'{OVERLAY}{{% call menu_group("My Account") %}}x{{% endcall %}}')
-        assert 'aria-labelledby="h-my-account"' in html
-        assert 'role="heading" id="h-my-account"' in html
+        assert '<div role="group" aria-label="My Account">' in html
+        assert '<div role="heading">My Account</div>' in html
+
+    def test_an_explicit_id_labels_the_group_by_reference(self, render):
+        html = render(f'{OVERLAY}{{% call menu_group("My Account", id="acct") %}}x{{% endcall %}}')
+        assert 'aria-labelledby="acct"' in html and 'role="heading" id="acct"' in html
 
     def test_a_separator_is_announced_as_one(self, render):
         assert '<hr role="separator">' in render(f'{OVERLAY}{{{{ menu_separator() }}}}')
@@ -2586,7 +2590,6 @@ class TestRepeatedGroupHeadings:
     MENU = '{% call dropdown_menu(ID, "Row") %}{% call menu_group("Actions") %}{{ menu_item("Edit") }}{% endcall %}{% endcall %}'
     COMMAND = '{% call command(ID) %}{% call command_group("Suggestions") %}{{ command_item("Open") }}{% endcall %}{% endcall %}'
 
-    @pytest.mark.xfail(strict=True, reason="MAC-6")
     @pytest.mark.parametrize("block", [MENU, COMMAND], ids=["menu_group", "command_group"])
     def test_two_groups_with_one_heading_share_no_id_and_keep_a_name(self, render, block):
         html = render(OVERLAY + block.replace("ID", '"m1"') + block.replace("ID", '"m2"'))
