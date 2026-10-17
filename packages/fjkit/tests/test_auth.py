@@ -122,6 +122,29 @@ def test_a_tampered_cookie_is_anonymous_not_an_error():
     assert client.get("/who").text == "anonymous"
 
 
+@pytest.mark.parametrize(
+    "value",
+    [
+        "café.x",
+        pytest.param("abc.café", marks=pytest.mark.xfail(strict=True, reason="RT-1")),
+    ],
+    ids=["non-ascii-body", "non-ascii-signature"],
+)
+def test_a_non_ascii_cookie_is_anonymous_not_an_error(value):
+    """A cookie value a browser sends as UTF-8 reaches the verifier as non-ASCII
+    text. Nothing this plugin signed looks like that, so it is a bad cookie:
+    anonymous, like a tampered one, not a 500 on every page until the user
+    clears their cookies. A sibling subdomain can plant such a cookie, which
+    would otherwise lock the browser out of the whole app."""
+    auth = make_auth()
+    client = make_app(auth)
+
+    response = client.get("/who", headers=[(b"cookie", f"{auth.cookie.name}={value}".encode())])
+
+    assert response.status_code == 200
+    assert response.text == "anonymous"
+
+
 def test_logout_clears_both_sides():
     auth = make_auth(store=MemoryStore())
     client = make_app(auth)

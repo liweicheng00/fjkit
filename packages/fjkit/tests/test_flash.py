@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi import APIRouter, FastAPI, Response
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, FlashMessage, FlashPlugin, mount_fjkit, render
@@ -107,6 +108,25 @@ def test_a_tampered_message_is_dropped():
     client.cookies.set("fjkit_flash", f"{body}x.{signature}")
 
     assert client.get("/page").text == ""
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "café.x",
+        pytest.param("abc.café", marks=pytest.mark.xfail(strict=True, reason="RT-1")),
+    ],
+    ids=["non-ascii-body", "non-ascii-signature"],
+)
+def test_a_non_ascii_cookie_is_dropped_not_an_error(value):
+    """The middleware runs on every route, so a cookie that makes the verifier
+    raise takes the whole app down for that browser."""
+    _, client = make_app()
+
+    response = client.get("/page", headers=[(b"cookie", f"fjkit_flash={value}".encode())])
+
+    assert response.status_code == 200
+    assert response.text == ""
 
 
 def test_a_cookie_signed_with_another_secret_is_dropped():
