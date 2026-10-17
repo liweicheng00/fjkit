@@ -606,7 +606,9 @@ def _curl(
     screenshot and every pasted bug report, and the point of this plugin is that
     the cookie is not readable from the page.
     """
-    url = f"{request.base_url.scheme}://{request.base_url.netloc}{path}"
+    # `base_url` carries the `root_path` a proxy put in front of the app, which
+    # the in-process call honours and a command typed into a terminal must too.
+    url = f"{str(request.base_url).rstrip('/')}{path}"
     if query:
         url += "?" + "&".join(f"{quote(k, safe='')}={quote(v, safe='')}" for k, v in query)
 
