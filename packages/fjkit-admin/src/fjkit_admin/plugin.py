@@ -15,10 +15,10 @@ search, a saved form and a bulk action all replace it. The list partial and
 the form partial both render into that id, so a saved form comes back as the
 list without a second target anywhere.
 
-Handlers that render are `def`, so Starlette runs them in the threadpool.
-The one `async def` reads a request body htmx posted from a checkbox column
-and does it with `parse_qs`, which keeps `python-multipart` off the
-dependency list.
+Every handler is a `def`, so Starlette runs it in the threadpool. The one
+`async def` is a dependency that reads the body htmx posts from a checkbox
+column, with `parse_qs`, which keeps `python-multipart` off the dependency
+list.
 """
 
 from __future__ import annotations
@@ -28,10 +28,10 @@ import decimal
 import enum
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import parse_qs, urlencode
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse
 from fjkit import htmx, messages
@@ -304,20 +304,16 @@ class AdminPlugin:
         return delete
 
     def _action_handler(self, view: ModelAdmin) -> Callable[..., Any]:
-        async def run_action(request: Request, action: str) -> HTMLResponse:
+        def run_action(request: Request, action: str, selected: Selected) -> HTMLResponse:
             self._require(view.has_view_permission(request))
             spec = next((s for s in view.allowed_actions(request) if s["name"] == action), None)
             if spec is None:
                 raise HTTPException(status_code=404, detail=f"No action {action!r}.")
-            # `hx-include="[data-fjkit-select]"` posts the ticked boxes as a
-            # urlencoded body: `selected=3&selected=7`.
-            body = (await request.body()).decode()
-            raw = parse_qs(body).get("selected", [])
             params = ListParams.from_request(request, view)
             with self.session_factory() as session:
                 objs = [
                     obj
-                    for obj in (self._load(request, session, view, value, missing_ok=True) for value in raw)
+                    for obj in (self._load(request, session, view, value, missing_ok=True) for value in selected)
                     if obj is not None
                 ]
                 if not objs:
@@ -576,6 +572,17 @@ class AdminPlugin:
             },
             "fields": fields,
         }
+
+
+async def _selected(request: Request) -> list[str]:
+    """The ticked boxes `hx-include="[data-fjkit-select]"` posts as a
+    urlencoded body, `selected=3&selected=7`. Read here, the one place that
+    awaits, so the handler stays a `def`; parsed with `parse_qs`, which keeps
+    `python-multipart` off the dependency list."""
+    return parse_qs((await request.body()).decode()).get("selected", [])
+
+
+Selected = Annotated[list[str], Depends(_selected)]
 
 
 def _scalar_default(column: ColumnInfo) -> Any:

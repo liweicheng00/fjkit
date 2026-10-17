@@ -240,7 +240,6 @@ def test_bulk_actions_run_over_the_ticked_rows(client: TestClient, db: sessionma
         assert session.get(Task, 2) is None
 
 
-@pytest.mark.xfail(strict=True, reason="ADMIN-6")
 def test_an_action_runs_in_the_threadpool_like_every_other_handler():
     import asyncio
 
