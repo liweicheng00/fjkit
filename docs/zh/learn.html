@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=cc818caf9ea5">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=50b2be113772">
   <link rel="stylesheet" href="../assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -451,13 +451,13 @@ fjkit
     <div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="part-page"
+        <button type="button" role="tab" id="part-page-tab" aria-controls="part-page"
                 aria-selected="true">tasks/page.html</button>
-        <button type="button" role="tab" aria-controls="part-board"
+        <button type="button" role="tab" id="part-board-tab" aria-controls="part-board"
                 aria-selected="false">tasks/_board.html</button>
-        <button type="button" role="tab" aria-controls="part-row"
+        <button type="button" role="tab" id="part-row-tab" aria-controls="part-row"
                 aria-selected="false">tasks/macros.html</button>
-    </nav><div id="part-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/page.html" data-lang="jinja">{# tasks/page.html —— 回應整頁的 GET #}
+    </nav><div id="part-page" role="tabpanel" aria-labelledby="part-page-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/page.html" data-lang="jinja">{# tasks/page.html —— 回應整頁的 GET #}
 {% extends &#34;base.html&#34; %}
 {% from &#34;ui/layout.html&#34; import page_header %}
 
@@ -468,7 +468,7 @@ fjkit
   {% include &#34;tasks/_board.html&#34; %}
 {% endblock %}</pre>
 
-<footer>extends 外殼、寫一個標題，然後 include partial。關於板子的事，沒有第二份描述。</footer></div><div id="part-board" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/_board.html" data-lang="jinja">{# tasks/_board.html —— 整塊板子：新增表單、篩選列、統計卡與每一列 #}
+<footer>extends 外殼、寫一個標題，然後 include partial。關於板子的事，沒有第二份描述。</footer></div><div id="part-board" role="tabpanel" aria-labelledby="part-board-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/_board.html" data-lang="jinja">{# tasks/_board.html —— 整塊板子：新增表單、篩選列、統計卡與每一列 #}
 {% from &#34;ui/button.html&#34; import button, button_group %}
 {% from &#34;ui/table.html&#34; import table %}
 {% from &#34;tasks/macros.html&#34; import task_row, TASK_COLUMNS %}
@@ -494,7 +494,7 @@ fjkit
 
 &lt;/div&gt;</pre>
 
-<footer>沒有 extends、沒有 doctype，所以它單獨渲染得起來——htmx 端點才能直接回它。</footer></div><div id="part-row" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/macros.html" data-lang="jinja">{# tasks/macros.html —— 一列，以及從它送出的 htmx #}
+<footer>沒有 extends、沒有 doctype，所以它單獨渲染得起來——htmx 端點才能直接回它。</footer></div><div id="part-row" role="tabpanel" aria-labelledby="part-row-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/macros.html" data-lang="jinja">{# tasks/macros.html —— 一列，以及從它送出的 htmx #}
 {% macro task_row(request, task, filter_query=&#34;&#34;) %}
   &lt;tr&gt;
     {{ cell(task.title, tone=&#34;strong&#34;) }}
@@ -596,11 +596,11 @@ fjkit
     <div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="oob-call"
+        <button type="button" role="tab" id="oob-call-tab" aria-controls="oob-call"
                 aria-selected="true">macro 呼叫</button>
-        <button type="button" role="tab" aria-controls="oob-html"
+        <button type="button" role="tab" id="oob-html-tab" aria-controls="oob-html"
                 aria-selected="false">實際吐出的 HTML</button>
-    </nav><div id="oob-call" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="macro 呼叫" data-lang="jinja">{# search/page.html —— 讓這一切開始的那一個控制項 #}
+    </nav><div id="oob-call" role="tabpanel" aria-labelledby="oob-call-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="macro 呼叫" data-lang="jinja">{# search/page.html —— 讓這一切開始的那一個控制項 #}
 {% call form(action=url_for(request, &#34;search_page&#34;), method=&#34;get&#34;) %}
   {% call field_row(&#34;field-and-button&#34;) %}
     {{ text_field(&#34;q&#34;, label=&#34;Search tasks&#34;, value=query, type=&#34;search&#34;,
@@ -612,7 +612,7 @@ fjkit
   {% endcall %}
 {% endcall %}</pre>
 
-<footer>任何 fjkit macro 上的 hx_* 參數，都會變成它吐出的元素上的 hx-* 屬性。外面那層 form 帶著 action 與 method，所以關掉 JavaScript 這個查詢照樣送得出去。</footer></div><div id="oob-html" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="實際吐出的 HTML" data-lang="html">&lt;input class=&#34;input&#34; type=&#34;search&#34; name=&#34;q&#34; id=&#34;q&#34;
+<footer>任何 fjkit macro 上的 hx_* 參數，都會變成它吐出的元素上的 hx-* 屬性。外面那層 form 帶著 action 與 method，所以關掉 JavaScript 這個查詢照樣送得出去。</footer></div><div id="oob-html" role="tabpanel" aria-labelledby="oob-html-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="實際吐出的 HTML" data-lang="html">&lt;input class=&#34;input&#34; type=&#34;search&#34; name=&#34;q&#34; id=&#34;q&#34;
        hx-get=&#34;/search&#34;
        hx-trigger=&#34;input changed delay:250ms, search&#34;
        hx-target=&#34;#search-matches&#34;
@@ -1283,17 +1283,17 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
     <div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="invalid-route"
+        <button type="button" role="tab" id="invalid-route-tab" aria-controls="invalid-route"
                 aria-selected="true">router.py</button>
-        <button type="button" role="tab" aria-controls="invalid-form"
+        <button type="button" role="tab" id="invalid-form-tab" aria-controls="invalid-form"
                 aria-selected="false">_new_task.html</button>
-    </nav><div id="invalid-route" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.post(&#34;/tasks&#34;, name=&#34;tasks_create&#34;)
+    </nav><div id="invalid-route" role="tabpanel" aria-labelledby="invalid-route-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.post(&#34;/tasks&#34;, name=&#34;tasks_create&#34;)
 @render(&#34;tasks/_board.html&#34;)
 def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
     service.create(payload)
     return _board(service)</pre>
 
-<footer>模型就是簽名。它的欄位、限制與 OpenAPI schema 是同一份宣告，被退回時由 FastAPI 回報，放在 body 底下，帶著欄位的名字。</footer></div><div id="invalid-form" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="_new_task.html" data-lang="jinja">{% call form(action=url_for(request, &#34;tasks_create&#34;), target=&#34;#board&#34;,
+<footer>模型就是簽名。它的欄位、限制與 OpenAPI schema 是同一份宣告，被退回時由 FastAPI 回報，放在 body 底下，帶著欄位的名字。</footer></div><div id="invalid-form" role="tabpanel" aria-labelledby="invalid-form-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="_new_task.html" data-lang="jinja">{% call form(action=url_for(request, &#34;tasks_create&#34;), target=&#34;#board&#34;,
              reset_on_success=true, encoding=&#34;json&#34;, id=&#34;new-task&#34;) %}
   {{ text_field(&#34;title&#34;, label=&#34;New task&#34;, required=true) }}
   {{ select_field(&#34;priority&#34;, label=&#34;Priority&#34;, options=priority_options,
@@ -1480,7 +1480,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="../assets/data.js?v=3f0ea5007089"></script>
+  <script defer src="../assets/data.js?v=19365f694c82"></script>
   <script defer src="../assets/common.js?v=cfc24f854e78"></script>
   <script defer src="../assets/learn.js?v=1cd452b749b0"></script>
 </body>

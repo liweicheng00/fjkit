@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=cc818caf9ea5">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=50b2be113772">
   <link rel="stylesheet" href="../assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -172,11 +172,11 @@ fjkit
   </div><div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="Representation"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="button-jinja"
+        <button type="button" role="tab" id="button-jinja-tab" aria-controls="button-jinja"
                 aria-selected="true">你寫的</button>
-        <button type="button" role="tab" aria-controls="button-html"
+        <button type="button" role="tab" id="button-html-tab" aria-controls="button-html"
                 aria-selected="false">它產生的</button>
-    </nav><div id="button-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="button-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="button-caption"></footer>
+    </nav><div id="button-jinja" role="tabpanel" aria-labelledby="button-jinja-tab"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="button-html" role="tabpanel" aria-labelledby="button-html-tab"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="button-caption"></footer>
 
   </div>
 
@@ -213,11 +213,11 @@ fjkit
   </div><div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="Representation"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="data-jinja"
+        <button type="button" role="tab" id="data-jinja-tab" aria-controls="data-jinja"
                 aria-selected="true">你寫的</button>
-        <button type="button" role="tab" aria-controls="data-html"
+        <button type="button" role="tab" id="data-html-tab" aria-controls="data-html"
                 aria-selected="false">它產生的</button>
-    </nav><div id="data-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="data-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="data-caption"></footer>
+    </nav><div id="data-jinja" role="tabpanel" aria-labelledby="data-jinja-tab"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="data-html" role="tabpanel" aria-labelledby="data-html-tab"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="data-caption"></footer>
 
   </div>
 
@@ -454,11 +454,11 @@ fjkit
   </div><div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="Representation"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="form-jinja"
+        <button type="button" role="tab" id="form-jinja-tab" aria-controls="form-jinja"
                 aria-selected="true">你寫的</button>
-        <button type="button" role="tab" aria-controls="form-html"
+        <button type="button" role="tab" id="form-html-tab" aria-controls="form-html"
                 aria-selected="false">它產生的</button>
-    </nav><div id="form-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="form-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="form-caption"></footer>
+    </nav><div id="form-jinja" role="tabpanel" aria-labelledby="form-jinja-tab"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="form-html" role="tabpanel" aria-labelledby="form-html-tab"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="form-caption"></footer>
 
   </div>
 
@@ -922,11 +922,11 @@ fjkit
   </div><div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="Representation"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="table-jinja"
+        <button type="button" role="tab" id="table-jinja-tab" aria-controls="table-jinja"
                 aria-selected="true">你寫的</button>
-        <button type="button" role="tab" aria-controls="table-html"
+        <button type="button" role="tab" id="table-html-tab" aria-controls="table-html"
                 aria-selected="false">它產生的</button>
-    </nav><div id="table-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="table-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="table-caption"></footer>
+    </nav><div id="table-jinja" role="tabpanel" aria-labelledby="table-jinja-tab"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="table-html" role="tabpanel" aria-labelledby="table-html-tab"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="table-caption"></footer>
 
   </div>
 
@@ -1022,7 +1022,7 @@ fjkit
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="../assets/data.js?v=3f0ea5007089"></script>
+  <script defer src="../assets/data.js?v=19365f694c82"></script>
   <script defer src="../assets/common.js?v=cfc24f854e78"></script>
   <script defer src="../assets/components.js?v=9e793d51b578"></script>
   <script defer src="../assets/js/reveal.js?v=a668cfecf3ff"></script>

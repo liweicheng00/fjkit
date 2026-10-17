@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=cc818caf9ea5">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=50b2be113772">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -330,11 +330,11 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))</pre>
     <div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="charts-router"
+        <button type="button" role="tab" id="charts-router-tab" aria-controls="charts-router"
                 aria-selected="true">app/routers/workload.py</button>
-        <button type="button" role="tab" aria-controls="charts-page"
+        <button type="button" role="tab" id="charts-page-tab" aria-controls="charts-page"
                 aria-selected="false">app/templates/workload/page.html</button>
-    </nav><div id="charts-router" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/routers/workload.py" data-lang="python">import plotly.graph_objects as go
+    </nav><div id="charts-router" role="tabpanel" aria-labelledby="charts-router-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/routers/workload.py" data-lang="python">import plotly.graph_objects as go
 from fastapi import APIRouter
 from fjkit import render
 from fjkit_charts import Chart
@@ -355,7 +355,7 @@ def workload():
         ),
     ]}</pre>
 
-<footer>A Chart has four fields you set: id, title, summary and figure. summary is required: it is the text a screen reader reads, and the text shown when JavaScript is off. figure takes the go.Figure itself; Chart validates it, so an invalid trace fails here instead of rendering an empty box.</footer></div><div id="charts-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
+<footer>A Chart has four fields you set: id, title, summary and figure. summary is required: it is the text a screen reader reads, and the text shown when JavaScript is off. figure takes the go.Figure itself; Chart validates it, so an invalid trace fails here instead of rendering an empty box.</footer></div><div id="charts-page" role="tabpanel" aria-labelledby="charts-page-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
 {% from &#34;charts/macros.html&#34; import chart, chart_scripts %}
 
 {% block content %}
@@ -806,7 +806,7 @@ mount_fjkit(app, config)</pre>
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=3f0ea5007089"></script>
+  <script defer src="assets/data.js?v=19365f694c82"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
 </body>
 </html>
