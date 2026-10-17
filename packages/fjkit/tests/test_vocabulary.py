@@ -418,7 +418,7 @@ class TestMacroEject:
         assert "{% set _ROWS = {" in rows
         assert "wide-then-actions" in rows, "a multi-line {% set %} must be taken whole"
 
-    def test_a_second_eject_rewrites_rather_than_refusing(self, tmp_path):
+    def test_a_second_eject_adds_the_macro_rather_than_refusing(self, tmp_path):
         """Wanting a second macro is the ordinary next step; refusing would leave
         hand-editing as the only answer."""
         self._eject(tmp_path, "badge")
@@ -441,7 +441,6 @@ class TestMacroEject:
         target.write_text(text)
         return target
 
-    @pytest.mark.xfail(strict=True, reason="CLI-1")
     def test_a_second_eject_keeps_your_edits(self, tmp_path):
         """The file exists to be edited. Taking a second macro adds it and
         leaves everything the author wrote, inside the owned macro and beside
@@ -463,7 +462,6 @@ class TestMacroEject:
         assert 'data-my-edit="1"' in html
         assert "42" in html and "helper" in html
 
-    @pytest.mark.xfail(strict=True, reason="CLI-1")
     def test_a_second_eject_keeps_the_digests_you_took(self, tmp_path):
         """The stamp records the kit's `badge` as it was when taken. Writing the
         kit's current digest over it would hide that the kit has moved since."""
@@ -477,7 +475,6 @@ class TestMacroEject:
         owned = STAMP.match(target.read_text().splitlines()[0])["macros"]
         assert sorted(e.split("=")[0] for e in owned.split(",")) == ["badge", "stat"]
 
-    @pytest.mark.xfail(strict=True, reason="CLI-1")
     def test_a_second_eject_refuses_when_the_re_export_line_is_gone(self, tmp_path, capsys):
         """Without the `{% set stat = _fjkit.stat %}` line there is no place
         fjkit knows is its own to put the macro, so it leaves the file alone."""
@@ -490,7 +487,6 @@ class TestMacroEject:
         assert target.read_text() == before
         assert "{% set stat = _fjkit.stat %}" in capsys.readouterr().err
 
-    @pytest.mark.xfail(strict=True, reason="CLI-1")
     def test_a_second_eject_refuses_content_it_cannot_take_apart(self, tmp_path):
         """A top-level `{% if %}` is not a macro or a statement. fjkit cannot
         tell what it owns in such a file, so it refuses rather than guess."""
