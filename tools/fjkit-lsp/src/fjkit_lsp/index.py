@@ -158,14 +158,14 @@ _CODE = re.compile(r"\{\{.*?\}\}|\{%.*?%\}", re.DOTALL)
 #: `id="board"` — an HTML attribute or a macro keyword, the regex does not care.
 #: `\bid` keeps `field_id=` and `task_id=` out, because `_` is a word character.
 _ID_ATTR = re.compile(r"\bid\s*=\s*\"([^\"]*)\"")
-#: The receiver a route decorator is called on: `router` in `@router.get(...)`.
-_ROUTER_PARAM = re.compile(r"\{(\w+)(?::(\w+))?\}")
+#: A path parameter: `{task_id}`, or `{rest:path}` with a convertor.
+_PATH_PARAM = re.compile(r"\{(\w+)(?::(\w+))?\}")
 
 
 def _path_pattern(path: str) -> re.Pattern[str]:
     """`/tasks/{task_id}/advance` as a regex; `{name:path}` swallows slashes like Starlette."""
     out, at = [], 0
-    for m in _ROUTER_PARAM.finditer(path):
+    for m in _PATH_PARAM.finditer(path):
         out.append(re.escape(path[at : m.start()]))
         out.append(".+" if m.group(2) == "path" else "[^/]+")
         at = m.end()
