@@ -33,6 +33,8 @@ from urllib.parse import unquote, urlencode
 from fastapi import Request
 from fjkit.rendering import SCOPE_RENDER_MODE
 
+from fjkit_apidocs.spec import within
+
 __all__ = ["Recorded", "RecursionRefused", "call"]
 
 #: Request headers the console never forwards. Each describes the console's own
@@ -161,7 +163,7 @@ async def call(
     root_path: str = request.scope.get("root_path", "") or ""
     target = path if path.startswith("/") else f"/{path}"
 
-    if forbidden_prefix and (target == forbidden_prefix or target.startswith(f"{forbidden_prefix}/")):
+    if forbidden_prefix and within(target, forbidden_prefix):
         raise RecursionRefused(
             f"{target} is the API console itself. Calling it from here would re-enter this "
             "handler, and the only thing it can report is that it is reporting."

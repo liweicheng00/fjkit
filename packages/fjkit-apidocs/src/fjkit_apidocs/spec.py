@@ -569,7 +569,7 @@ def build(schema: Mapping[str, Any], *, skip_prefix: str = "") -> Spec:
     index: dict[str, Operation] = {}
 
     for path, item in (schema.get("paths") or {}).items():
-        if skip_prefix and str(path).startswith(skip_prefix):
+        if skip_prefix and within(str(path), skip_prefix):
             continue
         if not isinstance(item, Mapping):
             continue
@@ -639,6 +639,17 @@ def build(schema: Mapping[str, Any], *, skip_prefix: str = "") -> Spec:
         external_url=external_url,
         external_label=external_label,
     )
+
+
+def within(path: str, prefix: str) -> bool:
+    """Report whether `path` is `prefix` or lies under it.
+
+    On a segment boundary, not a string one: `/api-docs-v2/x` is the app's own
+    route, and a `startswith` would hide it from the reference while the
+    console refused to call it. The console's recursion guard uses this same
+    test, so the two agree on what the plugin owns.
+    """
+    return path == prefix or path.startswith(f"{prefix}/")
 
 
 def _external(raw: Any) -> tuple[str, str]:
