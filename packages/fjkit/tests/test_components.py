@@ -2563,7 +2563,6 @@ class TestPassThroughSaysNo:
 
 
 class TestSubmittedValuesRoundTrip:
-    @pytest.mark.xfail(strict=True, reason="MAC-4")
     def test_range_field_takes_the_strings_a_form_posted(self, render):
         """Every other field redraws from the submitted strings; a slider that
         needs ints turns that redraw into a 500."""

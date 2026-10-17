@@ -483,8 +483,9 @@
 #}
 {% macro range_field(name, label=none, value=50, min=0, max=100, step=1, hint=none, error=none, id=none, output=false) -%}
   {%- set field_id = id or ("f-" ~ name) -%}
-  {%- set span = (max - min) or 1 -%}
-  {%- set filled = (((value - min) / span) * 100) | round(2) -%}
+  {#- `float` because a redraw passes back the strings the form posted. -#}
+  {%- set span = ((max | float) - (min | float)) or 1 -%}
+  {%- set filled = ((((value | float) - (min | float)) / span) * 100) | round(2) -%}
   <div class="field">
     {% if label %}
       <label class="label" for="{{ field_id }}">
