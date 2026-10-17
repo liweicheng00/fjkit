@@ -31,7 +31,7 @@ class Project(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(
-        String(80), info={"admin": {"label": "Project name", "help": "Shown in every task list."}}
+        String(80), unique=True, info={"admin": {"label": "Project name", "help": "Shown in every task list."}}
     )
     tasks: Mapped[list[Task]] = relationship(back_populates="project")
 

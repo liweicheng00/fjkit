@@ -386,10 +386,6 @@ class ModelAdmin:
             return value.strftime("%Y-%m-%d %H:%M")
         if isinstance(value, (dt.date, dt.time)):
             return value.isoformat()
-        if column.foreign_key:
-            relation = self.info.relation_for_column(column.key)
-            if relation is not None:
-                return str(value)
         return str(value)
 
     # -------------------------------------------------------------- actions

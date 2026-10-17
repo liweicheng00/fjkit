@@ -12,6 +12,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
+#: The headers htmx sends when a checkbox column posts its selection.
+FORM = {**HX, "Content-Type": "application/x-www-form-urlencoded"}
+
 
 def rows_of(html: str) -> list[str]:
     """The first link text of every body row: the title cell, in page order."""
@@ -75,6 +78,14 @@ def test_pagination_walks_the_rows_and_clamps(client: TestClient):
     sized = client.get("/admin/task?per_page=10", headers=HX).text
     assert len(rows_of(sized)) == 10
     assert "1–10 of 12" in sized
+
+
+def test_a_page_knob_that_is_not_a_number_falls_back(stack):
+    client = TestClient(stack[0], raise_server_exceptions=False)
+    for query in ("page=%C2%B2", "per_page=%C2%B2", "page=" + "9" * 5000):
+        response = client.get(f"/admin/task?{query}", headers=HX)
+        assert response.status_code == 200, query
+        assert rows_of(response.text) == sorted(TITLES)[:5]
 
 
 def test_search_matches_the_declared_columns_only(client: TestClient):
@@ -162,6 +173,14 @@ def test_a_rejected_create_is_fastapis_own_422(client: TestClient):
     assert ("body", "project_id") in locs
 
 
+def test_a_row_the_database_refuses_is_a_422_not_a_crash(stack):
+    client = TestClient(stack[0], raise_server_exceptions=False)
+    response = client.post("/admin/project", json={"name": "Core"}, headers=HX)
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body"]
+    assert "2 projects" in client.get("/admin").text
+
+
 def test_change_form_shows_the_row_and_update_saves_it(client: TestClient, db: sessionmaker):
     html = client.get("/admin/task/1").text
     assert 'value="Alpha brief"' in html
@@ -184,6 +203,18 @@ def test_change_form_shows_the_row_and_update_saves_it(client: TestClient, db: s
 def test_missing_rows_are_404(client: TestClient):
     assert client.get("/admin/task/999").status_code == 404
     assert client.get("/admin/task/abc").status_code == 404
+
+
+def test_a_key_the_column_cannot_hold_is_not_a_row(stack):
+    client = TestClient(stack[0], raise_server_exceptions=False)
+    huge = "99999999999999999999999"
+    assert client.get(f"/admin/task/{huge}").status_code == 404
+    response = client.post("/admin/task/action/mark_done", content=f"selected={huge}", headers=FORM)
+    assert response.status_code == 200
+    assert "Nothing was selected" in response.headers["HX-Trigger"]
+    filtered = client.get(f"/admin/task?f_project_id={huge}", headers=HX)
+    assert filtered.status_code == 200
+    assert rows_of(filtered.text) == sorted(TITLES)[:5]
 
 
 def test_delete_removes_the_row_and_pushes_the_list_url(client: TestClient, db: sessionmaker):
@@ -215,6 +246,31 @@ def test_bulk_actions_run_over_the_ticked_rows(client: TestClient, db: sessionma
     assert "Deleted 1 task" in response.headers["HX-Trigger"]
     with db() as session:
         assert session.get(Task, 2) is None
+
+
+def test_an_action_runs_in_the_threadpool_like_every_other_handler():
+    import asyncio
+
+    from fjkit_admin import action
+
+    seen = {}
+
+    class Probing(TaskAdmin):
+        key = "task"
+        actions = ("probe",)
+
+        @action("Probe")
+        def probe(self, request: Request, session, tasks) -> None:
+            try:
+                asyncio.get_running_loop()
+                seen["on_loop"] = True
+            except RuntimeError:
+                seen["on_loop"] = False
+
+    app, _, _ = make_app(Probing)
+    response = TestClient(app).post("/admin/task/action/probe", content="selected=1", headers=FORM)
+    assert response.status_code == 200
+    assert seen == {"on_loop": False}
 
 
 def test_an_empty_selection_is_a_warning_not_an_error(client: TestClient):
@@ -249,6 +305,64 @@ def test_permissions_gate_both_the_button_and_the_route():
     assert client.post("/admin/task", json={"title": "x", "project_id": 1}).status_code == 403
     assert client.delete("/admin/task/1").status_code == 403
     assert 'hx-delete="/admin/task/1"' not in client.get("/admin/task/1").text
+
+
+def test_a_caller_without_the_permission_learns_nothing_else():
+    class Locked(TaskAdmin):
+        key = "task"
+
+        def has_add_permission(self, request: Request) -> bool:
+            return False
+
+        def has_change_permission(self, request: Request, obj=None) -> bool:
+            return False
+
+        def has_delete_permission(self, request: Request, obj=None) -> bool:
+            return False
+
+    client = TestClient(make_app(Locked)[0])
+    # Neither the form's field list (a 422) nor whether id 999 exists (a 404).
+    assert client.post("/admin/task", json={"bogus": 1}).status_code == 403
+    assert client.post("/admin/task/999", json={"bogus": 1}).status_code == 403
+    assert client.delete("/admin/task/999").status_code == 403
+
+
+def test_a_bulk_action_needs_the_view_permission():
+    class Hidden(TaskAdmin):
+        key = "task"
+
+        def has_view_permission(self, request: Request, obj=None) -> bool:
+            return False
+
+    app, db, _ = make_app(Hidden)
+    client = TestClient(app)
+    assert client.get("/admin/task").status_code == 403
+    assert client.post("/admin/task/action/mark_done", content="selected=2", headers=FORM).status_code == 403
+    with db() as session:
+        assert session.get(Task, 2).done is False
+
+
+def test_get_queryset_scopes_every_route_and_the_count():
+    class CoreTasks(TaskAdmin):
+        key = "task"
+
+        def get_queryset(self, request: Request, stmt):
+            return stmt.where(Task.project_id == 1)
+
+    app, db, _ = make_app(CoreTasks)
+    client = TestClient(app)
+    with db() as session:
+        hidden = session.scalar(select(Task.id).where(Task.project_id == 2))
+
+    assert "6 tasks" in client.get("/admin").text
+    assert client.get(f"/admin/task/{hidden}").status_code == 404
+    assert client.post(f"/admin/task/{hidden}", json={"title": "x", "project_id": 1}).status_code == 404
+    assert client.delete(f"/admin/task/{hidden}").status_code == 404
+    response = client.post("/admin/task/action/mark_done", content=f"selected={hidden}", headers=FORM)
+    assert "Nothing was selected" in response.headers["HX-Trigger"]
+    with db() as session:
+        task = session.get(Task, hidden)
+        assert task is not None and task.done is False
 
 
 def test_dependencies_gate_every_route():

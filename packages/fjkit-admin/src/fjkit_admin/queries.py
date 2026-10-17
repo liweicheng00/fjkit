@@ -14,13 +14,22 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import Request
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import Select, String, cast, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from fjkit_admin.introspect import ColumnInfo
 from fjkit_admin.options import ModelAdmin
 
-__all__ = ["ListParams", "ListResult", "coerce_filter", "parse_page_size", "parse_sort", "run_list"]
+__all__ = [
+    "ListParams",
+    "ListResult",
+    "coerce_filter",
+    "count_rows",
+    "parse_page_size",
+    "parse_sort",
+    "run_list",
+    "scoped_select",
+]
 
 #: Query-string prefix for a filter on column `status`: `?f_status=done`.
 FILTER_PREFIX = "f_"
@@ -44,15 +53,22 @@ class ListParams:
             raw = params.get(FILTER_PREFIX + column.key, "")
             if raw != "":
                 filters[column.key] = raw
-        page = params.get("page", "1")
-        per_page = params.get("per_page")
         return cls(
             q=params.get("q", "").strip(),
             o=params.get("o") or None,
-            page=int(page) if page.isdigit() else 1,
-            per_page=int(per_page) if per_page and per_page.isdigit() else None,
+            page=_int_or_none(params.get("page")) or 1,
+            per_page=_int_or_none(params.get("per_page")),
             filters=filters,
         )
+
+
+def _int_or_none(raw: str | None) -> int | None:
+    """`int(raw)`, or None for text `int()` refuses. `str.isdigit` is not that
+    test: it accepts `²`, and a digit string past Python's conversion limit."""
+    try:
+        return int(raw) if raw else None
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,11 +97,17 @@ def parse_page_size(view: ModelAdmin, value: int | None) -> int:
     return value if value in view.sizes() else view.list_per_page
 
 
+#: SQL's widest integer column is a signed 64-bit BIGINT, so an int outside it
+#: names no row and the driver would refuse to bind it.
+_INT_RANGE = range(-(2**63), 2**63)
+
+
 def coerce_filter(column: ColumnInfo, raw: str) -> tuple[bool, Any]:
     """Turn the query-string text into a value the column compares to.
 
     Returns `(ok, value)`; a value the column cannot take is `(False, None)`
     and the filter is ignored, for the same reason an unknown sort key is.
+    A primary key from the URL goes through here too.
     """
     if column.kind == "boolean":
         if raw in ("1", "true", "yes"):
@@ -102,16 +124,29 @@ def coerce_filter(column: ColumnInfo, raw: str) -> tuple[bool, Any]:
     if py is None or py is str:
         return True, raw
     try:
-        return True, py(raw)
+        value = py(raw)
     except (TypeError, ValueError):
         return False, None
+    if isinstance(value, int) and value not in _INT_RANGE:
+        return False, None
+    return True, value
+
+
+def scoped_select(view: ModelAdmin, request: Request) -> Select:
+    """`select(Model)` through `get_queryset`: every read of the model starts
+    here, so a scope the hook adds covers one row and the count, not only the list."""
+    return view.get_queryset(request, select(view.model))
+
+
+def count_rows(session: Session, stmt: Select) -> int:
+    return session.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
 
 
 def run_list(view: ModelAdmin, request: Request, session: Session, params: ListParams) -> ListResult:
     """Execute the list for one view and one page."""
     model = view.model
     info = view.info
-    stmt = view.get_queryset(request, select(model))
+    stmt = scoped_select(view, request)
 
     if params.q and view.search_fields:
         clauses = []
@@ -142,7 +177,7 @@ def run_list(view: ModelAdmin, request: Request, session: Session, params: ListP
         if relation is not None:
             stmt = stmt.options(selectinload(getattr(model, name)))
 
-    total = session.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
+    total = count_rows(session, stmt)
 
     sort_key, descending = parse_sort(view, params.o)
     order_attr = getattr(model, sort_key)

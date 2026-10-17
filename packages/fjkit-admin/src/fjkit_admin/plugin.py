@@ -15,10 +15,10 @@ search, a saved form and a bulk action all replace it. The list partial and
 the form partial both render into that id, so a saved form comes back as the
 list without a second target anywhere.
 
-Handlers that render are `def`, so Starlette runs them in the threadpool.
-The one `async def` reads a request body htmx posted from a checkbox column
-and does it with `parse_qs`, which keeps `python-multipart` off the
-dependency list.
+Every handler is a `def`, so Starlette runs it in the threadpool. The one
+`async def` is a dependency that reads the body htmx posts from a checkbox
+column, with `parse_qs`, which keeps `python-multipart` off the dependency
+list.
 """
 
 from __future__ import annotations
@@ -28,21 +28,21 @@ import decimal
 import enum
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import parse_qs, urlencode
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse
 from fjkit import htmx, messages
 from fjkit.plugins import AppSetup, EnvSetup
 from fjkit.templating import get_templates
-from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from fjkit_admin.introspect import ColumnInfo, inspect_model
 from fjkit_admin.options import ModelAdmin, relation_options_query
-from fjkit_admin.queries import FILTER_PREFIX, ListParams, run_list
+from fjkit_admin.queries import FILTER_PREFIX, ListParams, coerce_filter, count_rows, run_list, scoped_select
 from fjkit_admin.schema import apply, enum_options, sqlmodel_errors
 
 __all__ = ["REGION", "TEMPLATE_DIR", "AdminPlugin"]
@@ -163,28 +163,51 @@ class AdminPlugin:
     def _router(self) -> APIRouter:
         router = APIRouter(prefix=self.url, include_in_schema=False, dependencies=self.dependencies)
 
-        def add(path: str, handler: Callable[..., Any], method: str, name: str) -> None:
+        def add(
+            path: str,
+            handler: Callable[..., Any],
+            method: str,
+            name: str,
+            gate: Callable[[Request], bool] | None = None,
+        ) -> None:
+            # `gate` is the model-level permission, as a route dependency: it
+            # runs before FastAPI validates the body and before the row is
+            # loaded, so a refused caller gets 403 and neither the form's 422
+            # field list nor a 404 that says which ids exist.
+            dependencies = [self._gate(gate)] if gate else None
             # Every GET page answers with and without a trailing slash, so the
             # admin never issues a redirect for one. Django's admin lives at
             # `/admin/` and redirects the other spelling with a permanent 301,
             # which browsers cache per host and port; a Django project that ran
             # on this port earlier leaves that 301 behind, and an admin that
             # redirected `/admin/` back to `/admin` would loop with it forever.
-            router.add_api_route(path, handler, methods=[method], name=name)
+            router.add_api_route(path, handler, methods=[method], name=name, dependencies=dependencies)
             if method == "GET":
-                router.add_api_route(path + "/", handler, methods=[method], name=f"{name}_slash")
+                router.add_api_route(
+                    path + "/", handler, methods=[method], name=f"{name}_slash", dependencies=dependencies
+                )
 
         add("", self._index, "GET", self._route(None, "index"))
         for key, view in self.views.items():
-            add(f"/{key}", self._list_handler(view), "GET", self._route(view, "list"))
-            add(f"/{key}", self._create_handler(view), "POST", self._route(view, "create"))
-            # `/new` before `/{pk}`: Starlette takes the first route that fits.
-            add(f"/{key}/new", self._add_handler(view), "GET", self._route(view, "add"))
-            add(f"/{key}/action/{{action}}", self._action_handler(view), "POST", self._route(view, "action"))
-            add(f"/{key}/{{pk}}", self._change_handler(view), "GET", self._route(view, "change"))
-            add(f"/{key}/{{pk}}", self._update_handler(view), "POST", self._route(view, "update"))
-            add(f"/{key}/{{pk}}", self._delete_handler(view), "DELETE", self._route(view, "delete"))
+            routes = (
+                ("", self._list_handler, "GET", "list", view.has_view_permission),
+                ("", self._create_handler, "POST", "create", view.has_add_permission),
+                # `/new` before `/{pk}`: Starlette takes the first route that fits.
+                ("/new", self._add_handler, "GET", "add", view.has_add_permission),
+                ("/action/{action}", self._action_handler, "POST", "action", view.has_view_permission),
+                ("/{pk}", self._change_handler, "GET", "change", view.has_view_permission),
+                ("/{pk}", self._update_handler, "POST", "update", view.has_change_permission),
+                ("/{pk}", self._delete_handler, "DELETE", "delete", view.has_delete_permission),
+            )
+            for path, make, method, suffix, gate in routes:
+                add(f"/{key}{path}", make(view), method, self._route(view, suffix), gate)
         return router
+
+    def _gate(self, check: Callable[[Request], bool]) -> Any:
+        def allowed(request: Request) -> None:
+            self._require(check(request))
+
+        return Depends(allowed)
 
     def _index(self, request: Request) -> HTMLResponse:
         models = []
@@ -192,7 +215,7 @@ class AdminPlugin:
             for view in self.views.values():
                 if not view.has_view_permission(request):
                     continue
-                count = session.scalar(select(func.count()).select_from(view.model)) or 0
+                count = count_rows(session, scoped_select(view, request))
                 models.append(
                     {
                         "label": view.verbose_name_plural,
@@ -212,7 +235,6 @@ class AdminPlugin:
 
     def _list_handler(self, view: ModelAdmin) -> Callable[..., HTMLResponse]:
         def list_rows(request: Request) -> HTMLResponse:
-            self._require(view.has_view_permission(request))
             params = ListParams.from_request(request, view)
             with self.session_factory() as session:
                 context = self._list_context(request, session, view, params)
@@ -222,7 +244,6 @@ class AdminPlugin:
 
     def _add_handler(self, view: ModelAdmin) -> Callable[..., HTMLResponse]:
         def add(request: Request) -> HTMLResponse:
-            self._require(view.has_add_permission(request))
             with self.session_factory() as session:
                 context = self._form_context(request, session, view, None)
             return self._render(request, "admin/_form.html", context)
@@ -232,7 +253,7 @@ class AdminPlugin:
     def _change_handler(self, view: ModelAdmin) -> Callable[..., HTMLResponse]:
         def change(request: Request, pk: str) -> HTMLResponse:
             with self.session_factory() as session:
-                obj = self._load(session, view, pk)
+                obj = self._load(request, session, view, pk)
                 self._require(view.has_view_permission(request, obj))
                 context = self._form_context(request, session, view, obj)
             return self._render(request, "admin/_form.html", context)
@@ -243,7 +264,6 @@ class AdminPlugin:
         payload_model = view.form_model
 
         def create(request: Request, payload: Any) -> HTMLResponse:
-            self._require(view.has_add_permission(request))
             data = payload.model_dump()
             with self.session_factory() as session:
                 errors = sqlmodel_errors(view.model, None, data, view.info)
@@ -252,7 +272,7 @@ class AdminPlugin:
                 obj = view.model()
                 apply(view.info, obj, data, view.form_fields())
                 view.save_model(request, session, obj, data, change=False)
-                session.commit()
+                self._commit(session, view)
                 messages.add(
                     request, f"{view.verbose_name.capitalize()} added", view.label_for(obj), category="success"
                 )
@@ -270,14 +290,14 @@ class AdminPlugin:
         def update(request: Request, pk: str, payload: Any) -> HTMLResponse:
             data = payload.model_dump()
             with self.session_factory() as session:
-                obj = self._load(session, view, pk)
+                obj = self._load(request, session, view, pk)
                 self._require(view.has_change_permission(request, obj))
                 errors = sqlmodel_errors(view.model, obj, data, view.info)
                 if errors:
                     raise RequestValidationError(errors)
                 apply(view.info, obj, data, view.form_fields())
                 view.save_model(request, session, obj, data, change=True)
-                session.commit()
+                self._commit(session, view)
                 messages.add(
                     request, f"{view.verbose_name.capitalize()} saved", view.label_for(obj), category="success"
                 )
@@ -291,7 +311,7 @@ class AdminPlugin:
         def delete(request: Request, pk: str) -> HTMLResponse:
             params = ListParams.from_request(request, view)
             with self.session_factory() as session:
-                obj = self._load(session, view, pk)
+                obj = self._load(request, session, view, pk)
                 self._require(view.has_delete_permission(request, obj))
                 label = view.label_for(obj)
                 view.delete_model(request, session, obj)
@@ -305,19 +325,15 @@ class AdminPlugin:
         return delete
 
     def _action_handler(self, view: ModelAdmin) -> Callable[..., Any]:
-        async def run_action(request: Request, action: str) -> HTMLResponse:
+        def run_action(request: Request, action: str, selected: Selected) -> HTMLResponse:
             spec = next((s for s in view.allowed_actions(request) if s["name"] == action), None)
             if spec is None:
                 raise HTTPException(status_code=404, detail=f"No action {action!r}.")
-            # `hx-include="[data-fjkit-select]"` posts the ticked boxes as a
-            # urlencoded body: `selected=3&selected=7`.
-            body = (await request.body()).decode()
-            raw = parse_qs(body).get("selected", [])
             params = ListParams.from_request(request, view)
             with self.session_factory() as session:
                 objs = [
                     obj
-                    for obj in (self._load(session, view, value, missing_ok=True) for value in raw)
+                    for obj in (self._load(request, session, view, value, missing_ok=True) for value in selected)
                     if obj is not None
                 ]
                 if not objs:
@@ -338,13 +354,24 @@ class AdminPlugin:
         if not allowed:
             raise HTTPException(status_code=403, detail="Not allowed.")
 
-    def _load(self, session: Session, view: ModelAdmin, raw: str, *, missing_ok: bool = False) -> Any:
-        py = view.info.pk.python_type or str
+    @staticmethod
+    def _commit(session: Session, view: ModelAdmin) -> None:
+        """Commit a saved form. A constraint the database enforces (unique, foreign
+        key) is the person's to fix, so it comes back as the 422 `errors.js`
+        draws, as a toast since no one field owns it."""
         try:
-            pk = py(raw)
-        except (TypeError, ValueError):
-            pk = None
-        obj = session.get(view.model, pk) if pk is not None else None
+            session.commit()
+        except IntegrityError as exc:
+            msg = f"This {view.verbose_name} was refused: {exc.orig}"
+            raise RequestValidationError([{"type": "integrity_error", "loc": ("body",), "msg": msg}]) from exc
+
+    def _load(self, request: Request, session: Session, view: ModelAdmin, raw: str, *, missing_ok: bool = False) -> Any:
+        """The row `raw` names, or 404. A row `get_queryset` hides does not exist here."""
+        ok, pk = coerce_filter(view.info.pk, raw)
+        obj = None
+        if ok:
+            stmt = scoped_select(view, request).where(getattr(view.model, view.info.pk.key) == pk)
+            obj = session.scalars(stmt).unique().one_or_none()
         if obj is None and not missing_ok:
             raise HTTPException(status_code=404, detail=f"No {view.verbose_name} {raw!r}.")
         return obj
@@ -574,6 +601,17 @@ class AdminPlugin:
             },
             "fields": fields,
         }
+
+
+async def _selected(request: Request) -> list[str]:
+    """The ticked boxes `hx-include="[data-fjkit-select]"` posts as a
+    urlencoded body, `selected=3&selected=7`. Read here, the one place that
+    awaits, so the handler stays a `def`; parsed with `parse_qs`, which keeps
+    `python-multipart` off the dependency list."""
+    return parse_qs((await request.body()).decode()).get("selected", [])
+
+
+Selected = Annotated[list[str], Depends(_selected)]
 
 
 def _scalar_default(column: ColumnInfo) -> Any:
