@@ -1291,3 +1291,16 @@ def test_a_hand_typed_accept_is_sent_whatever_its_capitalisation():
     for spelling in ("Accept", "accept"):
         reply = client.post(f"/api-docs/try/{op}", data={"headers": f"{spelling}: text/csv"})
         assert '"accept": "text/csv"' in shown(reply), spelling
+
+
+@pytest.mark.xfail(strict=True, reason="APIDOCS-8")
+def test_the_curl_snippet_keeps_the_prefix_a_proxy_put_in_front_of_the_app():
+    """The in-process call honours `root_path`; a snippet that drops it is a
+    command that 404s through the very proxy the app is served behind."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app, root_path="/svc")
+    op = operation_id(app, "GET", "/echo")
+
+    text = shown(client.post(f"/api-docs/try/{op}"))
+    assert "200" in text  # the call itself found the route
+    assert "curl -X GET 'http://testserver/svc/echo'" in text
