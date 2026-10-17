@@ -2577,3 +2577,23 @@ class TestToaster:
         way, and `FjkitConfig` is strict by default."""
         html = render('{% from "ui/feedback.html" import toaster %}{{ toaster("start") }}')
         assert 'id="toaster"' in html and 'data-align="start"' in html
+
+
+class TestRepeatedGroupHeadings:
+    """A row-actions menu renders once per row, so two menus with the same
+    group heading are the normal case."""
+
+    MENU = '{% call dropdown_menu(ID, "Row") %}{% call menu_group("Actions") %}{{ menu_item("Edit") }}{% endcall %}{% endcall %}'
+    COMMAND = '{% call command(ID) %}{% call command_group("Suggestions") %}{{ command_item("Open") }}{% endcall %}{% endcall %}'
+
+    @pytest.mark.xfail(strict=True, reason="MAC-6")
+    @pytest.mark.parametrize("block", [MENU, COMMAND], ids=["menu_group", "command_group"])
+    def test_two_groups_with_one_heading_share_no_id_and_keep_a_name(self, render, block):
+        html = render(OVERLAY + block.replace("ID", '"m1"') + block.replace("ID", '"m2"'))
+        elements = _Attributes(html).elements
+        ids = [e["id"] for e in elements if e.get("id")]
+        assert len(ids) == len(set(ids)), sorted(ids)
+        groups = [e for e in elements if e.get("role") == "group"]
+        assert len(groups) == 2
+        for group in groups:
+            assert group.get("aria-label") or group.get("aria-labelledby") in ids, group
