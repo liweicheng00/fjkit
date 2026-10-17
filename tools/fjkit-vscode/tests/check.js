@@ -3,9 +3,12 @@
 // activates it against this repository, then asks the providers what an editor
 // would — definition, hover and references on `task.title` in the demo — and
 // checks that an edited buffer is what the server sees. Exit 0 when all hold.
+// `node check.js watch` instead checks, in a fresh temporary workspace, that a
+// file created or deleted on disk reaches the server without a save.
 
 const Module = require("node:module");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..", "..", "..");
@@ -61,8 +64,10 @@ class Hover {
 }
 const providers = {};
 const handlers = {};
+const watchers = [];
 const disposable = () => ({ dispose() {} });
 const log = [];
+let command = [];
 const vscode = {
   Uri,
   Position,
@@ -77,7 +82,17 @@ const vscode = {
   workspace: {
     workspaceFolders: [{ uri: Uri.file(ROOT), name: "repo" }],
     textDocuments: [],
-    getConfiguration: () => ({ get: () => [] }),
+    getConfiguration: () => ({ get: () => command }),
+    createFileSystemWatcher: (glob) => {
+      const on = {};
+      watchers.push({ glob, on });
+      return {
+        onDidCreate: (h) => ((on.create = h), disposable()),
+        onDidChange: (h) => ((on.change = h), disposable()),
+        onDidDelete: (h) => ((on.delete = h), disposable()),
+        dispose() {},
+      };
+    },
     onDidOpenTextDocument: (h) => ((handlers.open = h), disposable()),
     onDidChangeTextDocument: (h) => ((handlers.change = h), disposable()),
     onDidSaveTextDocument: (h) => ((handlers.save = h), disposable()),
@@ -119,7 +134,7 @@ function assert(condition, what) {
   console.log(`ok  ${what}`);
 }
 
-(async () => {
+async function demo() {
   const ext = require("../extension.js");
   ext.activate({ subscriptions: [] });
   await ext.ready();
@@ -186,7 +201,47 @@ function assert(condition, what) {
   await new Promise((r) => setTimeout(r, 700));
   assert(log.some((l) => l.startsWith("server exited")), "the server exits on deactivate");
   process.exit(0);
-})().catch((e) => {
+}
+
+async function watch() {
+  const ws = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "fjkit-watch-")));
+  const templates = path.join(ws, "app/templates");
+  fs.mkdirSync(templates, { recursive: true });
+  const page = path.join(templates, "page.html");
+  const text = '{% include "later.html" %}\n';
+  fs.writeFileSync(page, text);
+  vscode.workspace.workspaceFolders = [{ uri: Uri.file(ws), name: "ws" }];
+  command = [path.join(ROOT, ".venv/bin/fjkit-lsp")];
+
+  const ext = require("../extension.js");
+  ext.activate({ subscriptions: [] });
+  await ext.ready();
+  assert(log.some((l) => l.startsWith("started ")), "the server starts in a workspace of its own");
+  const doc = document(text, 1, page);
+  handlers.open(doc);
+  const pos = positionOf(text, '"later.html"', "later");
+  const fire = (event, file) => watchers.forEach((w) => w.on[event] && w.on[event](Uri.file(file)));
+
+  const before = await providers.definition.provideDefinition(doc, pos);
+  assert(!before || before.length === 0, "a template that does not exist yet resolves to nothing");
+
+  const later = path.join(templates, "later.html");
+  fs.writeFileSync(later, "<p></p>\n");
+  fire("create", later);
+  const created = await providers.definition.provideDefinition(doc, pos);
+  assert(created && created.length === 1 && created[0].uri.fsPath === later, "a file created on disk is indexed without a save");
+
+  fs.unlinkSync(later);
+  fire("delete", later);
+  const deleted = await providers.definition.provideDefinition(doc, pos);
+  assert(!deleted || deleted.length === 0, "a file deleted on disk is dropped without a save");
+
+  await ext.deactivate();
+  fs.rmSync(ws, { recursive: true, force: true });
+  process.exit(0);
+}
+
+(process.argv[2] === "watch" ? watch : demo)().catch((e) => {
   console.error(e);
   console.error(log.join("\n"));
   process.exit(1);

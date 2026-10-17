@@ -37,3 +37,13 @@ def test_the_manifest_declares_no_dependencies_and_no_scripts() -> None:
 def test_the_client_drives_the_server_end_to_end() -> None:
     result = subprocess.run(["node", str(HERE / "tests/check.js")], capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.xfail(strict=True, reason="LSP-6")
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not on the PATH")
+def test_a_file_created_or_deleted_on_disk_reaches_the_server() -> None:
+    """A checkout, a rename in the explorer, a file another tool wrote: no save follows any of them."""
+    result = subprocess.run(
+        ["node", str(HERE / "tests/check.js"), "watch"], capture_output=True, text=True, timeout=120
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
