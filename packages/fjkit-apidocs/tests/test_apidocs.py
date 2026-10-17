@@ -277,6 +277,23 @@ def test_the_console_is_never_in_its_own_index():
     assert [o.path for o in document.index.values()] == ["/ok"]
 
 
+@pytest.mark.xfail(strict=True, reason="APIDOCS-9")
+def test_a_route_that_merely_shares_the_console_s_prefix_string_is_documented():
+    # `/api-docs-v2` is the app's own route; only `/api-docs` and what is under
+    # it belong to the console.
+    document = specmod.build(
+        {
+            "info": {},
+            "paths": {
+                "/api-docs-v2/thing": {"get": {"responses": {}}},
+                "/api-docs/try/x": {"post": {"responses": {}}},
+            },
+        },
+        skip_prefix="/api-docs",
+    )
+    assert [o.path for o in document.index.values()] == ["/api-docs-v2/thing"]
+
+
 # ------------------------------------------------------------------ mounting
 
 
