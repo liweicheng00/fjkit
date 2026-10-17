@@ -43,9 +43,9 @@ The line is drawn there because a UI kit that knows your schema has to be re-tau
 
 ### 2.2 The page budget
 
-**What a page costs is decided by the page.** Anything every page pays for needs a stated reason in §4. Anything optional is loaded by the component that needs it.
+**What a page costs is decided by the page.** Anything every page pays for needs a stated reason in §4. Anything optional is loaded by a macro the page calls.
 
-This is the rule behind decisions that otherwise look inconsistent: all eight style packs ship in the wheel because a page loads one; Plotly's 1.1 MB ships in the wheel because only a page that calls `chart_scripts()` downloads it; `select.js` is loaded by `ui/table.html`, not by the shell.
+This is the rule behind decisions that otherwise look inconsistent: all eight style packs ship in the wheel because a page loads one; Plotly's 1.1 MB ships in the wheel because only a page that calls `chart_scripts()` downloads it; `select.js` is loaded by `select_scripts()`, which a page with a selectable table calls, not by the shell.
 
 Install size is not the budget. Bytes per page is.
 
@@ -153,13 +153,13 @@ The only real lever left is subsetting Basecoat, and `styles/<pack>.css` is one 
 
 **Every page downloads:** htmx and Basecoat (both vendored), `js/errors.js` (4,223 bytes raw / 1,798 gzip), and two inline blocks in `ui/shell.html` totalling 517 bytes — theme anti-flash, and the listener that turns an `HX-Trigger` event into a toast.
 
-**Everything else loads from the macro that needs it**, through a `<script defer>` inside the component:
+**Everything else loads only on a page that asks for it**, through a `*_scripts()` macro the page calls in `{% block scripts %}`. No component emits its own `<script>`:
 
 | File | Loaded by | raw / gzip |
 |---|---|---|
-| `reveal.js` | `ui/form.html` | 2,506 / 1,280 |
-| `select.js` | `ui/table.html` | 5,353 / 2,252 |
-| `multiselect.js` | `ui/overlay.html` | 5,459 / 2,470 |
+| `reveal.js` | `reveal_scripts()`, in `ui/form.html` | 2,506 / 1,280 |
+| `select.js` | `select_scripts()`, in `ui/table.html` | 5,353 / 2,252 |
+| `multiselect.js` | `multiselect_scripts()`, in `ui/overlay.html` | 5,459 / 2,470 |
 | `charts.js` | `chart_scripts()` | 8,953 / 3,822, in `fjkit-charts` |
 | `json-enc.js` | `form_scripts()` | vendored, 1,012 raw |
 | `idiomorph-ext.min.js` | `morph_scripts()` | vendored, 11,037 / 3,924 |
