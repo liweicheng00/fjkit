@@ -408,19 +408,16 @@ class TestResizableColumns:
         assert "data-fjkit-resize" not in html
         assert 'role="separator"' not in html
 
-    @pytest.mark.xfail(strict=True, reason="resizable columns not implemented yet")
     def test_a_resizable_table_marks_itself_for_the_script(self, render):
         html = self._resizable(render)
         assert re.search(r'<table class="table" id="tasks"[^>]* data-fjkit-resize[ >]', html)
 
-    @pytest.mark.xfail(strict=True, reason="resizable columns not implemented yet")
     def test_each_labelled_data_column_gets_one_handle(self, render):
         """The select column and the `width="min"` columns hold a control or a
         number of known width; dragging them buys nothing."""
         handles = _HANDLE.findall(self._resizable(render))
         assert [re.search(r'aria-label="([^"]*)"', h).group(1) for h in handles] == ["Task", "Owner"]
 
-    @pytest.mark.xfail(strict=True, reason="resizable columns not implemented yet")
     def test_the_handle_is_a_focusable_vertical_separator(self, render):
         """WCAG 2.1.1: a width set by dragging must be settable from the keyboard."""
         handles = _HANDLE.findall(self._resizable(render))
@@ -430,7 +427,12 @@ class TestResizableColumns:
             assert 'aria-orientation="vertical"' in handle
             assert 'tabindex="0"' in handle
 
-    @pytest.mark.xfail(strict=True, reason="resizable columns not implemented yet")
+    def test_a_header_with_a_handle_is_named_once(self, render):
+        """A header is named from its content, and the handle's label is in
+        that content: unnamed, the column reads out as "Task Task"."""
+        names = re.findall(r'<th[^>]*\baria-label="([^"]*)"', self._resizable(render))
+        assert names == ["Task", "Owner", "Actions"]
+
     def test_the_handle_sits_beside_the_sort_link_not_inside_it(self, render):
         """A handle inside the `<a>` would sort the table on every drag."""
         html = self._resizable(render)
@@ -438,7 +440,6 @@ class TestResizableColumns:
         assert "data-fjkit-resize-handle" not in link
         assert "data-fjkit-resize-handle" in html.split("</a>", 1)[1]
 
-    @pytest.mark.xfail(strict=True, reason="resizable columns not implemented yet")
     def test_a_resizable_table_without_an_id_is_refused(self, render):
         """The id is the key its widths are stored under. Without one, two
         tables would share a key, or the widths would silently never return."""
@@ -452,12 +453,10 @@ class TestResizableColumns:
         html = render(f"{RESIZE}{{% call table({self.COLUMNS}, rows=[], resizable=true) %}}r{{% endcall %}}")
         assert "data-fjkit-resize" not in html
 
-    @pytest.mark.xfail(strict=True, reason="resizable columns not implemented yet")
     def test_the_script_is_opted_into_per_page(self, render):
         html = render(f"{RESIZE}{{{{ resize_scripts() }}}}")
         assert re.fullmatch(r'<script defer src="[^"]*js/resize\.js[^"]*"></script>', html)
 
-    @pytest.mark.xfail(strict=True, reason="resizable columns not implemented yet")
     def test_the_script_ships_and_the_shell_does_not_load_it(self):
         """CHARTER §4.2: the shell downloads htmx and Basecoat and nothing else."""
         from fjkit.config import STATIC_DIR, TEMPLATE_DIR

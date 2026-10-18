@@ -93,6 +93,7 @@
 | 2026-08-23 | `form(encoding="json")` + vendored `htmx-ext-json-enc`（demo 的 jobs 表單改送 JSON） | 236,920 (231.4 KB) | 25,031 gzip | **±0**，24.4 / 28 KB。實測方式寫下來：把 `ui/form.html` 與 jobs 頁換回 HEAD 版重建，數字一個 byte 都沒差——這次加的是屬性不是 class。絕對值比上一列高 319 raw / 25 gzip，那是 0.3 的錯誤頁與 shell 監聽器帶進來的，不是這次的 |
 | 2026-09-01 | `.dialog > * > section` 補 `scrollbar-gutter: stable`；`data.html` 的 `caption`；`select_menu`／`combobox` 的 `visible_label`／`hint`／`error` | 236,944 (231.4 KB) | 25,044 gzip | **+24 raw / +13 gzip**，24.5 / 28 KB。24 bytes 全部是那一條 `scrollbar-gutter`——它不是 utility，是寫在 `@layer` 裡的原生宣告，所以逐字進了每一個包。三處模板變動一個 utility 都沒帶：`.field`／`.label`／`text-muted-foreground`／`text-destructive` 早就因為 `ui/form.html` 在編出來的檔案裡了 |
 | 2026-09-01 | dialog 捲軸修正第二版：section 改為 `-mx-6 px-6` 自帶行內 padding | 237,024 (231.5 KB) | 25,053 gzip | **+80 raw / +9 gzip**，24.5 / 28 KB。`margin-inline` 與 `padding-inline` 各一條，寫進同一條規則 |
+| 2026-10-18 | `table(resizable=true)` + `resize_scripts()`（#41，欄寬可拖曳） | 240,196 (234.6 KB) | 25,640 gzip | **+1,199 raw / +189 gzip**（vega，對照同一 worktree 改動前的 238,997 / 25,451），25.0 / 28 KB。全部是 `fjkit.css` components 層新增的把手與 `[data-fjkit-resized]` 規則；八個包都在 24.7–25.3 KB |
 
 ### 表單送 JSON（2026-08-23，使用者指定）
 
