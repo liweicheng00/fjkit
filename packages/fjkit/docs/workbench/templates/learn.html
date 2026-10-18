@@ -1088,6 +1088,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
       ("a ValidationError your own code raised", model_error),
       ("catch_unexpected_errors", unexpected),
       ("unexpected_error", "the words that toast says. Leave it and the kit says <em>Something went wrong</em>; set a <code>Message</code> to change them once, or a callable <code>(request, exc) -&gt; Message</code> to pick them per exception. Choose the words from the exception — never put <code>str(exc)</code> in them, that is the inside of your app"),
+      ("a 404", "an unknown address, or a route that raised <code>HTTPException(404)</code>. A navigation gets errors/page.html, which says the page may have moved. An htmx swap gets an empty 404 and a toast, so the page it came from stays as it was. A JSON client gets FastAPI's own reply. Every other <code>HTTPException</code> is FastAPI's reply, headers included. Register your own <code>HTTPException</code> handler after <code>mount_fjkit()</code> and it replaces this one"),
       ("errors/page.html", "the page a failed navigation lands on. Replace it by writing a file at the same path in your own template directory — the same shadowing fjkit eject uses, so there is no separate custom-error-page mechanism to learn"),
       ("js/errors.js", "the third and last file every page loads, after htmx and Basecoat. It listens to htmx:beforeSwap, so a 422 that is not FastAPI's list — a route answering with markup of its own — is left alone"),
     ]) }}

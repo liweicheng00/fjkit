@@ -1051,6 +1051,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
       ("你自己的程式碼丟出的 ValidationError", model_error),
       ("catch_unexpected_errors", unexpected),
       ("unexpected_error", "那則 toast 的內容。不設就是 kit 自己的一句 <em>Something went wrong</em>；給一個 <code>Message</code> 就整批換掉，給一個 <code>(request, exc) -&gt; Message</code> 的函式就能依例外種類挑句子。用例外挑句子，不要把 <code>str(exc)</code> 放進去，那是你 app 的內部"),
+      ("404", "不存在的網址，或路由丟出的 <code>HTTPException(404)</code>。導覽會拿到 errors/page.html，告訴訪客這一頁可能已經移走。htmx swap 拿到一個空的 404 加一則 toast，原本的頁面保持原樣。JSON client 拿到 FastAPI 自己的回應。其他狀態碼的 <code>HTTPException</code> 一律是 FastAPI 的回應，header 也原樣保留。在 <code>mount_fjkit()</code> 之後註冊自己的 <code>HTTPException</code> handler，就會取代這一個"),
       ("errors/page.html", "導覽失敗時落到的那一頁。在自己的模板目錄放一個同路徑的檔案就能換掉，用的是與 fjkit eject 相同的遮蔽機制，所以沒有另一套「自訂錯誤頁」要學"),
       ("js/errors.js", "每一頁載入的第三個、也是最後一個檔案，排在 htmx 與 Basecoat 之後。它聽 htmx:beforeSwap，所以不是 FastAPI 清單的 422——某條路由自己回了 markup——會被放過"),
     ]) }}
