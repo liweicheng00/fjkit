@@ -616,7 +616,6 @@ def test_a_caught_unhandled_error_leaves_a_json_client_with_a_plain_500():
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.xfail(strict=True, reason="404 handler not installed yet")
 def test_a_navigation_to_an_unknown_address_gets_the_error_page():
     """FastAPI's `{"detail":"Not Found"}` is a screen of JSON to a person who
     followed a stale link."""
@@ -628,7 +627,6 @@ def test_a_navigation_to_an_unknown_address_gets_the_error_page():
     assert response.text == "<error-page status=404>"
 
 
-@pytest.mark.xfail(strict=True, reason="404 handler not installed yet")
 def test_a_route_that_raises_404_gives_a_navigation_the_error_page():
     client = make_app()
 
@@ -638,7 +636,6 @@ def test_a_route_that_raises_404_gives_a_navigation_the_error_page():
     assert response.text == "<error-page status=404>"
 
 
-@pytest.mark.xfail(strict=True, reason="404 handler not installed yet")
 def test_a_404_reaches_a_swap_as_a_toast_and_no_body():
     """The page stays as it was. A swap that found nothing has no markup to put
     in the target, and htmx reads `HX-Trigger` before it decides not to swap."""
@@ -702,7 +699,6 @@ def test_an_apps_own_http_error_handler_wins():
     assert response.text == "mine"
 
 
-@pytest.mark.xfail(strict=True, reason="404 handler not installed yet")
 def test_the_kits_404_page_talks_about_a_missing_page():
     """The words written for a 500 are wrong here: nothing was being saved, and
     the server log has nothing to say about a mistyped address."""

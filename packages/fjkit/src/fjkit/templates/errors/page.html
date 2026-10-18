@@ -13,8 +13,8 @@
 
   The whole context:
 
-      status_code   422 or 500
-      errors        `FieldErrors` on a 422, `none` on a 500
+      status_code   404, 422 or 500
+      errors        `FieldErrors` on a 422, `none` otherwise
 
   No `detail` and no traceback, deliberately. A 500 means the app is in a state
   nobody predicted, and the honest thing to show a visitor is that something
@@ -32,6 +32,11 @@
   422: "That form could not be saved",
 } %}
 {% set heading = _TITLES.get(status_code, "Something went wrong") %}
+{% set _NEXT_STEPS = {
+  404: "This page may have moved or been removed. Check the address, or start again from the home page.",
+  422: "Nothing was saved. Go back, correct the highlighted fields and try again.",
+} %}
+{% set next_step = _NEXT_STEPS.get(status_code, "The action was not completed and nothing was saved. If it keeps happening, the details are in the server log.") %}
 
 {% block title %}{{ heading }}{% endblock %}
 
@@ -55,7 +60,7 @@
           {#
             The errors are listed rather than dropped: on a 422 they are the
             point of the page, because the person filled something in and needs
-            to know which part to change. On a 500 `errors` is `none` and the
+            to know which part to change. Otherwise `errors` is `none` and the
             paragraph below is all there is to say.
           #}
           {% if errors %}
@@ -74,15 +79,8 @@
                 {% call list_item() %}{{ message }}{% endcall %}
               {% endfor %}
             {% endcall %}
-            <p class="text-muted-foreground text-sm">
-              Nothing was saved. Go back, correct the highlighted fields and try again.
-            </p>
-          {% else %}
-            <p class="text-muted-foreground text-sm">
-              The action was not completed and nothing was saved. If it keeps happening,
-              the details are in the server log.
-            </p>
           {% endif %}
+          <p class="text-muted-foreground text-sm">{{ next_step }}</p>
 
           <div>
             {#
