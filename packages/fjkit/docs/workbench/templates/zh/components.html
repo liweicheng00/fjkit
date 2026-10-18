@@ -4,6 +4,7 @@
 {% from "ui/tabs.html" import tab_panel, tabs %}
 {% from "ui/layout.html" import grid, page_header, stack %}
 {% from "ui/form.html" import reveal_scripts %}
+{% from "ui/table.html" import resize_scripts %}
 
 {#
   Components 的中文版。結構、id、macro 呼叫與腳本掛點必須跟英文版逐字對應——
@@ -443,6 +444,14 @@
         而 <code>select_scripts()</code> 負責讓表頭那一格勾選整欄。
       </p>
       <p>
+        <code>resizable=true</code> 會在每個有 label 的欄位右緣放一個把手。訪客可以拖曳它，
+        或是聚焦後按方向鍵；按 Home 或雙擊則把欄寬還原為自然寬度。
+        欄寬存在 <code>localStorage</code>，以表格的 <code>id</code> 為鍵，所以可調寬的表格必須有
+        <code>id</code>；重新載入或經過 htmx swap 後，欄寬都會還原。頁面要載入
+        <code>resize_scripts()</code>；沒有載入時把手不會出現，表格就是一般的表格。
+        CSS 做不到這件事：<code>resize</code> 只作用於帶 overflow 的區塊盒，而表格儲存格不是。
+      </p>
+      <p>
         <code>page_size</code> 是一個 <code>&lt;form method="get"&gt;</code>，因為單獨一個
         <code>&lt;select&gt;</code> 沒有腳本就無法送出。它的 <code>url</code> 不能帶 query string：
         GET 送出會以表單欄位取代整段 query，所以篩選要放進 <code>keep</code>。
@@ -507,6 +516,7 @@
 {% block page_scripts %}
   <script defer src="{{ fjkit_static('components.js') }}"></script>
   {# The reveal showcase is a working control, so the page opts into its script
-     the same way an app's sign-in page does. #}
+     the same way an app's sign-in page does. The resizable table is the same. #}
   {{ reveal_scripts() }}
+  {{ resize_scripts() }}
 {% endblock %}

@@ -85,6 +85,7 @@ HTMX = STATIC / "vendor" / "htmx" / "htmx.min.js"
 BASECOAT = STATIC / "vendor" / "basecoat" / "js" / "all.min.js"
 ERRORS_JS = STATIC / "js" / "errors.js"
 REVEAL_JS = STATIC / "js" / "reveal.js"
+RESIZE_JS = STATIC / "js" / "resize.js"
 MARK = STATIC / "brand" / "torii-bolt.png"
 
 OUT = REPO / "docs"
@@ -362,6 +363,7 @@ VENDORED = [
     # The Components page calls `reveal_scripts()`, so the reveal showcase is a
     # control a reader can press rather than a picture of one.
     (REVEAL_JS, "js/reveal.js", "git restore packages/fjkit/src/fjkit/static/js/reveal.js"),
+    (RESIZE_JS, "js/resize.js", "git restore packages/fjkit/src/fjkit/static/js/resize.js"),
     (MARK, "brand/torii-bolt.png", "git restore packages/fjkit/src/fjkit/static/brand/torii-bolt.png"),
 ]
 
