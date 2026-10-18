@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=cc818caf9ea5">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=fece8f41d5c6">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -925,6 +925,15 @@ fjkit
         <code>select_scripts()</code> is what ticks the whole column from the header box.
       </p>
       <p>
+        <code>resizable=true</code> puts a handle on the trailing edge of each labelled column. A
+        visitor drags it, or focuses it and presses the arrow keys; Home or a double-click gives the
+        column back its natural width. The widths are kept in <code>localStorage</code> under the
+        table's <code>id</code>, which is why a resizable table must have one, and they come back
+        after a reload and after an htmx swap. The page loads <code>resize_scripts()</code>; without
+        it the handles stay hidden and the table is the ordinary one. CSS cannot do this:
+        <code>resize</code> works only on a block box with overflow, and a table cell is not one.
+      </p>
+      <p>
         <code>page_size</code> is a <code>&lt;form method="get"&gt;</code>, because a bare
         <code>&lt;select&gt;</code> cannot submit without a script. Its <code>url</code> must carry no
         query string: a GET submit replaces the whole query with the form's fields, so pass the
@@ -1045,9 +1054,10 @@ fjkit
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=e4b5be20e86a"></script>
+  <script defer src="assets/data.js?v=b7c5f6086a62"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
-  <script defer src="assets/components.js?v=9e793d51b578"></script>
+  <script defer src="assets/components.js?v=77de169a66b3"></script>
   <script defer src="assets/js/reveal.js?v=a668cfecf3ff"></script>
+  <script defer src="assets/js/resize.js?v=49ba3363eaee"></script>
 </body>
 </html>
