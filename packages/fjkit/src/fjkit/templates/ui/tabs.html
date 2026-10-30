@@ -141,7 +141,8 @@
   {%- set trigger %}intersect
     {%- for event in on or [] %}, {{ event }}[!this.hidden] from:body{% endfor %}
   {%- endset -%}
-  <div id="{{ id }}" role="tabpanel" aria-labelledby="{{ id }}-tab"
+  <div id="{{ id }}" role="tabpanel"
+    {%- if "aria_labelledby" not in kwargs %} aria-labelledby="{{ id }}-tab"{% endif %}
     {%- if lazy %} hx-get="{{ lazy }}" hx-trigger="{{ trigger }}"
     {%- if include %} hx-include="{{ include }}"{% endif %} hx-target="this" hx-swap="innerHTML"
     {%- endif %}

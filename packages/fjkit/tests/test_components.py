@@ -2656,6 +2656,36 @@ class TestTabPanelNames:
             assert panel.get("aria-labelledby") == tab_id
 
 
+class _AttributeLists(HTMLParser):
+    """Every start tag's attributes in source order, duplicates kept."""
+
+    def __init__(self, html):
+        super().__init__()
+        self.elements: list[list[tuple[str, str | None]]] = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        self.elements.append(attrs)
+
+
+class TestCallerAttributeWins:
+    """A browser keeps the first of two same-named attributes, so a default the
+    macro writes ahead of `attrs(kwargs)` would silently beat the caller's."""
+
+    @pytest.mark.parametrize(
+        ("source", "name", "value"),
+        [
+            (f'{TABS}{{% call tab_panel("a", aria_labelledby="own") %}}x{{% endcall %}}', "aria-labelledby", "own"),
+            (f'{AVATAR}{{{{ avatar("Ada Lovelace", aria_label="Countess") }}}}', "aria-label", "Countess"),
+            (f'{AVATAR}{{{{ avatar("Ada Lovelace", role="presentation") }}}}', "role", "presentation"),
+        ],
+        ids=["tab_panel", "avatar-label", "avatar-role"],
+    )
+    def test_the_callers_value_is_the_only_one(self, render, source, name, value):
+        root = _AttributeLists(render(source)).elements[0]
+        assert [v for k, v in root if k == name] == [value]
+
+
 class TestSkeletonLastLine:
     FRACTION = {"w-full": 1, "w-3/4": 3 / 4, "w-1/2": 1 / 2, "w-1/3": 1 / 3, "w-1/4": 1 / 4}
 
