@@ -703,6 +703,37 @@ def test_a_flow_error_is_the_way_to_refuse_without_leaking():
     assert "come back later" in client.post("/api-docs/auth", data={}).text
 
 
+
+def _custom_flow(**attrs):
+    body = {
+        "name": "custom",
+        "label": "Custom",
+        "state": lambda self, request: None,
+        "sign_in": lambda self, request, response, values: None,
+        "sign_out": lambda self, request, response: None,
+        "headers": lambda self, request: {},
+    }
+    return type("CustomFlow", (), {**body, **attrs})()
+
+
+@pytest.mark.xfail(strict=True, reason="APIDOCS-1: a flow without `csrf` is unchecked, silently")
+def test_a_flow_that_does_not_state_its_csrf_policy_is_reported():
+    """The console checks `Origin` only when the flow names a policy. A flow
+    that keeps a credential in a cookie and never mentions `csrf` would go
+    unchecked without a word, so the omission is reported at construction."""
+    with pytest.warns(PluginWarning, match="csrf"):
+        ApiDocsPlugin(flow=_custom_flow())
+
+    session_flow = SessionFlow(auth_plugin())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PluginWarning)
+        ApiDocsPlugin(flow=_custom_flow(csrf=None))
+        ApiDocsPlugin(flow=NoFlow())
+        ApiDocsPlugin(flow=header_flow())
+        ApiDocsPlugin(flow=session_flow)
+        ApiDocsPlugin()
+
+
 # ------------------------------------------------- what Swagger UI also shows
 #
 # The plugin exists for the half Swagger cannot do: a sign-in that is the app's
