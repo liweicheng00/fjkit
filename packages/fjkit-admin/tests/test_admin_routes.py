@@ -6,10 +6,11 @@ import json
 import re
 
 import pytest
-from admin_fixture import HX, TITLES, Task, TaskAdmin, make_app
+from admin_fixture import HX, TITLES, Project, ProjectAdmin, Task, TaskAdmin, make_app
 from fastapi import Request
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from fjkit_admin import action
+from sqlalchemy import select, text
 from sqlalchemy.orm import sessionmaker
 
 #: The headers htmx sends when a checkbox column posts its selection.
@@ -181,6 +182,48 @@ def test_a_row_the_database_refuses_is_a_422_not_a_crash(stack):
     assert "2 projects" in client.get("/admin").text
 
 
+@pytest.mark.xfail(strict=True, reason="PR #24 review, finding 3")
+def test_a_refused_row_names_no_database_internals(stack, caplog):
+    client = TestClient(stack[0], raise_server_exceptions=False)
+    with caplog.at_level("WARNING", logger="fjkit_admin"):
+        response = client.post("/admin/project", json={"name": "Core"}, headers=HX)
+    assert response.status_code == 422
+    msg = response.json()["detail"][0]["msg"]
+    # The driver's text names the constraint kind and the column; it goes to the
+    # log, where the operator reads it, and not to the caller.
+    assert "UNIQUE" not in msg and "project.name" not in msg
+    assert "UNIQUE constraint failed: project.name" in caplog.text
+
+
+@pytest.mark.xfail(strict=True, reason="PR #24 review, finding 2")
+def test_a_constraint_the_database_refuses_in_an_action_or_a_delete_is_a_422():
+    class Renaming(ProjectAdmin):
+        key = "project"
+        actions = ("delete_selected", "rename_all")
+
+        @action("Rename all")
+        def rename_all(self, request: Request, session, projects: list[Project]) -> str:
+            for project in projects:
+                project.name = "Same"
+            return "renamed"
+
+    app, db, _ = make_app(TaskAdmin, Renaming)
+    client = TestClient(app, raise_server_exceptions=False)
+    response = client.post("/admin/project/action/rename_all", content="selected=1&selected=2", headers=FORM)
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body"]
+    with db() as session:
+        assert {project.name for project in session.scalars(select(Project))} == {"Core", "Docs"}
+        # The fixture's SQLite does not enforce foreign keys until asked; the
+        # engine's one pooled connection keeps the pragma for the rest of the test.
+        session.execute(text("PRAGMA foreign_keys=ON"))
+        session.commit()
+    response = client.delete("/admin/project/1", headers=HX)
+    assert response.status_code == 422
+    with db() as session:
+        assert session.get(Project, 1) is not None
+
+
 def test_change_form_shows_the_row_and_update_saves_it(client: TestClient, db: sessionmaker):
     html = client.get("/admin/task/1").text
     assert 'value="Alpha brief"' in html
@@ -340,6 +383,33 @@ def test_a_bulk_action_needs_the_view_permission():
     assert client.post("/admin/task/action/mark_done", content="selected=2", headers=FORM).status_code == 403
     with db() as session:
         assert session.get(Task, 2).done is False
+
+
+@pytest.mark.xfail(strict=True, reason="PR #24 review, finding 1")
+def test_a_bulk_action_honours_the_per_object_permission():
+    class Locked(TaskAdmin):
+        key = "task"
+
+        def has_delete_permission(self, request: Request, obj=None) -> bool:
+            return obj is None
+
+        def has_view_permission(self, request: Request, obj=None) -> bool:
+            return obj is None or obj.id != 2
+
+    app, db, _ = make_app(Locked)
+    client = TestClient(app)
+    # The model-level answer is yes, so the buttons render and the routes open.
+    assert "Delete selected" in client.get("/admin/task").text
+    # The single-row routes refuse the row; the action over the same row refuses too.
+    assert client.delete("/admin/task/1").status_code == 403
+    assert client.post("/admin/task/action/delete_selected", content="selected=1", headers=FORM).status_code == 403
+    assert client.get("/admin/task/2").status_code == 403
+    # One refused row refuses the whole selection: the action runs over all of it or none.
+    response = client.post("/admin/task/action/mark_done", content="selected=2&selected=3", headers=FORM)
+    assert response.status_code == 403
+    with db() as session:
+        assert session.get(Task, 1) is not None
+        assert session.get(Task, 2).done is False and session.get(Task, 3).done is False
 
 
 def test_get_queryset_scopes_every_route_and_the_count():
