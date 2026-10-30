@@ -165,7 +165,13 @@ async def call(
     """
     app = request.app
     root_path: str = request.scope.get("root_path", "") or ""
-    target = path if path.startswith("/") else f"/{path}"
+    raw = path if path.startswith("/") else f"/{path}"
+    # Decoded once, here, and judged in this form by both the guard below and
+    # the router. A path parameter arrives percent-encoded, so a value of
+    # `api-docs/try/<op>` spells `/api-docs%2Ftry%2F<op>`: not under the prefix
+    # as text, and the console's own handler once Starlette matches the decoded
+    # path.
+    target = unquote(raw)
 
     if forbidden_prefix and within(target, forbidden_prefix):
         raise RecursionRefused(
@@ -180,7 +186,7 @@ async def call(
 
     recorded = Recorded(
         method=method.upper(),
-        url=_display(target, query_string),
+        url=_display(raw, query_string),
         status=0,
         request_headers=tuple(sent),
     )
@@ -203,11 +209,11 @@ async def call(
         # the app is mounted under a prefix, and then every call 404s.
         #
         # Decoded, as ASGI defines it and as a server fills it in from the
-        # request line; `raw_path` keeps the escapes. A path parameter arrives
-        # here percent-encoded, and leaving it so would hand the endpoint
-        # `my%20report.txt` where a direct request delivers `my report.txt`.
-        "path": f"{root_path}{unquote(target)}",
-        "raw_path": f"{root_path}{target}".encode(),
+        # request line; `raw_path` keeps the escapes. Leaving the escapes in
+        # would hand the endpoint `my%20report.txt` where a direct request
+        # delivers `my report.txt`.
+        "path": f"{root_path}{target}",
+        "raw_path": f"{root_path}{raw}".encode(),
         "root_path": root_path,
         "query_string": query_string,
         "headers": [(k.encode("latin-1"), v.encode("latin-1")) for k, v in sent],

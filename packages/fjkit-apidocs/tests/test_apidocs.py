@@ -1366,7 +1366,7 @@ def test_the_curl_snippet_redacts_whichever_header_the_flow_puts_the_token_in():
 
     text = shown(client.post(f"/api-docs/try/{operation_id(app, 'GET', '/files/{name}')}", data={"p.path.name": "x"}))
     assert "SUPER-SECRET-KEY-123" not in text
-    assert "X-API-Key: <redacted>" in text  # the header is named, so the reader knows what to fill in
+    assert "x-api-key: <redacted>" in text  # the header is named, so the reader knows what to fill in
 
 
 def test_a_set_cookie_the_endpoint_answers_with_is_shown_without_its_value():
@@ -1382,7 +1382,6 @@ def test_a_set_cookie_the_endpoint_answers_with_is_shown_without_its_value():
     assert "httponly" in text
 
 
-@pytest.mark.xfail(strict=True, reason="the guard tests the encoded path while the router sees the decoded one")
 def test_a_path_value_cannot_steer_the_call_back_into_the_console():
     """`within()` and the router must judge the same string. A path parameter
     is sent percent-encoded, so `api-docs/try/<op>` as a value reaches the
@@ -1406,7 +1405,6 @@ def test_a_path_value_cannot_steer_the_call_back_into_the_console():
     assert "already a console call" not in text  # the inner handler never ran
 
 
-@pytest.mark.xfail(strict=True, reason="the credential keeps the flow's capitalisation beside the lowercased typed key")
 def test_the_curl_snippet_names_each_wire_header_once():
     """Header names are case-insensitive, so a hand-typed `x-api-key` and the
     flow's `X-API-Key` are one header. The call sends one; the snippet, which
