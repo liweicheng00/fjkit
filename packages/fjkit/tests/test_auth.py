@@ -646,7 +646,6 @@ class WinnerFinishesAfterTheRead(MemoryStore):
         return payload
 
 
-@pytest.mark.xfail(strict=True, reason="the loser decides on the row it read before the winner wrote")
 @pytest.mark.asyncio
 @pytest.mark.parametrize("seconds_left", [-1, 5], ids=["expired", "inside the leeway"])
 async def test_a_request_that_lost_the_race_reads_the_row_the_winner_wrote(seconds_left: int):

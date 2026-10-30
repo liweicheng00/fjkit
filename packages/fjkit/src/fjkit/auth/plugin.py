@@ -511,17 +511,20 @@ class AuthPlugin:
         current = stale
         while asyncio.get_running_loop().time() < deadline:
             await asyncio.sleep(_POLL_SECONDS)
-            payload = await self.store.get(sid)
-            if payload is None:
-                raise RefreshFailed("the session was dropped while its token was being renewed")
-            current = decode(payload)
+            current = await self._stored(sid)
             if not self._expiring(current):
                 return current
             if await self.store.acquire_refresh_lock(sid, ttl):
-                # Not a second attempt: the upstream was unreachable a moment
-                # ago, and a retry here would make the user wait out a second
-                # timeout. The next request retries.
-                await self.store.release_refresh_lock(sid)
+                try:
+                    # The winner writes before it lets go, and may have done
+                    # both since this request's read above. The verdict is on
+                    # the row as it is now, not on that earlier read.
+                    current = await self._stored(sid)
+                finally:
+                    # Not a second attempt: the upstream was unreachable a
+                    # moment ago, and a retry here would make the user wait out
+                    # a second timeout. The next request retries.
+                    await self.store.release_refresh_lock(sid)
                 if self._expired(current):
                     raise RefreshUnavailable("another request could not reach the upstream to renew the session")
                 return current
@@ -531,6 +534,13 @@ class AuthPlugin:
                 "raise `refresh_wait` if the upstream is slower than that"
             )
         return current
+
+    async def _stored(self, sid: str) -> Session:
+        """The row as the store has it now, for a request waiting on a refresh."""
+        payload = await self.store.get(sid)
+        if payload is None:
+            raise RefreshFailed("the session was dropped while its token was being renewed")
+        return decode(payload)
 
     def _expiring(self, session: Session) -> bool:
         """Report whether the token is inside the leeway, or already past it.
