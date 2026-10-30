@@ -336,6 +336,9 @@ class AdminPlugin:
                     for obj in (self._load(request, session, view, value, missing_ok=True) for value in selected)
                     if obj is not None
                 ]
+                # One refused row refuses the whole selection, as Django does:
+                # the action runs over everything ticked or over nothing.
+                self._require(all(view.allows_action_on(request, spec, obj) for obj in objs))
                 if not objs:
                     messages.add(request, "Nothing was selected", "Tick a row first.", category="warning")
                 else:

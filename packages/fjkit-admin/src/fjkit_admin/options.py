@@ -35,6 +35,9 @@ if TYPE_CHECKING:
 
 __all__ = ["ModelAdmin", "action", "display"]
 
+#: The `has_*_permission` hooks that take a row. `add` is the one that does not.
+ROW_PERMISSIONS = frozenset({"view", "change", "delete"})
+
 #: The widget names `widgets = {...}` and `Column.info["admin"]["widget"]` accept.
 WIDGETS = frozenset(
     {"text", "textarea", "number", "boolean", "date", "datetime", "time", "enum", "select", "email", "url", "password"}
@@ -59,8 +62,10 @@ def action(
     The method receives the open session and the selected instances, and
     returns the toast text or `None` for the default one. `variant` is the
     button's, from fjkit's closed list. `permission` names a `has_*_permission`
-    method that must answer True before the button renders or the action runs;
-    `delete_selected` uses `"delete"`.
+    method that must answer True for the model before the button renders, and
+    for every selected row before the action runs; `delete_selected` uses
+    `"delete"`. An action that names none still needs the view permission on
+    every selected row.
     """
 
     def decorate(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -347,6 +352,7 @@ class ModelAdmin:
         return specs
 
     def allowed_actions(self, request: Request) -> list[dict[str, Any]]:
+        """The actions whose model-level permission answers True: the buttons to render."""
         allowed: list[dict[str, Any]] = []
         for spec in self.action_specs():
             permission = spec.get("permission")
@@ -354,6 +360,16 @@ class ModelAdmin:
                 continue
             allowed.append(spec)
         return allowed
+
+    def allows_action_on(self, request: Request, spec: dict[str, Any], obj: Any) -> bool:
+        """The per-row half of an action's permission, the one `allowed_actions`
+        cannot ask. The permission the action names, or view for an action that
+        names none, since its rows come from a list the caller may see. `add`
+        has no row to ask about and falls back to view as well."""
+        permission = spec.get("permission")
+        if permission not in ROW_PERMISSIONS:
+            permission = "view"
+        return bool(getattr(self, f"has_{permission}_permission")(request, obj))
 
     # --------------------------------------------------------------- values
 

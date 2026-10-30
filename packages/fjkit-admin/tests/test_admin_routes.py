@@ -385,7 +385,6 @@ def test_a_bulk_action_needs_the_view_permission():
         assert session.get(Task, 2).done is False
 
 
-@pytest.mark.xfail(strict=True, reason="PR #24 review, finding 1")
 def test_a_bulk_action_honours_the_per_object_permission():
     class Locked(TaskAdmin):
         key = "task"
