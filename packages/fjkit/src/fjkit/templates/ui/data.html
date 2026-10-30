@@ -332,7 +332,10 @@
   #}
   {%- set letters = initials if initials is not none else (name.split() | map("first") | join)[:2] | upper -%}
   <span class="avatar"{% if size %} data-size="{{ size }}"{% endif %}
-    {%- if not src %} role="img" aria-label="{{ name }}"{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {#- Each default yields to the caller's own: a browser keeps the first of
+        two same-named attributes, and this one comes first. -#}
+    {%- if not src and "role" not in kwargs %} role="img"{% endif %}
+    {%- if not src and "aria_label" not in kwargs %} aria-label="{{ name }}"{% endif %}{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     {%- if src %}<img src="{{ src }}" alt="{{ name }}">{% endif %}
     {#
       Hidden from the tree either way. Read aloud, "AL" is two stray letters;

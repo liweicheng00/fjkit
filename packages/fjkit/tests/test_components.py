@@ -2649,7 +2649,6 @@ class TestCallerAttributeWins:
     """A browser keeps the first of two same-named attributes, so a default the
     macro writes ahead of `attrs(kwargs)` would silently beat the caller's."""
 
-    @pytest.mark.xfail(strict=True, reason="default emitted alongside the caller's")
     @pytest.mark.parametrize(
         ("source", "name", "value"),
         [
