@@ -2350,7 +2350,6 @@ class TestMultipleSelection:
         html = render(f"{OVERLAY}{{{{ multiselect_scripts() }}}}")
         assert "<script defer" in html and "js/multiselect.js" in html
 
-    @pytest.mark.xfail(strict=True, reason="issue 46: the chip box is left to Basecoat's JS")
     def test_a_multiple_combobox_renders_the_chip_box(self, render):
         """Basecoat's JS wraps the input in `.combobox-chips` when it runs.
         Rendering the box here gives the first paint the shape the script
@@ -2363,11 +2362,12 @@ class TestMultipleSelection:
         html = render(f'{OVERLAY}{{{{ combobox("l", {self.OPTIONS}) }}}}')
         assert "combobox-chips" not in html
 
-    @pytest.mark.xfail(strict=True, reason="issue 46: the list is anchored to the whole control")
     def test_the_list_is_anchored_to_the_input_not_the_control(self):
         """Basecoat positions `[data-popover]` at the bottom of the `.combobox`
         root. In multiple mode the root grows with every chip row, so the list
         moves down one row per pick. `fjkit.css` anchors it to the input."""
+        from fjkit.config import TEMPLATE_DIR
+
         css = (TEMPLATE_DIR.parent / "static" / "src" / "fjkit.css").read_text(encoding="utf-8")
         rule = re.search(r"\.combobox:has\(> \.combobox-chips\) > \[data-popover\] \{([^}]*)\}", css)
         assert rule, "no fjkit.css rule positions the multiple combobox's list"
