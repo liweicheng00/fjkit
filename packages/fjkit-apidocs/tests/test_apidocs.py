@@ -547,7 +547,6 @@ def test_signing_out_drops_the_session(client: TestClient):
     assert client.post("/api-docs/try/whoami_whoami_get").text.count("&#34;sub&#34;: null") == 1
 
 
-@pytest.mark.xfail(strict=True, reason="SessionFlow reads request.state.auth, which is None during an outage")
 def test_during_an_outage_no_call_leaves_the_console():
     """The signed-in caller's token has expired and the identity provider is
     unreachable. The app's own pages answer 503, and so does the console, but
