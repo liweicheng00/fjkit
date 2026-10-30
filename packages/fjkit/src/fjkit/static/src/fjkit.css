@@ -444,7 +444,14 @@
   }
 
   .table[data-fjkit-resized] :is(th, td) {
-    @apply box-border overflow-hidden text-ellipsis;
+    @apply box-border;
+  }
+
+  /* A narrowed cell cuts its text at the column edge. A cell holding an
+   * overlay is left unclipped: Basecoat positions the panel inside the cell,
+   * so a clip on the cell would hide the open menu, popover or tooltip. */
+  .table[data-fjkit-resized] :is(th, td):not(:has([data-popover], [data-tooltip])) {
+    @apply overflow-hidden text-ellipsis;
   }
 }
 

@@ -464,7 +464,6 @@ class TestResizableColumns:
         assert (STATIC_DIR / "js" / "resize.js").is_file()
         assert "resize.js" not in (TEMPLATE_DIR / "ui" / "shell.html").read_text(encoding="utf-8")
 
-    @pytest.mark.xfail(strict=True, reason="a resized table clips every cell, overlays included")
     @pytest.mark.parametrize(
         "overlay",
         [
