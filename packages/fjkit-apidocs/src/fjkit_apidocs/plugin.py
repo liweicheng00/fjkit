@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import re
 import secrets
+import warnings
 from collections.abc import Mapping, Sequence
 from datetime import timedelta
 from pathlib import Path
@@ -38,7 +39,7 @@ from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse
-from fjkit.plugins import AppSetup, EnvSetup
+from fjkit.plugins import AppSetup, EnvSetup, PluginWarning
 from fjkit.templating import get_templates
 from starlette.datastructures import UploadFile
 
@@ -129,6 +130,18 @@ class ApiDocsPlugin:
         #: `_resolve_flow` never runs.
         self._flow_given = flow is not None
         self.flow: AuthFlow = flow if flow is not None else NoFlow()
+        if not hasattr(self.flow, "csrf"):
+            # An absent policy and a `None` one behave alike, but only `None`
+            # was decided. A flow that keeps a credential in a cookie and never
+            # heard of `csrf` would otherwise go unchecked without a word.
+            warnings.warn(
+                f"[fjkit:{self.name}] {type(self.flow).__name__} has no `csrf` attribute, so the "
+                "console checks no `Origin` on its POST routes. Set `csrf` to a "
+                "`fjkit.auth.types.Csrf` if the flow leaves a credential in a cookie, or to `None` "
+                "to state that it does not.",
+                PluginWarning,
+                stacklevel=2,
+            )
         if isinstance(self.flow, HeaderFlow) and self.flow.cookie_path is None:
             # Scoped to the docs page. A token held for the whole origin would
             # be attached to nothing else, but the browser would still send it

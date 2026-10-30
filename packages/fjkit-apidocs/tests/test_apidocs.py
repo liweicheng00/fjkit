@@ -684,6 +684,7 @@ def test_a_flow_error_is_the_way_to_refuse_without_leaking():
     class Picky:
         name = "picky"
         label = "Picky"
+        csrf = None
 
         def state(self, request):
             from fjkit_apidocs import FlowState
@@ -703,7 +704,6 @@ def test_a_flow_error_is_the_way_to_refuse_without_leaking():
     assert "come back later" in client.post("/api-docs/auth", data={}).text
 
 
-
 def _custom_flow(**attrs):
     body = {
         "name": "custom",
@@ -716,7 +716,6 @@ def _custom_flow(**attrs):
     return type("CustomFlow", (), {**body, **attrs})()
 
 
-@pytest.mark.xfail(strict=True, reason="APIDOCS-1: a flow without `csrf` is unchecked, silently")
 def test_a_flow_that_does_not_state_its_csrf_policy_is_reported():
     """The console checks `Origin` only when the flow names a policy. A flow
     that keeps a credential in a cookie and never mentions `csrf` would go

@@ -105,12 +105,14 @@ class FlowState:
 class AuthFlow(Protocol):
     """What `ApiDocsPlugin(flow=…)` accepts.
 
-    A flow that leaves the browser holding an ambient credential (a cookie)
-    also carries a `csrf` attribute, a `fjkit.auth.types.Csrf`, and the console
-    runs its `verify` on every POST it answers. `SessionFlow` hands over the
+    Every flow also carries a `csrf` attribute: a `fjkit.auth.types.Csrf`
+    when it leaves the browser holding an ambient credential (a cookie), and
+    the console runs its `verify` on every POST it answers; `None` when it
+    attaches nothing a forged request could use. `SessionFlow` hands over the
     `AuthPlugin`'s own policy and `HeaderFlow` is given one, exactly as
-    `AuthPlugin` is. A flow without the attribute attaches nothing a forged
-    request could use, and is not checked.
+    `AuthPlugin` is. The attribute is not a Protocol member, so a flow written
+    before it still passes `isinstance`; `ApiDocsPlugin` raises a
+    `PluginWarning` for such a flow and checks nothing.
     """
 
     #: Identifies the flow in the panel's markup and in error messages.
