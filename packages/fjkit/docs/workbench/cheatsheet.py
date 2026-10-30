@@ -584,9 +584,9 @@ GROUPS = [
                     _m(
                         "theme_toggle()",
                         en="The shell renders one already; call it only when you have replaced "
-                        "header_actions, inside {% if fjkit_color_scheme.toggle %}.",
-                        zh="外殼已經放了一顆；只有在你換掉 header_actions 時才需要自己呼叫，"
-                        "並包在 {% if fjkit_color_scheme.toggle %} 裡。",
+                        "header_actions. It renders nothing under a fixed color_scheme.",
+                        zh="外殼已經放了一顆；只有在你換掉 header_actions 時才需要自己呼叫。"
+                        "color_scheme 固定時它不輸出任何東西。",
                     ),
                     _m(
                         'breadcrumb(trail, separator="chevron", label="Breadcrumb")',
@@ -926,10 +926,8 @@ GLOBALS = [
     },
     {
         "name": "fjkit_color_scheme",
-        "en": "What FjkitConfig.color_scheme renders: .prepaint_script, .html_class and .toggle. "
-        "A header_actions override asks .toggle before it offers theme_toggle().",
-        "zh": "FjkitConfig.color_scheme 的渲染結果：.prepaint_script、.html_class、.toggle。"
-        "覆寫 header_actions 時，先問 .toggle 再放 theme_toggle()。",
+        "en": "What FjkitConfig.color_scheme renders: .prepaint_script, .html_class and .toggle.",
+        "zh": "FjkitConfig.color_scheme 的渲染結果：.prepaint_script、.html_class、.toggle。",
     },
     {
         "name": "fjkit_icon_path(name)",

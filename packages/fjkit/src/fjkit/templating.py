@@ -142,7 +142,7 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     # which pack is live.
     env.globals["fjkit_style"] = resolve_style(config.style)
     # A record rather than the scheme's name, so no template re-derives what a
-    # name means. An app that fills `header_actions` asks `.toggle`.
+    # name means.
     env.globals["fjkit_color_scheme"] = COLOR_SCHEMES[config.color_scheme]
 
     # Plugins before the app's own globals: an app can always override what a

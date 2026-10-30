@@ -148,7 +148,7 @@
       {% block brand %}{% endblock %}
       {% block nav %}{% endblock %}
       <div class="ml-auto">
-        {% block header_actions %}{% if fjkit_color_scheme.toggle %}{{ theme_toggle() }}{% endif %}{% endblock %}
+        {% block header_actions %}{{ theme_toggle() }}{% endblock %}
       </div>
     </header>
   {% endblock %}

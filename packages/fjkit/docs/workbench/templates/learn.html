@@ -1113,9 +1113,9 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
         and puts a toggle in the header. An app that is only ever light or only ever dark says
         <code>color_scheme="light"</code> or <code>"dark"</code>. The server then renders the scheme
         on <code>&lt;html&gt;</code>, the toggle and the pre-paint script are left out, and a choice
-        a visitor saved earlier has nothing left to read it. An app that fills
-        <code>header_actions</code> itself wraps its <code>theme_toggle()</code> in
-        <code>{% raw %}{% if fjkit_color_scheme.toggle %}{% endraw %}</code>.
+        a visitor saved earlier has nothing left to read it. <code>theme_toggle()</code> renders
+        nothing under a fixed scheme, so an app that fills <code>header_actions</code> itself
+        calls it as before.
       </p>
     {% endcall %}
 

@@ -129,7 +129,7 @@
     {{ button(github_mark, variant="ghost", size="icon-sm",
               href="https://github.com/liweicheng00/fjkit",
               aria_label=t.github_label) }}
-    {% if fjkit_color_scheme.toggle %}{{ theme_toggle() }}{% endif %}
+    {{ theme_toggle() }}
   {% endcall %}
 {% endblock %}
 

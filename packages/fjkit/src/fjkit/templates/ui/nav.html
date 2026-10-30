@@ -60,14 +60,19 @@
   The only inline script fjkit ships besides the shell's flash-guard. Two
   lines, and it has to run before any bundle would have loaded, so it is not in
   a .js file.
+
+  Renders nothing under a fixed `FjkitConfig.color_scheme`, so an app that
+  fills `header_actions` itself can call it unguarded.
 #}
 {% macro theme_toggle() -%}
+  {%- if fjkit_color_scheme.toggle -%}
   <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
           aria-label="Toggle theme"
           onclick="document.documentElement.classList.toggle('dark');
                    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')">
     {{- icon("sun", 16, "hidden dark:block") }}{{ icon("moon", 16, "dark:hidden") -}}
   </button>
+  {%- endif %}
 {%- endmacro %}
 
 {#
