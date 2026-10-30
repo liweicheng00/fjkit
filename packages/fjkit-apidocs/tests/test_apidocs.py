@@ -1380,3 +1380,43 @@ def test_a_set_cookie_the_endpoint_answers_with_is_shown_without_its_value():
     assert "live-session-id" not in text
     assert "set-cookie: app_session=" in text  # what was set, and how, stays readable
     assert "httponly" in text
+
+
+@pytest.mark.xfail(strict=True, reason="the guard tests the encoded path while the router sees the decoded one")
+def test_a_path_value_cannot_steer_the_call_back_into_the_console():
+    """`within()` and the router must judge the same string. A path parameter
+    is sent percent-encoded, so `api-docs/try/<op>` as a value reaches the
+    guard as `/api-docs%2Ftry%2F<op>` and passes it; the decoded path the
+    router sees is the console's own handler, called with the forwarded
+    cookie and Origin."""
+    app = FastAPI(docs_url=None, redoc_url=None)
+
+    @app.post("/{name}", tags=["echo"])
+    def named(name: str) -> dict:
+        return {"name": name}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", PluginWarning)
+        mount_fjkit(app, FjkitConfig(plugins=(ApiDocsPlugin(),), auto_reload=False))
+    client = TestClient(app)
+    op = operation_id(app, "POST", "/{name}")
+
+    text = shown(client.post(f"/api-docs/try/{op}", data={"p.path.name": f"api-docs/try/{op}"}))
+    assert "is the API console itself" in text  # refused up front, by name
+    assert "already a console call" not in text  # the inner handler never ran
+
+
+@pytest.mark.xfail(strict=True, reason="the credential keeps the flow's capitalisation beside the lowercased typed key")
+def test_the_curl_snippet_names_each_wire_header_once():
+    """Header names are case-insensitive, so a hand-typed `x-api-key` and the
+    flow's `X-API-Key` are one header. The call sends one; the snippet, which
+    claims to be the same call, must not print two."""
+    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, header="X-API-Key", scheme="", secure=False))
+    app = build_echo_app(docs)
+    client = TestClient(app)
+    client.post("/api-docs/auth", data={"token": "SUPER-SECRET-KEY-123"})
+    op = operation_id(app, "GET", "/echo")
+
+    text = shown(client.post(f"/api-docs/try/{op}", data={"headers": "x-api-key: TYPED-VALUE"}))
+    assert '"x-api-key": "SUPER-SECRET-KEY-123"' in text  # the flow's token is what the endpoint saw
+    assert len(re.findall(r"-H 'x-api-key: <redacted>'", text, re.IGNORECASE)) == 1
