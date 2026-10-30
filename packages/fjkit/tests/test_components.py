@@ -464,6 +464,38 @@ class TestResizableColumns:
         assert (STATIC_DIR / "js" / "resize.js").is_file()
         assert "resize.js" not in (TEMPLATE_DIR / "ui" / "shell.html").read_text(encoding="utf-8")
 
+    @pytest.mark.xfail(strict=True, reason="a resized table clips every cell, overlays included")
+    @pytest.mark.parametrize(
+        "overlay",
+        [
+            '{% call dropdown_menu("m", "Actions") %}x{% endcall %}',
+            '{% call popover("p", "More") %}x{% endcall %}',
+            '{{ select_menu("s", [("a", "A")]) }}',
+            '{{ combobox("c", [("a", "A")]) }}',
+            '{% call tooltip("Saved") %}x{% endcall %}',
+        ],
+    )
+    def test_a_resized_table_does_not_clip_an_overlay_in_a_cell(self, render, overlay):
+        """A resized table clips its cells, so a narrowed column cuts its text
+        at the edge. An overlay is positioned inside its cell and drawn outside
+        it, and a clipped cell hides it: a row's dropdown opened as a sliver
+        under its button. Every overlay macro carries an attribute the clipping
+        rule exempts."""
+        from fjkit.config import TEMPLATE_DIR
+
+        css = (TEMPLATE_DIR.parent / "static" / "src" / "fjkit.css").read_text(encoding="utf-8")
+        selector = next(
+            selector
+            for selector, body in re.findall(r"([^{}]*)\{([^{}]*)\}", css)
+            if "[data-fjkit-resized]" in selector and "overflow-hidden" in body
+        )
+        exempt = re.findall(r"\[([\w-]+)\]", selector.split(":not(", 1)[1]) if ":not(" in selector else []
+        html = render(
+            '{% from "ui/overlay.html" import dropdown_menu, popover, select_menu, combobox %}'
+            '{% from "ui/disclosure.html" import tooltip %}' + overlay
+        )
+        assert any(re.search(rf"\s{name}[\s=>]", html) for name in exempt), selector
+
 
 class TestPagination:
     """0.4. The strip under a table."""
