@@ -11,6 +11,8 @@ import importlib.metadata
 import importlib.util
 import os
 import re
+import sys
+import tomllib
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
@@ -37,26 +39,83 @@ TEMPLATE_SUFFIXES = {".html", ".jinja", ".j2", ".txt", ".xml", ".svg"}
 FJKIT_NAMESPACE = "fjkit/"
 ROUTE_METHODS = {"get", "post", "put", "delete", "patch", "options", "head", "api_route", "route"}
 _REQUIRES_FJKIT = re.compile(r"fjkit(?![\w.-])", re.IGNORECASE)
+#: The name a dependency specifier starts with: `fjkit-admin>=0.1`, `fjkit[auth]`, `x @ file://…`.
+_DEP_NAME = re.compile(r"\s*([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)")
 
 
-def installed_packages() -> dict[str, Path]:
-    """fjkit's package directory and that of every installed distribution requiring it, by import name.
+def _normalize(dist_name: str) -> str:
+    return re.sub(r"[-_.]+", "_", dist_name).lower()
+
+
+@dataclass(frozen=True)
+class Package:
+    """An installed distribution that is fjkit or requires it."""
+
+    dist: str  # the distribution's normalised name: `fjkit_admin`
+    name: str  # an import name it provides: `fjkit_admin`
+    path: Path  # that package's directory, in site-packages or, editable, in a checkout
+
+
+def installed_packages() -> list[Package]:
+    """fjkit and every installed distribution requiring it, one entry per import name.
 
     Read from the interpreter this server runs in. Started as `.venv/bin/fjkit-lsp`,
     that is the workspace's own environment, whose site-packages the workspace
     walk skips; an editable install points into the workspace instead.
     """
-    names = {"fjkit"}
+    names: dict[str, str] = {"fjkit": "fjkit"}  # import name -> normalised distribution name
     for dist in importlib.metadata.distributions():
         if any(_REQUIRES_FJKIT.match(req) for req in dist.requires or ()):
-            names.add(re.sub(r"[-_.]+", "_", dist.metadata["Name"]).lower())
-            names.update((dist.read_text("top_level.txt") or "").split())
-    out = {}
-    for name in sorted(names):
+            norm = _normalize(dist.metadata["Name"])
+            names[norm] = norm
+            names.update(dict.fromkeys((dist.read_text("top_level.txt") or "").split(), norm))
+    out = []
+    for name, dist in sorted(names.items()):
         spec = importlib.util.find_spec(name)
         if spec is not None and spec.submodule_search_locations:
-            out[name] = Path(next(iter(spec.submodule_search_locations))).resolve()
+            out.append(Package(dist, name, Path(next(iter(spec.submodule_search_locations))).resolve()))
     return out
+
+
+def workspace_projects(pyprojects: list[Path]) -> tuple[set[str], set[str]]:
+    """What the workspace's own `pyproject.toml` files declare: the project names, and
+    the names those projects depend on. Both normalised like a distribution's."""
+    names: set[str] = set()
+    deps: set[str] = set()
+    for p in pyprojects:
+        try:
+            project = tomllib.loads(p.read_text(encoding="utf-8")).get("project", {})
+        except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
+            continue
+        if isinstance(project.get("name"), str):
+            names.add(_normalize(project["name"]))
+        for dep in project.get("dependencies", ()):
+            m = _DEP_NAME.match(dep) if isinstance(dep, str) else None
+            if m:
+                deps.add(_normalize(m.group(1)))
+    return names, deps
+
+
+def is_shared(pkg: Package, names: set[str], deps: set[str]) -> bool:
+    """Whether every application's loader chain holds this package's templates.
+
+    fjkit is the kit wherever it is installed. Any other distribution requiring
+    fjkit is a plugin, unless it is a project of this workspace that no other
+    project here depends on: that is the application itself, which `uv sync`
+    installs into its own venv, and which requires fjkit exactly as a plugin does.
+    """
+    return pkg.dist == "fjkit" or pkg.dist not in names or pkg.dist in deps
+
+
+def kit_warning(index: Index) -> str | None:
+    """The message for an interpreter without fjkit, when every `ui/*.html` resolves to nothing."""
+    if index.kit_root is not None:
+        return None
+    return (
+        f"fjkit is not installed in the interpreter running fjkit-lsp ({sys.executable}), so the kit's "
+        "templates (ui/*.html) cannot be found. Start the server from the project's own environment, "
+        ".venv/bin/fjkit-lsp."
+    )
 
 
 @dataclass(frozen=True)
@@ -412,7 +471,7 @@ class Index:
 
     def __init__(self, roots: list[Path]) -> None:
         self.roots = [r.resolve() for r in roots]
-        self.packages = installed_packages()
+        self.packages: list[Package] = []  # the kit and the plugins, decided in `_files`
         self.template_roots: list[Path] = []
         self.app_roots: list[Path] = []  # one per application, in path order
         self.shared_roots: list[Path] = []  # the kit's and every plugin's
@@ -439,14 +498,22 @@ class Index:
     # ---- building -------------------------------------------------------
 
     def _files(self) -> tuple[list[Path], list[Path]]:
-        """Templates and Python modules under every root and installed package, in
-        one walk that never enters a skipped directory: a `.venv` alone can hold
-        tens of thousands of files, of which only the packages above are wanted."""
+        """Templates and Python modules under every root, then under the kit and each
+        plugin, in one walk that never enters a skipped directory: a `.venv` alone
+        can hold tens of thousands of files, of which only those packages are wanted.
+
+        The workspace comes first because its `pyproject.toml` files decide which
+        installed distributions are plugins (`is_shared`). A distribution that is
+        the workspace's own application is not walked at all: its live source is
+        under a root already, and a non-editable copy in site-packages is stale.
+        """
         templates: list[Path] = []
         modules: list[Path] = []
+        pyprojects: list[Path] = []
         seen: set[str] = set()
-        for root in self.roots + list(self.packages.values()):
-            for dirpath, dirnames, filenames in os.walk(root):
+
+        def walk(top: Path) -> None:
+            for dirpath, dirnames, filenames in os.walk(top):
                 if dirpath in seen:  # an editable install, already walked from the workspace
                     dirnames[:] = []
                     continue
@@ -458,6 +525,15 @@ class Index:
                         modules.append(Path(dirpath, f))
                     elif suffix in TEMPLATE_SUFFIXES:
                         templates.append(Path(dirpath, f))
+                    elif f == "pyproject.toml":
+                        pyprojects.append(Path(dirpath, f))
+
+        for root in self.roots:
+            walk(root)
+        names, deps = workspace_projects(pyprojects)
+        self.packages = [p for p in installed_packages() if is_shared(p, names, deps)]
+        for pkg in self.packages:
+            walk(pkg.path)
         return templates, modules
 
     def _build(self) -> None:
@@ -496,11 +572,11 @@ class Index:
                     roots.add(parent)
                     break
         self.template_roots = sorted(roots)
-        shipped = {package / "templates" for package in self.packages.values()}
+        shipped = {pkg.path / "templates" for pkg in self.packages}
         self.shared_roots = [r for r in self.template_roots if r in shipped]
         self.app_roots = [r for r in self.template_roots if r not in shipped]
-        kit = self.packages.get("fjkit")
-        self.kit_root = kit / "templates" if kit and kit / "templates" in self.shared_roots else None
+        kit = next((pkg.path / "templates" for pkg in self.packages if pkg.name == "fjkit"), None)
+        self.kit_root = kit if kit in self.shared_roots else None
         # The kit last, so a plugin can replace one of its macros but never the
         # other way round — the order `build_environment` gives the ChoiceLoader.
         self.shared_roots.sort(key=lambda r: (r == self.kit_root, str(r)))

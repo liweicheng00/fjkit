@@ -50,7 +50,17 @@ mirroring the `ChoiceLoader` that `build_environment` assembles:
 The distributions are the ones installed in the interpreter the server runs in.
 Started as `.venv/bin/fjkit-lsp`, that is the project's own environment, so the
 kit's templates are found in its `site-packages`, or in the workspace when the
-install is editable, as it is in this repository.
+install is editable, as it is in this repository. An interpreter without fjkit
+gets one warning naming itself, through `window/showMessage` from the server
+and on stderr from the command line, because every `ui/*.html` then resolves to
+nothing and the remedy is to start the server from the right environment.
+
+The application itself is also a distribution requiring fjkit: `uv sync`
+installs the project into its own `.venv`. It is told apart from a plugin by
+the workspace's `pyproject.toml` files: a distribution that is a project of
+this workspace, and that no other project here depends on, is the application,
+and its `templates/` stays its own. `fjkit-admin` is a project here too, but
+`fjkit-admin-demo` depends on it, so it is shared.
 
 Every lookup is made from the file that wrote the name, so `base.html` in a demo
 page means that demo's, and `admin/page.html` means the one fjkit-admin ships.

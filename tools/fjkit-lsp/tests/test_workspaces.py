@@ -171,7 +171,6 @@ def test_the_kit_and_a_plugin_installed_in_the_workspace_venv_are_found(tmp_path
     )
 
 
-@pytest.mark.xfail(strict=True, reason="an installed app requiring fjkit is classified as a plugin")
 def test_an_app_installed_into_its_own_venv_is_not_a_plugin(tmp_path: Path) -> None:
     """`uv sync` installs the project itself, editable, into `.venv`, and it requires
     fjkit like a plugin does. Two such apps and one plugin they share, all developed
@@ -197,7 +196,6 @@ def test_an_app_installed_into_its_own_venv_is_not_a_plugin(tmp_path: Path) -> N
     assert _definition(ws, page, 2, "cards/deck.html", path) == "cards/src/cards/templates/cards/deck.html:1:1"
 
 
-@pytest.mark.xfail(strict=True, reason="the installed copy of the app is indexed as a plugin")
 def test_a_non_editable_copy_of_the_app_in_site_packages_is_not_indexed(tmp_path: Path) -> None:
     """`uv sync --no-editable` copies the app into site-packages. The workspace holds
     the live source; the copy is stale and must appear in no answer."""
@@ -252,7 +250,6 @@ def test_a_route_in_an_installed_plugin_is_the_definition_of_its_url_for(tmp_pat
     )
 
 
-@pytest.mark.xfail(strict=True, reason="a server interpreter without fjkit stays silent")
 def test_an_interpreter_without_fjkit_says_so_and_names_itself(tmp_path: Path) -> None:
     """`uvx fjkit-lsp` or a `fjkit.lsp.command` pointing anywhere but the project's venv:
     the kit's templates cannot be found, and the only remedy is to start the server
@@ -263,7 +260,6 @@ def test_an_interpreter_without_fjkit_says_so_and_names_itself(tmp_path: Path) -
     assert "fjkit" in out.stderr and sys.executable in out.stderr
 
 
-@pytest.mark.xfail(strict=True, reason="a server interpreter without fjkit stays silent")
 def test_the_server_warns_once_about_a_missing_kit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """The editor shows the warning on start; a rebuild on every save must not repeat it."""
     from fjkit_lsp import server as srv
