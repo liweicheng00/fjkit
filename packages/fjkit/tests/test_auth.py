@@ -74,6 +74,14 @@ def make_app(auth: AuthPlugin, **config_kwargs) -> TestClient:
     def public() -> dict[str, str]:
         return {"ok": "yes"}
 
+    # A public page that greets a signed-in user: the documented way to read
+    # the session without requiring one. The default-argument form, because
+    # `auth` is local to this function and a postponed `Annotated[...]`
+    # annotation cannot name it.
+    @router.get("/optional", response_class=Response)
+    def optional(session: Session | None = Depends(auth.optional)) -> Response:  # noqa: B008
+        return Response(session.claims["name"] if session else "anonymous", media_type="text/plain")
+
     # The OpenID Connect shape: a redirect out to the provider, and a GET back
     # carrying the authorization code. The code is the credential.
     @router.get("/oidc/start")
@@ -854,11 +862,12 @@ def test_an_outage_inside_the_leeway_serves_the_token_that_is_still_good(caplog)
     assert source.refreshes == 1
 
 
-@pytest.mark.parametrize("path", ["/who", "/private/thing"])
+@pytest.mark.parametrize("path", ["/who", "/private/thing", "/optional"])
 def test_an_outage_past_expiry_answers_503_wherever_the_session_is_needed(path):
     """Once the token has expired there is nothing to serve the request on. A
-    page that reads the session and a route behind `required` both wait for
-    the upstream; the session itself is kept for when it returns."""
+    page that reads the session, a route behind `required` and a public route
+    taking `optional` all wait for the upstream; the session itself is kept
+    for when it returns."""
     source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
     client = make_app(make_auth(source=source))
     client.post("/login", headers={"origin": ORIGIN})
