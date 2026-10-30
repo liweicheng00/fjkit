@@ -11,9 +11,11 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
+import sys
 from decimal import Decimal
 from html import unescape
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI, Request
@@ -116,6 +118,39 @@ class FakeArray:
         return self._items
 
 
+class FakeDatetimeArray(FakeArray):
+    """A numpy `datetime64[ns]` array, whose `tolist()` gives nanoseconds."""
+
+    dtype = SimpleNamespace(kind="M")
+
+    def __init__(self, nanoseconds: list[int], iso: list[str]) -> None:
+        super().__init__(nanoseconds)
+        self.iso = iso
+
+
+class FakeNaT:
+    """`pd.NaT`, whose `isoformat()` returns the string "NaT"."""
+
+    def isoformat(self) -> str:
+        return "NaT"
+
+
+NAT, NA, MASKED = FakeNaT(), object(), object()
+
+
+@pytest.fixture
+def numpy_and_pandas(monkeypatch):
+    """Stand-ins for the two modules, reachable the way an app that built its
+    figure with them leaves them: already imported."""
+    numpy = SimpleNamespace(
+        ndarray=FakeDatetimeArray,
+        datetime_as_string=lambda array: FakeArray(array.iso),
+        ma=SimpleNamespace(core=SimpleNamespace(masked=MASKED)),
+    )
+    monkeypatch.setitem(sys.modules, "numpy", numpy)
+    monkeypatch.setitem(sys.modules, "pandas", SimpleNamespace(NaT=NAT, NA=NA))
+
+
 def figure_the_browser_parses(chart: Chart) -> dict:
     """Render `chart()` and read `data-figure` the way `charts.js` does:
     unescape the attribute, then `JSON.parse`, which rejects `NaN`."""
@@ -145,6 +180,24 @@ class TestFigureJson:
         ids=["date", "datetime", "Decimal", "NaN", "array"],
     )
     def test_values_plotly_serialises_reach_the_browser(self, value, sent):
+        chart = a_chart(figure={"data": [{"type": "bar", "x": ["a"], "y": [value]}], "layout": {}})
+        assert figure_the_browser_parses(chart)["data"][0]["y"] == [sent]
+
+    @pytest.mark.xfail(strict=True, reason="CHARTS-1 review: numpy and pandas values")
+    @pytest.mark.parametrize(
+        ("value", "sent"),
+        [
+            (
+                FakeDatetimeArray([1767225600000000000], ["2026-01-01T00:00:00.000000000"]),
+                ["2026-01-01T00:00:00.000000000"],
+            ),
+            (NAT, None),
+            (NA, None),
+            (MASKED, None),
+        ],
+        ids=["datetime64 array", "pd.NaT", "pd.NA", "np.ma.masked"],
+    )
+    def test_numpy_and_pandas_values_reach_the_browser_as_plotly_sends_them(self, numpy_and_pandas, value, sent):
         chart = a_chart(figure={"data": [{"type": "bar", "x": ["a"], "y": [value]}], "layout": {}})
         assert figure_the_browser_parses(chart)["data"][0]["y"] == [sent]
 
