@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Literal
@@ -133,9 +134,26 @@ class Chart(BaseModel):
 
 
 def _plotly_value(value: Any) -> Any:
-    """`PlotlyJSONEncoder.default`, without importing plotly: the same methods,
-    tried in the same order."""
-    for method in ("to_plotly_json", "isoformat", "tolist"):
+    """`PlotlyJSONEncoder.default`, without importing plotly: the same checks,
+    tried in the same order. numpy and pandas are read from `sys.modules`, as
+    plotly reads them, so neither becomes a dependency: a value of theirs means
+    the app has already imported them.
+
+    The order carries the behaviour. `tolist()` turns a `datetime64[ns]` array
+    into integer nanoseconds and `pd.NaT.isoformat()` returns "NaT", so both
+    are caught before the generic methods."""
+    if hasattr(value, "to_plotly_json"):
+        return value.to_plotly_json()
+    numpy = sys.modules.get("numpy")
+    if numpy is not None:
+        if value is numpy.ma.core.masked:
+            return float("nan")
+        if isinstance(value, numpy.ndarray) and value.dtype.kind == "M":
+            return numpy.datetime_as_string(value).tolist()
+    pandas = sys.modules.get("pandas")
+    if pandas is not None and (value is pandas.NaT or value is getattr(pandas, "NA", None)):
+        return None
+    for method in ("isoformat", "tolist"):
         if hasattr(value, method):
             return getattr(value, method)()
     if isinstance(value, Decimal):
