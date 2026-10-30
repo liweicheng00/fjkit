@@ -892,7 +892,6 @@ def test_logging_out_needs_no_upstream():
     assert client.get("/who").text == "anonymous", "the store's row is gone, so the old cookie is worthless"
 
 
-@pytest.mark.xfail(strict=True, reason="the outage is logged only by the 503, and a logout never answers one")
 def test_an_outage_is_logged_once_whether_or_not_the_handler_asks_for_the_session(caplog):
     """The middleware defers the outage rather than answering it, so a handler
     that never asks for the session runs as if the user were anonymous. The

@@ -605,7 +605,8 @@ class AuthPlugin:
             # The session is intact and the request was fine; the identity
             # provider was not. One answer for every caller, because none of
             # them should move: a login page would need the same upstream.
-            _log.warning("session not renewed for %s %s: %s", request.method, request.url.path, exc)
+            # Logged where the middleware deferred it, not here, so a request
+            # whose handler never asks for the session leaves a line too.
             return Response(
                 "Your session could not be renewed because the sign-in service did not answer. "
                 "Try again in a moment.",
@@ -700,6 +701,7 @@ class _SessionMiddleware(BaseHTTPMiddleware):
             # Deferred, not answered. The handler may be a logout, which needs
             # the cookie and the store and nothing from the upstream; the
             # refusal is raised by whatever asks for the session instead.
+            _log.warning("session not renewed for %s %s: %s", request.method, request.url.path, exc)
             request.state.auth_unavailable = exc
         except AuthError as exc:
             return plugin._handle(request, exc)
