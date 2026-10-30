@@ -5,8 +5,12 @@
     500  anything else that escaped (only with `catch_unexpected_errors`;
          the words are `FjkitConfig.unexpected_error`)
 
-Every other `HTTPException` is FastAPI's reply, headers included: a 401's
-`WWW-Authenticate` is for the client, not for a page.
+The 404 handler is keyed by status, which Starlette consults before any
+handler keyed by class, so every other `HTTPException` keeps whatever handler
+the app has: FastAPI's reply, headers included (a 401's `WWW-Authenticate` is
+for the client, not for a page), or the app's own. An app that registered its
+own `HTTPException` handler, before or after `mount_fjkit`, gets its 404s
+there too, and a 404 handler it registered before `mount_fjkit` is kept.
 
 What each caller gets:
 
@@ -28,6 +32,7 @@ shape of a bug, not of a rejected form. Declare the model in the signature.
 
 from __future__ import annotations
 
+import inspect
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -37,7 +42,7 @@ from fastapi.exception_handlers import (
     request_validation_exception_handler as _fastapi_validation_reply,
 )
 from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException
+from starlette.concurrency import run_in_threadpool
 
 from fjkit import htmx, messages
 from fjkit.forms import FieldErrors, field_errors
@@ -73,7 +78,12 @@ _NOT_FOUND = messages.Message(
 def install_error_handlers(app: FastAPI, config: FjkitConfig) -> None:
     """Install the 404 and 422 handlers, and the 500 handler when
     `catch_unexpected_errors` is on. Called by `mount_fjkit`."""
-    app.add_exception_handler(HTTPException, _on_http_error)
+    if 404 not in app.exception_handlers:
+
+        async def on_not_found(request: Request, exc: Exception) -> Response:
+            return await _on_not_found(request, exc, _http_handler(app, exc))
+
+        app.add_exception_handler(404, on_not_found)
     app.add_exception_handler(RequestValidationError, _on_request_validation)
     if config.catch_unexpected_errors:
         choose = config.unexpected_error
@@ -105,11 +115,13 @@ def _message_for(choose: Any, request: Request, exc: Exception) -> messages.Mess
 # --------------------------------------------------------------------------- #
 
 
-async def _on_http_error(request: Request, exc: Exception) -> Response:
-    """Answer a 404 like the other errors here; leave every other status to
-    FastAPI."""
-    if getattr(exc, "status_code", None) != 404 or not _wants_markup(request, _plan_for(request)):
-        return await _fastapi_http_reply(request, exc)
+async def _on_not_found(request: Request, exc: Exception, handler: Any) -> Response:
+    """Answer a 404 like the other errors here, unless the app answers its own
+    or the caller is not reading a page: `handler` answers those."""
+    if handler is not _fastapi_http_reply or not _wants_markup(request, _plan_for(request)):
+        if inspect.iscoroutinefunction(handler):
+            return await handler(request, exc)
+        return await run_in_threadpool(handler, request, exc)
     if htmx.is_swap(request):
         messages.extend(request, (_NOT_FOUND,))
         return _toast_only(request, status_code=404)
@@ -153,6 +165,16 @@ async def _on_unexpected(request: Request, exc: Exception, message: messages.Mes
 # --------------------------------------------------------------------------- #
 # shared
 # --------------------------------------------------------------------------- #
+
+
+def _http_handler(app: FastAPI, exc: Exception) -> Any:
+    """The handler Starlette would have chosen had there been no 404 handler:
+    the nearest class in `exc`'s MRO. Read per request, so a handler the app
+    registers after `mount_fjkit` counts."""
+    for cls in type(exc).__mro__:
+        if cls in app.exception_handlers:
+            return app.exception_handlers[cls]
+    return _fastapi_http_reply
 
 
 def _toast_only(request: Request, *, status_code: int) -> Response:

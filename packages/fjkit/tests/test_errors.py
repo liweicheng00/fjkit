@@ -685,8 +685,8 @@ def test_any_other_http_error_is_fastapis_reply_with_its_headers():
 
 
 def test_an_apps_own_http_error_handler_wins():
-    """Starlette keys handlers by class and keeps the last one registered, and
-    `mount_fjkit` runs before the app's own setup."""
+    """`mount_fjkit` runs before the app's own setup, and the kit's 404
+    handler, keyed by status, defers to a handler the app keys by class."""
     app = FastAPI()
     mount_fjkit(app, FjkitConfig())
 
@@ -718,7 +718,6 @@ def _app_with_its_own_handler() -> TestClient:
     return TestClient(app, follow_redirects=False)
 
 
-@pytest.mark.xfail(strict=True, reason="#45 review: the class-keyed 404 handler replaces the app's")
 def test_an_http_error_handler_registered_before_mount_keeps_every_status():
     """`FastAPI(exception_handlers=...)` runs before `mount_fjkit`. The app's
     handler still answers a 401, and still answers its own 404s."""
