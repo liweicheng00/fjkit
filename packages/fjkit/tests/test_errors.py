@@ -12,6 +12,7 @@ from typing import Annotated, Any
 
 import pytest
 from fastapi import APIRouter, FastAPI, Form, HTTPException, Request, Response
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, htmx, messages, mount_fjkit, render
 from fjkit.forms import NO_ERRORS, FieldErrors, field_errors, field_name, label
@@ -697,6 +698,51 @@ def test_an_apps_own_http_error_handler_wins():
 
     assert response.status_code == 404
     assert response.text == "mine"
+
+
+def _signs_in(request: Request, exc: StarletteHTTPException) -> Response:
+    """The handler an app registers to send a 401 to its login page."""
+    if exc.status_code == 401:
+        return RedirectResponse("/login", status_code=303)
+    return JSONResponse({"error": exc.detail}, status_code=exc.status_code)
+
+
+def _app_with_its_own_handler() -> TestClient:
+    app = FastAPI(exception_handlers={StarletteHTTPException: _signs_in})
+
+    @app.get("/private")
+    def private() -> None:
+        raise HTTPException(status_code=401)
+
+    mount_fjkit(app, FjkitConfig())
+    return TestClient(app, follow_redirects=False)
+
+
+@pytest.mark.xfail(strict=True, reason="#45 review: the class-keyed 404 handler replaces the app's")
+def test_an_http_error_handler_registered_before_mount_keeps_every_status():
+    """`FastAPI(exception_handlers=...)` runs before `mount_fjkit`. The app's
+    handler still answers a 401, and still answers its own 404s."""
+    client = _app_with_its_own_handler()
+
+    signed_out = client.get("/private", headers=BROWSER)
+    missing_json = client.get("/nowhere", headers=JSON)
+    missing_page = client.get("/nowhere", headers=BROWSER)
+
+    assert (signed_out.status_code, signed_out.headers["location"]) == (303, "/login")
+    assert (missing_json.status_code, missing_json.json()) == (404, {"error": "Not Found"})
+    assert (missing_page.status_code, missing_page.json()) == (404, {"error": "Not Found"})
+
+
+def test_a_404_handler_registered_before_mount_is_kept():
+    async def mine(request: Request, exc: Exception) -> Response:
+        return Response("mine", status_code=404, media_type="text/plain")
+
+    app = FastAPI(exception_handlers={404: mine})
+    mount_fjkit(app, FjkitConfig())
+
+    response = TestClient(app).get("/nowhere", headers=BROWSER)
+
+    assert (response.status_code, response.text) == (404, "mine")
 
 
 def test_the_kits_404_page_talks_about_a_missing_page():
