@@ -625,6 +625,49 @@ async def test_a_request_holding_a_spent_token_does_not_spend_it_again():
     assert late.access == "access-1"
 
 
+class WinnerFinishesAfterTheRead(MemoryStore):
+    """A store whose first `get` is followed by the winner's write and release.
+
+    With Redis every call is a round trip, so the loser's read of the row and
+    its attempt on the lock are two moments, and the winner can finish between
+    them. `MemoryStore` alone cannot show this: none of its methods yields.
+    """
+
+    def __init__(self, fresh: Session) -> None:
+        super().__init__()
+        self.fresh: Session | None = fresh
+
+    async def get(self, sid: str) -> bytes | None:
+        payload = await super().get(sid)
+        if self.fresh is not None:
+            await super().put(sid, encode(self.fresh), 3600)
+            await super().release_refresh_lock(sid)
+            self.fresh = None
+        return payload
+
+
+@pytest.mark.xfail(strict=True, reason="the loser decides on the row it read before the winner wrote")
+@pytest.mark.asyncio
+@pytest.mark.parametrize("seconds_left", [-1, 5], ids=["expired", "inside the leeway"])
+async def test_a_request_that_lost_the_race_reads_the_row_the_winner_wrote(seconds_left: int):
+    """The loser reads the row, finds it still expiring, then takes the lock the
+    winner just released. The winner wrote the renewed session before letting
+    go, so that session is in the store; the loser must return it, not report
+    an outage (expired) or serve the old token (inside the leeway) from a read
+    that predates the winner's result."""
+    source = CountingSource()
+    stale = Session(access="access-0", expires_at=datetime.now(UTC) + timedelta(seconds=seconds_left))
+    fresh = Session(access="access-1", expires_at=datetime.now(UTC) + timedelta(hours=1))
+    auth = make_auth(source=source, store=WinnerFinishesAfterTheRead(fresh), refresh_wait=timedelta(seconds=2))
+    sid = await seed(auth, stale)
+    assert await auth.store.acquire_refresh_lock(sid, 10), "the winner holds the lock when the loser arrives"
+
+    got = await auth._refresh(sid, stale)
+
+    assert got.access == "access-1"
+    assert source.refreshes == 0, "the loser never calls the upstream itself"
+
+
 @pytest.mark.asyncio
 async def test_a_refused_refresh_ends_the_session():
     class Broken(CountingSource):
