@@ -40,7 +40,6 @@ class TestVocabulary:
         for name in ("flex", "gap-4", "grid-cols-3", "text-muted-foreground"):
             assert name not in classes
 
-    @pytest.mark.xfail(strict=True, reason="IndexError on an unbalanced layer")
     def test_an_unclosed_components_layer_names_the_stylesheet(self, tmp_path, monkeypatch):
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "fjkit.css").write_text("@layer components {\n  .btn { color: red; }\n")
@@ -189,7 +188,6 @@ class TestCheck:
         (tmp_path / "page.html").write_text(markup)
         assert check_templates(tmp_path) == []
 
-    @pytest.mark.xfail(strict=True, reason="selector exemption is a short attribute list")
     @pytest.mark.parametrize(
         "markup",
         [
@@ -209,7 +207,6 @@ class TestCheck:
         (tmp_path / "page.html").write_text(markup)
         assert check_templates(tmp_path) == []
 
-    @pytest.mark.xfail(strict=True, reason="url() and Jinja expressions are read as colour names")
     @pytest.mark.parametrize(
         "style",
         [
@@ -222,7 +219,6 @@ class TestCheck:
         (tmp_path / "page.html").write_text(f'<p style="{style}">x</p>')
         assert check_templates(tmp_path) == []
 
-    @pytest.mark.xfail(strict=True, reason="FUNCS matches Jinja calls")
     @pytest.mark.parametrize("markup", ['{{ theme.color("primary") }}', "{{ lab(item) }}", "{% set c = color(x) %}"])
     def test_a_jinja_call_is_not_a_colour_function(self, tmp_path, markup):
         (tmp_path / "page.html").write_text(markup)

@@ -59,7 +59,10 @@ def component_classes() -> frozenset[str]:
     for path in sources:
         if not path.exists():
             continue
-        names.update(_layer_classes(path.read_text(encoding="utf-8")))
+        try:
+            names.update(_layer_classes(path.read_text(encoding="utf-8")))
+        except ValueError as error:
+            raise ValueError(f"{path}: {error}") from None
 
     return frozenset(names)
 
@@ -76,6 +79,8 @@ def _layer_classes(css: str) -> set[str]:
     for opening in _COMPONENTS_LAYER.finditer(css):
         depth, end = 1, opening.end()
         while depth:
+            if end == len(css):
+                raise ValueError("an `@layer components` block never closes")
             depth += {"{": 1, "}": -1}.get(css[end], 0)
             end += 1
         for prelude in _PRELUDE.findall(css, opening.end(), end - 1):

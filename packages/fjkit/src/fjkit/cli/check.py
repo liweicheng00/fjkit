@@ -61,6 +61,7 @@ COLOUR_CHECKS = [
 _STYLE_ATTR = re.compile(r"""(?<![\w-])style\s*=\s*(["'])(.*?)\1""", re.DOTALL)
 _DECLARATION = re.compile(r"([\w-]+)\s*:\s*([^;]*)")
 _COLOUR_PROPERTY = re.compile(r"colou?r|background|border|outline|fill|stroke|shadow|decoration|column-rule")
+_URL = re.compile(r"url\([^)]*\)")
 _WORD = re.compile(r"(?<![\w-])[A-Za-z]+(?![\w-])")
 _CSS_NAMED_COLOURS = """
     aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown
@@ -96,13 +97,40 @@ _JINJA_EXPR = re.compile(r"\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}", re.DOTALL)
 _JINJA_COMMENT = re.compile(r"\{#.*?#\}", re.DOTALL)
 _NOT_NEWLINE = re.compile(r"[^\n]")
 
-#: An attribute or kwarg whose value is a URL or a CSS selector, blanked before
+#: Attributes and kwargs whose value is a URL or a CSS selector, blanked before
 #: the colour checks: `hx-target="#feed"` names an element, not a hex colour.
+#: Every htmx 2 attribute that takes a selector (`hx-trigger` through `from:`,
+#: `hx-swap` through `show:`), the URL-valued ones, and the fjkit kwargs that
+#: feed them. A kwarg spells `-` as `_`.
+_SELECTOR_NAMES = (
+    *("href", "action", "formaction", "xlink:href", "usemap"),
+    *("hx-get", "hx-post", "hx-put", "hx-patch", "hx-delete", "hx-push-url", "hx-replace-url"),
+    *("hx-target", "hx-select", "hx-select-oob", "hx-swap", "hx-swap-oob", "hx-include", "hx-indicator"),
+    *("hx-disabled-elt", "hx-sync", "hx-trigger"),
+    *("target", "swap", "include", "progress"),
+)
+_SELECTOR_NAME = "(?:" + "|".join(n.replace("-", "[-_]") for n in _SELECTOR_NAMES) + ")"
+#: `name="…"` in markup or a call, or `"name": "…"` in a dict passed to `attrs`.
 _SELECTOR_VALUE = re.compile(
-    r"""(?<![\w-])(?:href|action|formaction|xlink:href|usemap|"""
-    r"""hx[-_](?:target|select|select[-_]oob|include|indicator|disabled[-_]elt|sync))\s*=\s*(["']).*?\1""",
+    rf"""(?<![\w-])(?:{_SELECTOR_NAME}\s*=|(["']){_SELECTOR_NAME}\1\s*:)\s*(["']).*?\2""",
     re.DOTALL,
 )
+
+#: Inside `{{ … }}` and `{% … %}` only a string literal can hold a colour; the
+#: rest is code, where `color(x)` is a call and `teal` a variable.
+_JINJA_STRING = re.compile(r"""("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|[^"']+|["']""", re.DOTALL)
+
+
+def _jinja_strings_only(text: str) -> str:
+    """Blank every Jinja expression except its string literals, keeping line shape."""
+
+    def strings(code: re.Match[str]) -> str:
+        return "".join(
+            part.group(0) if part.group(1) else _NOT_NEWLINE.sub(" ", part.group(0))
+            for part in _JINJA_STRING.finditer(code.group(0))
+        )
+
+    return _JINJA_EXPR.sub(strings, text)
 
 
 def _blank(pattern: re.Pattern[str], text: str) -> str:
@@ -132,7 +160,7 @@ def _named_colours(path: Path, text: str) -> list[Violation]:
         for decl in _DECLARATION.finditer(attr.group(2)):
             if not _COLOUR_PROPERTY.search(decl.group(1)):
                 continue
-            for word in _WORD.finditer(decl.group(2)):
+            for word in _WORD.finditer(_blank(_URL, decl.group(2))):
                 if word.group(0).lower() in NAMED_COLOURS:
                     at = attr.start(2) + decl.start(2) + word.start()
                     found.append(
@@ -198,12 +226,13 @@ def check_templates(template_dir: Path) -> list[Violation]:
             violations.append(Violation(path, line, f"0x{error.object[error.start]:02x}", reason))
             continue
         text = _blank(_JINJA_COMMENT, source)
+        colour_text = _jinja_strings_only(_blank(_SELECTOR_VALUE, text))
 
-        for lineno, line in enumerate(_blank(_SELECTOR_VALUE, text).splitlines(), 1):
+        for lineno, line in enumerate(colour_text.splitlines(), 1):
             for pattern, reason in COLOUR_CHECKS:
                 for match in pattern.finditer(line):
                     violations.append(Violation(path, lineno, match.group(0), reason))
-        violations.extend(_named_colours(path, text))
+        violations.extend(_named_colours(path, colour_text))
 
         if path in ejected:
             continue
