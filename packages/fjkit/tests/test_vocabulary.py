@@ -498,7 +498,6 @@ class TestMacroEject:
 
         assert target.read_text() == before
 
-    @pytest.mark.xfail(strict=True, reason="splice collision")
     def test_a_second_eject_refuses_a_macro_you_defined_yourself(self, tmp_path, capsys):
         """An author who wrote their own `stat` beside the owned macro already
         exports it. Splicing the kit's `stat` in as well leaves Jinja to pick
@@ -515,15 +514,18 @@ class TestMacroEject:
         html = self._render(tmp_path, '{% from "ui/data.html" import stat %}{{ stat("hello") }}')
         assert html == "MY OWN STAT: hello"
 
-    @pytest.mark.xfail(strict=True, reason="splice collision")
     def test_a_second_eject_keeps_the_helper_you_already_copied(self, tmp_path):
         """A private helper the author already wrote is theirs. Taking a macro
         that calls it must not paste the kit's copy beside it, and the stamp
-        must not record a digest for a body fjkit did not write."""
+        must not record a digest for a body fjkit did not write. The lookup
+        table their helper reads, `_WIDTH`, still comes along, so the file
+        renders."""
         target = self._eject(tmp_path, "table.pagination") / "ui" / "table.html"
+        assert "_WIDTH" not in target.read_text()
         mine = (
             "\n{% macro _header(column, target, swap, push_url, select_name, select_label) %}"
-            '<th data-mine="1">{{ column.label }}</th>{% endmacro %}\n'
+            '<th data-mine="1" class="{{ _WIDTH.get(column.get("width"), "") }}">{{ column.label }}</th>'
+            "{% endmacro %}\n"
         )
         target.write_text(target.read_text() + mine)
 
@@ -533,13 +535,14 @@ class TestMacroEject:
         assert text.count("{% macro _header(") == 1
         assert mine in text
         assert "{% macro table(" in text
+        assert "{% set _WIDTH = {" in text
         assert "_header=" not in text.splitlines()[0]
         html = self._render(
             tmp_path,
             '{% from "ui/table.html" import table %}'
-            '{% call table(columns=[{"key": "a", "label": "A"}], rows=[{"a": 1}]) %}{% endcall %}',
+            '{% call table(columns=[{"key": "a", "label": "A", "width": "narrow"}], rows=[{"a": 1}]) %}{% endcall %}',
         )
-        assert 'data-mine="1"' in html
+        assert 'data-mine="1" class="w-16"' in html
 
     def test_taking_a_macro_you_already_own_is_refused(self, tmp_path):
         self._eject(tmp_path, "badge")

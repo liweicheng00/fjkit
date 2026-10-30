@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
@@ -140,18 +141,21 @@ class Component:
             pending.extend(n for n in sorted(macro.uses) if n in self.macros and self.macros[n].is_private)
         return taken
 
-    def needed_statements(self, owned: list[str]) -> set[int]:
+    def needed_statements(self, owned: Iterable[Macro]) -> set[int]:
         """Select the imports and lookup tables the owned macros read.
 
         Copying all of them is simpler, and wrong: `_ROWS` copied beside a
         `text_field` that never reads it falls silently behind the kit's, while
         the macro that does read it — re-exported `field_row` — goes on using
         the kit's. Dead weight that looks live.
+
+        `owned` may include an author's own macro from the override, so that a
+        helper they wrote which reads `_WIDTH` gets the kit's table beside it.
         """
         statements = {i: item for i, item in enumerate(self.items) if isinstance(item, Statement)}
         wanted: set[str] = set()
-        for name in owned:
-            wanted |= self.macros[name].uses
+        for macro in owned:
+            wanted |= macro.uses
         keep: set[int] = set()
         changed = True
         while changed:
@@ -397,7 +401,7 @@ def render_override(component: Component, owned: list[str], version: str) -> str
     private helpers Jinja will not let it borrow.
     """
     taken = [n for n in component.macros if n in owned]
-    keep = component.needed_statements(taken)
+    keep = component.needed_statements(component.macros[n] for n in taken)
 
     parts = [
         macro_stamp(component.name, version, {n: digest_of(component, n) for n in taken}),
@@ -422,20 +426,26 @@ class Unmergeable(Exception):
     the author's edits at risk."""
 
 
-def splice(target: Path, component: Component, macro: str, stamp: re.Match[str]) -> str:
+def splice(target: Path, component: Component, macro: str, stamp: re.Match[str]) -> tuple[str, list[str]]:
     """Add one more macro to the override at `target`, which an earlier eject wrote.
 
     The file has been the author's since that eject, so nothing in it is
     regenerated. The one line fjkit still owns is the re-export it wrote for
     `macro`, `{% set stat = _fjkit.stat %}`, and that is all this replaces:
-    with the kit's macro, the private helpers it needs that the stamp does not
-    list yet, and the lookup tables it reads that the file does not bind. The
+    with the kit's macro, the private helpers it needs that the file does not
+    define yet, and the lookup tables it reads that the file does not bind. A
+    helper the author already wrote stays theirs: the new macro calls that
+    copy, and the stamp records no digest for a body fjkit did not write. The
     stamp keeps every digest it had and gains one per macro taken, so a kit
     that moved since the first eject still shows up in `fjkit check`. The
     header is rewritten only when it is still word for word what fjkit wrote.
 
-    Raises `Unmergeable` rather than guess when the file cannot be taken apart
-    or the re-export line is not there exactly once.
+    Returns the new source and the macros it added.
+
+    Raises `Unmergeable` rather than guess when the file cannot be taken apart,
+    the re-export line is not there exactly once, or the author already defines
+    a macro named `macro`. Jinja would bind the name to whichever definition
+    comes last, so one of the two would be dead code with no warning.
     """
     try:
         mine = parse(target)
@@ -447,11 +457,17 @@ def splice(target: Path, component: Component, macro: str, stamp: re.Match[str])
     seam = f"{{% set {macro} = _fjkit.{macro} %}}\n"
     if mine.source.count(seam) != 1:
         raise Unmergeable(f"has no `{seam.strip()}` line for fjkit to replace")
+    if macro in mine.macros:
+        raise Unmergeable(
+            f"already defines a macro named {macro!r} that fjkit did not write (rename yours to take the kit's)"
+        )
 
     stamped = _stamped_macros(stamp["macros"])
-    taken = [n for n in component.closure(macro) if n not in stamped]
+    closure = [n for n in component.closure(macro) if n not in stamped]
+    taken = [n for n in closure if n not in mine.macros]
+    theirs = [mine.macros[n] for n in closure if n in mine.macros]
     bound = set(mine.macros).union(*(item.binds for item in mine.items if isinstance(item, Statement)))
-    keep = component.needed_statements(taken)
+    keep = component.needed_statements([*(component.macros[n] for n in taken), *theirs])
 
     parts: list[str] = []
     for index, item in enumerate(component.items):
@@ -468,7 +484,7 @@ def splice(target: Path, component: Component, macro: str, stamp: re.Match[str])
 
     digests = {**stamped, **{n: digest_of(component, n) for n in taken}}
     _, rest = body.split("\n", 1)
-    return macro_stamp(component.name, stamp["version"], digests) + rest
+    return macro_stamp(component.name, stamp["version"], digests) + rest, taken
 
 
 def _header(component: Component, owned: list[str], version: str) -> str:
@@ -607,10 +623,11 @@ def main(name: str, into: Path) -> int:
         return 1
 
     if stamp is None:
+        taken = component.closure(macro)
         _write(target, render_override(component, owned, _version()))
     else:
         try:
-            _write(target, splice(target, component, macro, stamp))
+            text, taken = splice(target, component, macro, stamp)
         except Unmergeable as exc:
             print(
                 f"fjkit eject: {target} {exc}, so it was left alone.\n"
@@ -620,8 +637,9 @@ def main(name: str, into: Path) -> int:
                 file=sys.stderr,
             )
             return 1
+        _write(target, text)
 
-    extra = [n for n in component.closure(macro) if n != macro]
+    extra = [n for n in taken if n != macro]
     print(
         f"{f'added {macro!r} to' if existing else 'wrote'} {target}\n"
         f"It owns {_and([n for n in owned if not n.startswith('_')])}"
