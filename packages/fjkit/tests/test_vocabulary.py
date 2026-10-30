@@ -8,6 +8,7 @@ import shutil
 
 import pytest
 from fjkit import FjkitConfig, build_environment
+from fjkit.cli import vocabulary
 from fjkit.cli.check import check_templates
 from fjkit.cli.eject import components, parse_or_none
 from fjkit.cli.ejected import STAMP, find_ejected, stale_ejects
@@ -38,6 +39,18 @@ class TestVocabulary:
         classes = component_classes()
         for name in ("flex", "gap-4", "grid-cols-3", "text-muted-foreground"):
             assert name not in classes
+
+    @pytest.mark.xfail(strict=True, reason="IndexError on an unbalanced layer")
+    def test_an_unclosed_components_layer_names_the_stylesheet(self, tmp_path, monkeypatch):
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "fjkit.css").write_text("@layer components {\n  .btn { color: red; }\n")
+        monkeypatch.setattr(vocabulary, "STATIC_DIR", tmp_path)
+        component_classes.cache_clear()
+        try:
+            with pytest.raises(ValueError, match=r"fjkit\.css.*never closes"):
+                component_classes()
+        finally:
+            component_classes.cache_clear()
 
     def test_names_from_css_comments_and_utility_overrides_are_rejected(self, tmp_path):
         """A file extension in a CSS comment is not a class, and a stylesheet
@@ -166,6 +179,7 @@ class TestCheck:
             "<p>a&#160;b &#8212; 3&#215;4</p>",
             '<button hx-get="/x" hx-target="#feed" hx-select="#feed" hx-include="#add">x</button>',
             '<a href="#add">x</a>',
+            '<button hx-post="/x" hx-indicator="#bead" hx-disabled-elt="#add" hx-sync="#feed:abort">x</button>',
             '{{ card("x", hx_target="#c0ffee") }}',
         ],
     )
@@ -174,6 +188,58 @@ class TestCheck:
         a colour, however hex its digits look."""
         (tmp_path / "page.html").write_text(markup)
         assert check_templates(tmp_path) == []
+
+    @pytest.mark.xfail(strict=True, reason="selector exemption is a short attribute list")
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<div hx-swap-oob="outerHTML:#feed">x</div>',
+            '<button hx-trigger="click from:#feed">x</button>',
+            '<button hx-get="/x" hx-swap="innerHTML show:#feed:top">x</button>',
+            '<a hx-get="/x/#add" hx-push-url="/x/#add">x</a>',
+            '{{ button("x", hx_swap_oob="outerHTML:#feed", hx_indicator="#bead") }}',
+            '{{ attrs({"hx-target": "#feed"}) }}',
+            '{% call form(action="/x", target="#add-form", swap="outerHTML show:#feed:top") %}{% endcall %}',
+            '{{ table(cols, rows, target="#feed") }}{{ pagination(page, pages, "/x", target="#feed") }}',
+            '{% call form(action="/x", target="#feed", progress="#bead") %}{% endcall %}',
+            '{{ tab_panel("t", lazy="/x", include="#feed") }}',
+        ],
+    )
+    def test_a_selector_in_any_htmx_attribute_or_kit_kwarg_is_not_a_hex_colour(self, tmp_path, markup):
+        (tmp_path / "page.html").write_text(markup)
+        assert check_templates(tmp_path) == []
+
+    @pytest.mark.xfail(strict=True, reason="url() and Jinja expressions are read as colour names")
+    @pytest.mark.parametrize(
+        "style",
+        [
+            "background-image: url(/static/icons/navy.svg)",
+            "background: url('/static/gold.svg') no-repeat",
+            "color: {{ teal }}",
+        ],
+    )
+    def test_a_file_name_or_a_jinja_variable_is_not_a_named_colour(self, tmp_path, style):
+        (tmp_path / "page.html").write_text(f'<p style="{style}">x</p>')
+        assert check_templates(tmp_path) == []
+
+    @pytest.mark.xfail(strict=True, reason="FUNCS matches Jinja calls")
+    @pytest.mark.parametrize("markup", ['{{ theme.color("primary") }}', "{{ lab(item) }}", "{% set c = color(x) %}"])
+    def test_a_jinja_call_is_not_a_colour_function(self, tmp_path, markup):
+        (tmp_path / "page.html").write_text(markup)
+        assert check_templates(tmp_path) == []
+
+    @pytest.mark.parametrize(
+        ("markup", "token"),
+        [
+            ('{% set c = "rgb(0 0 0)" %}', "rgb("),
+            ("<p style=\"color: {{ 'crimson' if late else 'inherit' }}\">x</p>", "crimson"),
+            ('<div hx-get="/x" style="border-color: #ccc">x</div>', "#ccc"),
+            ('<button hx-on:click="this.style.color = \'#f00\'">x</button>', "#f00"),
+        ],
+    )
+    def test_a_colour_in_a_jinja_string_or_beside_an_htmx_attribute_is_still_caught(self, tmp_path, markup, token):
+        (tmp_path / "page.html").write_text(markup)
+        assert [v.token for v in check_templates(tmp_path)] == [token]
 
     def test_a_hex_colour_in_a_value_is_still_caught(self, tmp_path):
         (tmp_path / "page.html").write_text(
