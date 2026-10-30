@@ -82,6 +82,13 @@ def make_app(auth: AuthPlugin, **config_kwargs) -> TestClient:
     def optional(session: Session | None = Depends(auth.optional)) -> Response:  # noqa: B008
         return Response(session.claims["name"] if session else "anonymous", media_type="text/plain")
 
+    # The same page written by code that holds the plugin rather than a
+    # dependency, the way another plugin's flow reads the session.
+    @router.get("/direct", response_class=Response)
+    def direct(request: Request) -> Response:
+        session = auth.session(request)
+        return Response(session.claims["name"] if session else "anonymous", media_type="text/plain")
+
     # The OpenID Connect shape: a redirect out to the provider, and a GET back
     # carrying the authorization code. The code is the credential.
     @router.get("/oidc/start")
@@ -862,12 +869,12 @@ def test_an_outage_inside_the_leeway_serves_the_token_that_is_still_good(caplog)
     assert source.refreshes == 1
 
 
-@pytest.mark.parametrize("path", ["/who", "/private/thing", "/optional"])
+@pytest.mark.parametrize("path", ["/who", "/private/thing", "/optional", "/direct"])
 def test_an_outage_past_expiry_answers_503_wherever_the_session_is_needed(path):
     """Once the token has expired there is nothing to serve the request on. A
-    page that reads the session, a route behind `required` and a public route
-    taking `optional` all wait for the upstream; the session itself is kept
-    for when it returns."""
+    page that reads the session, a route behind `required`, a public route
+    taking `optional` and one calling `auth.session()` all wait for the
+    upstream; the session itself is kept for when it returns."""
     source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
     client = make_app(make_auth(source=source))
     client.post("/login", headers={"origin": ORIGIN})

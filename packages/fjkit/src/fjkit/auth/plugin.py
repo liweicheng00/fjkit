@@ -141,8 +141,12 @@ class AuthPlugin:
     cookie gives neither.
 
     Routes see none of it. Put `Depends(auth.required)` on a router and its
-    handlers keep their signatures; the session is on `request.state.auth`, and
-    in every template as `session`.
+    handlers keep their signatures. A handler that wants the session takes it
+    as a parameter, `Depends(auth.required)` or `Depends(auth.optional)`; code
+    that holds the plugin and a request calls `auth.session(request)`; every
+    template has it as `session`. Those read the one outcome the middleware
+    could not settle, an upstream outage, and answer it 503. `request.state`
+    is the middleware's own and reads anonymous during that outage.
     """
 
     name = "auth"
@@ -220,7 +224,7 @@ class AuthPlugin:
             setup.warn("CSRF checking is off. Every cookie-authenticated write is unprotected.")
 
     def extend(self, setup: EnvSetup) -> None:
-        setup.add_context_processor(lambda request: {"session": self._session(request)}, provides=["session"])
+        setup.add_context_processor(lambda request: {"session": self.session(request)}, provides=["session"])
 
     # ------------------------------------------------------------- app-facing
 
@@ -359,30 +363,34 @@ class AuthPlugin:
 
             router = APIRouter(dependencies=[Depends(auth.required)])
 
-        Returns the session as well as raising, so a handler can take it as a
-        parameter instead of reading `request.state`.
+        Returns the session as well as raising, so a handler takes it as a
+        parameter.
         """
-        session = self._session(request)
+        session = self.session(request)
         if session is None:
             raise NotAuthenticated(f"{request.url.path} needs a session")
         return session
 
     async def optional(self, request: Request) -> Session | None:
         """Dependency. The session, or `None`."""
-        return self._session(request)
+        return self.session(request)
 
-    # -------------------------------------------------------------- internals
+    def session(self, request: Request) -> Session | None:
+        """The session the middleware loaded, or `None` for an anonymous request.
 
-    def _session(self, request: Request) -> Session | None:
-        """What the middleware found, for everything that asks about the session.
-
-        Raises the `RefreshUnavailable` the middleware deferred (see
-        `_SessionMiddleware`), so asking is what turns an outage into a 503.
+        The two dependencies and the template context read through here, and
+        so does anything else that holds the plugin and a request, such as a
+        flow in another plugin. Raises the `RefreshUnavailable` the middleware
+        deferred (see `_SessionMiddleware`), so asking is what turns an outage
+        into a 503; reading `request.state.auth` instead would take a signed-in
+        user for an anonymous one for as long as the upstream is down.
         """
         unavailable = getattr(request.state, "auth_unavailable", None)
         if unavailable is not None:
             raise unavailable
         return getattr(request.state, "auth", None)
+
+    # -------------------------------------------------------------- internals
 
     async def _verify_if_browser(self, request: Request) -> None:
         """Login and logout CSRF, the two anonymous writes that touch the cookie.
@@ -671,9 +679,9 @@ class _SessionMiddleware(BaseHTTPMiddleware):
     One outcome is not settled here. A session whose token has expired while
     the upstream is unreachable leaves `request.state.auth` empty and the
     `RefreshUnavailable` on `request.state.auth_unavailable`, and the handler
-    runs. `required`, `optional` and the template context raise it, so a page
-    that needs the session still answers 503; a handler that needs none,
-    which is what a logout is, gets through.
+    runs. `AuthPlugin.session`, and so the two dependencies and the template
+    context, raise it, so a page that needs the session still answers 503; a
+    handler that needs none, which is what a logout is, gets through.
     """
 
     def __init__(self, app: Any, *, plugin: AuthPlugin, static_url: str) -> None:
