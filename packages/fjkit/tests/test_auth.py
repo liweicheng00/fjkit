@@ -892,6 +892,28 @@ def test_logging_out_needs_no_upstream():
     assert client.get("/who").text == "anonymous", "the store's row is gone, so the old cookie is worthless"
 
 
+@pytest.mark.xfail(strict=True, reason="the outage is logged only by the 503, and a logout never answers one")
+def test_an_outage_is_logged_once_whether_or_not_the_handler_asks_for_the_session(caplog):
+    """The middleware defers the outage rather than answering it, so a handler
+    that never asks for the session runs as if the user were anonymous. The
+    operator still has to see that the upstream was down on that request, and
+    a request that does answer 503 must not log it twice."""
+    source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
+    client = make_app(make_auth(source=source))
+    client.post("/login", headers={"origin": ORIGIN})
+
+    with caplog.at_level(logging.WARNING, logger="fjkit.auth"):
+        refused = client.get("/who", follow_redirects=False)
+        logged_out = client.post("/logout", headers={"origin": ORIGIN})
+
+    assert (refused.status_code, logged_out.status_code) == (503, 204)
+    outages = [record for record in caplog.records if "not renewed" in record.getMessage()]
+    assert [record.getMessage().split(":")[0] for record in outages] == [
+        "session not renewed for GET /who",
+        "session not renewed for POST /logout",
+    ]
+
+
 def test_a_request_that_lost_the_refresh_race_is_served_when_its_token_is_still_good():
     """The loser's version of the leeway rule: the winner found the upstream
     unreachable, the token is still valid, so the loser proceeds on it as soon
