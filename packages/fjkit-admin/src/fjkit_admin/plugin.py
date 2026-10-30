@@ -26,6 +26,7 @@ from __future__ import annotations
 import datetime as dt
 import decimal
 import enum
+import logging
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, Any
@@ -54,6 +55,8 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 
 #: The id every swap targets.
 REGION = "admin-main"
+
+_log = logging.getLogger("fjkit_admin")
 
 
 class AdminPlugin:
@@ -272,7 +275,7 @@ class AdminPlugin:
                 obj = view.model()
                 apply(view.info, obj, data, view.form_fields())
                 view.save_model(request, session, obj, data, change=False)
-                self._commit(session, view)
+                self._commit(request, session, view)
                 messages.add(
                     request, f"{view.verbose_name.capitalize()} added", view.label_for(obj), category="success"
                 )
@@ -297,7 +300,7 @@ class AdminPlugin:
                     raise RequestValidationError(errors)
                 apply(view.info, obj, data, view.form_fields())
                 view.save_model(request, session, obj, data, change=True)
-                self._commit(session, view)
+                self._commit(request, session, view)
                 messages.add(
                     request, f"{view.verbose_name.capitalize()} saved", view.label_for(obj), category="success"
                 )
@@ -315,7 +318,7 @@ class AdminPlugin:
                 self._require(view.has_delete_permission(request, obj))
                 label = view.label_for(obj)
                 view.delete_model(request, session, obj)
-                self._commit(session, view)
+                self._commit(request, session, view)
                 messages.add(request, f"{view.verbose_name.capitalize()} deleted", label, category="success")
                 context = self._list_context(request, session, view, params)
             # The list is what shows next whichever page the delete came from,
@@ -343,7 +346,7 @@ class AdminPlugin:
                     messages.add(request, "Nothing was selected", "Tick a row first.", category="warning")
                 else:
                     text = getattr(view, action)(request, session, objs)
-                    self._commit(session, view)
+                    self._commit(request, session, view)
                     messages.add(request, text or f"{len(objs)} updated", category="success")
                 context = self._list_context(request, session, view, params)
             return self._render(request, "admin/_list.html", context)
@@ -358,14 +361,17 @@ class AdminPlugin:
             raise HTTPException(status_code=403, detail="Not allowed.")
 
     @staticmethod
-    def _commit(session: Session, view: ModelAdmin) -> None:
+    def _commit(request: Request, session: Session, view: ModelAdmin) -> None:
         """Commit a write. A constraint the database enforces (unique, foreign
         key) is the person's to fix, so it comes back as the 422 `errors.js`
-        draws, as a toast since no one field owns it."""
+        draws, as a toast since no one field owns it. The driver's text names
+        the constraint and the column, and on some engines the value, so it
+        goes to the log and the caller reads a sentence that names nothing."""
         try:
             session.commit()
         except IntegrityError as exc:
-            msg = f"This {view.verbose_name} was refused: {exc.orig}"
+            _log.warning("%s %s refused by the database: %s", request.method, request.url.path, exc.orig)
+            msg = f"This change to {view.verbose_name_plural} was refused by a database constraint."
             raise RequestValidationError([{"type": "integrity_error", "loc": ("body",), "msg": msg}]) from exc
 
     def _load(self, request: Request, session: Session, view: ModelAdmin, raw: str, *, missing_ok: bool = False) -> Any:

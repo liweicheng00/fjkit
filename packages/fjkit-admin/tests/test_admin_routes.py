@@ -182,7 +182,6 @@ def test_a_row_the_database_refuses_is_a_422_not_a_crash(stack):
     assert "2 projects" in client.get("/admin").text
 
 
-@pytest.mark.xfail(strict=True, reason="PR #24 review, finding 3")
 def test_a_refused_row_names_no_database_internals(stack, caplog):
     client = TestClient(stack[0], raise_server_exceptions=False)
     with caplog.at_level("WARNING", logger="fjkit_admin"):
