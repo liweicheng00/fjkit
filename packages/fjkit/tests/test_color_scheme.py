@@ -93,6 +93,33 @@ def test_an_app_filling_header_actions_can_ask_whether_to_offer_the_toggle(schem
     assert (TOGGLE in render(source, color_scheme=scheme)) is shown
 
 
+FIXED_SCHEME_PENDING = pytest.mark.xfail(
+    strict=True, reason="theme_toggle() does not yet read color_scheme itself"
+)
+
+
+@pytest.mark.parametrize(
+    ("scheme", "shown"),
+    [
+        ("system", True),
+        pytest.param("light", False, marks=FIXED_SCHEME_PENDING),
+        pytest.param("dark", False, marks=FIXED_SCHEME_PENDING),
+    ],
+)
+def test_theme_toggle_renders_nothing_under_a_fixed_scheme(scheme: str, shown: bool):
+    """An app that fills `header_actions` calls the macro bare; a fixed scheme
+    must still leave no toggle that writes `html.dark` and `localStorage`."""
+    source = """
+    {% extends "ui/shell.html" %}
+    {% from "ui/nav.html" import theme_toggle %}
+    {% block header_actions %}<own-actions/>{{ theme_toggle() }}{% endblock %}
+    """
+    html = render(source, color_scheme=scheme)
+
+    assert "<own-actions/>" in html
+    assert (TOGGLE in html) is shown
+
+
 @pytest.mark.parametrize("bad", ["auto", "Dark", "", None])
 def test_an_unknown_scheme_fails_when_the_config_is_built(bad):
     with pytest.raises(ValueError, match="color_scheme"):
