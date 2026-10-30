@@ -158,8 +158,15 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
 
 <div class="flex flex-col gap-3">      <p>
         路由看不到這些。在 router 上掛 <code>Depends(auth.required)</code>，底下的 handler
-        簽名不用改。session 在 <code>request.state.auth</code> 上，在每個模板裡叫
-        <code>session</code>。
+        簽名不用改。需要 session 的 handler 把它當參數拿：<code>session: Session = Depends(auth.required)</code>，
+        公開頁面則用 <code>Depends(auth.optional)</code>；手上有 plugin 和 request 的程式碼呼叫
+        <code>auth.session(request)</code>；每個模板裡叫 <code>session</code>。
+      </p>
+      <p>
+        只從這幾個地方讀，原因是斷線。身分提供者連不上時，token 已經過期的請求會由任何索取 session
+        的地方回 503，什麼都不索取的 handler，例如登出，照常執行。middleware 自己的
+        <code>request.state.auth</code> 在那次請求裡是 <code>None</code>，直接讀它的 handler
+        會把已登入的使用者當成匿名。
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -675,7 +682,7 @@ mount_fjkit(app, config)</pre>
 
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="auth plugin 的 extend()，全部" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
     setup.add_context_processor(
-        lambda request: {&#34;session&#34;: getattr(request.state, &#34;auth&#34;, None)},
+        lambda request: {&#34;session&#34;: self.session(request)},
         provides=[&#34;session&#34;],
     )</pre>
 
@@ -684,7 +691,7 @@ mount_fjkit(app, config)</pre>
         兩個限制都是刻意的。processor 必須<strong>同步</strong>：它在
         <code>Templates.page()</code> 裡執行，而那是 <code>def</code> handler 從 threadpool 進來的。
         需要 I/O 的 plugin 在 middleware 裡做完，把結果留在 <code>request.state</code> 上，
-        上面那一行讀的正是這個。
+        上面那一行的 <code>session()</code> 讀的正是這個。
       </p>
       <p>
         <code>provides=</code> 是強制宣告，不是自動推得。沒有它，兩個 plugin 會默默搶同一個
