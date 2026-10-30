@@ -502,8 +502,9 @@ class ApiDocsPlugin:
 
         # The flow gets the last word: it knows what authenticates a call, and
         # a hand-typed header must not shadow it under a different
-        # capitalisation.
-        headers.update(credential)
+        # capitalisation. Lowercased like every other key, so the dict holds
+        # one entry per wire header and `_curl` prints each once.
+        headers.update({name.lower(): value for name, value in credential.items()})
         return path, query, headers, fields
 
     # -------------------------------------------------------------- plumbing
@@ -680,7 +681,8 @@ def _curl(
     screenshot and every pasted bug report, and the point of this plugin is that
     the cookie is not readable from the page. `redact` names, in lowercase, the
     headers the flow filled: an API key travels under whatever name the flow
-    was given, not only `Authorization`.
+    was given, not only `Authorization`. `headers` is keyed in lowercase, as
+    `_compose` builds it, so each wire header is one entry here.
     """
     # `base_url` carries the `root_path` a proxy put in front of the app, which
     # the in-process call honours and a command typed into a terminal must too.
@@ -692,9 +694,9 @@ def _curl(
     if request.headers.get("cookie"):
         parts.append("-H 'Cookie: <your session cookie>'")
     for key, value in headers.items():
-        if key.lower() in ("cookie", "authorization") or key.lower() in redact:
+        if key in ("cookie", "authorization") or key in redact:
             parts.append(f"-H {_shell(f'{key}: <redacted>')}")
-        elif key.lower() == "content-type" and files:
+        elif key == "content-type" and files:
             # curl picks its own boundary, and one pasted from here would not
             # match the body `-F` builds. Letting curl write the header is the
             # only version of this command that runs.
