@@ -195,7 +195,6 @@ def test_a_refused_row_names_no_database_internals(stack, caplog):
     assert "UNIQUE constraint failed: project.name" in caplog.text
 
 
-@pytest.mark.xfail(strict=True, reason="PR #24 review, finding 2")
 def test_a_constraint_the_database_refuses_in_an_action_or_a_delete_is_a_422():
     class Renaming(ProjectAdmin):
         key = "project"

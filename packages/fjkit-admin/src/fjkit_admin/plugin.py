@@ -315,7 +315,7 @@ class AdminPlugin:
                 self._require(view.has_delete_permission(request, obj))
                 label = view.label_for(obj)
                 view.delete_model(request, session, obj)
-                session.commit()
+                self._commit(session, view)
                 messages.add(request, f"{view.verbose_name.capitalize()} deleted", label, category="success")
                 context = self._list_context(request, session, view, params)
             # The list is what shows next whichever page the delete came from,
@@ -343,7 +343,7 @@ class AdminPlugin:
                     messages.add(request, "Nothing was selected", "Tick a row first.", category="warning")
                 else:
                     text = getattr(view, action)(request, session, objs)
-                    session.commit()
+                    self._commit(session, view)
                     messages.add(request, text or f"{len(objs)} updated", category="success")
                 context = self._list_context(request, session, view, params)
             return self._render(request, "admin/_list.html", context)
@@ -359,7 +359,7 @@ class AdminPlugin:
 
     @staticmethod
     def _commit(session: Session, view: ModelAdmin) -> None:
-        """Commit a saved form. A constraint the database enforces (unique, foreign
+        """Commit a write. A constraint the database enforces (unique, foreign
         key) is the person's to fix, so it comes back as the 422 `errors.js`
         draws, as a toast since no one field owns it."""
         try:
