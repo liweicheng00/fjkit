@@ -122,6 +122,26 @@ def test_a_tampered_cookie_is_anonymous_not_an_error():
     assert client.get("/who").text == "anonymous"
 
 
+@pytest.mark.parametrize(
+    "value",
+    ["café.x", "abc.café"],
+    ids=["non-ascii-body", "non-ascii-signature"],
+)
+def test_a_non_ascii_cookie_is_anonymous_not_an_error(value):
+    """A cookie value a browser sends as UTF-8 reaches the verifier as non-ASCII
+    text. Nothing this plugin signed looks like that, so it is a bad cookie:
+    anonymous, like a tampered one, not a 500 on every page until the user
+    clears their cookies. A sibling subdomain can plant such a cookie, which
+    would otherwise lock the browser out of the whole app."""
+    auth = make_auth()
+    client = make_app(auth)
+
+    response = client.get("/who", headers=[(b"cookie", f"{auth.cookie.name}={value}".encode())])
+
+    assert response.status_code == 200
+    assert response.text == "anonymous"
+
+
 def test_logout_clears_both_sides():
     auth = make_auth(store=MemoryStore())
     client = make_app(auth)
@@ -192,6 +212,10 @@ def test_a_navigation_is_recognised_by_sec_fetch_mode_too():
         ("/tasks?status=doing", "/tasks?status=doing"),
         ("//evil.example.com", "/"),
         ("/\\evil.example.com", "/"),
+        ("/\t/evil.example.com", "/"),
+        ("/\n/evil.example.com", "/"),
+        ("/\r/evil.example.com", "/"),
+        ("/\t\\evil.example.com", "/"),
         ("/tasks?path=a\\b", "/tasks?path=a\\b"),
         ("https://evil.example.com", "/"),
         ("evil.example.com", "/"),
@@ -209,6 +233,10 @@ def test_safe_next_only_returns_to_this_site(value, expected):
     `/\\evil.example.com` is the same case in disguise: a browser turns the
     backslash into a slash before it resolves the URL. A backslash later in the
     value is still a path on this site and is kept.
+
+    `/\t/evil.example.com` is the same case again: the WHATWG URL parser strips
+    ASCII tab and newline before it looks at the slashes, so the second
+    character the check reads is not the one the browser reads.
     """
     assert safe_next(value) == expected
 
@@ -313,6 +341,19 @@ def test_a_cross_origin_login_is_refused_before_a_session_exists():
     assert response.status_code == 403
     assert "set-cookie" not in response.headers
     assert client.get("/who").text == "anonymous"
+
+
+def test_a_cross_origin_logout_is_refused():
+    """Logout CSRF, the mirror of login CSRF. A cross-site POST carries no
+    cookie under Lax, so the middleware checks nothing, yet the response would
+    carry a clearing Set-Cookie that the browser applies on a top-level
+    navigation: a foreign page could sign the visitor out."""
+    client = make_app(make_auth())
+
+    response = client.post("/logout", headers={"origin": "http://evil.example.com"})
+
+    assert response.status_code == 403
+    assert "set-cookie" not in response.headers
 
 
 def test_a_login_without_an_origin_is_a_non_browser_client_and_is_let_through():
@@ -543,6 +584,21 @@ async def test_an_expiring_token_with_no_way_to_renew_warns_once():
 
     assert len(caught) == 1, "once per plugin, not once per request"
     assert "has no `refresh()`" in str(caught[0].message)
+
+
+@pytest.mark.asyncio
+async def test_memory_store_forgets_sessions_nobody_reads_again():
+    """A login whose user never returns (a closed browser, a script) leaves a
+    row that only its own `get` would remove. Nothing reads it, so the process
+    grows with every login unless the store sweeps on its own. The rows are
+    the store's memory, which is what the assertion looks at."""
+    store = MemoryStore()
+    for i in range(100):
+        await store.put(f"gone-{i}", b"x", 0)
+    await store.put("live", b"x", 3600)
+
+    assert await store.get("live") == b"x"
+    assert set(store._items) == {"live"}
 
 
 def test_trusted_origins_are_required_unless_csrf_is_chosen():

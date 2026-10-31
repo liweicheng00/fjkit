@@ -19,9 +19,6 @@ than leaving it to the app.
 from __future__ import annotations
 
 import asyncio
-import base64
-import hashlib
-import hmac
 import logging
 import secrets
 import warnings
@@ -42,6 +39,7 @@ from fjkit.auth.types import Csrf, Session, SessionStore, TokenSource, decode, e
 from fjkit.flash import FlashPlugin
 from fjkit.htmx import is_htmx
 from fjkit.plugins import AppSetup, EnvSetup, PluginWarning
+from fjkit.signing import sign_text, unsign_text
 
 __all__ = ["AuthPlugin", "CookieSpec", "safe_next"]
 
@@ -213,15 +211,9 @@ class AuthPlugin:
         The login route is therefore `async def`, which is correct because it
         does network I/O. Every rendering route stays `def`.
         """
-        if request.headers.get("origin") is not None:
-            # Login CSRF. `SameSite=Lax` keeps the cookie off a cross-site
-            # POST, so the middleware sees an anonymous request and checks
-            # nothing, yet this is the request that creates the cookie: a
-            # foreign page could log the visitor in as the attacker. Checked
-            # before `exchange`, so a refused request never reaches the
-            # upstream. No `Origin` means no browser, hence no visitor to
-            # plant a session in.
-            await self.csrf.verify(request)
+        # Checked before `exchange`, so a refused request never reaches the
+        # upstream.
+        await self._verify_if_browser(request)
 
         session = await self.source.exchange(credentials)
 
@@ -240,6 +232,7 @@ class AuthPlugin:
 
     async def revoke(self, request: Request, response: Response) -> None:
         """Log out: forget the session server-side and clear the cookie."""
+        await self._verify_if_browser(request)
         sid = self._read_cookie(request)
         if sid is not None:
             await self.store.delete(sid)
@@ -268,6 +261,18 @@ class AuthPlugin:
         return getattr(request.state, "auth", None)
 
     # -------------------------------------------------------------- internals
+
+    async def _verify_if_browser(self, request: Request) -> None:
+        """Login and logout CSRF, the two anonymous writes that touch the cookie.
+
+        `SameSite=Lax` keeps the cookie off a cross-site POST, so the middleware
+        sees an anonymous request and checks nothing, yet these are the
+        requests that create and clear the cookie: a foreign page could log the
+        visitor in as the attacker, or sign them out. No `Origin` means no
+        browser, hence no visitor to act on.
+        """
+        if request.headers.get("origin") is not None:
+            await self.csrf.verify(request)
 
     async def load(self, request: Request) -> Session | None:
         """Return the session for this request, refreshed if it is near expiry.
@@ -341,9 +346,11 @@ class AuthPlugin:
             try:
                 fresh = await self.source.refresh(current)  # type: ignore[attr-defined]
             except Exception as exc:
-                # Only the upstream refusing ends a session. Otherwise a store
-                # that failed a moment ago logs every user out over a blip,
-                # which is worse than one retried request.
+                # Any failure ends the session, a refusal and a transport error
+                # alike: a source signals both by raising, and nothing here
+                # tells them apart. An unreachable upstream therefore signs out
+                # every user whose token enters the leeway while it is down.
+                # The store's own failures are outside this block on purpose.
                 await self.store.delete(sid)
                 raise RefreshFailed(f"could not renew the session: {exc}") from exc
 
@@ -384,17 +391,13 @@ class AuthPlugin:
     # ------------------------------------------------------------- the cookie
 
     def _sign(self, sid: str) -> str:
-        mac = hmac.new(self.secret, sid.encode("ascii"), hashlib.sha256).digest()
-        return f"{sid}.{base64.urlsafe_b64encode(mac).decode('ascii').rstrip('=')}"
+        return sign_text(self.secret, sid)
 
     def _read_cookie(self, request: Request) -> str | None:
         raw = request.cookies.get(self.cookie.name)
         if not raw:
             return None
-        sid, _, _ = raw.partition(".")
-        if not sid or not hmac.compare_digest(raw, self._sign(sid)):
-            return None
-        return sid
+        return unsign_text(self.secret, raw) or None
 
     def _set_cookie(self, response: Response, sid: str) -> None:
         response.set_cookie(
@@ -517,7 +520,15 @@ def safe_next(value: str | None, fallback: str = "/") -> str:
     scheme), so `Location: /\\evil.example.com` lands on `//evil.example.com`.
     The check reads the second character rather than scanning the whole value:
     a backslash anywhere later is still inside a path on this site.
+
+    A control character anywhere refuses the value. The same parser strips tab,
+    newline and carriage return before it reads the slashes, so the second
+    character of `/\t/evil.example.com` is not the one the browser sees. A
+    legitimate `next` has no raw control character in it: a URL carries one
+    percent-encoded.
     """
     if not value or value[:1] != "/" or value[1:2] in ("/", "\\"):
+        return fallback
+    if any(ord(char) < 0x20 or char == "\x7f" for char in value):
         return fallback
     return value

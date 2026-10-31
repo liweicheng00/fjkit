@@ -119,9 +119,11 @@ class TokenSource(Protocol):
 class RefreshableTokenSource(TokenSource, Protocol):
     """A source that can also renew.
 
-    Split from `TokenSource` so `AuthPlugin` can report at startup, rather than
-    at the first expiry in production, that a source handing out expiring tokens
-    has no way to replace them.
+    Split from `TokenSource` so renewal is opt-in. `AuthPlugin` looks for
+    `refresh()` at the first expiring token, not at startup: a source with
+    neither `refresh()` nor `expires_at` is an ordinary configuration. A source
+    that reports `expires_at` and has no `refresh()` gets one warning, and its
+    sessions end when the token does.
     """
 
     async def refresh(self, session: Session) -> Session: ...
