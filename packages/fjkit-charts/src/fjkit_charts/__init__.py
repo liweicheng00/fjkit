@@ -22,10 +22,10 @@ and in the router, a `Chart` per figure:
     Chart(id="by-owner", title="Workload", summary="Ana has 5 of 12 open tasks.",
           figure=go.Figure(...))
 
-That is the whole setup. Plotly's basic bundle ships in this wheel — one of the
-scripts CHARTER §4.1 whitelists, pinned here rather than in `fjkit.vendored`
-because the bytes are here too — and is served from this plugin's own static
-mount. No download, no npm, no bundler, nothing fetched at runtime. A page
+That is the whole setup. Plotly's basic bundle ships in this wheel — pinned
+here rather than in `fjkit.vendored`, as CHARTER A11(1) allows a plugin
+distribution, because the bytes are here too — and is served from this plugin's
+own static mount. No download, no npm, no bundler, nothing fetched at runtime. A page
 loads the 1.1 MB only if it calls `chart_scripts()`.
 """
 

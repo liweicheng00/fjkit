@@ -150,19 +150,7 @@ def trigger_header(request: Request, existing: str | None = None) -> str | None:
     if not pending:
         return existing
 
-    events: dict[str, Any] = {}
-    if existing:
-        text = existing.strip()
-        if text.startswith("{"):
-            try:
-                events = json.loads(text)
-            except ValueError:
-                # Not ours to repair, and not ours to discard either: keep it
-                # as an event name so the handler's intent survives.
-                events = {text: None}
-        else:
-            events = {name.strip(): None for name in text.split(",") if name.strip()}
-
+    events = trigger_events(existing)
     # `{"messages": [...]}` and not the bare list, because htmx unwraps the two
     # differently: a plain object becomes `event.detail`, while anything else —
     # an array included — is wrapped as `{value: …}`. Sending an object keeps
@@ -170,6 +158,27 @@ def trigger_header(request: Request, existing: str | None = None) -> str | None:
     # depend on a rule inside a vendored file.
     events[TOAST_EVENT] = {"messages": [message.as_detail() for message in pending.drain()]}
     return json.dumps(events, separators=(",", ":"))
+
+
+def trigger_events(header: str | None) -> dict[str, Any]:
+    """Read an `HX-Trigger` value as the mapping htmx reads it as.
+
+    htmx accepts a bare event name or a comma-separated list as well as a JSON
+    object, and none of them may be discarded because something else wants to
+    be in the header too. `@render` merges a route's own event through this as
+    well, so there is one reading of the header.
+    """
+    if not header:
+        return {}
+    text = header.strip()
+    if text.startswith("{"):
+        try:
+            return json.loads(text)
+        except ValueError:
+            # Not ours to repair, and not ours to discard either: keep it as
+            # an event name so the handler's intent survives.
+            return {text: None}
+    return {name.strip(): None for name in text.split(",") if name.strip()}
 
 
 class _Queue:
@@ -206,12 +215,18 @@ class _Queue:
         Emptying the queue stops a message being delivered twice when a
         response both carries an `HX-Trigger` and renders a toaster.
         """
-        self._mark()
+        self.mark_shown()
         taken = tuple(self._messages)
         self._messages.clear()
         return taken
 
-    def _mark(self) -> None:
+    def mark_shown(self) -> None:
+        """Record delivery without iterating.
+
+        For a response whose template iterates the queue after its headers are
+        on the wire (a streamed page): the render is certain, and the record
+        has to exist while a clearing cookie can still be added.
+        """
         if self._request is not None:
             setattr(self._request.state, _SHOWN, True)
 
@@ -223,5 +238,5 @@ class _Queue:
 
     def __iter__(self) -> Iterator[Message]:
         if self._messages:
-            self._mark()
+            self.mark_shown()
         return iter(tuple(self._messages))

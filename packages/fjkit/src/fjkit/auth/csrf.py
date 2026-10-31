@@ -26,6 +26,16 @@ htmx request, so the form macro and the shell both need request-scoped data;
 shipping a token means shipping a templating feature with it. `Csrf.on_issue` is
 the plug-in point when that cost is worth paying.
 
+A login completed on a GET, which is what an OpenID Connect or OAuth callback
+is (`GET /callback?code=…`), gets none of this. A browser sends no `Origin` on
+a navigation and `verify` passes safe methods anyway, so a visitor sent to
+`/callback?code=<attacker's code>` would be logged in as the attacker. The
+`state` parameter closes it, and `AuthPlugin` carries it: `start_login` sets a
+signed nonce cookie and returns the `state` for the authorization URL, and
+`check_state` in the callback refuses the request unless the provider echoed
+that browser's nonce back. The app calls them in its own two routes, because
+the plugin owns neither the redirect out nor the callback in.
+
 Two cases this cannot cover:
 
 * A GET that changes state. No header check helps; fix it in the routing.

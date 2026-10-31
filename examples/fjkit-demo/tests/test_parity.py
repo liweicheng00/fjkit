@@ -47,7 +47,17 @@ ALLOWED_LOST_WORDS_BY_PROBE = {
 ALLOWED_LOST_HREFS = {"/static/dist/app.css"}
 
 #: The `ids` every board response carries.
-BOARD_IDS = ["board", "f-owner", "f-priority", "f-title", "new-task"]
+BOARD_IDS = [
+    "board",
+    "c-owner",
+    "c-owner-input",
+    "c-owner-listbox",
+    "c-owner-popover",
+    "f-owner",
+    "f-priority",
+    "f-title",
+    "new-task",
+]
 
 #: The `hx_attrs` every board response carries.
 BOARD_HX_ATTRS = [
@@ -57,10 +67,12 @@ BOARD_HX_ATTRS = [
     "hx-disinherit",
     "hx-ext",
     "hx-get",
+    "hx-include",
     "hx-on::after-request",
     "hx-post",
     "hx-swap",
     "hx-target",
+    "hx-trigger",
 ]
 
 #: Per-probe expected values that replace the baseline's for the named fields.
