@@ -11,12 +11,14 @@ import json
 from typing import Annotated, Any
 
 import pytest
-from fastapi import APIRouter, FastAPI, Form, Request, Response
+from fastapi import APIRouter, FastAPI, Form, HTTPException, Request, Response
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, htmx, messages, mount_fjkit, render
 from fjkit.forms import NO_ERRORS, FieldErrors, field_errors, field_name, label
 from jinja2 import DictLoader
 from pydantic import BaseModel, Field, ValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 TEMPLATES = {
     "page.html": "<page>",
@@ -94,6 +96,19 @@ def make_app(
     def boom_fragment() -> dict[str, str]:
         """The same failure on a route that serves no page of its own."""
         raise RaisedError("the service is down")
+
+    @router.get("/tasks/{task_id}")
+    @render("page.html", partial="_board.html")
+    def task(task_id: int) -> dict[str, str]:
+        raise HTTPException(status_code=404, detail="task not found")
+
+    @router.get("/api/tasks/{task_id}")
+    def api_task(task_id: int) -> dict[str, str]:
+        raise HTTPException(status_code=404, detail="task not found")
+
+    @router.get("/locked")
+    def locked() -> dict[str, str]:
+        raise HTTPException(status_code=401, detail="sign in", headers={"WWW-Authenticate": "Bearer"})
 
     app = FastAPI()
     templates = mount_fjkit(app, config or FjkitConfig())
@@ -595,6 +610,154 @@ def test_a_caught_unhandled_error_leaves_a_json_client_with_a_plain_500():
 
     assert response.status_code == 500
     assert response.text == "Internal Server Error"
+
+
+# --------------------------------------------------------------------------- #
+# errors — an address with nothing behind it
+# --------------------------------------------------------------------------- #
+
+
+def test_a_navigation_to_an_unknown_address_gets_the_error_page():
+    """FastAPI's `{"detail":"Not Found"}` is a screen of JSON to a person who
+    followed a stale link."""
+    client = make_app()
+
+    response = client.get("/nowhere", headers=BROWSER)
+
+    assert response.status_code == 404
+    assert response.text == "<error-page status=404>"
+
+
+def test_a_route_that_raises_404_gives_a_navigation_the_error_page():
+    client = make_app()
+
+    response = client.get("/tasks/9", headers=BROWSER)
+
+    assert response.status_code == 404
+    assert response.text == "<error-page status=404>"
+
+
+def test_a_404_reaches_a_swap_as_a_toast_and_no_body():
+    """The page stays as it was. A swap that found nothing has no markup to put
+    in the target, and htmx reads `HX-Trigger` before it decides not to swap."""
+    client = make_app()
+
+    response = client.get("/tasks/9", headers=HTMX)
+
+    assert response.status_code == 404
+    assert response.text == ""
+    assert toast_titles(response) == ["That could not be found"]
+
+
+def test_a_json_client_still_gets_fastapis_404():
+    client = make_app()
+
+    unknown = client.get("/nowhere", headers=JSON)
+    raised = client.get("/api/tasks/9", headers=JSON)
+
+    assert unknown.status_code == 404
+    assert unknown.json() == {"detail": "Not Found"}
+    assert raised.status_code == 404
+    assert raised.json() == {"detail": "task not found"}
+
+
+def test_a_page_route_asked_for_json_answers_its_404_in_json():
+    """`render_mode="json"` is how the API docs console calls a page route. The
+    route answers that caller in JSON, so its 404 does too."""
+    client = make_app(FjkitConfig(render_mode="json"))
+
+    response = client.get("/tasks/9", headers=BROWSER)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "task not found"}
+
+
+def test_any_other_http_error_is_fastapis_reply_with_its_headers():
+    """A 401 carries `WWW-Authenticate`, and a client that follows it must still
+    find it there."""
+    client = make_app()
+
+    response = client.get("/locked", headers=BROWSER)
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "sign in"}
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_an_apps_own_http_error_handler_wins():
+    """`mount_fjkit` runs before the app's own setup, and the kit's 404
+    handler, keyed by status, defers to a handler the app keys by class."""
+    app = FastAPI()
+    mount_fjkit(app, FjkitConfig())
+
+    @app.exception_handler(StarletteHTTPException)
+    async def mine(request: Request, exc: StarletteHTTPException) -> Response:
+        return Response("mine", status_code=exc.status_code, media_type="text/plain")
+
+    response = TestClient(app).get("/nowhere", headers=BROWSER)
+
+    assert response.status_code == 404
+    assert response.text == "mine"
+
+
+def _signs_in(request: Request, exc: StarletteHTTPException) -> Response:
+    """The handler an app registers to send a 401 to its login page."""
+    if exc.status_code == 401:
+        return RedirectResponse("/login", status_code=303)
+    return JSONResponse({"error": exc.detail}, status_code=exc.status_code)
+
+
+def _app_with_its_own_handler() -> TestClient:
+    app = FastAPI(exception_handlers={StarletteHTTPException: _signs_in})
+
+    @app.get("/private")
+    def private() -> None:
+        raise HTTPException(status_code=401)
+
+    mount_fjkit(app, FjkitConfig())
+    return TestClient(app, follow_redirects=False)
+
+
+def test_an_http_error_handler_registered_before_mount_keeps_every_status():
+    """`FastAPI(exception_handlers=...)` runs before `mount_fjkit`. The app's
+    handler still answers a 401, and still answers its own 404s."""
+    client = _app_with_its_own_handler()
+
+    signed_out = client.get("/private", headers=BROWSER)
+    missing_json = client.get("/nowhere", headers=JSON)
+    missing_page = client.get("/nowhere", headers=BROWSER)
+
+    assert (signed_out.status_code, signed_out.headers["location"]) == (303, "/login")
+    assert (missing_json.status_code, missing_json.json()) == (404, {"error": "Not Found"})
+    assert (missing_page.status_code, missing_page.json()) == (404, {"error": "Not Found"})
+
+
+def test_a_404_handler_registered_before_mount_is_kept():
+    async def mine(request: Request, exc: Exception) -> Response:
+        return Response("mine", status_code=404, media_type="text/plain")
+
+    app = FastAPI(exception_handlers={404: mine})
+    mount_fjkit(app, FjkitConfig())
+
+    response = TestClient(app).get("/nowhere", headers=BROWSER)
+
+    assert (response.status_code, response.text) == (404, "mine")
+
+
+def test_the_kits_404_page_talks_about_a_missing_page():
+    """The words written for a 500 are wrong here: nothing was being saved, and
+    the server log has nothing to say about a mistyped address."""
+    app = FastAPI()
+    mount_fjkit(app, FjkitConfig())
+
+    response = TestClient(app).get("/nowhere", headers=BROWSER)
+
+    assert response.status_code == 404
+    assert response.headers["content-type"].startswith("text/html")
+    assert "There is nothing at this address" in response.text
+    assert "This page may have moved or been removed." in response.text
+    assert "nothing was saved" not in response.text
+    assert "server log" not in response.text
 
 
 def test_a_field_that_is_fine_renders_no_message():
