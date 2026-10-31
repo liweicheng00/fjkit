@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import re
 import secrets
+import warnings
 from collections.abc import Mapping, Sequence
 from datetime import timedelta
 from pathlib import Path
@@ -38,7 +39,7 @@ from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse
-from fjkit.plugins import AppSetup, EnvSetup
+from fjkit.plugins import AppSetup, EnvSetup, PluginWarning
 from fjkit.templating import get_templates
 from starlette.datastructures import UploadFile
 
@@ -129,6 +130,18 @@ class ApiDocsPlugin:
         #: `_resolve_flow` never runs.
         self._flow_given = flow is not None
         self.flow: AuthFlow = flow if flow is not None else NoFlow()
+        if not hasattr(self.flow, "csrf"):
+            # An absent policy and a `None` one behave alike, but only `None`
+            # was decided. A flow that keeps a credential in a cookie and never
+            # heard of `csrf` would otherwise go unchecked without a word.
+            warnings.warn(
+                f"[fjkit:{self.name}] {type(self.flow).__name__} has no `csrf` attribute, so the "
+                "console checks no `Origin` on its POST routes. Set `csrf` to a "
+                "`fjkit.auth.types.Csrf` if the flow leaves a credential in a cookie, or to `None` "
+                "to state that it does not.",
+                PluginWarning,
+                stacklevel=2,
+            )
         if isinstance(self.flow, HeaderFlow) and self.flow.cookie_path is None:
             # Scoped to the docs page. A token held for the whole origin would
             # be attached to nothing else, but the browser would still send it
@@ -271,17 +284,20 @@ class ApiDocsPlugin:
         return self._render(request, "apidocs/_nav.html", self._context(request, query=q))
 
     async def _auth(self, request: Request) -> HTMLResponse:
-        form = await request.form()
-        values = {key: str(value) for key, value in form.items()}
         carrier = Response()
-        error = ""
-        try:
-            if values.get("action") == "sign_out":
-                await self.flow.sign_out(request, carrier)
-            else:
-                await self.flow.sign_in(request, carrier, values)
-        except FlowError as exc:
-            error = str(exc)
+        # Checked before the body is read, as `AuthPlugin.issue` checks before
+        # `exchange`: a refused request never reaches the flow.
+        error = await self._refused(request, anonymous_ok=True)
+        if not error:
+            form = await request.form()
+            values = {key: str(value) for key, value in form.items()}
+            try:
+                if values.get("action") == "sign_out":
+                    await self.flow.sign_out(request, carrier)
+                else:
+                    await self.flow.sign_in(request, carrier, values)
+            except FlowError as exc:
+                error = str(exc)
 
         state = self.flow.state(request)
         if error:
@@ -291,6 +307,14 @@ class ApiDocsPlugin:
         return response
 
     async def _try(self, request: Request, operation_id: str) -> HTMLResponse:
+        refused = await self._refused(request, anonymous_ok=False)
+        if refused:
+            return self._render(
+                request,
+                "apidocs/_result.html",
+                self._context(request) | {"result": _unsent(refused), "curl": ""},
+            )
+
         document = self._document(request)
         operation = document.index.get(operation_id)
         if operation is None:
@@ -372,6 +396,37 @@ class ApiDocsPlugin:
         return self._render(request, "apidocs/_result.html", context)
 
     # --------------------------------------------------------------- the call
+
+    async def _refused(self, request: Request, *, anonymous_ok: bool) -> str:
+        """Return why the flow's CSRF policy refuses this POST, or nothing.
+
+        The policy is the flow's, because the flow is what leaves the browser
+        holding an ambient credential: `HeaderFlow` its own cookie,
+        `SessionFlow` the `AuthPlugin`'s. The console forwards that credential
+        on every call, so a forged POST to these routes would spend it; the
+        operations themselves, bearer-authenticated, have no reason to check
+        `Origin` and do not. A flow with no policy attaches nothing a forged
+        request could use.
+
+        `anonymous_ok` is the login rule from `AuthPlugin.issue`: a sign-in
+        without `Origin` comes from no browser, so there is no visitor to plant
+        a credential on, and it passes. A call is checked unconditionally, as
+        the auth middleware checks a cookie-authenticated write.
+        """
+        policy = getattr(self.flow, "csrf", None)
+        if policy is None or (anonymous_ok and request.headers.get("origin") is None):
+            return ""
+
+        # Imported here and not at the top: the policy came out of `fjkit.auth`,
+        # so the module is already loaded, and an app with no flow at all never
+        # pays for it (see `_resolve_flow`).
+        from fjkit.auth.errors import CsrfRejected
+
+        try:
+            await policy.verify(request)
+        except CsrfRejected as exc:
+            return str(exc)
+        return ""
 
     def _compose(
         self,
@@ -552,15 +607,15 @@ def _carry_cookies(source: Response, target: Response) -> None:
 
 
 def _missing(operation_id: str) -> console.Recorded:
-    return console.Recorded(
-        method="",
-        url="",
-        status=0,
-        error=(
-            f"No operation {operation_id!r} in this API any more. It was renamed or removed "
-            "since this page was loaded — reload to see the current list."
-        ),
+    return _unsent(
+        f"No operation {operation_id!r} in this API any more. It was renamed or removed "
+        "since this page was loaded — reload to see the current list."
     )
+
+
+def _unsent(error: str) -> console.Recorded:
+    """A result for a call the console did not make, with the reason."""
+    return console.Recorded(method="", url="", status=0, error=error)
 
 
 def _split(value: str) -> list[str]:
