@@ -1,6 +1,14 @@
-{# The stats partial, included by _board.html and the dashboard. #}
-{% from "ui/data.html" import badge, card, metric_group, progress %}
-{% from "ui/layout.html" import row, stack %}
+{#
+  The board's aside: the counters and the owner filter. Included by _board.html,
+  so it is re-rendered with every swap and the chips always show the filter the
+  rows were cut by.
+
+  The filter is a multiple combobox in a 19rem column, which is the case issue
+  #46 was about: picking several owners in a row must not move the list.
+#}
+{% from "ui/data.html" import card, metric_group, progress %}
+{% from "ui/layout.html" import stack %}
+{% from "ui/overlay.html" import combobox %}
 
 {% call stack(4) %}
   {% call card("Progress", stats.done ~ " of " ~ stats.total ~ " done", size="sm") %}
@@ -14,9 +22,20 @@
     {% endcall %}
   {% endcall %}
 
-  {% call card("Owners", none, size="sm") %}
-    {% call row(gap=2) %}
-      {% for owner in owners %}{{ badge(owner, variant="outline") }}{% endfor %}
-    {% endcall %}
+  {#
+    `hx-include` sends the hidden input that carries the picks; the page's
+    `multiselect_scripts()` turns its JSON into `owner=kai&owner=livy`. The
+    status filter rides in the URL, so switching owners keeps it.
+
+    Scoped to this control, not `[name='owner']`: the create form has an
+    `owner` field too, and with both included the script sees two values
+    under one name and leaves the JSON alone.
+  #}
+  {% call card("Owners", "Show only some people's tasks.", size="sm") %}
+    {{ combobox("owner", options=owner_options, selected=active_owners, multiple=true,
+                label="Filter by owner", placeholder="Any owner",
+                hx_get=url_for(request, "tasks_board") ~ ("?status=" ~ active_status.value if active_status else ""),
+                hx_trigger="change target:#c-owner", hx_include="#c-owner input[type='hidden']",
+                hx_target="#board", hx_swap="outerHTML") }}
   {% endcall %}
 {% endcall %}

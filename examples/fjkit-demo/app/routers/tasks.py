@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fjkit import render
 
 from app.dependencies import TaskServiceDep
@@ -24,20 +25,27 @@ from app.services.tasks import TaskService
 
 router = APIRouter(tags=["tasks"])
 
+#: `?owner=kai&owner=livy` narrows the board to those people. Repeated rather
+#: than comma-joined, which is what the multiple combobox posts through
+#: `multiselect_scripts()` and what a checkbox group would post too.
+OwnerFilter = Annotated[list[str] | None, Query()]
 
-def _board(service: TaskService, status: Status | None = None, owner: str | None = None) -> BoardResponse:
+
+def _board(service: TaskService, status: Status | None = None, owner: OwnerFilter = None) -> BoardResponse:
+    owners = owner or []
     # Query string the row actions carry, so a mutation keeps the active filter.
-    active = {k: v for k, v in (("status", status), ("owner", owner)) if v}
+    active = {k: v for k, v in (("status", status), ("owner", owners)) if v}
     return BoardResponse(
-        tasks=service.list(status=status, owner=owner),
+        tasks=service.list(status=status, owners=owners),
         # The whole board, not the filtered rows: the counters describe what is
         # on the board, and a filter is a view of it rather than a smaller one.
         stats=task_service.stats(service.list()),
-        owners=service.owners(),
+        owner_options=[(o, o) for o in service.owners()],
         status_filters=STATUS_FILTERS,
         priority_options=PRIORITY_OPTIONS,
         active_status=status,
-        filter_query=f"?{urlencode(active)}" if active else "",
+        active_owners=owners,
+        filter_query=f"?{urlencode(active, doseq=True)}" if active else "",
     )
 
 
@@ -46,7 +54,7 @@ def _board(service: TaskService, status: Status | None = None, owner: str | None
 def tasks_page(
     service: TaskServiceDep,
     status: Status | None = None,
-    owner: str | None = None,
+    owner: OwnerFilter = None,
 ) -> BoardResponse:
     """Render the tasks page, or just the board for an htmx request."""
     return _board(service, status, owner)
@@ -57,7 +65,7 @@ def tasks_page(
 def tasks_board(
     service: TaskServiceDep,
     status: Status | None = None,
-    owner: str | None = None,
+    owner: OwnerFilter = None,
 ) -> BoardResponse:
     """Render the board partial."""
     return _board(service, status, owner)
@@ -77,7 +85,7 @@ def advance_task(
     service: TaskServiceDep,
     task_id: int,
     status: Status | None = None,
-    owner: str | None = None,
+    owner: OwnerFilter = None,
 ) -> BoardResponse:
     if service.advance(task_id) is None:
         raise HTTPException(status_code=404, detail="task not found")
@@ -90,7 +98,7 @@ def delete_task(
     service: TaskServiceDep,
     task_id: int,
     status: Status | None = None,
-    owner: str | None = None,
+    owner: OwnerFilter = None,
 ) -> BoardResponse:
     if not service.delete(task_id):
         raise HTTPException(status_code=404, detail="task not found")

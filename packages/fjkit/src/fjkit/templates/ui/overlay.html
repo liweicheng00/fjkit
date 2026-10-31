@@ -381,12 +381,18 @@
   worth the characters because a native `change` bubbles out of the text box on
   blur as well, and without the filter a pick costs two identical requests.
 
-  `multiple` works here too, and reads better than on `select_menu`: Basecoat
-  wraps the text input in a `.combobox-chips` div and renders one chip per
-  pick, so a long selection stays legible instead of becoming a comma-joined
-  line that truncates. That JS draws the chips, so at first paint a pre-filled
-  multiple combobox shows an empty box. Use `select_menu(multiple=true)` where
-  the selection has to be visible with JavaScript off, and read the note on
+  `multiple` works here too, and reads better than on `select_menu`: the text
+  input sits in a `.combobox-chips` box and Basecoat renders one chip per pick
+  into it, so a long selection stays legible instead of becoming a comma-joined
+  line that truncates. The box is rendered here rather than left to the script,
+  which would wrap the input in one anyway, so the first paint already has the
+  shape the script leaves. `fjkit.css` lays that box out for a narrow column:
+  the input takes the first line on its own, the chips wrap below it, and the
+  list is anchored to the input rather than to the bottom of the box, so a pick
+  that adds a chip row moves nothing under the pointer. The chips themselves
+  are still the script's, so at first paint a pre-filled multiple combobox
+  shows an empty box. Use `select_menu(multiple=true)` where the selection has
+  to be visible with JavaScript off, and read the note on
   `multiselect_scripts()` either way.
 
   `visible_label`, `hint` and `error` behave as on `select_menu`: any one of
@@ -420,6 +426,8 @@
       selection lives in the chips beside it, and pre-filling it with a label
       would filter the list down to that one option before anybody typed.
     #}
+    {% if multiple %}<div class="combobox-chips">
+    {% endif %}
     <input type="text" role="combobox" id="{{ field_id }}-input" placeholder="{{ placeholder }}"
            value="{{ "" if multiple else (chosen | join(", ")) }}"
            {#
@@ -452,6 +460,8 @@
            {%- if label and not visible_label %} aria-label="{{ label }}"{% endif %}
            {%- if as_field %} aria-describedby="{{ field_id }}-hint"{% endif %}
            {%- if error %} aria-invalid="true"{% endif %}>
+    {% if multiple %}</div>
+    {% endif %}
     {{ icon("chevron-down", 16, "combobox-trigger-icon") }}
     <div id="{{ field_id }}-popover" data-popover aria-hidden="true">
       <div role="listbox" id="{{ field_id }}-listbox" aria-orientation="vertical" data-empty="{{ empty }}"

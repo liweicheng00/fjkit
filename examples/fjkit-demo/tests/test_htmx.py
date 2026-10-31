@@ -26,6 +26,24 @@ def test_filtering_narrows_the_board(htmx):
     assert "Advance" in todo_only.text
 
 
+def test_the_owner_filter_takes_several_owners(htmx):
+    """`?owner=kai&owner=livy` is the union, which is what the multiple combobox
+    in the aside posts once `multiselect_scripts()` has re-emitted its JSON."""
+
+    def rows(text: str) -> int:
+        return text.count("<tr>") - 1  # minus the header row
+
+    kai, livy = htmx.get("/tasks/board?owner=kai").text, htmx.get("/tasks/board?owner=livy").text
+    both = htmx.get("/tasks/board?owner=kai&owner=livy").text
+    assert 0 < rows(kai) < rows(both) == rows(kai) + rows(livy) < rows(htmx.get("/tasks/board").text)
+    # The chips are pre-filled from the same query, so the aside shows the cut the rows got.
+    assert 'name="owner" data-fjkit-multi value=\'["kai", "livy"]\'' in both
+    # The owner filter keeps the status filter, and the row actions keep both.
+    both_todo = htmx.get("/tasks/board?status=todo&owner=kai&owner=livy").text
+    assert '/tasks/board?status=todo"' in both_todo
+    assert "?status=todo&amp;owner=kai&amp;owner=livy" in both_todo
+
+
 def test_create_returns_the_updated_board(htmx):
     response = htmx.post("/tasks", json={"title": "A brand new task", "priority": "high", "owner": "livy"})
     assert response.status_code == 200

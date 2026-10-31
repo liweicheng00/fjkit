@@ -4,6 +4,7 @@
 {% from "ui/data.html" import kbd %}
 {% from "ui/form.html" import form_scripts %}
 {% from "ui/layout.html" import page_header %}
+{% from "ui/overlay.html" import multiselect_scripts %}
 
 {% block title %}Tasks{% endblock %}
 
@@ -21,5 +22,5 @@
   {% include "tasks/_board.html" %}
 {% endblock %}
 
-{# Loads the json-enc extension for the create form. #}
-{% block scripts %}{{ form_scripts() }}{% endblock %}
+{# json-enc for the create form, and the multi-select re-emitter for the owner filter. #}
+{% block scripts %}{{ form_scripts() }}{{ multiselect_scripts() }}{% endblock %}
