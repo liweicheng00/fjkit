@@ -38,7 +38,7 @@ from fjkit.signing import sign_text, unsign_text
 
 if TYPE_CHECKING:
     from fjkit.auth.plugin import AuthPlugin
-    from fjkit.auth.types import Session
+    from fjkit.auth.types import Csrf, Session
 
 __all__ = [
     "AuthFlow",
@@ -103,7 +103,17 @@ class FlowState:
 
 @runtime_checkable
 class AuthFlow(Protocol):
-    """What `ApiDocsPlugin(flow=…)` accepts."""
+    """What `ApiDocsPlugin(flow=…)` accepts.
+
+    Every flow also carries a `csrf` attribute: a `fjkit.auth.types.Csrf`
+    when it leaves the browser holding an ambient credential (a cookie), and
+    the console runs its `verify` on every POST it answers; `None` when it
+    attaches nothing a forged request could use. `SessionFlow` hands over the
+    `AuthPlugin`'s own policy and `HeaderFlow` is given one, exactly as
+    `AuthPlugin` is. The attribute is not a Protocol member, so a flow written
+    before it still passes `isinstance`; `ApiDocsPlugin` raises a
+    `PluginWarning` for such a flow and checks nothing.
+    """
 
     #: Identifies the flow in the panel's markup and in error messages.
     name: str
@@ -113,9 +123,9 @@ class AuthFlow(Protocol):
     def state(self, request: Request) -> FlowState:
         """Describe the panel. Synchronous, because it runs during a render.
 
-        A flow needing I/O does it in `sign_in` and reads the result back off
-        `request.state`, which is what `SessionFlow` does with the session
-        `AuthPlugin`'s middleware already loaded.
+        A flow needing I/O does it in `sign_in` and reads the result back on
+        the next request, which is what `SessionFlow` does through
+        `AuthPlugin.session`, the session its middleware already loaded.
         """
 
     async def sign_in(self, request: Request, response: Response, values: Mapping[str, str]) -> None:
@@ -144,6 +154,8 @@ class NoFlow:
 
     name = "none"
     label = "Authentication"
+    #: Nothing of its own travels with a call, so there is nothing to check.
+    csrf = None
 
     def state(self, request: Request) -> FlowState:
         return FlowState(
@@ -219,8 +231,13 @@ class SessionFlow:
         #: exists to avoid, and most fjkit apps do not need it.
         self.attach_bearer = attach_bearer
 
+    @property
+    def csrf(self) -> Csrf:
+        """The `AuthPlugin`'s own policy: same cookie, same trusted origins."""
+        return self.auth.csrf
+
     def state(self, request: Request) -> FlowState:
-        session = getattr(request.state, "auth", None)
+        session = self.auth.session(request)
         if session is None:
             return FlowState(
                 signed_in=False,
@@ -282,9 +299,8 @@ class SessionFlow:
     def headers(self, request: Request) -> Mapping[str, str]:
         if not self.attach_bearer:
             return {}
-        session = getattr(request.state, "auth", None)
-        access = getattr(session, "access", None)
-        return {"Authorization": f"Bearer {access}"} if access else {}
+        session = self.auth.session(request)
+        return {"Authorization": f"Bearer {session.access}"} if session is not None and session.access else {}
 
 
 class HeaderFlow:
@@ -297,7 +313,14 @@ class HeaderFlow:
     read it, it does not reach a bug report or a screen recording of the DOM,
     and it is scoped to the docs URL rather than to the origin.
 
-        ApiDocsPlugin(flow=HeaderFlow(secret=os.environ["FJKIT_SECRET"]))
+        ApiDocsPlugin(flow=HeaderFlow(secret=os.environ["FJKIT_SECRET"], trusted_origins=[…]))
+
+    A cookie is an ambient credential, which turns a bearer token into the one
+    thing a bearer token is not: something a forged form on a sibling origin
+    of the same site can make the browser send. `SameSite=Strict` does not see
+    that case, so the console checks `Origin` on its own POST routes with the
+    policy given here, under the rule `AuthPlugin` follows: name
+    `trusted_origins`, or pass `csrf=NoCsrf()` to opt out on purpose.
     """
 
     name = "header"
@@ -315,7 +338,23 @@ class HeaderFlow:
         cookie_path: str | None = None,
         max_age: timedelta = timedelta(hours=8),
         secure: bool = True,
+        csrf: Csrf | None = None,
+        trusted_origins: Sequence[str] = (),
     ) -> None:
+        if csrf is None:
+            if not trusted_origins:
+                raise ValueError(
+                    "HeaderFlow keeps the token in a cookie, so it needs `trusted_origins=[...]` "
+                    "for the console's Origin check. They are named explicitly rather than read "
+                    "from the Host header, which a request controls. Pass `csrf=NoCsrf()` to opt "
+                    "out on purpose."
+                )
+            from fjkit.auth.csrf import OriginCsrf
+
+            csrf = OriginCsrf(trusted_origins)
+        elif trusted_origins:
+            raise ValueError("Pass either `csrf=` or `trusted_origins=`, not both.")
+        self.csrf: Csrf = csrf
         self.secret = secret.encode("utf-8") if isinstance(secret, str) else secret
         self.header = header
         self.scheme = scheme

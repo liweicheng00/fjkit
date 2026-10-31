@@ -846,6 +846,24 @@ def test_stream_produces_a_streaming_response(make_app):
     assert body.count("<p>") == 50
 
 
+@pytest.mark.parametrize("buffer_size", [0, 1])
+def test_a_buffer_too_small_to_stream_is_refused_where_the_route_is_declared(buffer_size):
+    """Jinja refuses a buffer under 2 inside the body generator, after the 200
+    and its headers have gone out, so every request would start a page and
+    drop the connection mid-body. The error belongs on the decorator."""
+    with pytest.raises(ValueError):
+        render("rows.html", stream=True, buffer_size=buffer_size)
+
+
+def test_templates_stream_refuses_a_buffer_too_small_before_the_response_starts():
+    templates = Templates.create(FjkitConfig())
+    templates.env.loader = DictLoader(TEMPLATES)
+    request = Request({"type": "http", "method": "GET", "path": "/", "headers": [], "query_string": b""})
+
+    with pytest.raises(ValueError):
+        templates.stream(request, "rows.html", {"rows": []}, buffer_size=1)
+
+
 def test_stream_in_json_mode_still_returns_json(make_app):
     class Rows(BaseModel):
         rows: list[int]

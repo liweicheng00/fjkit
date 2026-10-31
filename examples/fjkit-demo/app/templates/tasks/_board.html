@@ -27,6 +27,7 @@
             {{ button(label, size="xs",
                       variant="secondary" if active_status == value else "ghost",
                       hx_get=url_for(request, "tasks_board") ~ ("?status=" ~ value if value else ""),
+                      hx_include="#c-owner input[type='hidden']",
                       hx_target="#board", hx_swap="outerHTML") }}
           {% endfor %}
         {% endcall %}

@@ -8,7 +8,7 @@ from lsprotocol import types as t
 from pygls.lsp.server import LanguageServer
 from pygls.uris import from_fs_path, to_fs_path
 
-from fjkit_lsp.index import Index, Loc
+from fjkit_lsp.index import Index, Loc, kit_warning
 from fjkit_lsp.resolve import Resolver
 
 
@@ -17,10 +17,15 @@ class FjkitServer(LanguageServer):
         super().__init__("fjkit-lsp", "0.1.0")
         self.index: Index | None = None
         self.resolver: Resolver | None = None
+        self.warned = False
 
     def build(self, roots: list[Path]) -> None:
         self.index = Index(roots)
         self.resolver = Resolver(self.index)
+        warning = kit_warning(self.index)
+        if warning and not self.warned:  # once: the interpreter does not change between rebuilds
+            self.warned = True
+            self.window_show_message(t.ShowMessageParams(type=t.MessageType.Warning, message=warning))
 
     def roots(self) -> list[Path]:
         folders = [to_fs_path(f.uri) for f in self.workspace.folders.values()]
@@ -55,6 +60,12 @@ def on_initialized(ls: FjkitServer, _params: t.InitializedParams) -> None:
 
 @server.feature(t.TEXT_DOCUMENT_DID_SAVE)
 def on_save(ls: FjkitServer, _params: t.DidSaveTextDocumentParams) -> None:
+    ls.build(ls.roots())
+
+
+@server.feature(t.WORKSPACE_DID_CHANGE_WATCHED_FILES)
+def on_files_changed(ls: FjkitServer, _params: t.DidChangeWatchedFilesParams) -> None:
+    """A create, delete or rename on disk, or a checkout: no save follows any of them."""
     ls.build(ls.roots())
 
 

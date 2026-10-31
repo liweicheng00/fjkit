@@ -28,10 +28,12 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import unquote, urlencode
 
 from fastapi import Request
 from fjkit.rendering import SCOPE_RENDER_MODE
+
+from fjkit_apidocs.spec import tone_for, within
 
 __all__ = ["Recorded", "RecursionRefused", "call"]
 
@@ -117,16 +119,20 @@ class Recorded:
 
     @property
     def tone(self) -> str:
-        """Map the status to a badge variant. Closed set — see `ui/data.html`."""
-        if self.error:
-            return "destructive"
-        if self.status >= 500:
-            return "destructive"
-        if self.status >= 400:
-            return "warning"
-        if self.status >= 300:
-            return "info"
-        return "success"
+        """The badge variant: an escaped exception is destructive whatever the status."""
+        return "destructive" if self.error else tone_for(self.status)
+
+    @property
+    def shown_headers(self) -> tuple[tuple[str, str], ...]:
+        """The response headers as the panel prints them.
+
+        A `Set-Cookie` keeps its name and attributes and loses its value. The
+        console swallows the response rather than relaying the cookie to the
+        browser, so the only way the value could reach the page is this
+        panel, and an `HttpOnly` cookie is one no script on the page may
+        read. `headers` stays complete for a caller that is not a page.
+        """
+        return tuple((k, _without_value(v) if k.lower() == "set-cookie" else v) for k, v in self.headers)
 
     @property
     def pretty(self) -> str:
@@ -159,9 +165,15 @@ async def call(
     """
     app = request.app
     root_path: str = request.scope.get("root_path", "") or ""
-    target = path if path.startswith("/") else f"/{path}"
+    raw = path if path.startswith("/") else f"/{path}"
+    # Decoded once, here, and judged in this form by both the guard below and
+    # the router. A path parameter arrives percent-encoded, so a value of
+    # `api-docs/try/<op>` spells `/api-docs%2Ftry%2F<op>`: not under the prefix
+    # as text, and the console's own handler once Starlette matches the decoded
+    # path.
+    target = unquote(raw)
 
-    if forbidden_prefix and (target == forbidden_prefix or target.startswith(f"{forbidden_prefix}/")):
+    if forbidden_prefix and within(target, forbidden_prefix):
         raise RecursionRefused(
             f"{target} is the API console itself. Calling it from here would re-enter this "
             "handler, and the only thing it can report is that it is reporting."
@@ -172,6 +184,20 @@ async def call(
     query_string = urlencode(list(_pairs(query)), doseq=False).encode("ascii")
     sent = _headers(request, headers or {}, body)
 
+    recorded = Recorded(
+        method=method.upper(),
+        url=_display(raw, query_string),
+        status=0,
+        request_headers=tuple(sent),
+    )
+    unsendable = _unsendable(sent)
+    if unsendable:
+        # Reported like a timeout: the call produced no response because it
+        # could not be made. Not an exception: a typed `名` is not a bug in
+        # the app, and the person needs the panel, not a 500 and a lost form.
+        recorded.error = unsendable
+        return recorded
+
     scope: dict[str, Any] = {
         "type": "http",
         "asgi": {"version": "3.0", "spec_version": "2.3"},
@@ -181,8 +207,13 @@ async def call(
         # `path` includes `root_path`: that is what a server sends and what
         # Starlette's router strips. Getting this wrong stays invisible until
         # the app is mounted under a prefix, and then every call 404s.
+        #
+        # Decoded, as ASGI defines it and as a server fills it in from the
+        # request line; `raw_path` keeps the escapes. Leaving the escapes in
+        # would hand the endpoint `my%20report.txt` where a direct request
+        # delivers `my report.txt`.
         "path": f"{root_path}{target}",
-        "raw_path": f"{root_path}{target}".encode(),
+        "raw_path": f"{root_path}{raw}".encode(),
         "root_path": root_path,
         "query_string": query_string,
         "headers": [(k.encode("latin-1"), v.encode("latin-1")) for k, v in sent],
@@ -214,12 +245,6 @@ async def call(
         received = True
         return {"type": "http.request", "body": body, "more_body": False}
 
-    recorded = Recorded(
-        method=method.upper(),
-        url=_display(target, query_string),
-        status=0,
-        request_headers=tuple(sent),
-    )
     chunks: list[bytes] = []
     size = 0
 
@@ -288,6 +313,31 @@ def _headers(request: Request, extra: Mapping[str, str], body: bytes) -> list[tu
     if body:
         out.append(("content-length", str(len(body))))
     return out
+
+
+def _without_value(cookie: str) -> str:
+    """Return `name=<redacted>; attributes` for one `Set-Cookie` value."""
+    name, _, rest = cookie.partition("=")
+    _, semicolon, attributes = rest.partition(";")
+    return f"{name}=<redacted>{semicolon}{attributes}"
+
+
+def _unsendable(headers: Iterable[tuple[str, str]]) -> str:
+    """Name the first header HTTP cannot carry, or return nothing.
+
+    A header is Latin-1 on the wire. Every client encodes it so, and the ASGI
+    scope holds the same bytes, so a character beyond U+00FF has no spelling
+    in it. Found before the scope is built, so the person is told which header
+    rather than shown a traceback.
+    """
+    for name, value in headers:
+        for text in (name, value):
+            try:
+                text.encode("latin-1")
+            except UnicodeEncodeError as exc:
+                held = text[exc.start : exc.end]
+                return f"the header {name!r} holds {held!r}, which an HTTP header cannot carry (Latin-1 only)"
+    return ""
 
 
 def _pairs(query: Mapping[str, list[str]] | Iterable[tuple[str, str]]) -> Iterable[tuple[str, str]]:

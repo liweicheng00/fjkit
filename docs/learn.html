@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=cc818caf9ea5">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=167b5fdd579e">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -28,7 +28,7 @@
       data-position="sticky">
 <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
           aria-label="Toggle navigation" aria-controls="sidebar"
-          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>      <div class="ml-auto">
+          onclick="document.getElementById(this.getAttribute('aria-controls')).toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>      <div class="ml-auto">
 <div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit on GitHub">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
        fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
 </a>
@@ -456,13 +456,13 @@ fjkit
     <div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="part-page"
+        <button type="button" role="tab" id="part-page-tab" aria-controls="part-page"
                 aria-selected="true">tasks/page.html</button>
-        <button type="button" role="tab" aria-controls="part-board"
+        <button type="button" role="tab" id="part-board-tab" aria-controls="part-board"
                 aria-selected="false">tasks/_board.html</button>
-        <button type="button" role="tab" aria-controls="part-row"
+        <button type="button" role="tab" id="part-row-tab" aria-controls="part-row"
                 aria-selected="false">tasks/macros.html</button>
-    </nav><div id="part-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/page.html" data-lang="jinja">{# tasks/page.html — answers the full GET #}
+    </nav><div id="part-page" role="tabpanel" aria-labelledby="part-page-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/page.html" data-lang="jinja">{# tasks/page.html — answers the full GET #}
 {% extends &#34;base.html&#34; %}
 {% from &#34;ui/layout.html&#34; import page_header %}
 
@@ -473,7 +473,7 @@ fjkit
   {% include &#34;tasks/_board.html&#34; %}
 {% endblock %}</pre>
 
-<footer>Extends the shell, writes a heading, and includes the partial. Nothing about the board is described twice.</footer></div><div id="part-board" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/_board.html" data-lang="jinja">{# tasks/_board.html — the whole board: create form, filters, stats, every row #}
+<footer>Extends the shell, writes a heading, and includes the partial. Nothing about the board is described twice.</footer></div><div id="part-board" role="tabpanel" aria-labelledby="part-board-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/_board.html" data-lang="jinja">{# tasks/_board.html — the whole board: create form, filters, stats, every row #}
 {% from &#34;ui/button.html&#34; import button, button_group %}
 {% from &#34;ui/table.html&#34; import table %}
 {% from &#34;tasks/macros.html&#34; import task_row, TASK_COLUMNS %}
@@ -499,7 +499,7 @@ fjkit
 
 &lt;/div&gt;</pre>
 
-<footer>No extends and no doctype, so this renders standalone — which is what lets an htmx endpoint return it bare.</footer></div><div id="part-row" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/macros.html" data-lang="jinja">{# tasks/macros.html — one row, and the htmx that fires from it #}
+<footer>No extends and no doctype, so this renders standalone — which is what lets an htmx endpoint return it bare.</footer></div><div id="part-row" role="tabpanel" aria-labelledby="part-row-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="tasks/macros.html" data-lang="jinja">{# tasks/macros.html — one row, and the htmx that fires from it #}
 {% macro task_row(request, task, filter_query=&#34;&#34;) %}
   &lt;tr&gt;
     {{ cell(task.title, tone=&#34;strong&#34;) }}
@@ -604,11 +604,11 @@ fjkit
     <div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="oob-call"
+        <button type="button" role="tab" id="oob-call-tab" aria-controls="oob-call"
                 aria-selected="true">the macro call</button>
-        <button type="button" role="tab" aria-controls="oob-html"
+        <button type="button" role="tab" id="oob-html-tab" aria-controls="oob-html"
                 aria-selected="false">the HTML it emits</button>
-    </nav><div id="oob-call" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the macro call" data-lang="jinja">{# search/page.html — the one control that starts all of this #}
+    </nav><div id="oob-call" role="tabpanel" aria-labelledby="oob-call-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the macro call" data-lang="jinja">{# search/page.html — the one control that starts all of this #}
 {% call form(action=url_for(request, &#34;search_page&#34;), method=&#34;get&#34;) %}
   {% call field_row(&#34;field-and-button&#34;) %}
     {{ text_field(&#34;q&#34;, label=&#34;Search tasks&#34;, value=query, type=&#34;search&#34;,
@@ -620,7 +620,7 @@ fjkit
   {% endcall %}
 {% endcall %}</pre>
 
-<footer>hx_* keywords on any fjkit macro become hx-* attributes on the element it emits. The form around it carries action and method, so the same query still works with scripting off.</footer></div><div id="oob-html" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the HTML it emits" data-lang="html">&lt;input class=&#34;input&#34; type=&#34;search&#34; name=&#34;q&#34; id=&#34;q&#34;
+<footer>hx_* keywords on any fjkit macro become hx-* attributes on the element it emits. The form around it carries action and method, so the same query still works with scripting off.</footer></div><div id="oob-html" role="tabpanel" aria-labelledby="oob-html-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the HTML it emits" data-lang="html">&lt;input class=&#34;input&#34; type=&#34;search&#34; name=&#34;q&#34; id=&#34;q&#34;
        hx-get=&#34;/search&#34;
        hx-trigger=&#34;input changed delay:250ms, search&#34;
        hx-target=&#34;#search-matches&#34;
@@ -1315,17 +1315,17 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
     <div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="invalid-route"
+        <button type="button" role="tab" id="invalid-route-tab" aria-controls="invalid-route"
                 aria-selected="true">router.py</button>
-        <button type="button" role="tab" aria-controls="invalid-form"
+        <button type="button" role="tab" id="invalid-form-tab" aria-controls="invalid-form"
                 aria-selected="false">_new_task.html</button>
-    </nav><div id="invalid-route" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.post(&#34;/tasks&#34;, name=&#34;tasks_create&#34;)
+    </nav><div id="invalid-route" role="tabpanel" aria-labelledby="invalid-route-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.post(&#34;/tasks&#34;, name=&#34;tasks_create&#34;)
 @render(&#34;tasks/_board.html&#34;)
 def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
     service.create(payload)
     return _board(service)</pre>
 
-<footer>The model is the signature. Its fields, its limits and its OpenAPI schema are one declaration, and a rejected one is FastAPI&#39;s to report — under body, with the field&#39;s name.</footer></div><div id="invalid-form" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="_new_task.html" data-lang="jinja">{% call form(action=url_for(request, &#34;tasks_create&#34;), target=&#34;#board&#34;,
+<footer>The model is the signature. Its fields, its limits and its OpenAPI schema are one declaration, and a rejected one is FastAPI&#39;s to report — under body, with the field&#39;s name.</footer></div><div id="invalid-form" role="tabpanel" aria-labelledby="invalid-form-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="_new_task.html" data-lang="jinja">{% call form(action=url_for(request, &#34;tasks_create&#34;), target=&#34;#board&#34;,
              reset_on_success=true, encoding=&#34;json&#34;, id=&#34;new-task&#34;) %}
   {{ text_field(&#34;title&#34;, label=&#34;New task&#34;, required=true) }}
   {{ select_field(&#34;priority&#34;, label=&#34;Priority&#34;, options=priority_options,
@@ -1529,7 +1529,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=e4b5be20e86a"></script>
+  <script defer src="assets/data.js?v=3faea1cc4e2a"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
   <script defer src="assets/learn.js?v=1cd452b749b0"></script>
 </body>

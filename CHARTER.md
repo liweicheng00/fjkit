@@ -35,7 +35,7 @@ The line is drawn there because a UI kit that knows your schema has to be re-tau
 | Proposal | Verdict | Why |
 |---|---|---|
 | `table(columns, rows)` | in | Knows `columns` is a sequence. Does not know what a column means. |
-| Admin generator over your ORM models | out | Must read your schema. |
+| Admin generator over your ORM models, inside the `fjkit` distribution | out | Must read your schema. The admin that exists is `fjkit-admin`, its own distribution (§2.5). |
 | `fjkit.auth` — cookie ⇄ token, CSRF, refresh | in | Moves a credential between a cookie and a store. Holds no user, no password, no role. |
 | `@requires("admin")` | out | Roles are domain vocabulary. |
 | `chart()` macro and the figure contract | in | Renders a figure the app built. |
@@ -43,9 +43,9 @@ The line is drawn there because a UI kit that knows your schema has to be re-tau
 
 ### 2.2 The page budget
 
-**What a page costs is decided by the page.** Anything every page pays for needs a stated reason in §4. Anything optional is loaded by the component that needs it.
+**What a page costs is decided by the page.** Anything every page pays for needs a stated reason in §4. Anything optional is loaded by a macro the page calls.
 
-This is the rule behind decisions that otherwise look inconsistent: all eight style packs ship in the wheel because a page loads one; Plotly's 1.1 MB ships in the wheel because only a page that calls `chart_scripts()` downloads it; `select.js` is loaded by `ui/table.html`, not by the shell.
+This is the rule behind decisions that otherwise look inconsistent: all eight style packs ship in the wheel because a page loads one; Plotly's 1.1 MB ships in the wheel because only a page that calls `chart_scripts()` downloads it; `select.js` is loaded by `select_scripts()`, which a page with a selectable table calls, not by the shell.
 
 Install size is not the budget. Bytes per page is.
 
@@ -81,13 +81,13 @@ Measured corollary: Basecoat's CSS covers 38 components, and **CSS without a mac
 | Not doing | Why |
 |---|---|
 | ORM, migrations, query builder | Requires your schema (§2.1). |
-| Admin generator | Requires your schema, and generates a screen that is correct once. |
+| Admin generator in the `fjkit` distribution | Requires your schema, and generates a screen that is correct once. `fjkit-admin` is a separate distribution (§2.5). |
 | Identity: users, passwords, roles, permissions | `fjkit.auth` carries an identity the app issued; it never issues one. |
 | React / Vue / Svelte adapters | The cost model in §1 assumes the server renders. |
 | Any build step on the user's side | The constraint everything else protects (A1). |
 | Components that accept a class string | A parameter list must be able to say no (A4). |
 | A JS control where a native element works | `<select>` before a listbox. Every JS control is accessibility you now own. |
-| Basecoat's `chart` | Its CSS selects `.chart > canvas` and its JS contains no charting code — it is a Chart.js skin. Shipping it tells the user to install a third front-end library. The single deliberate blank among Basecoat's 38 components. |
+| A `chart` macro over Basecoat's `chart` | Its CSS selects `.chart > canvas` and its JS contains no charting code — it is a Chart.js skin. A macro over it tells the user to install a third front-end library. The single deliberate blank among Basecoat's 38 components. Its CSS still ships, about 0.3–0.5 KB gzip, because removing it means subsetting vendored Basecoat (§4.1). |
 
 **The JSON form of a route is not an exception to "no front-end frameworks."** `FjkitConfig.render_mode` and `@render(mode=…)` describe *the data this page was handed*, defined by the handler's return annotation (A9). It is not a second contract maintained for a client renderer. A field the page does not need is not added because JSON might want it.
 
@@ -98,6 +98,7 @@ Measured corollary: Basecoat's CSS covers 38 components, and **CSS without a mac
 | `fjkit.auth` | Cookie ⇄ token transport and CSRF. `TokenSource` and `SessionStore` are seams the app fills; the kit never sees a credential's meaning. |
 | `fjkit-apidocs` | A page, replacing Swagger UI. It owns `/api-docs` under §2.3. Its own distribution. |
 | `fjkit-charts` | The `chart()` macro, the asset loader, and the figure contract. Data, service and route stay in the app — 370 of the demo's 517 chart lines. Its own distribution. |
+| `fjkit-admin` | A Django-style admin over SQLAlchemy models, added on the project owner's decision of 2026-09-04 (`docs/BACKLOG.md`). It reads your schema, so it stays out of the `fjkit` wheel: its own distribution, carrying the `sqlalchemy>=2.0` runtime dependency, so `fjkit` itself still does not touch the data layer (§2.1). It lives in this repository because `fjkit` was unpublished when it was built, and a change to a macro and to its first consumer was one commit. |
 | Four `.js` files fjkit wrote | See §4.2. |
 
 ---
@@ -132,10 +133,10 @@ Hard numbers. CI checks them; over budget is a red build.
 
 The CSS budget is **per page**: eight packs ship, a page loads one.
 
-| Item | Budget | Measured 2026-09-05 |
+| Item | Budget | Measured 2026-10-17 |
 |---|---|---|
-| `fjkit-<pack>.css`, gzip — **the governed number** | ≤ 28 KB | 24.3–24.9 KB across eight packs (vega 24.7) |
-| `fjkit-<pack>.css`, uncompressed — blowout guard | ≤ 260 KB | 219.1–237.2 KB (sera smallest, nova largest) |
+| `fjkit-<pack>.css`, gzip — **the governed number** | ≤ 28 KB | 24.5–25.1 KB across eight packs (vega 24.9) |
+| `fjkit-<pack>.css`, uncompressed — blowout guard | ≤ 260 KB | 219.9–238.0 KB (sera smallest, nova largest) |
 | fjkit runtime dependencies | `fastapi`, `jinja2`. A third needs an RFC | 2 |
 | Third-party JS permitted in the wheel — **whitelist** | Only what `fjkit/vendored.py` pins: `htmx.org`, `htmx-ext-json-enc`, `idiomorph`, `basecoat-css` (with `all.min.js`). Adding one edits this cell (A11) | 4 |
 | Single-page render regression | No more than 10% slower than the previous version | Threshold definition still open |
@@ -150,16 +151,16 @@ The only real lever left is subsetting Basecoat, and `styles/<pack>.css` is one 
 
 ### 4.2 JavaScript
 
-**Every page downloads:** htmx and Basecoat (both vendored), `js/errors.js` (4,223 bytes raw / 1,798 gzip), and two inline blocks in `ui/shell.html` totalling 517 bytes — theme anti-flash (left out when `FjkitConfig.color_scheme` fixes the scheme), and the listener that turns an `HX-Trigger` event into a toast.
+**Every page downloads:** htmx and Basecoat (both vendored), `js/errors.js` (4,223 bytes raw / 1,788 gzip), and two inline blocks in `ui/shell.html` totalling 517 bytes — theme anti-flash (left out when `FjkitConfig.color_scheme` fixes the scheme), and the listener that turns an `HX-Trigger` event into a toast.
 
-**Everything else loads from the macro that needs it**, through a `<script defer>` inside the component:
+**Everything else loads only on a page that asks for it**, through a `*_scripts()` macro the page calls in `{% block scripts %}`. No component emits its own `<script>`:
 
-| File | Loaded by | raw / gzip |
+| File | Loaded by | raw / gzip, measured 2026-10-17 |
 |---|---|---|
-| `reveal.js` | `ui/form.html` | 2,506 / 1,280 |
-| `select.js` | `ui/table.html` | 5,353 / 2,252 |
-| `multiselect.js` | `ui/overlay.html` | 5,459 / 2,470 |
-| `charts.js` | `chart_scripts()` | 8,953 / 3,822, in `fjkit-charts` |
+| `reveal.js` | `reveal_scripts()`, in `ui/form.html` | 2,508 / 1,273 |
+| `select.js` | `select_scripts()`, in `ui/table.html` | 5,172 / 2,151 |
+| `multiselect.js` | `multiselect_scripts()`, in `ui/overlay.html` | 5,461 / 2,456 |
+| `charts.js` | `chart_scripts()` | 8,953 / 3,810, in `fjkit-charts` |
 | `json-enc.js` | `form_scripts()` | vendored, 1,012 raw |
 | `idiomorph-ext.min.js` | `morph_scripts()` | vendored, 11,037 / 3,924 |
 
@@ -212,10 +213,10 @@ After 1.0, a breaking change needs an RFC and a deprecation period spanning two 
 
 ## 7. Settled, kept here to avoid re-arguing
 
-- **Charts are a plugin, and users can get one.** Basecoat's `chart` is not shipped; `fjkit-charts` is. The plugin owns the `chart()` macro, the asset macros, `charts.js`, and the figure contract (`PlotlyFigure`, which `Chart.figure` builds from a `go.Figure`). The app owns the data, the service and the URL.
+- **Charts are a plugin, and users can get one.** fjkit has no macro over Basecoat's `chart`, whose CSS rides along with the rest of the vendored stylesheet; `fjkit-charts` is the chart component. The plugin owns the `chart()` macro, the asset macros, `charts.js`, and the figure contract (`PlotlyFigure`, which `Chart.figure` builds from a `go.Figure`). The app owns the data, the service and the URL.
 - **Nothing in the kit may import a plotting library.** What is left of the older exemption that let `figures.py` import pydantic to hold the figure contract. That module left with `fjkit-charts`, and the kit's dependency list is two: `rendering.py` duck-types, and `errors.py` takes `RequestValidationError` from fastapi.
 - **Form errors are handled by a global exception handler**, not by dependency injection. Three designs were compared; the constraint that decided it was *change nothing about how FastAPI is normally written*. `Annotated[str, Form()]`, `ServiceDep` and return models all stay as they were; configuration attaches to `@render`. `FieldErrors` goes into **every** render's context, empty included, so a form has one version rather than a first-draw and a rejected one. A rejected htmx submit is not redrawn at all — the handler never ran, so no context exists to redraw from. The 422 goes back as FastAPI wrote it, and `static/js/errors.js` writes each message under the control its `loc` names, leaving the form and what was typed in place. Only a navigation gets a document, `errors/page.html`.
 - **Messages are not delivered by flash.** Three layers — presentation, this response, surviving a redirect — and only the third needs a secret, so only the third is a plugin. Using flash for a response that does not redirect writes a cookie for a message being drawn right now.
 - **Eight themes all ship**; the pack is a config value (A10). The size worry was measured away: the budget is per page.
 - **The documentation site is the documentation.** Static HTML from GitHub Pages, built by fjkit's own Environment with the shell extending `ui/shell.html`. No Markdown copy exists in the repo.
-- **`fjkit eject` copies macros, not files.** The override file owns only the macros named; the rest are re-exported from the kit through a reserved namespace an app cannot hijack, so upstream fixes keep arriving. Measured: `fjkit eject badge` produces 49 lines against the 289-line source file, owning 1 macro and re-exporting 14. Stamps are per-macro, because a file-level digest would report your `badge` as stale when the kit changed `avatar`, and a warning you learn to ignore is not a warning. Known trade-off: private macros (`_`-prefixed) must be copied, since Jinja keeps them out of the module namespace. `form.html`'s `_message` is the only one. Removing the underscore would fix it by promoting an implementation detail to public API, so it stays.
+- **`fjkit eject` copies macros, not files.** The override file owns only the macros named; the rest are re-exported from the kit through a reserved namespace an app cannot hijack, so upstream fixes keep arriving. Measured: `fjkit eject badge` produces 49 lines against the 289-line source file, owning 1 macro and re-exporting 14. Stamps are per-macro, because a file-level digest would report your `badge` as stale when the kit changed `avatar`, and a warning you learn to ignore is not a warning. Known trade-off: private macros (`_`-prefixed) must be copied, since Jinja keeps them out of the module namespace, so `fjkit eject` copies every one a taken macro calls (`form.html`'s `_message`, `table.html`'s `_header`). Removing the underscore would fix it by promoting an implementation detail to public API, so it stays.

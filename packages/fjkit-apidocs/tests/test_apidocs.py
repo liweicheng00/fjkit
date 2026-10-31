@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import re
 import subprocess
 import sys
 import textwrap
 import warnings
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Annotated, Literal
+from urllib.parse import quote
 
 import pytest
-from fastapi import Body, Depends, FastAPI, File, Form, Query, Request, UploadFile
+from fastapi import Body, Depends, FastAPI, File, Form, Header, Query, Request, Response, UploadFile
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, PluginWarning, mount_fjkit, render
 from fjkit.auth import AuthPlugin, CookieSpec, NoCsrf
@@ -66,8 +68,23 @@ class PasswordSource:
         return Session(claims={"sub": credentials["username"], "scope": ["read", "write"]})
 
 
-def build_app(*plugins, **kwargs):
-    """Build a small but realistic API with the plugins under test on it."""
+class UnreachableSource(PasswordSource):
+    """Hands out a token that has already expired, then cannot be reached to
+    renew it: every request after the sign-in is inside an upstream outage."""
+
+    async def exchange(self, credentials):
+        session = await super().exchange(credentials)
+        return Session(claims=session.claims, access="t", expires_at=datetime.now(UTC) - timedelta(seconds=1))
+
+    async def refresh(self, session):
+        raise ConnectionError("no route to host")
+
+
+def build_app(*plugins, seen: list[str | None] | None = None, **kwargs):
+    """Build a small but realistic API with the plugins under test on it.
+
+    `seen` collects the `Authorization` header of every call that reaches
+    `/whoami`, for a test about which calls leave the console at all."""
     kwargs.setdefault("docs_url", None)
     kwargs.setdefault("redoc_url", None)
     app = FastAPI(title="Board API", version="9.9", **kwargs)
@@ -86,6 +103,8 @@ def build_app(*plugins, **kwargs):
 
     @app.get("/whoami", tags=["session"], summary="Who am I")
     def whoami(request: Request) -> dict:
+        if seen is not None:
+            seen.append(request.headers.get("authorization"))
         session = getattr(request.state, "auth", None)
         return {"sub": session.claims["sub"] if session else None}
 
@@ -98,9 +117,9 @@ def build_app(*plugins, **kwargs):
 
 
 def auth_plugin(**kwargs):
+    kwargs.setdefault("source", PasswordSource())
     return AuthPlugin(
         secret=SECRET,
-        source=PasswordSource(),
         csrf=NoCsrf(),
         # TestClient speaks http, and a browser will not send a Secure cookie
         # over it, so a secure cookie here would test nothing but itself.
@@ -273,6 +292,57 @@ def test_the_console_is_never_in_its_own_index():
         skip_prefix="/api-docs",
     )
     assert [o.path for o in document.index.values()] == ["/ok"]
+
+
+def test_a_route_that_merely_shares_the_console_s_prefix_string_is_documented():
+    # `/api-docs-v2` is the app's own route; only `/api-docs` and what is under
+    # it belong to the console.
+    document = specmod.build(
+        {
+            "info": {},
+            "paths": {
+                "/api-docs-v2/thing": {"get": {"responses": {}}},
+                "/api-docs/try/x": {"post": {"responses": {}}},
+            },
+        },
+        skip_prefix="/api-docs",
+    )
+    assert [o.path for o in document.index.values()] == ["/api-docs-v2/thing"]
+
+
+def test_a_ref_to_a_shared_parameter_body_or_response_is_followed():
+    """OpenAPI lets a document share these through `components` exactly as it
+    shares schemas. FastAPI never writes them, a hand-maintained document does,
+    and reading the `$ref` object as if it were the thing yields a parameter
+    with no name and a body the console cannot send."""
+    document = specmod.build(
+        {
+            "info": {"title": "T", "version": "1"},
+            "paths": {
+                "/x": {
+                    "post": {
+                        "operationId": "x",
+                        "parameters": [{"$ref": "#/components/parameters/Limit"}],
+                        "requestBody": {"$ref": "#/components/requestBodies/Note"},
+                        "responses": {"404": {"$ref": "#/components/responses/Missing"}},
+                    }
+                }
+            },
+            "components": {
+                "parameters": {"Limit": {"name": "limit", "in": "query", "schema": {"type": "integer"}}},
+                "requestBodies": {
+                    "Note": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Note"}}}}
+                },
+                "schemas": {"Note": {"type": "object", "properties": {"text": {"type": "string"}}}},
+                "responses": {"Missing": {"description": "no such thing"}},
+            },
+        }
+    )
+    operation = document.index["x"]
+    assert [(p.name, p.location) for p in operation.params] == [("limit", "query")]
+    assert operation.has_body
+    assert '"text"' in operation.body_example
+    assert [(r.status, r.description) for r in operation.responses] == [("404", "no such thing")]
 
 
 # ------------------------------------------------------------------ mounting
@@ -530,8 +600,35 @@ def test_signing_out_drops_the_session(client: TestClient):
     assert client.post("/api-docs/try/whoami_whoami_get").text.count("&#34;sub&#34;: null") == 1
 
 
+def test_during_an_outage_no_call_leaves_the_console():
+    """The signed-in caller's token has expired and the identity provider is
+    unreachable. The app's own pages answer 503, and so does the console, but
+    only after the call went out: `SessionFlow.headers` sees no session, so
+    with `attach_bearer` the API is called with no bearer at all, as a
+    stranger, and the 503 then hides that the call happened. Nothing may
+    leave the console on such a request. Signing out needs no upstream and
+    still works."""
+    seen: list[str | None] = []
+    auth = auth_plugin(source=UnreachableSource())
+    docs = ApiDocsPlugin(flow=SessionFlow(auth, attach_bearer=True))
+    client = TestClient(build_app(auth, docs, seen=seen))
+    client.post("/api-docs/auth", data={"username": "ada", "password": "hunter2"})
+
+    call = client.post("/api-docs/try/whoami_whoami_get")
+    panel = client.post("/api-docs/auth", data={"action": "sign_out"})
+
+    assert call.status_code == 503
+    assert seen == [], "no call leaves the console during an outage"
+    assert (panel.status_code, "Not signed in" in panel.text) == (200, True)
+
+
+def header_flow(**kwargs) -> HeaderFlow:
+    """A `HeaderFlow` for tests about something other than its Origin check."""
+    return HeaderFlow(secret=SECRET, secure=False, csrf=NoCsrf(), **kwargs)
+
+
 def test_a_header_flow_holds_the_token_where_the_page_cannot_read_it():
-    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, secure=False))
+    docs = ApiDocsPlugin(flow=header_flow())
     client = TestClient(build_app(docs))
 
     saved = client.post("/api-docs/auth", data={"token": "s3cr3t-token-value"})
@@ -550,7 +647,7 @@ def test_a_header_flow_puts_the_token_on_every_call():
     name you ask for and compares it to the raw bytes. So `Authorization`
     spelled with a capital A rides on the wire and is invisible to
     `request.headers["authorization"]`, with nothing anywhere saying so."""
-    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, secure=False))
+    docs = ApiDocsPlugin(flow=header_flow())
     app = build_app(docs)
 
     @app.get("/echo-auth", tags=["debug"])
@@ -566,7 +663,7 @@ def test_a_header_flow_puts_the_token_on_every_call():
 
 
 def test_a_forged_token_cookie_is_not_a_token():
-    flow = HeaderFlow(secret=SECRET, secure=False)
+    flow = header_flow()
     docs = ApiDocsPlugin(flow=flow)
     client = TestClient(build_app(docs))
 
@@ -575,10 +672,58 @@ def test_a_forged_token_cookie_is_not_a_token():
     assert "No token held" in panel.text
 
 
+def test_a_header_flow_needs_trusted_origins_as_the_auth_plugin_does():
+    """The flow keeps the token in a cookie, an ambient credential, so it is
+    held to the rule `AuthPlugin` follows: name the origins, or opt out."""
+    with pytest.raises(ValueError, match="trusted_origins"):
+        HeaderFlow(secret=SECRET)
+    with pytest.raises(ValueError, match="not both"):
+        HeaderFlow(secret=SECRET, csrf=NoCsrf(), trusted_origins=["http://testserver"])
+
+
+def test_the_console_refuses_a_post_whose_origin_is_not_the_app_s():
+    """`SameSite=Strict` is site-scoped: a page on a sibling origin of the same
+    site can still make the browser send the token cookie, and a forged form
+    there would run any documented operation as the victim, or plant the
+    attacker's token. The `Origin` check is exact, which is why `fjkit.auth`
+    makes it; the console's own POST routes make the same one."""
+    ours = "http://testserver"
+    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, secure=False, trusted_origins=[ours]))
+    app = build_echo_app(docs)
+    client = TestClient(app)
+    op = operation_id(app, "GET", "/echo")
+
+    assert "Token held" in client.post("/api-docs/auth", data={"token": "victim-token"}, headers={"origin": ours}).text
+
+    forged = shown(client.post(f"/api-docs/try/{op}", headers={"origin": "https://evil.example.com"}))
+    assert "victim-token" not in forged  # the endpoint never ran with the credential
+    assert "evil.example.com" in forged  # and the panel says what was refused
+
+    # The same call as a cookie-authenticated write with no `Origin` at all is
+    # refused too, as the auth middleware refuses one.
+    assert "victim-token" not in shown(client.post(f"/api-docs/try/{op}"))
+
+    own = shown(client.post(f"/api-docs/try/{op}", headers={"origin": ours}))
+    assert '"authorization": "Bearer victim-token"' in own
+
+    planted = client.post(
+        "/api-docs/auth", data={"token": "attacker-token"}, headers={"origin": "https://evil.example.com"}
+    )
+    assert "evil.example.com" in planted.text
+    assert not [h for h in planted.headers.get_list("set-cookie") if "fjkit_apidocs_token" in h]
+    # The victim's own token is still the one the console carries.
+    assert "Bearer victim-token" in shown(client.post(f"/api-docs/try/{op}", headers={"origin": ours}))
+
+    # Saving a token with no `Origin` is a non-browser client, with no visitor
+    # to plant anything on: let through, as `AuthPlugin.issue` lets a login.
+    assert "Token held" in client.post("/api-docs/auth", data={"token": "cli-token"}).text
+
+
 def test_a_flow_error_is_the_way_to_refuse_without_leaking():
     class Picky:
         name = "picky"
         label = "Picky"
+        csrf = None
 
         def state(self, request):
             from fjkit_apidocs import FlowState
@@ -596,6 +741,35 @@ def test_a_flow_error_is_the_way_to_refuse_without_leaking():
 
     client = TestClient(build_app(ApiDocsPlugin(flow=Picky())))
     assert "come back later" in client.post("/api-docs/auth", data={}).text
+
+
+def _custom_flow(**attrs):
+    body = {
+        "name": "custom",
+        "label": "Custom",
+        "state": lambda self, request: None,
+        "sign_in": lambda self, request, response, values: None,
+        "sign_out": lambda self, request, response: None,
+        "headers": lambda self, request: {},
+    }
+    return type("CustomFlow", (), {**body, **attrs})()
+
+
+def test_a_flow_that_does_not_state_its_csrf_policy_is_reported():
+    """The console checks `Origin` only when the flow names a policy. A flow
+    that keeps a credential in a cookie and never mentions `csrf` would go
+    unchecked without a word, so the omission is reported at construction."""
+    with pytest.warns(PluginWarning, match="csrf"):
+        ApiDocsPlugin(flow=_custom_flow())
+
+    session_flow = SessionFlow(auth_plugin())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PluginWarning)
+        ApiDocsPlugin(flow=_custom_flow(csrf=None))
+        ApiDocsPlugin(flow=NoFlow())
+        ApiDocsPlugin(flow=header_flow())
+        ApiDocsPlugin(flow=session_flow)
+        ApiDocsPlugin()
 
 
 # ------------------------------------------------- what Swagger UI also shows
@@ -1204,3 +1378,164 @@ def test_every_class_in_the_console_s_templates_exists_in_the_stylesheet():
                     unknown.add(f"{path.name}: {token}")
 
     assert not unknown, f"classes absent from the stylesheet: {sorted(unknown)}"
+
+
+# ------------------------------------------------- what the endpoint receives
+#
+# The console's claim is that a call made from the page is the call a client
+# would make. These routes report what arrived, so the claim is checked against
+# a direct request rather than against the panel alone.
+
+
+def build_echo_app(*plugins):
+    """Build an app whose routes report what the console delivered to them."""
+    app = FastAPI(docs_url=None, redoc_url=None)
+
+    @app.get("/files/{name}", tags=["echo"])
+    def file(name: str) -> dict:
+        return {"name": name}
+
+    @app.get("/echo", tags=["echo"])
+    def echo(request: Request, x_name: Annotated[str | None, Header()] = None) -> dict:
+        return {"headers": dict(request.headers), "x_name": x_name}
+
+    @app.post("/login", tags=["echo"])
+    def login(response: Response) -> dict:
+        response.set_cookie("app_session", "LIVE-SESSION-ID", httponly=True)
+        return {}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", PluginWarning)
+        mount_fjkit(app, FjkitConfig(plugins=tuple(plugins), auto_reload=False))
+    return app
+
+
+def operation_id(app: FastAPI, method: str, path: str) -> str:
+    document = specmod.build(app.openapi(), skip_prefix="/api-docs")
+    return next(o.id for o in document.index.values() if o.method == method and o.path == path)
+
+
+def shown(reply) -> str:
+    """The panel's text as a person reads it, with the HTML escaping undone."""
+    return html.unescape(reply.text)
+
+
+def test_a_path_value_reaches_the_endpoint_as_a_direct_request_delivers_it():
+    """`scope["path"]` is decoded by definition; the encoded form is `raw_path`.
+
+    A space or an accent in a path parameter is otherwise tested against the
+    percent-escaped spelling, which no real client's request would carry."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app)
+    op = operation_id(app, "GET", "/files/{name}")
+
+    for value in ("my report.txt", "café"):
+        direct = client.get("/files/" + quote(value, safe="")).json()["name"]
+        assert direct == value  # what any client gets
+        reply = client.post(f"/api-docs/try/{op}", data={"p.path.name": value})
+        assert f'"name": "{value}"' in shown(reply)
+
+
+def test_a_header_the_wire_cannot_carry_is_reported_in_the_panel_rather_than_as_a_500():
+    """A header value is Latin-1 on the wire, so `名` can never be sent. The
+    answer is the panel saying so, not a 500 that loses the typed request."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app, raise_server_exceptions=False)
+    op = operation_id(app, "GET", "/echo")
+    header_field = next(p.field_name for p in specmod.build(app.openapi()).index[op].params if p.location == "header")
+
+    for data in ({"headers": "X-Name: 名"}, {header_field: "李"}):
+        reply = client.post(f"/api-docs/try/{op}", data=data)
+        assert reply.status_code == 200
+        assert "no response" in reply.text
+        assert "x-name" in shown(reply).lower()  # which header, so it can be fixed
+        assert '"x_name"' not in reply.text  # the endpoint was never reached
+
+
+def test_a_hand_typed_accept_is_sent_whatever_its_capitalisation():
+    """The box says a hand-typed `Accept` is a legitimate thing to test. Header
+    names are case-insensitive, so `Accept:` and `accept:` are the same
+    request, and neither may be silently replaced by the documented one."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app)
+    op = operation_id(app, "GET", "/echo")
+
+    for spelling in ("Accept", "accept"):
+        reply = client.post(f"/api-docs/try/{op}", data={"headers": f"{spelling}: text/csv"})
+        assert '"accept": "text/csv"' in shown(reply), spelling
+
+
+def test_the_curl_snippet_keeps_the_prefix_a_proxy_put_in_front_of_the_app():
+    """The in-process call honours `root_path`; a snippet that drops it is a
+    command that 404s through the very proxy the app is served behind."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app, root_path="/svc")
+    op = operation_id(app, "GET", "/echo")
+
+    text = shown(client.post(f"/api-docs/try/{op}"))
+    assert "200" in text  # the call itself found the route
+    assert "curl -X GET 'http://testserver/svc/echo'" in text
+
+
+def test_the_curl_snippet_redacts_whichever_header_the_flow_puts_the_token_in():
+    """`HeaderFlow` promises the token never reaches the DOM. An API-key header
+    is the flow's own documented case, and the snippet is part of the DOM."""
+    docs = ApiDocsPlugin(flow=header_flow(header="X-API-Key", scheme=""))
+    app = build_echo_app(docs)
+    client = TestClient(app)
+    client.post("/api-docs/auth", data={"token": "SUPER-SECRET-KEY-123"})
+
+    text = shown(client.post(f"/api-docs/try/{operation_id(app, 'GET', '/files/{name}')}", data={"p.path.name": "x"}))
+    assert "SUPER-SECRET-KEY-123" not in text
+    assert "x-api-key: <redacted>" in text  # the header is named, so the reader knows what to fill in
+
+
+def test_a_set_cookie_the_endpoint_answers_with_is_shown_without_its_value():
+    """An HttpOnly cookie is one no script on a page may read. The console
+    swallows the response, so printing the header verbatim into the DOM would
+    be the one place that property is undone."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app)
+
+    text = shown(client.post(f"/api-docs/try/{operation_id(app, 'POST', '/login')}")).lower()
+    assert "live-session-id" not in text
+    assert "set-cookie: app_session=" in text  # what was set, and how, stays readable
+    assert "httponly" in text
+
+
+def test_a_path_value_cannot_steer_the_call_back_into_the_console():
+    """`within()` and the router must judge the same string. A path parameter
+    is sent percent-encoded, so `api-docs/try/<op>` as a value reaches the
+    guard as `/api-docs%2Ftry%2F<op>` and passes it; the decoded path the
+    router sees is the console's own handler, called with the forwarded
+    cookie and Origin."""
+    app = FastAPI(docs_url=None, redoc_url=None)
+
+    @app.post("/{name}", tags=["echo"])
+    def named(name: str) -> dict:
+        return {"name": name}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", PluginWarning)
+        mount_fjkit(app, FjkitConfig(plugins=(ApiDocsPlugin(),), auto_reload=False))
+    client = TestClient(app)
+    op = operation_id(app, "POST", "/{name}")
+
+    text = shown(client.post(f"/api-docs/try/{op}", data={"p.path.name": f"api-docs/try/{op}"}))
+    assert "is the API console itself" in text  # refused up front, by name
+    assert "already a console call" not in text  # the inner handler never ran
+
+
+def test_the_curl_snippet_names_each_wire_header_once():
+    """Header names are case-insensitive, so a hand-typed `x-api-key` and the
+    flow's `X-API-Key` are one header. The call sends one; the snippet, which
+    claims to be the same call, must not print two."""
+    docs = ApiDocsPlugin(flow=header_flow(header="X-API-Key", scheme=""))
+    app = build_echo_app(docs)
+    client = TestClient(app)
+    client.post("/api-docs/auth", data={"token": "SUPER-SECRET-KEY-123"})
+    op = operation_id(app, "GET", "/echo")
+
+    text = shown(client.post(f"/api-docs/try/{op}", data={"headers": "x-api-key: TYPED-VALUE"}))
+    assert '"x-api-key": "SUPER-SECRET-KEY-123"' in text  # the flow's token is what the endpoint saw
+    assert len(re.findall(r"-H 'x-api-key: <redacted>'", text, re.IGNORECASE)) == 1

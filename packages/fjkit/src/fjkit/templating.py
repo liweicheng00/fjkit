@@ -6,6 +6,7 @@ profiling have one location.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator, Mapping
 from contextvars import ContextVar
 from pathlib import Path
@@ -127,6 +128,7 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     env.globals["is_active"] = _is_active
     env.globals["fjkit_static"] = static_url(config.static_url, auto_reload=config.auto_reload)
     env.globals["fjkit_icon_path"] = _icon_path
+    env.globals["fjkit_attr_name"] = _attr_name
     env.globals["fjkit_version"] = _versions()
     # A global rather than a context key: the shell reads it on every page, and
     # a context key would have to be merged into every render — including the
@@ -187,6 +189,31 @@ def _url_for(request: Request, name: str, /, **path_params: Any) -> str:
 def _is_active(request: Request, name: str) -> bool:
     route = request.scope.get("route")
     return getattr(route, "name", None) == name
+
+
+#: The characters that end an attribute name in the HTML tokenizer or are a
+#: parse error inside one. A key containing any of them renders as more than
+#: one attribute.
+_NOT_ONE_NAME = re.compile(r"[\s\"'<>/=\x00-\x1f\x7f]")
+
+
+def _attr_name(key: str) -> str:
+    """The attribute `ui/attrs.html` writes for one macro kwarg.
+
+    Raises rather than skipping, because CHARTER A4 has a macro's parameter list
+    say no: `class` and `style` would restyle the component from outside its
+    closed parameters, and a key that is not one attribute name would write
+    attributes nobody passed.
+    """
+    name = key.replace("_", "-")
+    if not name or _NOT_ONE_NAME.search(name):
+        raise ValueError(f"{key!r} is not an HTML attribute name, so a fjkit macro cannot pass it through.")
+    if name.lower() in ("class", "style"):
+        raise ValueError(
+            f"fjkit macros take no `{name}` (CHARTER A4): a component's look comes from its own "
+            "parameters, such as variant and size, or from a layout macro."
+        )
+    return name
 
 
 def static_url(prefix: str, root: Path | None = None, *, auto_reload: bool = False):
@@ -329,6 +356,10 @@ class Templates:
         status_code: int = 200,
         headers: Mapping[str, str] | None = None,
     ) -> StreamingResponse:
+        if buffer_size < 2:
+            # The same refusal Jinja's `enable_buffering` gives, raised before
+            # the response exists rather than inside its body generator.
+            raise ValueError(f"buffer_size={buffer_size}: a streamed render needs a buffer of at least 2")
         template = self.env.get_template(name)
 
         merged = self._context(request, context)
