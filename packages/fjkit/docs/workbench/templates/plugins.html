@@ -65,8 +65,17 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))", label="app/ma
     {% call prose() %}
       <p>
         Routes see none of it. Put <code>Depends(auth.required)</code> on a router and its handlers
-        keep the signatures they had; the session is on <code>request.state.auth</code>, and in
-        every template as <code>session</code>.
+        keep the signatures they had. A handler that wants the session takes it as a parameter,
+        <code>session: Session = Depends(auth.required)</code>, or <code>Depends(auth.optional)</code>
+        on a page that is also public; code that holds the plugin and a request calls
+        <code>auth.session(request)</code>; every template has it as <code>session</code>.
+      </p>
+      <p>
+        Those are the places to read it, and the reason is an outage. While the identity provider
+        is unreachable, a request whose token has already expired is answered 503 by whatever asks
+        for the session, and a handler that asks for nothing, such as a logout, runs. The
+        middleware's own <code>request.state.auth</code> is <code>None</code> on that request, so a
+        handler reading it directly would take a signed-in user for an anonymous one.
       </p>
     {% endcall %}
 
@@ -530,7 +539,7 @@ mount_fjkit(app, config)", label="app/main.py") }}
 
     {{ code("def extend(self, setup: EnvSetup) -> None:
     setup.add_context_processor(
-        lambda request: {\"session\": getattr(request.state, \"auth\", None)},
+        lambda request: {\"session\": self.session(request)},
         provides=[\"session\"],
     )", label="the auth plugin's whole extend()") }}
 
@@ -539,7 +548,7 @@ mount_fjkit(app, config)", label="app/main.py") }}
         Two constraints, both deliberate. A processor is <strong>synchronous</strong>: it runs inside
         <code>Templates.page()</code>, which a <code>def</code> handler reaches from the threadpool. A
         plugin needing I/O does it in middleware and leaves the result on
-        <code>request.state</code>, which is what the line above reads.
+        <code>request.state</code>, which is what <code>session()</code> reads for the line above.
       </p>
       <p>
         <code>provides=</code> is required rather than inferred. Without it, two plugins fighting over

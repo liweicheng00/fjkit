@@ -8,7 +8,7 @@ import subprocess
 import sys
 import textwrap
 import warnings
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Annotated, Literal
 
@@ -66,8 +66,23 @@ class PasswordSource:
         return Session(claims={"sub": credentials["username"], "scope": ["read", "write"]})
 
 
-def build_app(*plugins, **kwargs):
-    """Build a small but realistic API with the plugins under test on it."""
+class UnreachableSource(PasswordSource):
+    """Hands out a token that has already expired, then cannot be reached to
+    renew it: every request after the sign-in is inside an upstream outage."""
+
+    async def exchange(self, credentials):
+        session = await super().exchange(credentials)
+        return Session(claims=session.claims, access="t", expires_at=datetime.now(UTC) - timedelta(seconds=1))
+
+    async def refresh(self, session):
+        raise ConnectionError("no route to host")
+
+
+def build_app(*plugins, seen: list[str | None] | None = None, **kwargs):
+    """Build a small but realistic API with the plugins under test on it.
+
+    `seen` collects the `Authorization` header of every call that reaches
+    `/whoami`, for a test about which calls leave the console at all."""
     kwargs.setdefault("docs_url", None)
     kwargs.setdefault("redoc_url", None)
     app = FastAPI(title="Board API", version="9.9", **kwargs)
@@ -86,6 +101,8 @@ def build_app(*plugins, **kwargs):
 
     @app.get("/whoami", tags=["session"], summary="Who am I")
     def whoami(request: Request) -> dict:
+        if seen is not None:
+            seen.append(request.headers.get("authorization"))
         session = getattr(request.state, "auth", None)
         return {"sub": session.claims["sub"] if session else None}
 
@@ -98,9 +115,9 @@ def build_app(*plugins, **kwargs):
 
 
 def auth_plugin(**kwargs):
+    kwargs.setdefault("source", PasswordSource())
     return AuthPlugin(
         secret=SECRET,
-        source=PasswordSource(),
         csrf=NoCsrf(),
         # TestClient speaks http, and a browser will not send a Secure cookie
         # over it, so a secure cookie here would test nothing but itself.
@@ -528,6 +545,28 @@ def test_signing_out_drops_the_session(client: TestClient):
 
     assert "Not signed in" in panel.text
     assert client.post("/api-docs/try/whoami_whoami_get").text.count("&#34;sub&#34;: null") == 1
+
+
+def test_during_an_outage_no_call_leaves_the_console():
+    """The signed-in caller's token has expired and the identity provider is
+    unreachable. The app's own pages answer 503, and so does the console, but
+    only after the call went out: `SessionFlow.headers` sees no session, so
+    with `attach_bearer` the API is called with no bearer at all, as a
+    stranger, and the 503 then hides that the call happened. Nothing may
+    leave the console on such a request. Signing out needs no upstream and
+    still works."""
+    seen: list[str | None] = []
+    auth = auth_plugin(source=UnreachableSource())
+    docs = ApiDocsPlugin(flow=SessionFlow(auth, attach_bearer=True))
+    client = TestClient(build_app(auth, docs, seen=seen))
+    client.post("/api-docs/auth", data={"username": "ada", "password": "hunter2"})
+
+    call = client.post("/api-docs/try/whoami_whoami_get")
+    panel = client.post("/api-docs/auth", data={"action": "sign_out"})
+
+    assert call.status_code == 503
+    assert seen == [], "no call leaves the console during an outage"
+    assert (panel.status_code, "Not signed in" in panel.text) == (200, True)
 
 
 def test_a_header_flow_holds_the_token_where_the_page_cannot_read_it():

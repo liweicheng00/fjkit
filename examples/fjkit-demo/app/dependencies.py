@@ -38,7 +38,13 @@ async def require_session(request: Request) -> Session:
     return await request.app.state.auth.required(request)
 
 
+async def optional_session(request: Request) -> Session | None:
+    """The session via the app's auth plugin, or `None` for an anonymous request."""
+    return await request.app.state.auth.optional(request)
+
+
 TaskServiceDep = Annotated[TaskService, Depends(get_tasks)]
 JobServiceDep = Annotated[JobService, Depends(get_jobs)]
 RecordServiceDep = Annotated[RecordService, Depends(get_records)]
 SessionDep = Annotated[Session, Depends(require_session)]
+OptionalSessionDep = Annotated[Session | None, Depends(optional_session)]
