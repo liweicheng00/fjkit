@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=167b5fdd579e">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=bcec078cb3bc">
   <link rel="stylesheet" href="../assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -908,6 +908,14 @@ fjkit
         而 <code>select_scripts()</code> 負責讓表頭那一格勾選整欄。
       </p>
       <p>
+        <code>resizable=true</code> 會在每個有 label 的欄位右緣放一個把手。訪客可以拖曳它，
+        或是聚焦後按方向鍵；按 Home 或雙擊則把欄寬還原為自然寬度。
+        欄寬存在 <code>localStorage</code>，以表格的 <code>id</code> 為鍵，所以可調寬的表格必須有
+        <code>id</code>；重新載入或經過 htmx swap 後，欄寬都會還原。頁面要載入
+        <code>resize_scripts()</code>；沒有載入時把手不會出現，表格就是一般的表格。
+        CSS 做不到這件事：<code>resize</code> 只作用於帶 overflow 的區塊盒，而表格儲存格不是。
+      </p>
+      <p>
         <code>page_size</code> 是一個 <code>&lt;form method="get"&gt;</code>，因為單獨一個
         <code>&lt;select&gt;</code> 沒有腳本就無法送出。它的 <code>url</code> 不能帶 query string：
         GET 送出會以表單欄位取代整段 query，所以篩選要放進 <code>keep</code>。
@@ -1027,9 +1035,10 @@ fjkit
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="../assets/data.js?v=3faea1cc4e2a"></script>
+  <script defer src="../assets/data.js?v=8bafbf6c464b"></script>
   <script defer src="../assets/common.js?v=cfc24f854e78"></script>
-  <script defer src="../assets/components.js?v=9e793d51b578"></script>
+  <script defer src="../assets/components.js?v=77de169a66b3"></script>
   <script defer src="../assets/js/reveal.js?v=a668cfecf3ff"></script>
+  <script defer src="../assets/js/resize.js?v=49ba3363eaee"></script>
 </body>
 </html>

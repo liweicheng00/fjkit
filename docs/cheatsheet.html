@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=167b5fdd579e">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=bcec078cb3bc">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -309,7 +309,7 @@ fjkit
       <h4><code>table(columns, rows=none, empty_title=&#34;Nothing here&#34;,
       empty_description=none, empty_icon=&#34;list&#34;, target=none,
       swap=&#34;outerHTML&#34;, push_url=true, select_name=&#34;selected&#34;,
-      select_label=&#34;Select all rows&#34;)</code></h4><p>columns is a list of dicts — label, and optionally align, width, sort, sort_url or select. Passing rows lets the macro own the empty case; pass rows=none to always render the body yourself. A column with a sort_url becomes a sortable header, and target turns those links into htmx swaps.</p>    </section><aside><span class="badge" data-variant="outline">block: the rows</span></aside>  </div>
+      select_label=&#34;Select all rows&#34;, resizable=false)</code></h4><p>columns is a list of dicts — label, and optionally align, width, sort, sort_url or select. Passing rows lets the macro own the empty case; pass rows=none to always render the body yourself. A column with a sort_url becomes a sortable header, and target turns those links into htmx swaps. resizable=true puts a drag handle on each labelled column and needs an id=, the key the widths are stored under.</p>    </section><aside><span class="badge" data-variant="outline">block: the rows</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>cell(value=none, tone=none, numeric=false, align=none)</code></h4><p>Pass value for text, or omit it and use a block for markup. tone is a closed lookup, so no colour can be passed through.</p>    </section><aside><span class="badge" data-variant="outline">block: the cell content (optional)</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -321,6 +321,8 @@ fjkit
              zero=&#34;None selected&#34;)</code></h4><p>The live readout of how many rows are picked. Both strings travel in the markup, so a translated page translates them. Pass zero=none and it hides while nothing is selected.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>select_scripts()</code></h4><p>Loads js/select.js, which ticks the column from the header box, shows the partial state and tints the picked rows. Per page, never the shell.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>resize_scripts()</code></h4><p>Loads js/resize.js, which shows the handles of a resizable table, follows a drag or the arrow keys, and keeps the widths in localStorage. Home or a double-click resets a column. Per page, never the shell.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>page_size(url, per_page, options=(10, 25, 50, 100),
           param=&#34;per_page&#34;, keep=none, target=none,
@@ -724,7 +726,7 @@ HX-Refresh: true                 (response)</code></h4><p>Full-page navigation, 
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=3faea1cc4e2a"></script>
+  <script defer src="assets/data.js?v=8bafbf6c464b"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
 </body>
 </html>

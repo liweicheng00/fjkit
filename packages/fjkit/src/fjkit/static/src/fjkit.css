@@ -452,6 +452,58 @@
   header[data-position="sticky"] + .sidebar > nav {
     @apply md:top-14;
   }
+
+  /* Column resizing: `table(resizable=true)` and `resize_scripts()`.
+   *
+   * The handle is hidden until the script marks <html>, rather than by a
+   * `hidden` attribute the script removes. A table htmx swaps in, or one
+   * written by `innerHTML`, then shows its handles with no pass of the script
+   * over the new markup, and a page without the script shows none.
+   *
+   * `[data-fjkit-resized]` is the state after the first drag. A fixed layout is
+   * what makes a cell take the width it is given: in the automatic layout a
+   * width is a minimum, and the column would not shrink past its content. The
+   * script sets the table's width to the sum of its columns, so a drag moves
+   * the one edge under the pointer and no other. */
+  .table[data-fjkit-resize] th {
+    @apply relative;
+  }
+
+  .table [data-fjkit-resize-handle] {
+    @apply hidden;
+  }
+
+  :root[data-fjkit-resize-ready] .table [data-fjkit-resize-handle] {
+    @apply absolute inset-y-0 end-0 block w-2 cursor-col-resize touch-none select-none;
+  }
+
+  :root[data-fjkit-resize-ready] .table [data-fjkit-resize-handle]::after {
+    @apply bg-border absolute inset-y-2 end-0 w-px content-[''];
+  }
+
+  :root[data-fjkit-resize-ready] .table [data-fjkit-resize-handle]:hover::after,
+  :root[data-fjkit-resize-ready] .table [data-fjkit-resize-handle][data-dragging]::after {
+    @apply bg-ring inset-y-0 w-0.5;
+  }
+
+  :root[data-fjkit-resize-ready] .table [data-fjkit-resize-handle]:focus-visible {
+    @apply outline-ring -outline-offset-2 outline-2;
+  }
+
+  .table[data-fjkit-resized] {
+    @apply table-fixed;
+  }
+
+  .table[data-fjkit-resized] :is(th, td) {
+    @apply box-border;
+  }
+
+  /* A narrowed cell cuts its text at the column edge. A cell holding an
+   * overlay is left unclipped: Basecoat positions the panel inside the cell,
+   * so a clip on the cell would hide the open menu, popover or tooltip. */
+  .table[data-fjkit-resized] :is(th, td):not(:has([data-popover], [data-tooltip])) {
+    @apply overflow-hidden text-ellipsis;
+  }
 }
 
 /* ---------------------------------------------------------------------------

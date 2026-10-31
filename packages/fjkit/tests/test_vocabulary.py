@@ -704,7 +704,7 @@ class TestMacroEject:
         target = self._eject(tmp_path, "table.pagination") / "ui" / "table.html"
         assert "_WIDTH" not in target.read_text()
         mine = (
-            "\n{% macro _header(column, target, swap, push_url, select_name, select_label) %}"
+            "\n{% macro _header(column, target, swap, push_url, select_name, select_label, resizable) %}"
             '<th data-mine="1" class="{{ _WIDTH.get(column.get("width"), "") }}">{{ column.label }}</th>'
             "{% endmacro %}\n"
         )

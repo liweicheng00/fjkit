@@ -10,7 +10,7 @@ import re
 from collections.abc import Iterator, Mapping
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -23,6 +23,7 @@ from jinja2 import (
     FileSystemLoader,
     PrefixLoader,
     StrictUndefined,
+    TemplateRuntimeError,
     pass_context,
     select_autoescape,
 )
@@ -130,6 +131,7 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     env.globals["fjkit_icon_path"] = _icon_path
     env.globals["fjkit_attr_name"] = _attr_name
     env.globals["fjkit_version"] = _versions()
+    env.globals["fjkit_raise"] = _raise
     # A global rather than a context key: the shell reads it on every page, and
     # a context key would have to be merged into every render — including the
     # ones with nothing to say. It finds the request in the context itself, so
@@ -189,6 +191,12 @@ def _url_for(request: Request, name: str, /, **path_params: Any) -> str:
 def _is_active(request: Request, name: str) -> bool:
     route = request.scope.get("route")
     return getattr(route, "name", None) == name
+
+
+def _raise(message: str) -> NoReturn:
+    """Fail the render from a macro. Jinja has no `raise` tag, and a call a
+    macro cannot render correctly must stop the page, not ship a wrong one."""
+    raise TemplateRuntimeError(message)
 
 
 #: The characters that end an attribute name in the HTML tokenizer or are a

@@ -99,7 +99,7 @@ Measured corollary: Basecoat's CSS covers 38 components, and **CSS without a mac
 | `fjkit-apidocs` | A page, replacing Swagger UI. It owns `/api-docs` under §2.3. Its own distribution. |
 | `fjkit-charts` | The `chart()` macro, the asset loader, and the figure contract. Data, service and route stay in the app — 370 of the demo's 517 chart lines. Its own distribution. |
 | `fjkit-admin` | A Django-style admin over SQLAlchemy models, added on the project owner's decision of 2026-09-04 (`docs/BACKLOG.md`). It reads your schema, so it stays out of the `fjkit` wheel: its own distribution, carrying the `sqlalchemy>=2.0` runtime dependency, so `fjkit` itself still does not touch the data layer (§2.1). It lives in this repository because `fjkit` was unpublished when it was built, and a change to a macro and to its first consumer was one commit. |
-| Four `.js` files fjkit wrote | See §4.2. |
+| Five `.js` files fjkit wrote | See §4.2. |
 
 ---
 
@@ -159,12 +159,15 @@ The only real lever left is subsetting Basecoat, and `styles/<pack>.css` is one 
 |---|---|---|
 | `reveal.js` | `reveal_scripts()`, in `ui/form.html` | 2,508 / 1,273 |
 | `select.js` | `select_scripts()`, in `ui/table.html` | 5,172 / 2,151 |
+| `resize.js` | `resize_scripts()`, in `ui/table.html` | 7,435 / 2,745 |
 | `multiselect.js` | `multiselect_scripts()`, in `ui/overlay.html` | 5,461 / 2,456 |
 | `charts.js` | `chart_scripts()` | 8,953 / 3,810, in `fjkit-charts` |
 | `json-enc.js` | `form_scripts()` | vendored, 1,012 raw |
 | `idiomorph-ext.min.js` | `morph_scripts()` | vendored, 11,037 / 3,924 |
 
 **A vendored file is on the same footing.** `idiomorph-ext.min.js` is the largest thing in the table above, and it stays out of the shell for that reason: it is a swap strategy, not a component, so the page that wants one asks for it. Every page downloading it would have bought, for most pages, nothing — a swap only morphs where a caller wrote `morph:*`, and the reason to write that is state the browser holds on nodes the reply is about to replace. Measured on the demo's records table: a row still in the reply keeps its DOM node and is relocated when a sort moves it, where `outerHTML` gives a new one. Not measured as a win for focus, which htmx already restores by id, and not for a ticked box, which the reply describes and the morph therefore syncs.
+
+**`resize.js` is the reason a visitor can widen a column.** CSS `resize` applies only to a block box whose `overflow` is not `visible`, and a table cell is neither, so no stylesheet can put a handle on a column edge. Following a pointer has no HTML or CSS equivalent either. Without the script a column whose text the cell cuts off stays cut off. `table(resizable=true)` without the script is the ordinary table: the handles stay hidden.
 
 **Adding a file fjkit wrote requires a named reason why no-JS is worse, and its bytes recorded here.** This replaces the earlier rule that fjkit would write no JavaScript at all. That rule failed four times, and each failure was correct: Basecoat exposes the toaster as a method on an element rather than a document-level listener, so something has to call it; the alternative for error display was making 5xx swappable, which is a larger side effect. A prohibition that is broken whenever it binds teaches readers that the charter is decorative. The budget above binds.
 

@@ -386,6 +386,117 @@ class TestSelectColumn:
         assert "js/select.js" in render(f"{TABLE}{{{{ select_scripts() }}}}")
 
 
+RESIZE = '{% from "ui/table.html" import table, resize_scripts %}'
+_HANDLE = re.compile(r"<span[^>]*data-fjkit-resize-handle[^>]*>")
+
+
+class TestResizableColumns:
+    """Opt-in column resizing: a handle per header cell, driven by
+    `js/resize.js`, with widths stored under the table's id."""
+
+    COLUMNS = (
+        '[{"select": true}, {"label": "Task", "sort": "asc", "sort_url": "/t?o=-title"},'
+        ' {"label": "Owner"}, {"label": "#", "width": "min"}, {"width": "min"}]'
+    )
+
+    def _resizable(self, render, columns=None):
+        return render(
+            f'{RESIZE}{{% call table({columns or self.COLUMNS}, resizable=true, id="tasks") %}}r{{% endcall %}}'
+        )
+
+    def test_the_default_table_has_no_resize_markup(self, render):
+        html = render(f"{TABLE}{{% call table({self.COLUMNS}) %}}r{{% endcall %}}")
+        assert "data-fjkit-resize" not in html
+        assert 'role="separator"' not in html
+
+    def test_a_resizable_table_marks_itself_for_the_script(self, render):
+        html = self._resizable(render)
+        assert re.search(r'<table class="table" id="tasks"[^>]* data-fjkit-resize[ >]', html)
+
+    def test_each_labelled_data_column_gets_one_handle(self, render):
+        """The select column and the `width="min"` columns hold a control or a
+        number of known width; dragging them buys nothing."""
+        handles = _HANDLE.findall(self._resizable(render))
+        assert [re.search(r'aria-label="([^"]*)"', h).group(1) for h in handles] == ["Task", "Owner"]
+
+    def test_the_handle_is_a_focusable_vertical_separator(self, render):
+        """WCAG 2.1.1: a width set by dragging must be settable from the keyboard."""
+        handles = _HANDLE.findall(self._resizable(render))
+        assert handles
+        for handle in handles:
+            assert 'role="separator"' in handle
+            assert 'aria-orientation="vertical"' in handle
+            assert 'tabindex="0"' in handle
+
+    def test_a_header_with_a_handle_is_named_once(self, render):
+        """A header is named from its content, and the handle's label is in
+        that content: unnamed, the column reads out as "Task Task"."""
+        names = re.findall(r'<th[^>]*\baria-label="([^"]*)"', self._resizable(render))
+        assert names == ["Task", "Owner", "Actions"]
+
+    def test_the_handle_sits_beside_the_sort_link_not_inside_it(self, render):
+        """A handle inside the `<a>` would sort the table on every drag."""
+        html = self._resizable(render)
+        link = re.search(r"<a [^>]*>.*?</a>", html, re.S).group(0)
+        assert "data-fjkit-resize-handle" not in link
+        assert "data-fjkit-resize-handle" in html.split("</a>", 1)[1]
+
+    def test_a_resizable_table_without_an_id_is_refused(self, render):
+        """The id is the key its widths are stored under. Without one, two
+        tables would share a key, or the widths would silently never return."""
+        from jinja2 import TemplateRuntimeError
+
+        with pytest.raises(TemplateRuntimeError, match="id"):
+            render(f"{RESIZE}{{% call table({self.COLUMNS}, resizable=true) %}}r{{% endcall %}}")
+
+    def test_an_empty_resizable_table_needs_no_id(self, render):
+        """The empty state replaces the table, so there is nothing to resize."""
+        html = render(f"{RESIZE}{{% call table({self.COLUMNS}, rows=[], resizable=true) %}}r{{% endcall %}}")
+        assert "data-fjkit-resize" not in html
+
+    def test_the_script_is_opted_into_per_page(self, render):
+        html = render(f"{RESIZE}{{{{ resize_scripts() }}}}")
+        assert re.fullmatch(r'<script defer src="[^"]*js/resize\.js[^"]*"></script>', html)
+
+    def test_the_script_ships_and_the_shell_does_not_load_it(self):
+        """CHARTER §4.2: the shell downloads htmx and Basecoat and nothing else."""
+        from fjkit.config import STATIC_DIR, TEMPLATE_DIR
+
+        assert (STATIC_DIR / "js" / "resize.js").is_file()
+        assert "resize.js" not in (TEMPLATE_DIR / "ui" / "shell.html").read_text(encoding="utf-8")
+
+    @pytest.mark.parametrize(
+        "overlay",
+        [
+            '{% call dropdown_menu("m", "Actions") %}x{% endcall %}',
+            '{% call popover("p", "More") %}x{% endcall %}',
+            '{{ select_menu("s", [("a", "A")]) }}',
+            '{{ combobox("c", [("a", "A")]) }}',
+            '{% call tooltip("Saved") %}x{% endcall %}',
+        ],
+    )
+    def test_a_resized_table_does_not_clip_an_overlay_in_a_cell(self, render, overlay):
+        """A resized table clips its cells, so a narrowed column cuts its text
+        at the edge. An overlay is positioned inside its cell and drawn outside
+        it, and a clipped cell hides it: a row's dropdown opened as a sliver
+        under its button. Every overlay macro carries an attribute the clipping
+        rule exempts."""
+        from fjkit.config import TEMPLATE_DIR
+
+        css = (TEMPLATE_DIR.parent / "static" / "src" / "fjkit.css").read_text(encoding="utf-8")
+        selector = next(
+            selector
+            for selector, body in re.findall(r"([^{}]*)\{([^{}]*)\}", css)
+            if "[data-fjkit-resized]" in selector and "overflow-hidden" in body
+        )
+        exempt = re.findall(r"\[([\w-]+)\]", selector.split(":not(", 1)[1]) if ":not(" in selector else []
+        html = render(
+            '{% from "ui/overlay.html" import dropdown_menu, popover, select_menu, combobox %}'
+            '{% from "ui/disclosure.html" import tooltip %}' + overlay
+        )
+        assert any(re.search(rf"\s{name}[\s=>]", html) for name in exempt), selector
+
+
 class TestPagination:
     """0.4. The strip under a table."""
 

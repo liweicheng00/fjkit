@@ -96,6 +96,7 @@ const TABLE_STATE = {
   empty: "empty",
   sortable: "sorted",
   "batch select": "select",
+  resizable: "resizable",
 };
 
 const TABLE_JINJA = {
@@ -142,6 +143,15 @@ const TABLE_JINJA = {
 {% endcall %}
 
 {% block scripts %}{{ select_scripts() }}{% endblock %}`,
+
+  resizable: `{% from "ui/table.html" import table, resize_scripts %}
+
+{# the id is the key the widths are stored under #}
+{% call table(TASK_COLUMNS, rows=tasks, resizable=true, id="tasks-table") %}
+  {% for task in tasks %}{{ task_row(request, task) }}{% endfor %}
+{% endcall %}
+
+{% block scripts %}{{ resize_scripts() }}{% endblock %}`,
 };
 
 const TABLE_CAPTION = {
@@ -149,6 +159,7 @@ const TABLE_CAPTION = {
   empty: "The same call with nothing to show. The empty state is inside the macro, so a page cannot ship a table that renders as a lone header row.",
   sortable: "A column becomes sortable by carrying a sort_url, and sort says which way it is going now. The arrow and aria-sort are keyed off that one value, so they cannot disagree. Every header is an href before it is a swap: sorting works with JavaScript off, and a sorted view is a URL you can send someone.",
   "batch select": "{\"select\": true} is the header box, select_cell is the row box, and the name they share is the field the selection posts under — selected=3&selected=7, which is what a checkbox column has always sent. The action collects it with hx-include; nothing maintains a list. select_scripts() is what ticks the column, shows the partial state and tints the picked rows.",
+  resizable: "Drag the edge of a heading, or focus it with Tab and press the arrow keys. Home or a double-click resets the column. The widths are stored in localStorage under the table's id and come back after a reload and after an htmx swap. Without resize_scripts() the handles stay hidden and the table is the ordinary one.",
 };
 
 const MACROS = {
@@ -272,7 +283,7 @@ const MACROS = {
   table: {
     label: "table",
     controls: [
-      { key: "state", type: "select", label: "state", options: ["3 rows", "empty", "sortable", "batch select"], value: "3 rows" },
+      { key: "state", type: "select", label: "state", options: ["3 rows", "empty", "sortable", "batch select", "resizable"], value: "3 rows" },
     ],
     render: (p) => DATA.tables[TABLE_STATE[p.state]],
     jinja: (p) => TABLE_JINJA[p.state],

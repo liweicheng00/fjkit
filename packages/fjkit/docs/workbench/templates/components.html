@@ -4,6 +4,7 @@
 {% from "ui/tabs.html" import tab_panel, tabs %}
 {% from "ui/layout.html" import grid, page_header, stack %}
 {% from "ui/form.html" import reveal_scripts %}
+{% from "ui/table.html" import resize_scripts %}
 
 {#
   One section per file in `src/fjkit/templates/ui/`, in the order `ls` prints
@@ -480,6 +481,15 @@
         <code>select_scripts()</code> is what ticks the whole column from the header box.
       </p>
       <p>
+        <code>resizable=true</code> puts a handle on the trailing edge of each labelled column. A
+        visitor drags it, or focuses it and presses the arrow keys; Home or a double-click gives the
+        column back its natural width. The widths are kept in <code>localStorage</code> under the
+        table's <code>id</code>, which is why a resizable table must have one, and they come back
+        after a reload and after an htmx swap. The page loads <code>resize_scripts()</code>; without
+        it the handles stay hidden and the table is the ordinary one. CSS cannot do this:
+        <code>resize</code> works only on a block box with overflow, and a table cell is not one.
+      </p>
+      <p>
         <code>page_size</code> is a <code>&lt;form method="get"&gt;</code>, because a bare
         <code>&lt;select&gt;</code> cannot submit without a script. Its <code>url</code> must carry no
         query string: a GET submit replaces the whole query with the form's fields, so pass the
@@ -545,6 +555,7 @@
 {% block page_scripts %}
   <script defer src="{{ fjkit_static('components.js') }}"></script>
   {# The reveal showcase is a working control, so the page opts into its script
-     the same way an app's sign-in page does. #}
+     the same way an app's sign-in page does. The resizable table is the same. #}
   {{ reveal_scripts() }}
+  {{ resize_scripts() }}
 {% endblock %}

@@ -357,16 +357,19 @@ GROUPS = [
                         'table(columns, rows=none, empty_title="Nothing here",\n'
                         '      empty_description=none, empty_icon="list", target=none,\n'
                         '      swap="outerHTML", push_url=true, select_name="selected",\n'
-                        '      select_label="Select all rows")',
+                        '      select_label="Select all rows", resizable=false)',
                         block="rows",
                         en="columns is a list of dicts — label, and optionally align, width, "
                         "sort, sort_url or select. Passing rows lets the macro own the empty "
                         "case; pass rows=none to always render the body yourself. A column with "
                         "a sort_url becomes a sortable header, and target turns those links into "
-                        "htmx swaps.",
+                        "htmx swaps. resizable=true puts a drag handle on each labelled column "
+                        "and needs an id=, the key the widths are stored under.",
                         zh="columns 是 dict 的清單——label，可選 align、width、sort、sort_url 或 select。"
                         "傳了 rows，空資料的情況就歸 macro 管；傳 rows=none 則永遠自己渲染 body。"
-                        "有 sort_url 的欄位會變成可排序表頭，給了 target 那些連結就同時是 htmx swap。",
+                        "有 sort_url 的欄位會變成可排序表頭，給了 target 那些連結就同時是 htmx swap。"
+                        "resizable=true 會在每個有 label 的欄位放一個拖曳把手，並且必須給 id=，"
+                        "欄寬就存在這個 id 底下。",
                     ),
                     _m(
                         "cell(value=none, tone=none, numeric=false, align=none)",
@@ -405,6 +408,14 @@ GROUPS = [
                         "the partial state and tints the picked rows. Per page, never the shell.",
                         zh="載入 js/select.js：從表頭的核取方塊勾選整欄、顯示部分選取狀態、"
                         "把選到的列上色。逐頁載入，不進 shell。",
+                    ),
+                    _m(
+                        "resize_scripts()",
+                        en="Loads js/resize.js, which shows the handles of a resizable table, "
+                        "follows a drag or the arrow keys, and keeps the widths in localStorage. "
+                        "Home or a double-click resets a column. Per page, never the shell.",
+                        zh="載入 js/resize.js：顯示可調寬表格的把手，跟著拖曳或方向鍵改變欄寬，"
+                        "並把欄寬存在 localStorage。Home 鍵或雙擊把欄寬還原。逐頁載入，不進 shell。",
                     ),
                     _m(
                         'page_size(url, per_page, options=(10, 25, 50, 100),\n'
