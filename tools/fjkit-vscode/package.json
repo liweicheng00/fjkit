@@ -2,7 +2,7 @@
   "name": "fjkit-vscode",
   "displayName": "fjkit",
   "description": "Navigate between FastAPI routes, response models, Jinja templates and htmx events in a fjkit app.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "fjkit",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/liweicheng00/fjkit" },
