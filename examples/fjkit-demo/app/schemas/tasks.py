@@ -139,10 +139,12 @@ class Facet(BaseModel):
 class BoardResponse(BaseModel):
     tasks: list[Task]
     stats: BoardStats
-    owners: list[str]
+    #: `(value, label)` for the owner filter: everyone on the board, unfiltered.
+    owner_options: list[tuple[str, str]]
     status_filters: list[tuple[Status | None, str]]
     priority_options: list[tuple[Priority, str]]
     active_status: Status | None = None
+    active_owners: list[str] = Field(default_factory=list)
     filter_query: str = ""
 
 

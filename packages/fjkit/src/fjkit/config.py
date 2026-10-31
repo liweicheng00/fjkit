@@ -38,6 +38,32 @@ STATIC_DIR = PACKAGE_DIR / "static"
 #: markup to render for this caller and falls back to JSON when there is not.
 RenderMode = Literal["html", "json", "auto"]
 
+#: Who decides whether a page is dark: the visitor (`"system"`), or the app.
+ColorScheme = Literal["system", "light", "dark"]
+
+
+@dataclass(frozen=True, slots=True)
+class SchemeRendering:
+    """What the shell renders for one `ColorScheme`."""
+
+    #: The pre-paint script that reads the saved `theme` key, then
+    #: `prefers-color-scheme`, and sets `html.dark` from them.
+    prepaint_script: bool
+    #: A class the server renders on `<html>`, or `""`.
+    html_class: str
+    #: Whether the shell's default `header_actions` is `theme_toggle()`.
+    toggle: bool
+
+
+#: The one place a scheme turns into markup. A fixed scheme drops the script as
+#: well as the toggle: the script would otherwise obey a `theme` key a visitor
+#: saved while the app was still `"system"`.
+COLOR_SCHEMES: dict[ColorScheme, SchemeRendering] = {
+    "system": SchemeRendering(prepaint_script=True, html_class="", toggle=True),
+    "light": SchemeRendering(prepaint_script=False, html_class="", toggle=False),
+    "dark": SchemeRendering(prepaint_script=False, html_class="dark", toggle=False),
+}
+
 
 @dataclass(frozen=True, slots=True)
 class FjkitConfig:
@@ -121,6 +147,19 @@ class FjkitConfig:
     #: saying so. `"json"` turns every route into JSON, which is how you see
     #: exactly what a template was handed. `"html"` serialises nothing.
     render_mode: RenderMode = "auto"
+
+    #: Who picks light or dark. `"system"` follows the visitor's saved choice,
+    #: then their OS, and puts a toggle in the header. `"light"` and `"dark"`
+    #: fix the scheme: no toggle, and nothing on the page reads a preference.
+    #: Templates read the outcome as `fjkit_color_scheme`.
+    color_scheme: ColorScheme = "system"
+
+    def __post_init__(self) -> None:
+        if self.color_scheme not in COLOR_SCHEMES:
+            raise ValueError(
+                f"FjkitConfig.color_scheme must be one of {', '.join(map(repr, COLOR_SCHEMES))}, "
+                f"not {self.color_scheme!r}."
+            )
 
     def for_production(self) -> FjkitConfig:
         """Return the same config with `auto_reload` and `strict_undefined` off

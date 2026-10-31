@@ -102,6 +102,12 @@
         <tbody>{{ caller() }}</tbody>
       </table>
     </div>
+  {% elif kwargs %}
+    {#
+      A table that polls, or that a swap targets by id, has to keep doing so
+      while empty, so the caller's attributes go on a wrapper here.
+    #}
+    <div{{ attrs(kwargs) }}>{{ empty_state(empty_title, empty_description, empty_icon) }}</div>
   {% else %}
     {{ empty_state(empty_title, empty_description, empty_icon) }}
   {% endif %}

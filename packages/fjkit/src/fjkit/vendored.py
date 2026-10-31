@@ -8,9 +8,10 @@ These pins are also CHARTER §4.1's whitelist of client-side JavaScript: what is
 listed here, and nothing else, may ship inside this wheel. Two of them reach
 every page; `HTMX_JSON_ENC_VERSION` does not, which is why it is a separate pin.
 
-Plotly is whitelisted by §7 too, but pinned in `fjkit_charts` rather than here:
-the bundle ships in that distribution, and a kit that cannot serve the bytes
-should not claim to know their version.
+Plotly is not on that list. CHARTER A11(1) lets a plugin distribution pin its
+own bundle, so Plotly is pinned in `fjkit_charts`: the bundle ships in that
+distribution, and a kit that cannot serve the bytes should not claim to know
+their version.
 """
 
 from __future__ import annotations

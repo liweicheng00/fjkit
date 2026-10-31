@@ -223,7 +223,7 @@ def test_the_job_kinds_drawer_is_modal_where_the_detail_dialog_is_not(client, jo
     html = client.get("/jobs").text
 
     assert '<dialog id="job-kinds" class="drawer"' in html
-    assert "document.getElementById('job-kinds').showModal()" in html
+    assert 'aria-controls="job-kinds"' in html and ".showModal()" in html
     assert 'class="dialog" popover id="job-detail-1"' in html
 
 

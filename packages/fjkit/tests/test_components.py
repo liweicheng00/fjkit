@@ -8,6 +8,7 @@ a breaking change loud.
 
 from __future__ import annotations
 
+import json
 import re
 from html.parser import HTMLParser
 
@@ -1205,7 +1206,6 @@ class TestSidebar:
     def test_trigger_names_what_it_controls(self, render):
         html = render(f'{SIDEBAR}{{{{ sidebar_trigger("app-nav") }}}}')
         assert 'aria-controls="app-nav"' in html
-        assert "getElementById(\'app-nav\')" in html
         assert 'aria-label="Toggle navigation"' in html
 
     def test_trigger_does_not_render_a_state_the_script_owns(self, render):
@@ -1545,7 +1545,7 @@ class TestLazyTabPanel:
             f'{TABS}{{% call tab_panel("p", on=["task-selected"], include="[name=task_id]") %}}S{{% endcall %}}'
         )
         assert "hx-" not in html
-        assert html.strip() == '<div id="p" role="tabpanel">S</div>'
+        assert html.strip() == '<div id="p" role="tabpanel" aria-labelledby="p-tab">S</div>'
 
     def test_pass_through_attributes_still_reach_the_panel(self, render):
         html = render(f'{TABS}{{% call tab_panel("p", lazy="/x", aria_label="Detail") %}}S{{% endcall %}}')
@@ -1634,7 +1634,7 @@ class TestFileUpload:
         )
         assert "hx-on::xhr:progress=" in html
         assert "event.detail.lengthComputable" in html
-        assert "document.querySelector('#bar')" in html
+        assert 'data-progress="#bar"' in html
 
     def test_progress_moves_all_three_places_the_number_is_written(self, render):
         """A bar that fills beside a label reading 0%, or fills while a screen
@@ -1916,9 +1916,6 @@ class TestAvatar:
         html = render(f'{AVATAR}{{{{ avatar("Ada Lovelace", src="/a.png") }}}}')
         assert 'aria-hidden="true">AL<' in html
 
-    def test_initials_stay_in_the_tree_when_there_is_no_image(self, render):
-        assert 'aria-hidden="true">AL<' not in render(f'{AVATAR}{{{{ avatar("Ada Lovelace") }}}}')
-
     @pytest.mark.parametrize("size", ["sm", "lg"])
     def test_every_size_renders(self, render, size):
         assert f'data-size="{size}"' in render(f'{AVATAR}{{{{ avatar("Ada", size="{size}") }}}}')
@@ -2185,8 +2182,12 @@ class TestMenuItem:
 
     def test_a_group_heading_labels_the_group(self, render):
         html = render(f'{OVERLAY}{{% call menu_group("My Account") %}}x{{% endcall %}}')
-        assert 'aria-labelledby="h-my-account"' in html
-        assert 'role="heading" id="h-my-account"' in html
+        assert '<div role="group" aria-label="My Account">' in html
+        assert '<div role="heading">My Account</div>' in html
+
+    def test_an_explicit_id_labels_the_group_by_reference(self, render):
+        html = render(f'{OVERLAY}{{% call menu_group("My Account", id="acct") %}}x{{% endcall %}}')
+        assert 'aria-labelledby="acct"' in html and 'role="heading" id="acct"' in html
 
     def test_a_separator_is_announced_as_one(self, render):
         assert '<hr role="separator">' in render(f'{OVERLAY}{{{{ menu_separator() }}}}')
@@ -2460,6 +2461,29 @@ class TestMultipleSelection:
         html = render(f"{OVERLAY}{{{{ multiselect_scripts() }}}}")
         assert "<script defer" in html and "js/multiselect.js" in html
 
+    def test_a_multiple_combobox_renders_the_chip_box(self, render):
+        """Basecoat's JS wraps the input in `.combobox-chips` when it runs.
+        Rendering the box here gives the first paint the shape the script
+        leaves, so `fjkit.css` lays the control out before any script ran."""
+        html = render(f'{OVERLAY}{{{{ combobox("l", {self.OPTIONS}, multiple=true) }}}}')
+        assert re.search(r'<div class="combobox-chips">\s*<input type="text" role="combobox"', html)
+        assert html.index("combobox-chips") < html.index("data-popover")
+
+    def test_a_single_combobox_has_no_chip_box(self, render):
+        html = render(f'{OVERLAY}{{{{ combobox("l", {self.OPTIONS}) }}}}')
+        assert "combobox-chips" not in html
+
+    def test_the_list_is_anchored_to_the_input_not_the_control(self):
+        """Basecoat positions `[data-popover]` at the bottom of the `.combobox`
+        root. In multiple mode the root grows with every chip row, so the list
+        moves down one row per pick. `fjkit.css` anchors it to the input."""
+        from fjkit.config import TEMPLATE_DIR
+
+        css = (TEMPLATE_DIR.parent / "static" / "src" / "fjkit.css").read_text(encoding="utf-8")
+        rule = re.search(r"\.combobox:has\(> \.combobox-chips\) > \[data-popover\] \{([^}]*)\}", css)
+        assert rule, "no fjkit.css rule positions the multiple combobox's list"
+        assert "top: anchor(" in rule.group(1)
+
 
 class TestDrawer:
     def test_a_drawer_is_a_native_dialog(self, render):
@@ -2588,3 +2612,224 @@ class TestReveal:
         else. This macro is how a page says otherwise."""
         assert "js/reveal.js" not in render(f"{INPUT_GROUP}{self.CALL}")
         assert "js/reveal.js" in render(f"{INPUT_GROUP}{{{{ reveal_scripts() }}}}")
+
+
+class _Attributes(HTMLParser):
+    """Every start tag's attributes, decoded the way a browser decodes them
+    before an event handler is compiled."""
+
+    def __init__(self, html):
+        super().__init__()
+        self.elements: list[dict[str, str | None]] = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        self.elements.append(dict(attrs))
+
+
+HOSTILE_ID = "x');alert(document.domain);('"
+
+
+def _handlers(html):
+    """(handler source, element attributes) for every inline event handler."""
+    return [
+        (value, element)
+        for element in _Attributes(html).elements
+        for name, value in element.items()
+        if value and (name.startswith("on") or name.startswith("hx-on"))
+    ]
+
+
+class TestCallerTextNeverBecomesScript:
+    """Autoescape is an HTML escaper. The browser undoes it before an `on…`
+    attribute runs, so caller text placed inside a JavaScript string there is
+    code."""
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            f'{OVERLAY}{{{{ drawer_trigger("Edit", target) }}}}',
+            f"{SIDEBAR}{{{{ sidebar_trigger(target) }}}}",
+            f'{FORM}{{% call form(action="/up", target="#r", progress=target) %}}x{{% endcall %}}',
+        ],
+        ids=["drawer_trigger", "sidebar_trigger", "form-progress"],
+    )
+    def test_a_hostile_id_reaches_no_handler(self, render, source):
+        handlers = _handlers(render(source, target=HOSTILE_ID))
+        assert handlers, "each of these macros writes an inline handler"
+        for code, element in handlers:
+            assert "alert(" not in code, code
+            assert HOSTILE_ID in element.values(), "the handler still needs the id, from an attribute"
+
+    def test_a_hostile_search_param_stays_one_key(self, render):
+        """htmx evaluates a `js:` hx-vals as an object literal, so the name has
+        to arrive as a quoted key and nothing else."""
+        hostile = 'q": alert(1), "z'
+        html = render(f'{OVERLAY}{{{{ combobox("c", search="/s", search_param=p) }}}}', p=hostile)
+        [vals] = [e["hx-vals"] for e in _Attributes(html).elements if "hx-vals" in e]
+        assert vals.startswith("js:")
+        literal = json.loads(vals.removeprefix("js:").replace("this.value", "null"))
+        assert literal == {hostile: None}
+
+
+class TestPassThroughSaysNo:
+    """CHARTER A4: `**attrs` passes through HTML and `hx-*` only, and a
+    parameter list must be able to say no."""
+
+    @pytest.mark.parametrize("key", ["onmouseover=alert(1) data-x", "data-x>", 'a"b', "data x"])
+    def test_a_key_that_is_not_one_attribute_name_is_refused(self, render, key):
+        with pytest.raises(ValueError):
+            render(f'{BUTTON}{{{{ button("x", **extra) }}}}', extra={key: "y"})
+
+    @pytest.mark.parametrize("key", ["class", "style"])
+    def test_class_and_style_are_refused(self, render, key):
+        """A second `class` is ignored by the browser and an inline `style` is
+        a colour `fjkit check` cannot see once it arrives from Python."""
+        with pytest.raises(ValueError):
+            render(f'{BUTTON}{{{{ button("x", **extra) }}}}', extra={key: "bg-red-500"})
+
+    def test_ordinary_attributes_still_pass(self, render):
+        html = render(
+            f'{BUTTON}{{{{ button("x", **extra) }}}}',
+            extra={"hx-on::after-request": "this.reset()", "data_row_id": 3, "aria-label": "Close"},
+        )
+        assert 'hx-on::after-request="this.reset()"' in html
+        assert 'data-row-id="3"' in html and 'aria-label="Close"' in html
+
+
+class TestSubmittedValuesRoundTrip:
+    def test_range_field_takes_the_strings_a_form_posted(self, render):
+        """Every other field redraws from the submitted strings; a slider that
+        needs ints turns that redraw into a 500."""
+        html = render(f'{RANGE}{{{{ range_field("volume", value="40", min="0", max="200") }}}}')
+        assert 'value="40"' in html
+        assert "--slider-value: 20.0%" in html
+
+
+class TestToaster:
+    def test_a_plain_call_renders_under_strict_undefined(self, render):
+        """The shell's `toasts` block is the documented place to call it this
+        way, and `FjkitConfig` is strict by default."""
+        html = render('{% from "ui/feedback.html" import toaster %}{{ toaster("start") }}')
+        assert 'id="toaster"' in html and 'data-align="start"' in html
+
+
+class TestRepeatedGroupHeadings:
+    """A row-actions menu renders once per row, so two menus with the same
+    group heading are the normal case."""
+
+    MENU = (
+        '{% call dropdown_menu(ID, "Row") %}{% call menu_group("Actions") %}'
+        '{{ menu_item("Edit") }}{% endcall %}{% endcall %}'
+    )
+    COMMAND = (
+        '{% call command(ID) %}{% call command_group("Suggestions") %}'
+        '{{ command_item("Open") }}{% endcall %}{% endcall %}'
+    )
+
+    @pytest.mark.parametrize("block", [MENU, COMMAND], ids=["menu_group", "command_group"])
+    def test_two_groups_with_one_heading_share_no_id_and_keep_a_name(self, render, block):
+        html = render(OVERLAY + block.replace("ID", '"m1"') + block.replace("ID", '"m2"'))
+        elements = _Attributes(html).elements
+        ids = [e["id"] for e in elements if e.get("id")]
+        assert len(ids) == len(set(ids)), sorted(ids)
+        groups = [e for e in elements if e.get("role") == "group"]
+        assert len(groups) == 2
+        for group in groups:
+            assert group.get("aria-label") or group.get("aria-labelledby") in ids, group
+
+
+class TestTableEmptyCase:
+    def test_caller_attributes_survive_an_empty_list(self, render):
+        """A polling table that empties once must keep its id and trigger, or
+        it never polls again and nothing can target it."""
+        html = render(
+            f'{TABLE}{{% call table([{{"label": "A"}}], rows=[], id="feed", hx_get="/feed",'
+            ' hx_trigger="every 5s", hx_swap="outerHTML") %}{% endcall %}'
+        )
+        assert 'class="empty"' in html
+        assert 'id="feed"' in html and 'hx-get="/feed"' in html and 'hx-trigger="every 5s"' in html
+
+
+class TestTabPanelNames:
+    def test_each_panel_is_labelled_by_the_tab_that_controls_it(self, render):
+        html = render(
+            f'{TABS}{{% call tabs([{{"id": "a", "label": "A"}}, {{"id": "b", "label": "B"}}]) %}}'
+            '{% call tab_panel("a") %}x{% endcall %}{% call tab_panel("b") %}y{% endcall %}{% endcall %}'
+        )
+        elements = _Attributes(html).elements
+        tabs = {e["aria-controls"]: e for e in elements if e.get("role") == "tab"}
+        panels = [e for e in elements if e.get("role") == "tabpanel"]
+        assert len(panels) == 2
+        for panel in panels:
+            tab_id = tabs[panel["id"]].get("id")
+            assert tab_id, "the tab needs an id to be referenced"
+            assert panel.get("aria-labelledby") == tab_id
+
+
+class _AttributeLists(HTMLParser):
+    """Every start tag's attributes in source order, duplicates kept."""
+
+    def __init__(self, html):
+        super().__init__()
+        self.elements: list[list[tuple[str, str | None]]] = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        self.elements.append(attrs)
+
+
+class TestCallerAttributeWins:
+    """A browser keeps the first of two same-named attributes, so a default the
+    macro writes ahead of `attrs(kwargs)` would silently beat the caller's."""
+
+    @pytest.mark.parametrize(
+        ("source", "name", "value"),
+        [
+            (f'{TABS}{{% call tab_panel("a", aria_labelledby="own") %}}x{{% endcall %}}', "aria-labelledby", "own"),
+            (f'{AVATAR}{{{{ avatar("Ada Lovelace", aria_label="Countess") }}}}', "aria-label", "Countess"),
+            (f'{AVATAR}{{{{ avatar("Ada Lovelace", role="presentation") }}}}', "role", "presentation"),
+        ],
+        ids=["tab_panel", "avatar-label", "avatar-role"],
+    )
+    def test_the_callers_value_is_the_only_one(self, render, source, name, value):
+        root = _AttributeLists(render(source)).elements[0]
+        assert [v for k, v in root if k == name] == [value]
+
+
+class TestSkeletonLastLine:
+    FRACTION = {"w-full": 1, "w-3/4": 3 / 4, "w-1/2": 1 / 2, "w-1/3": 1 / 3, "w-1/4": 1 / 4}
+
+    @pytest.mark.parametrize("width", ["full", "three-quarters", "half", "third", "quarter"])
+    def test_the_last_line_is_never_wider_than_the_rest(self, render, width):
+        html = render(f'{SKELETON}{{{{ skeleton(width="{width}", lines=3) }}}}')
+        bars = [
+            next(self.FRACTION[c] for c in e["class"].split() if c in self.FRACTION)
+            for e in _Attributes(html).elements
+            if "skeleton" in (e.get("class") or "").split()
+        ]
+        assert len(bars) == 3
+        assert bars[-1] <= bars[0] == bars[1], bars
+
+
+class TestAvatarName:
+    def test_without_an_image_the_full_name_is_announced(self, render):
+        """Initials alone read as "A L"."""
+        elements = _Attributes(render(f'{AVATAR}{{{{ avatar("Ada Lovelace") }}}}')).elements
+        root, initials = elements[0], elements[1]
+        assert root.get("role") == "img" and root.get("aria-label") == "Ada Lovelace"
+        assert initials.get("aria-hidden") == "true"
+
+
+class TestSurfaceTokens:
+    @pytest.mark.parametrize("scope", [":root", ".dark"])
+    def test_a_card_rebrand_reaches_popovers(self, scope):
+        """Section 1 tells an app to redefine `--card`; dropdowns, comboboxes
+        and popovers are the same surface and must follow it in both themes.
+        Basecoat redefines `--popover` in its own `.dark`, so both scopes need
+        the reference."""
+        from fjkit.config import TEMPLATE_DIR
+
+        css = (TEMPLATE_DIR.parent / "static" / "src" / "fjkit.css").read_text(encoding="utf-8")
+        block = re.search(rf"^{re.escape(scope)} \{{(.*?)^\}}", css, re.MULTILINE | re.DOTALL).group(1)
+        assert re.search(r"--popover:\s*var\(--card\);", block), scope

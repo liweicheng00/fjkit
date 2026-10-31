@@ -88,9 +88,12 @@
             {#
               A link home rather than a "back" button. Going back is the browser's
               job and it already has a control for it; what a page like this can
-              offer is somewhere that definitely works.
+              offer is somewhere that definitely works. Under the request's
+              `root_path`, so an app mounted under a prefix or behind a proxy
+              sends the visitor to its own start rather than the host's.
             #}
-            {{ button("Back to the start", variant="outline", size="sm", href="/") }}
+            {{ button("Back to the start", variant="outline", size="sm",
+                      href=request.scope.get("root_path", "") ~ "/") }}
           </div>
         {% endcall %}
       {% endcall %}
