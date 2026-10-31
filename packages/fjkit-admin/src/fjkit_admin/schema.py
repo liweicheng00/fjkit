@@ -107,13 +107,14 @@ def build_form_model(info: ModelInfo, fields: list[str], widgets: dict[str, str]
     )
 
 
-def apply(info: ModelInfo, obj: Any, data: dict[str, Any], fields: list[str]) -> None:
-    """Copy the validated payload onto the instance.
+def _writes(info: ModelInfo, data: dict[str, Any], fields: list[str]) -> dict[str, Any]:
+    """The part of the payload that reaches the row.
 
-    A `None` for a column that is not nullable but has a default is left
-    untouched rather than written: writing it would send NULL to a NOT NULL
-    column, and the person left the box empty because they wanted the default.
+    A `None` for a column that is not nullable but has a default is left out
+    rather than written: writing it would send NULL to a NOT NULL column, and
+    the person left the box empty because they wanted the default.
     """
+    writes: dict[str, Any] = {}
     for key in fields:
         if key not in data:
             continue
@@ -121,6 +122,13 @@ def apply(info: ModelInfo, obj: Any, data: dict[str, Any], fields: list[str]) ->
         column = info.columns[key]
         if value is None and not column.nullable and column.has_default:
             continue
+        writes[key] = value
+    return writes
+
+
+def apply(info: ModelInfo, obj: Any, data: dict[str, Any], fields: list[str]) -> None:
+    """Copy the validated payload onto the instance."""
+    for key, value in _writes(info, data, fields).items():
         setattr(obj, key, value)
 
 
@@ -147,7 +155,8 @@ def sqlmodel_errors(model: type, obj: Any | None, data: dict[str, Any], info: Mo
 
     The payload is completed with the current values of the row on an update,
     because `model_validate` wants every required field and a change form
-    posts only the editable ones.
+    posts only the editable ones. Only what `apply()` would write is merged,
+    so a blank that means "the column default" is validated as that default.
 
     Returns pydantic's error list with `loc` rooted at `body`, the shape
     FastAPI's own 422 uses, so `errors.js` draws these under the fields too.
@@ -160,7 +169,7 @@ def sqlmodel_errors(model: type, obj: Any | None, data: dict[str, Any], info: Mo
     if obj is not None:
         for key in info.columns:
             values[key] = getattr(obj, key)
-    values.update(data)
+    values.update(_writes(info, data, list(data)))
     try:
         model.model_validate(values)  # type: ignore[attr-defined]
     except ValidationError as exc:
