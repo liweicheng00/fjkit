@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import re
 import subprocess
 import sys
@@ -11,9 +12,10 @@ import warnings
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Annotated, Literal
+from urllib.parse import quote
 
 import pytest
-from fastapi import Body, Depends, FastAPI, File, Form, Query, Request, UploadFile
+from fastapi import Body, Depends, FastAPI, File, Form, Header, Query, Request, Response, UploadFile
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, PluginWarning, mount_fjkit, render
 from fjkit.auth import AuthPlugin, CookieSpec, NoCsrf
@@ -290,6 +292,57 @@ def test_the_console_is_never_in_its_own_index():
         skip_prefix="/api-docs",
     )
     assert [o.path for o in document.index.values()] == ["/ok"]
+
+
+def test_a_route_that_merely_shares_the_console_s_prefix_string_is_documented():
+    # `/api-docs-v2` is the app's own route; only `/api-docs` and what is under
+    # it belong to the console.
+    document = specmod.build(
+        {
+            "info": {},
+            "paths": {
+                "/api-docs-v2/thing": {"get": {"responses": {}}},
+                "/api-docs/try/x": {"post": {"responses": {}}},
+            },
+        },
+        skip_prefix="/api-docs",
+    )
+    assert [o.path for o in document.index.values()] == ["/api-docs-v2/thing"]
+
+
+def test_a_ref_to_a_shared_parameter_body_or_response_is_followed():
+    """OpenAPI lets a document share these through `components` exactly as it
+    shares schemas. FastAPI never writes them, a hand-maintained document does,
+    and reading the `$ref` object as if it were the thing yields a parameter
+    with no name and a body the console cannot send."""
+    document = specmod.build(
+        {
+            "info": {"title": "T", "version": "1"},
+            "paths": {
+                "/x": {
+                    "post": {
+                        "operationId": "x",
+                        "parameters": [{"$ref": "#/components/parameters/Limit"}],
+                        "requestBody": {"$ref": "#/components/requestBodies/Note"},
+                        "responses": {"404": {"$ref": "#/components/responses/Missing"}},
+                    }
+                }
+            },
+            "components": {
+                "parameters": {"Limit": {"name": "limit", "in": "query", "schema": {"type": "integer"}}},
+                "requestBodies": {
+                    "Note": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Note"}}}}
+                },
+                "schemas": {"Note": {"type": "object", "properties": {"text": {"type": "string"}}}},
+                "responses": {"Missing": {"description": "no such thing"}},
+            },
+        }
+    )
+    operation = document.index["x"]
+    assert [(p.name, p.location) for p in operation.params] == [("limit", "query")]
+    assert operation.has_body
+    assert '"text"' in operation.body_example
+    assert [(r.status, r.description) for r in operation.responses] == [("404", "no such thing")]
 
 
 # ------------------------------------------------------------------ mounting
@@ -1243,3 +1296,164 @@ def test_every_class_in_the_console_s_templates_exists_in_the_stylesheet():
                     unknown.add(f"{path.name}: {token}")
 
     assert not unknown, f"classes absent from the stylesheet: {sorted(unknown)}"
+
+
+# ------------------------------------------------- what the endpoint receives
+#
+# The console's claim is that a call made from the page is the call a client
+# would make. These routes report what arrived, so the claim is checked against
+# a direct request rather than against the panel alone.
+
+
+def build_echo_app(*plugins):
+    """Build an app whose routes report what the console delivered to them."""
+    app = FastAPI(docs_url=None, redoc_url=None)
+
+    @app.get("/files/{name}", tags=["echo"])
+    def file(name: str) -> dict:
+        return {"name": name}
+
+    @app.get("/echo", tags=["echo"])
+    def echo(request: Request, x_name: Annotated[str | None, Header()] = None) -> dict:
+        return {"headers": dict(request.headers), "x_name": x_name}
+
+    @app.post("/login", tags=["echo"])
+    def login(response: Response) -> dict:
+        response.set_cookie("app_session", "LIVE-SESSION-ID", httponly=True)
+        return {}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", PluginWarning)
+        mount_fjkit(app, FjkitConfig(plugins=tuple(plugins), auto_reload=False))
+    return app
+
+
+def operation_id(app: FastAPI, method: str, path: str) -> str:
+    document = specmod.build(app.openapi(), skip_prefix="/api-docs")
+    return next(o.id for o in document.index.values() if o.method == method and o.path == path)
+
+
+def shown(reply) -> str:
+    """The panel's text as a person reads it, with the HTML escaping undone."""
+    return html.unescape(reply.text)
+
+
+def test_a_path_value_reaches_the_endpoint_as_a_direct_request_delivers_it():
+    """`scope["path"]` is decoded by definition; the encoded form is `raw_path`.
+
+    A space or an accent in a path parameter is otherwise tested against the
+    percent-escaped spelling, which no real client's request would carry."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app)
+    op = operation_id(app, "GET", "/files/{name}")
+
+    for value in ("my report.txt", "café"):
+        direct = client.get("/files/" + quote(value, safe="")).json()["name"]
+        assert direct == value  # what any client gets
+        reply = client.post(f"/api-docs/try/{op}", data={"p.path.name": value})
+        assert f'"name": "{value}"' in shown(reply)
+
+
+def test_a_header_the_wire_cannot_carry_is_reported_in_the_panel_rather_than_as_a_500():
+    """A header value is Latin-1 on the wire, so `名` can never be sent. The
+    answer is the panel saying so, not a 500 that loses the typed request."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app, raise_server_exceptions=False)
+    op = operation_id(app, "GET", "/echo")
+    header_field = next(p.field_name for p in specmod.build(app.openapi()).index[op].params if p.location == "header")
+
+    for data in ({"headers": "X-Name: 名"}, {header_field: "李"}):
+        reply = client.post(f"/api-docs/try/{op}", data=data)
+        assert reply.status_code == 200
+        assert "no response" in reply.text
+        assert "x-name" in shown(reply).lower()  # which header, so it can be fixed
+        assert '"x_name"' not in reply.text  # the endpoint was never reached
+
+
+def test_a_hand_typed_accept_is_sent_whatever_its_capitalisation():
+    """The box says a hand-typed `Accept` is a legitimate thing to test. Header
+    names are case-insensitive, so `Accept:` and `accept:` are the same
+    request, and neither may be silently replaced by the documented one."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app)
+    op = operation_id(app, "GET", "/echo")
+
+    for spelling in ("Accept", "accept"):
+        reply = client.post(f"/api-docs/try/{op}", data={"headers": f"{spelling}: text/csv"})
+        assert '"accept": "text/csv"' in shown(reply), spelling
+
+
+def test_the_curl_snippet_keeps_the_prefix_a_proxy_put_in_front_of_the_app():
+    """The in-process call honours `root_path`; a snippet that drops it is a
+    command that 404s through the very proxy the app is served behind."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app, root_path="/svc")
+    op = operation_id(app, "GET", "/echo")
+
+    text = shown(client.post(f"/api-docs/try/{op}"))
+    assert "200" in text  # the call itself found the route
+    assert "curl -X GET 'http://testserver/svc/echo'" in text
+
+
+def test_the_curl_snippet_redacts_whichever_header_the_flow_puts_the_token_in():
+    """`HeaderFlow` promises the token never reaches the DOM. An API-key header
+    is the flow's own documented case, and the snippet is part of the DOM."""
+    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, header="X-API-Key", scheme="", secure=False))
+    app = build_echo_app(docs)
+    client = TestClient(app)
+    client.post("/api-docs/auth", data={"token": "SUPER-SECRET-KEY-123"})
+
+    text = shown(client.post(f"/api-docs/try/{operation_id(app, 'GET', '/files/{name}')}", data={"p.path.name": "x"}))
+    assert "SUPER-SECRET-KEY-123" not in text
+    assert "x-api-key: <redacted>" in text  # the header is named, so the reader knows what to fill in
+
+
+def test_a_set_cookie_the_endpoint_answers_with_is_shown_without_its_value():
+    """An HttpOnly cookie is one no script on a page may read. The console
+    swallows the response, so printing the header verbatim into the DOM would
+    be the one place that property is undone."""
+    app = build_echo_app(ApiDocsPlugin())
+    client = TestClient(app)
+
+    text = shown(client.post(f"/api-docs/try/{operation_id(app, 'POST', '/login')}")).lower()
+    assert "live-session-id" not in text
+    assert "set-cookie: app_session=" in text  # what was set, and how, stays readable
+    assert "httponly" in text
+
+
+def test_a_path_value_cannot_steer_the_call_back_into_the_console():
+    """`within()` and the router must judge the same string. A path parameter
+    is sent percent-encoded, so `api-docs/try/<op>` as a value reaches the
+    guard as `/api-docs%2Ftry%2F<op>` and passes it; the decoded path the
+    router sees is the console's own handler, called with the forwarded
+    cookie and Origin."""
+    app = FastAPI(docs_url=None, redoc_url=None)
+
+    @app.post("/{name}", tags=["echo"])
+    def named(name: str) -> dict:
+        return {"name": name}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", PluginWarning)
+        mount_fjkit(app, FjkitConfig(plugins=(ApiDocsPlugin(),), auto_reload=False))
+    client = TestClient(app)
+    op = operation_id(app, "POST", "/{name}")
+
+    text = shown(client.post(f"/api-docs/try/{op}", data={"p.path.name": f"api-docs/try/{op}"}))
+    assert "is the API console itself" in text  # refused up front, by name
+    assert "already a console call" not in text  # the inner handler never ran
+
+
+def test_the_curl_snippet_names_each_wire_header_once():
+    """Header names are case-insensitive, so a hand-typed `x-api-key` and the
+    flow's `X-API-Key` are one header. The call sends one; the snippet, which
+    claims to be the same call, must not print two."""
+    docs = ApiDocsPlugin(flow=HeaderFlow(secret=SECRET, header="X-API-Key", scheme="", secure=False))
+    app = build_echo_app(docs)
+    client = TestClient(app)
+    client.post("/api-docs/auth", data={"token": "SUPER-SECRET-KEY-123"})
+    op = operation_id(app, "GET", "/echo")
+
+    text = shown(client.post(f"/api-docs/try/{op}", data={"headers": "x-api-key: TYPED-VALUE"}))
+    assert '"x-api-key": "SUPER-SECRET-KEY-123"' in text  # the flow's token is what the endpoint saw
+    assert len(re.findall(r"-H 'x-api-key: <redacted>'", text, re.IGNORECASE)) == 1

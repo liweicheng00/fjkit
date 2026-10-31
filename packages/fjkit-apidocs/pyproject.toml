@@ -32,8 +32,16 @@ classifiers = [
 # `fjkit.auth` is reached through `sys.modules` rather than imported, so the
 # sign-in panel is wired only when the app already registered `AuthPlugin`.
 # That is a runtime lookup inside fjkit, not a second dependency.
+#
+# The lower bound is the fjkit release whose stylesheet was built from this
+# package's templates. These templates use utility classes, and the only
+# stylesheet that carries them is the one `fjkit build-css` emits while
+# scanning `templates/apidocs/` (the `@source` line in fjkit.css). A class
+# missing from an older fjkit's CSS has no effect and reports nothing, so a
+# template change that needs a new class also raises this bound to the fjkit
+# release that was built after it.
 dependencies = [
-    "fjkit>=0.1.0.dev0",
+    "fjkit>=0.1.4",
 ]
 
 [project.urls]

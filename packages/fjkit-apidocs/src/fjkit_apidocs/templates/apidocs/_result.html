@@ -74,7 +74,12 @@
               <p class="text-muted-foreground text-sm">Empty body.</p>
             {% endif %}
             {% if result.headers %}
-              {{ code_block(result.headers | map("join", ": ") | join("\n"), label="Response headers") }}
+              {#
+                `shown_headers`, not `headers`: a `Set-Cookie` is printed
+                without its value, for the same reason the curl block below
+                carries no credential.
+              #}
+              {{ code_block(result.shown_headers | map("join", ": ") | join("\n"), label="Response headers") }}
             {% endif %}
           {% endif %}
 
