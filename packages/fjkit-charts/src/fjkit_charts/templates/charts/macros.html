@@ -66,9 +66,9 @@
   degrades rather than throwing — it warns to the console and every chart keeps
   its figcaption, the fallback that was always there.
 
-  It emits nothing for Plotly when Plotly has not been vendored (see
-  `ChartsPlugin`), so a missing vendor step costs the charts rather than a 404
-  in the console.
+  Plotly's tag always points at a file: the copy in this wheel, or
+  `ChartsPlugin(plotly_url=...)`. If that file is missing the browser logs a
+  404, and `charts.js` degrades as above.
 #}
 {% macro chart_scripts() -%}
   {%- set plotly = fjkit_charts_plotly() -%}
