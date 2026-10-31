@@ -133,10 +133,10 @@ Hard numbers. CI checks them; over budget is a red build.
 
 The CSS budget is **per page**: eight packs ship, a page loads one.
 
-| Item | Budget | Measured 2026-10-17 |
+| Item | Budget | Measured 2026-10-31 |
 |---|---|---|
-| `fjkit-<pack>.css`, gzip — **the governed number** | ≤ 28 KB | 24.5–25.1 KB across eight packs (vega 24.9) |
-| `fjkit-<pack>.css`, uncompressed — blowout guard | ≤ 260 KB | 219.9–238.0 KB (sera smallest, nova largest) |
+| `fjkit-<pack>.css`, gzip — **the governed number** | ≤ 28 KB | 24.8–25.5 KB across eight packs (vega 25.2) |
+| `fjkit-<pack>.css`, uncompressed — blowout guard | ≤ 260 KB | 221.6–239.7 KB (sera smallest, nova largest) |
 | fjkit runtime dependencies | `fastapi`, `jinja2`. A third needs an RFC | 2 |
 | Third-party JS permitted in the wheel — **whitelist** | Only what `fjkit/vendored.py` pins: `htmx.org`, `htmx-ext-json-enc`, `idiomorph`, `basecoat-css` (with `all.min.js`). Adding one edits this cell (A11) | 4 |
 | Single-page render regression | No more than 10% slower than the previous version | Threshold definition still open |
