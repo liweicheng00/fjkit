@@ -1,9 +1,10 @@
 """`<body>.<mac>` — the one cookie format the kit signs with.
 
-Two plugins keep a value in a cookie the browser must not be able to write: a
+Three plugins keep a value in a cookie the browser must not be able to write: a
 flash message (otherwise a way to make a site display any text an attacker
-likes) and the API console's credential. Neither value has to stay secret — one
-is about to be printed on the page, the other is the caller's own token — so
+likes), the API console's credential, and the session id. None of the values
+has to stay secret — one is about to be printed on the page, one is the
+caller's own token, one is a random id that is useless without the store — so
 this signs and does not encrypt.
 
 One implementation rather than one per plugin: signing and verifying drifting
@@ -48,16 +49,15 @@ def unsign(secret: bytes, raw: str) -> bytes | None:
 
 def unsign_text(secret: bytes, raw: str) -> str | None:
     """The body half, verified but not decoded."""
+    if not raw.isascii():
+        # `sign_text` only ever produces ASCII, so this is not ours. Refused
+        # before the comparison: `compare_digest` raises on non-ASCII text, and
+        # a cookie a browser can be made to carry must not raise on every
+        # request until it is cleared.
+        return None
     body, _, signature = raw.partition(".")
     if not signature:
         return None
-    try:
-        expected = sign_text(secret, body)
-    except UnicodeEncodeError:
-        # `sign_text` never produced a body with non-ASCII in it, so it cannot
-        # verify. Refusing here keeps the failure a `None` like every other bad
-        # cookie instead of an exception on the hot path.
-        return None
-    if not hmac.compare_digest(raw, expected):
+    if not hmac.compare_digest(raw, sign_text(secret, body)):
         return None
     return body
