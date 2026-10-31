@@ -394,7 +394,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>nav_links(request, links)</code></h4><p>links 是 (route, label) 的序對清單。標頭版的 sidebar 替代方案。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>theme_toggle()</code></h4><p>外殼已經放了一顆；只有在你換掉 header_actions 時才需要自己呼叫。</p>    </section>  </div>
+      <h4><code>theme_toggle()</code></h4><p>外殼已經放了一顆；只有在你換掉 header_actions 時才需要自己呼叫。color_scheme 固定時它不輸出任何東西。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>breadcrumb(trail, separator=&#34;chevron&#34;, label=&#34;Breadcrumb&#34;)</code></h4><p>trail 是 (label, href) 的序對清單，href=none 標示目前這一頁——也就是最後一項，它不是連結。</p>    </section>  </div>
 </div></div>
@@ -537,7 +537,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>header</code></h4><p>整條標頭；上面那幾個插槽不夠用時才動它。預設的標頭固定在頂端；需要不固定的標頭時，覆寫這個 block。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>header_actions</code></h4><p>標頭右端。預設是 theme_toggle()。</p>    </section>  </div>
+      <h4><code>header_actions</code></h4><p>標頭右端。color_scheme=&#34;system&#34; 時預設是 theme_toggle()，&#34;light&#34; 或 &#34;dark&#34; 時預設是空的。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>sidebar_trigger</code></h4><p>窄螢幕上打開側邊欄的按鈕。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -575,6 +575,8 @@ fjkit
       <h4><code>fjkit_static(path)</code></h4><p>掛載後靜態目錄下的網址，帶上 ?v=&lt;mtime&gt;，瀏覽器就不會拿舊的樣式表去配新的標記。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>fjkit_version</code></h4><p>頁尾那幾個版本號：fjkit、fastapi、jinja2、basecoat、htmx。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fjkit_color_scheme</code></h4><p>FjkitConfig.color_scheme 的渲染結果：.prepaint_script、.html_class、.toggle。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>fjkit_icon_path(name)</code></h4><p>某個 Lucide 名稱的原始 SVG path 資料。模板要呼叫的是 icon()。</p>    </section>  </div>
 </div></div>

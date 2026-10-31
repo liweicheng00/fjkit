@@ -397,7 +397,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>nav_links(request, links)</code></h4><p>links is a list of (route, label) pairs. The header alternative to a sidebar.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>theme_toggle()</code></h4><p>The shell renders one already; call it only when you have replaced header_actions.</p>    </section>  </div>
+      <h4><code>theme_toggle()</code></h4><p>The shell renders one already; call it only when you have replaced header_actions. It renders nothing under a fixed color_scheme.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>breadcrumb(trail, separator=&#34;chevron&#34;, label=&#34;Breadcrumb&#34;)</code></h4><p>trail is a list of (label, href) pairs, and href=none marks the current page — the last entry, which is not a link.</p>    </section>  </div>
 </div></div>
@@ -541,7 +541,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>header</code></h4><p>The whole header bar, when the pieces above are not enough. The default is pinned to the top; override this block for a header that stays in the flow.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>header_actions</code></h4><p>The right-hand end of the header. Defaults to theme_toggle().</p>    </section>  </div>
+      <h4><code>header_actions</code></h4><p>The right-hand end of the header. Defaults to theme_toggle() under color_scheme=&#34;system&#34;, and to nothing under &#34;light&#34; or &#34;dark&#34;.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>sidebar_trigger</code></h4><p>The button that opens the rail on a narrow screen.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -579,6 +579,8 @@ fjkit
       <h4><code>fjkit_static(path)</code></h4><p>A URL under the mounted static tree, stamped with ?v=&lt;mtime&gt; so a browser cannot serve a stale stylesheet against current markup.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>fjkit_version</code></h4><p>The versions in the footer: fjkit, fastapi, jinja2, basecoat, htmx.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>fjkit_color_scheme</code></h4><p>What FjkitConfig.color_scheme renders: .prepaint_script, .html_class and .toggle.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>fjkit_icon_path(name)</code></h4><p>The raw SVG path data for a Lucide name. icon() is what a template calls.</p>    </section>  </div>
 </div></div>

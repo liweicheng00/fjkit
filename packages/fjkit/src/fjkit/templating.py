@@ -27,7 +27,7 @@ from jinja2 import (
     select_autoescape,
 )
 
-from fjkit.config import STATIC_DIR, TEMPLATE_DIR, FjkitConfig
+from fjkit.config import COLOR_SCHEMES, STATIC_DIR, TEMPLATE_DIR, FjkitConfig
 from fjkit.icons import path as _icon_path
 from fjkit.messages import TOAST_EVENT
 from fjkit.messages import queue as _message_queue
@@ -143,6 +143,9 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     # rather than a finished URL, so a custom shell can also report or switch on
     # which pack is live.
     env.globals["fjkit_style"] = resolve_style(config.style)
+    # A record rather than the scheme's name, so no template re-derives what a
+    # name means.
+    env.globals["fjkit_color_scheme"] = COLOR_SCHEMES[config.color_scheme]
 
     # Plugins before the app's own globals: an app can always override what a
     # plugin exposed, and never the other way round.

@@ -1385,6 +1385,16 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
         Watch the status badges. They do not move. Status colour is deliberately not wired to the
         brand, because "green means done" has to survive a rebrand.
       </p>
+      <p>
+        The Scheme buttons are the visitor's choice, and by default the visitor keeps it:
+        <code>FjkitConfig(color_scheme="system")</code> follows their saved choice, then their OS,
+        and puts a toggle in the header. An app that is only ever light or only ever dark says
+        <code>color_scheme="light"</code> or <code>"dark"</code>. The server then renders the scheme
+        on <code>&lt;html&gt;</code>, the toggle and the pre-paint script are left out, and a choice
+        a visitor saved earlier has nothing left to read it. <code>theme_toggle()</code> renders
+        nothing under a fixed scheme, so an app that fills <code>header_actions</code> itself
+        calls it as before.
+      </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>

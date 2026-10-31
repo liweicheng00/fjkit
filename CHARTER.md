@@ -151,7 +151,7 @@ The only real lever left is subsetting Basecoat, and `styles/<pack>.css` is one 
 
 ### 4.2 JavaScript
 
-**Every page downloads:** htmx and Basecoat (both vendored), `js/errors.js` (4,223 bytes raw / 1,788 gzip), and two inline blocks in `ui/shell.html` totalling 517 bytes — theme anti-flash, and the listener that turns an `HX-Trigger` event into a toast.
+**Every page downloads:** htmx and Basecoat (both vendored), `js/errors.js` (4,223 bytes raw / 1,788 gzip), and two inline blocks in `ui/shell.html` totalling 517 bytes — theme anti-flash (left out when `FjkitConfig.color_scheme` fixes the scheme), and the listener that turns an `HX-Trigger` event into a toast.
 
 **Everything else loads only on a page that asks for it**, through a `*_scripts()` macro the page calls in `{% block scripts %}`. No component emits its own `<script>`:
 
