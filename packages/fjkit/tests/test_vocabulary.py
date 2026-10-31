@@ -4,6 +4,7 @@ no-build promise rests on.
 
 from __future__ import annotations
 
+import re
 import shutil
 
 import pytest
@@ -417,7 +418,7 @@ class TestMacroEject:
         assert "{% set _ROWS = {" in rows
         assert "wide-then-actions" in rows, "a multi-line {% set %} must be taken whole"
 
-    def test_a_second_eject_rewrites_rather_than_refusing(self, tmp_path):
+    def test_a_second_eject_adds_the_macro_rather_than_refusing(self, tmp_path):
         """Wanting a second macro is the ordinary next step; refusing would leave
         hand-editing as the only answer."""
         self._eject(tmp_path, "badge")
@@ -428,6 +429,120 @@ class TestMacroEject:
         assert "{% set badge = _fjkit.badge %}" not in text
         owned = STAMP.match(text.splitlines()[0])["macros"]
         assert sorted(e.split("=")[0] for e in owned.split(",")) == ["badge", "stat"]
+
+    def _edit_badge(self, tmp_path):
+        """Stand in for an app author: change the owned macro and add one of
+        their own below it."""
+        target = tmp_path / "ui" / "data.html"
+        text = target.read_text()
+        assert text.count('<span class="badge') == 1
+        text = text.replace('<span class="badge', '<span data-my-edit="1" class="badge')
+        text += "\n{% macro my_helper() %}helper{% endmacro %}\n"
+        target.write_text(text)
+        return target
+
+    def test_a_second_eject_keeps_your_edits(self, tmp_path):
+        """The file exists to be edited. Taking a second macro adds it and
+        leaves everything the author wrote, inside the owned macro and beside
+        it, exactly as it was."""
+        self._eject(tmp_path, "badge")
+        self._edit_badge(tmp_path)
+
+        text = (self._eject(tmp_path, "stat") / "ui" / "data.html").read_text()
+
+        assert 'data-my-edit="1"' in text
+        assert "{% macro my_helper() %}" in text
+        assert "{% macro stat(" in text
+        assert "{% set stat = _fjkit.stat %}" not in text
+        html = self._render(
+            tmp_path,
+            '{% from "ui/data.html" import badge, stat, my_helper %}'
+            '{{ badge("Done") }}{{ stat("Revenue", "42", tone="success") }}{{ my_helper() }}',
+        )
+        assert 'data-my-edit="1"' in html
+        assert "42" in html and "helper" in html
+
+    def test_a_second_eject_keeps_the_digests_you_took(self, tmp_path):
+        """The stamp records the kit's `badge` as it was when taken. Writing the
+        kit's current digest over it would hide that the kit has moved since."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        target.write_text(re.sub(r"badge=[0-9a-f]+", "badge=000000000000", target.read_text(), count=1))
+        assert [e.moved for e in stale_ejects(tmp_path)] == [("badge",)]
+
+        self._eject(tmp_path, "stat")
+
+        assert [e.moved for e in stale_ejects(tmp_path)] == [("badge",)]
+        owned = STAMP.match(target.read_text().splitlines()[0])["macros"]
+        assert sorted(e.split("=")[0] for e in owned.split(",")) == ["badge", "stat"]
+
+    def test_a_second_eject_refuses_when_the_re_export_line_is_gone(self, tmp_path, capsys):
+        """Without the `{% set stat = _fjkit.stat %}` line there is no place
+        fjkit knows is its own to put the macro, so it leaves the file alone."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        before = target.read_text().replace("{% set stat = _fjkit.stat %}\n", "")
+        target.write_text(before)
+
+        self._eject(tmp_path, "stat", expect=1)
+
+        assert target.read_text() == before
+        assert "{% set stat = _fjkit.stat %}" in capsys.readouterr().err
+
+    def test_a_second_eject_refuses_content_it_cannot_take_apart(self, tmp_path):
+        """A top-level `{% if %}` is not a macro or a statement. fjkit cannot
+        tell what it owns in such a file, so it refuses rather than guess."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        before = target.read_text() + "\n{% if true %}<p>mine</p>{% endif %}\n"
+        target.write_text(before)
+
+        self._eject(tmp_path, "stat", expect=1)
+
+        assert target.read_text() == before
+
+    def test_a_second_eject_refuses_a_macro_you_defined_yourself(self, tmp_path, capsys):
+        """An author who wrote their own `stat` beside the owned macro already
+        exports it. Splicing the kit's `stat` in as well leaves Jinja to pick
+        one of two definitions, and the stamp claims a copy that is not there.
+        fjkit refuses and names the collision instead."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        before = target.read_text() + "\n{% macro stat(x) %}MY OWN STAT: {{ x }}{% endmacro %}\n"
+        target.write_text(before)
+
+        self._eject(tmp_path, "stat", expect=1)
+
+        assert target.read_text() == before
+        assert "'stat'" in capsys.readouterr().err
+        html = self._render(tmp_path, '{% from "ui/data.html" import stat %}{{ stat("hello") }}')
+        assert html == "MY OWN STAT: hello"
+
+    def test_a_second_eject_keeps_the_helper_you_already_copied(self, tmp_path):
+        """A private helper the author already wrote is theirs. Taking a macro
+        that calls it must not paste the kit's copy beside it, and the stamp
+        must not record a digest for a body fjkit did not write. The lookup
+        table their helper reads, `_WIDTH`, still comes along, so the file
+        renders."""
+        target = self._eject(tmp_path, "table.pagination") / "ui" / "table.html"
+        assert "_WIDTH" not in target.read_text()
+        mine = (
+            "\n{% macro _header(column, target, swap, push_url, select_name, select_label) %}"
+            '<th data-mine="1" class="{{ _WIDTH.get(column.get("width"), "") }}">{{ column.label }}</th>'
+            "{% endmacro %}\n"
+        )
+        target.write_text(target.read_text() + mine)
+
+        self._eject(tmp_path, "table.table")
+
+        text = target.read_text()
+        assert text.count("{% macro _header(") == 1
+        assert mine in text
+        assert "{% macro table(" in text
+        assert "{% set _WIDTH = {" in text
+        assert "_header=" not in text.splitlines()[0]
+        html = self._render(
+            tmp_path,
+            '{% from "ui/table.html" import table %}'
+            '{% call table(columns=[{"key": "a", "label": "A", "width": "narrow"}], rows=[{"a": 1}]) %}{% endcall %}',
+        )
+        assert 'data-mine="1" class="w-16"' in html
 
     def test_taking_a_macro_you_already_own_is_refused(self, tmp_path):
         self._eject(tmp_path, "badge")
@@ -443,6 +558,20 @@ class TestMacroEject:
     def test_a_whole_file_copy_has_nothing_left_to_take(self, tmp_path):
         self._eject(tmp_path, "data")
         self._eject(tmp_path, "badge", expect=1)
+
+    def test_asking_for_the_whole_file_over_a_macro_override_says_what_it_owns(self, tmp_path, capsys):
+        """The refusal has to describe the file that is there. Calling a
+        one-macro override "a copy of the whole component" invites editing
+        macros that are only re-exports."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        before = target.read_text()
+
+        self._eject(tmp_path, "data", expect=1)
+
+        err = capsys.readouterr().err
+        assert "`badge`" in err
+        assert "whole component" not in err
+        assert target.read_text() == before
 
     def test_a_file_name_still_means_the_whole_file(self, tmp_path):
         """`table` is both a component and a macro inside it. Nothing that worked
@@ -471,6 +600,16 @@ class TestMacroEject:
         still copies the file; `eject shell.anything` has nothing to take."""
         self._eject(tmp_path, "shell")
         self._eject(tmp_path, "shell.head", expect=1)
+
+    @pytest.mark.parametrize("name", ["form._message", "_message"])
+    def test_a_private_macro_cannot_be_taken_on_its_own(self, tmp_path, capsys, name):
+        """A copy of `_message` alone changes nothing: the kit's macros keep
+        calling the kit's copy. It comes along with a public macro that calls
+        it, and the refusal has to say which."""
+        self._eject(tmp_path, name, expect=1)
+
+        assert not (tmp_path / "ui" / "form.html").exists()
+        assert "text_field" in capsys.readouterr().err
 
 
 class TestPerMacroStamp:

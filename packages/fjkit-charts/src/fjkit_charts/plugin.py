@@ -4,8 +4,8 @@
 
 That gives an app the `chart` macro, the theming bridge, the Plotly bundle and
 the two `<script>` lines that load them. Nothing to download, nothing to mount:
-Plotly ships inside this wheel — one of the scripts CHARTER §4.1 whitelists — and
-is served from this plugin's own static mount.
+Plotly ships inside this wheel — pinned, vendored and served by this plugin, as
+CHARTER A11(1) allows a plugin distribution — from this plugin's own static mount.
 
 **The division of labour.** Python decides the shape of the figure; the browser
 decides its chrome. Axis text, grid lines, tick colour, the gaps between pie
@@ -20,7 +20,7 @@ Plotly's own and never change.
 basic bundle is 1.1 MB, so a hook letting this plugin put a `<script>` on every
 page would put it on the login screen. Instead the page that draws charts calls
 `chart_scripts()` in its own `{% block scripts %}` and no other page pays. Being
-in the wheel changes what an install contains, not what a page downloads, and §7
+in the wheel changes what an install contains, not what a page downloads, and §2.2
 budgets the download. Which distribution the bundle lives in decides the first
 of those: an app that never draws a chart does not install `fjkit-charts` and
 never carries the 1.1 MB at all.

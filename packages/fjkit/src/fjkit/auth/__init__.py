@@ -21,7 +21,14 @@ documents the CSRF cost a cookie brings back.
 from __future__ import annotations
 
 from fjkit.auth.csrf import NoCsrf, OriginCsrf
-from fjkit.auth.errors import AuthError, CsrfRejected, NotAuthenticated, RefreshFailed
+from fjkit.auth.errors import (
+    AuthError,
+    CsrfRejected,
+    NotAuthenticated,
+    RefreshFailed,
+    RefreshRefused,
+    RefreshUnavailable,
+)
 from fjkit.auth.plugin import AuthPlugin, CookieSpec
 from fjkit.auth.sources import LocalSource
 from fjkit.auth.stores import MemoryStore, RedisStore, SyncStore
@@ -46,6 +53,8 @@ __all__ = [
     "OriginCsrf",
     "RedisStore",
     "RefreshFailed",
+    "RefreshRefused",
+    "RefreshUnavailable",
     "RefreshableTokenSource",
     "Session",
     "SessionStore",
