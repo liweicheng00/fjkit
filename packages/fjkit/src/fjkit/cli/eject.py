@@ -50,12 +50,14 @@ diverges from upstream on two of twelve macros instead of all twelve.
 
 from __future__ import annotations
 
+import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
-from jinja2 import Environment, nodes
+from jinja2 import Environment, TemplateSyntaxError, nodes
 
 # `ejected` reaches back the other way for `kit_macro_digests`, but only from
 # inside a function, so this stays one-directional at module level.
@@ -139,18 +141,21 @@ class Component:
             pending.extend(n for n in sorted(macro.uses) if n in self.macros and self.macros[n].is_private)
         return taken
 
-    def needed_statements(self, owned: list[str]) -> set[int]:
+    def needed_statements(self, owned: Iterable[Macro]) -> set[int]:
         """Select the imports and lookup tables the owned macros read.
 
         Copying all of them is simpler, and wrong: `_ROWS` copied beside a
         `text_field` that never reads it falls silently behind the kit's, while
         the macro that does read it — re-exported `field_row` — goes on using
         the kit's. Dead weight that looks live.
+
+        `owned` may include an author's own macro from the override, so that a
+        helper they wrote which reads `_WIDTH` gets the kit's table beside it.
         """
         statements = {i: item for i, item in enumerate(self.items) if isinstance(item, Statement)}
         wanted: set[str] = set()
-        for name in owned:
-            wanted |= self.macros[name].uses
+        for macro in owned:
+            wanted |= macro.uses
         keep: set[int] = set()
         changed = True
         while changed:
@@ -325,21 +330,22 @@ def resolve(name: str) -> tuple[str, str | None]:
     """
     if "." in name:
         component, _, macro = name.partition(".")
-        if component not in components():
+        if component not in components() or macro not in parse_or_none(components()[component]):
             raise Unknown(name)
-        if macro not in parse_or_none(components()[component]):
-            raise Unknown(name)
-        return component, macro
-
-    if name in components():
+        holders = [component]
+    elif name in components():
         return name, None
+    else:
+        macro = name
+        holders = [component for component, path in components().items() if macro in parse_or_none(path)]
+        if not holders:
+            raise Unknown(name)
 
-    holders = [component for component, path in components().items() if name in parse_or_none(path)]
-    if not holders:
-        raise Unknown(name)
+    if macro.startswith("_"):
+        raise Private(macro, holders)
     if len(holders) > 1:
         raise Ambiguous(name, holders)
-    return holders[0], name
+    return holders[0], macro
 
 
 class Unknown(Exception):
@@ -352,6 +358,29 @@ class Unknown(Exception):
             f"fjkit eject: nothing named {self.name!r}.\n"
             f"Components: {', '.join(components())}\n"
             f"Macros: {', '.join(macros)}"
+        )
+
+
+class Private(Exception):
+    """A `_`-prefixed macro asked for on its own. A copy of one changes nothing:
+    the kit's macros keep calling the kit's copy (see the module docstring), so
+    the only way to take it is with a public macro that calls it."""
+
+    def __init__(self, macro: str, holders: list[str]) -> None:
+        self.macro = macro
+        self.holders = holders
+
+    def __str__(self) -> str:
+        callers = [
+            f"{component}.{name}"
+            for component in self.holders
+            for name, held in parse_or_none(components()[component]).items()
+            if self.macro in held.uses and not held.is_private
+        ]
+        return (
+            f"fjkit eject: {self.macro!r} is private, so a copy of it on its own changes nothing:\n"
+            f"the kit's macros keep calling the kit's copy. It comes along with any public macro\n"
+            f"that calls it. Take one of those instead: {', '.join(callers)}"
         )
 
 
@@ -372,13 +401,11 @@ def render_override(component: Component, owned: list[str], version: str) -> str
     private helpers Jinja will not let it borrow.
     """
     taken = [n for n in component.macros if n in owned]
-    asked = [n for n in taken if not n.startswith("_")]
-    borrowed = [n for n in component.macros if n not in owned and not component.macros[n].is_private]
-    keep = component.needed_statements(taken)
+    keep = component.needed_statements(component.macros[n] for n in taken)
 
     parts = [
         macro_stamp(component.name, version, {n: digest_of(component, n) for n in taken}),
-        _header(component, asked, taken, borrowed, version),
+        _header(component, owned, version),
         f'{{% import "fjkit/{component.template}" as _fjkit %}}\n',
     ]
     for index, item in enumerate(component.items):
@@ -394,7 +421,76 @@ def render_override(component: Component, owned: list[str], version: str) -> str
     return "".join(parts)
 
 
-def _header(component: Component, asked: list[str], taken: list[str], borrowed: list[str], version: str) -> str:
+class Unmergeable(Exception):
+    """An override that a second eject cannot add a macro to without putting
+    the author's edits at risk."""
+
+
+def splice(target: Path, component: Component, macro: str, stamp: re.Match[str]) -> tuple[str, list[str]]:
+    """Add one more macro to the override at `target`, which an earlier eject wrote.
+
+    The file has been the author's since that eject, so nothing in it is
+    regenerated. The one line fjkit still owns is the re-export it wrote for
+    `macro`, `{% set stat = _fjkit.stat %}`, and that is all this replaces:
+    with the kit's macro, the private helpers it needs that the file does not
+    define yet, and the lookup tables it reads that the file does not bind. A
+    helper the author already wrote stays theirs: the new macro calls that
+    copy, and the stamp records no digest for a body fjkit did not write. The
+    stamp keeps every digest it had and gains one per macro taken, so a kit
+    that moved since the first eject still shows up in `fjkit check`. The
+    header is rewritten only when it is still word for word what fjkit wrote.
+
+    Returns the new source and the macros it added.
+
+    Raises `Unmergeable` rather than guess when the file cannot be taken apart,
+    the re-export line is not there exactly once, or the author already defines
+    a macro named `macro`. Jinja would bind the name to whichever definition
+    comes last, so one of the two would be dead code with no warning.
+    """
+    try:
+        mine = parse(target)
+    except Unsplittable:
+        raise Unmergeable("has top-level content that is not a macro, an import or a `{% set %}`") from None
+    except TemplateSyntaxError as exc:
+        raise Unmergeable(f"does not parse: {exc}") from exc
+
+    seam = f"{{% set {macro} = _fjkit.{macro} %}}\n"
+    if mine.source.count(seam) != 1:
+        raise Unmergeable(f"has no `{seam.strip()}` line for fjkit to replace")
+    if macro in mine.macros:
+        raise Unmergeable(
+            f"already defines a macro named {macro!r} that fjkit did not write (rename yours to take the kit's)"
+        )
+
+    stamped = _stamped_macros(stamp["macros"])
+    closure = [n for n in component.closure(macro) if n not in stamped]
+    taken = [n for n in closure if n not in mine.macros]
+    theirs = [mine.macros[n] for n in closure if n in mine.macros]
+    bound = set(mine.macros).union(*(item.binds for item in mine.items if isinstance(item, Statement)))
+    keep = component.needed_statements([*(component.macros[n] for n in taken), *theirs])
+
+    parts: list[str] = []
+    for index, item in enumerate(component.items):
+        if isinstance(item, Statement):
+            if index in keep and not item.binds <= bound:
+                parts.append(item.doc + item.text)
+        elif item.name in taken:
+            parts.append(item.doc + item.body)
+    body = mine.source.replace(seam, "\n".join(parts))
+
+    old_header = _header(component, list(stamped), stamp["version"])
+    if body.count(old_header) == 1:
+        body = body.replace(old_header, _header(component, [*stamped, *taken], stamp["version"]))
+
+    digests = {**stamped, **{n: digest_of(component, n) for n in taken}}
+    _, rest = body.split("\n", 1)
+    return macro_stamp(component.name, stamp["version"], digests) + rest, taken
+
+
+def _header(component: Component, owned: list[str], version: str) -> str:
+    taken = [n for n in component.macros if n in owned]
+    asked = [n for n in taken if not n.startswith("_")]
+    borrowed = [n for n in component.macros if n not in owned and not component.macros[n].is_private]
     copied = [n for n in taken if n not in asked]
     lines = [
         "{#",
@@ -415,8 +511,10 @@ def _header(component: Component, asked: list[str], taken: list[str], borrowed: 
         ]
     lines += [
         "  `fjkit check` names the macro when the kit's version of one you own moves on.",
-        "  To take another macro, run `fjkit eject` again — it rewrites this file. To give",
-        "  one back, delete it here and re-run. To give all of them back, delete this file.",
+        "  To take another macro, run `fjkit eject` again. It replaces that macro's re-export",
+        "  line below and leaves the rest of this file as you have it. To give one back, put",
+        "  `{% set <name> = _fjkit.<name> %}` where your copy was and drop `<name>=…` from the",
+        "  stamp on line 1. To give all of them back, delete this file.",
         "#}",
         "",
     ]
@@ -448,7 +546,7 @@ def main(name: str, into: Path) -> int:
     """Run the `fjkit eject` command."""
     try:
         component_name, macro = resolve(name)
-    except (Unknown, Ambiguous) as exc:
+    except (Unknown, Private, Ambiguous) as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
@@ -462,6 +560,16 @@ def main(name: str, into: Path) -> int:
         return 1
 
     if macro is None:
+        if stamp is not None and stamp["macros"]:
+            owned = [n for n in _stamped_macros(stamp["macros"]) if not n.startswith("_")]
+            print(
+                f"fjkit eject: {target} already exists and owns {_and(owned)}; the other macros in\n"
+                f"{component_name}.html are re-exported from the kit. Edit your copy there, or run\n"
+                f"`fjkit eject <macro>` to take another. To copy the whole file instead, delete it\n"
+                f"first and re-run; that discards your copy of {_and(owned)}.",
+                file=sys.stderr,
+            )
+            return 1
         if existing is not None:
             print(
                 f"fjkit eject: {target} already exists — it is a copy of the whole component,\n"
@@ -499,11 +607,7 @@ def main(name: str, into: Path) -> int:
 
     component = parse(component_path)
 
-    # A second eject from the same file rewrites the override: the macro moves
-    # out of the re-export list into the owned section, and everything already
-    # owned stays owned. Refusing would leave hand-editing as the only way to
-    # take a second macro.
-    already = _stamped_macros(stamp["macros"]) if stamp else []
+    already = list(_stamped_macros(stamp["macros"])) if stamp else []
     if macro in already:
         print(f"fjkit eject: {target} already owns {macro!r}", file=sys.stderr)
         return 1
@@ -518,10 +622,26 @@ def main(name: str, into: Path) -> int:
         )
         return 1
 
-    _write(target, render_override(component, owned, _version()))
-    extra = [n for n in component.closure(macro) if n != macro]
+    if stamp is None:
+        taken = component.closure(macro)
+        _write(target, render_override(component, owned, _version()))
+    else:
+        try:
+            text, taken = splice(target, component, macro, stamp)
+        except Unmergeable as exc:
+            print(
+                f"fjkit eject: {target} {exc}, so it was left alone.\n"
+                f"To take {macro!r} by hand, put the kit's macro from {component.path} where\n"
+                f"`{{% set {macro} = _fjkit.{macro} %}}` goes and add `{macro}={digest_of(component, macro)}`\n"
+                f"to the stamp on line 1.",
+                file=sys.stderr,
+            )
+            return 1
+        _write(target, text)
+
+    extra = [n for n in taken if n != macro]
     print(
-        f"{'rewrote' if existing else 'wrote'} {target}\n"
+        f"{f'added {macro!r} to' if existing else 'wrote'} {target}\n"
         f"It owns {_and([n for n in owned if not n.startswith('_')])}"
         + (f", and copies {_and(extra)} because a private macro cannot be re-exported" if extra else "")
         + f".\nThe other {len(component.macros) - len(owned)} macro(s) are re-exported from the kit and still"
@@ -537,8 +657,9 @@ def parse_or_none(path: Path) -> dict[str, Macro]:
         return {}
 
 
-def _stamped_macros(raw: str) -> list[str]:
-    return [entry.split("=", 1)[0] for entry in raw.split(",")]
+def _stamped_macros(raw: str) -> dict[str, str]:
+    """Read a `macros:` stamp into macro name → the kit's digest when taken."""
+    return dict(entry.split("=", 1) for entry in raw.split(","))
 
 
 def _write(target: Path, text: str) -> None:
