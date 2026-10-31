@@ -265,6 +265,10 @@ tables = {
         f"{{% call table({SELECT_COLUMNS}, rows=[1, 2, 3]) %}}"
         f"{select_row_src}{{% endcall %}}"
     ),
+    "resizable": render(
+        f"{TABLE}{DATA}{BUTTON}"
+        f'{{% call table({COLUMNS}, rows=[1, 2, 3], resizable=true, id="docs-resizable") %}}{row_src}{{% endcall %}}'
+    ),
 }
 
 # ---------------------------------------------------------------- pagination

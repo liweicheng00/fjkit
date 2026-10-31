@@ -146,9 +146,11 @@
       filled bar that a screen reader is still told is empty.
 
       It is an inline attribute, so no file is added and §4.2's per-page budget
-      is unchanged.
+      is unchanged. The selector rides in `data-progress` and the handler
+      reads it from there: written into the script, a quote in it would run as
+      code, because the browser undoes autoescape before a handler runs.
     #}
-    {%- if progress %} hx-on::xhr:progress="if (event.detail.lengthComputable) { const p = Math.round(event.detail.loaded / event.detail.total * 100), b = document.querySelector('{{ progress }}'); b.querySelector('[role=progressbar]').setAttribute('aria-valuenow', p); b.querySelector('[data-progress-bar]').style.width = p + '%'; const n = b.querySelector('[data-progress-value]'); if (n) n.textContent = p + '%'; }"{% endif %}
+    {%- if progress %} data-progress="{{ progress }}" hx-on::xhr:progress="if (event.detail.lengthComputable) { const p = Math.round(event.detail.loaded / event.detail.total * 100), b = document.querySelector(this.dataset.progress); b.querySelector('[role=progressbar]').setAttribute('aria-valuenow', p); b.querySelector('[data-progress-bar]').style.width = p + '%'; const n = b.querySelector('[data-progress-value]'); if (n) n.textContent = p + '%'; }"{% endif %}
     {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
     {% if card %}<section>{{ caller() }}</section>{% else %}{{ caller() }}{% endif %}
   </form>
@@ -481,8 +483,9 @@
 #}
 {% macro range_field(name, label=none, value=50, min=0, max=100, step=1, hint=none, error=none, id=none, output=false) -%}
   {%- set field_id = id or ("f-" ~ name) -%}
-  {%- set span = (max - min) or 1 -%}
-  {%- set filled = (((value - min) / span) * 100) | round(2) -%}
+  {#- `float` because a redraw passes back the strings the form posted. -#}
+  {%- set span = ((max | float) - (min | float)) or 1 -%}
+  {%- set filled = ((((value | float) - (min | float)) / span) * 100) | round(2) -%}
   <div class="field">
     {% if label %}
       <label class="label" for="{{ field_id }}">

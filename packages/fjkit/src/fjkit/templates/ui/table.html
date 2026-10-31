@@ -73,23 +73,41 @@
   top, and `hx-push-url` keeps the address bar honest about which one is shown
   — without it the browser's back button leaves the page and the URL describes
   a sort order nobody is looking at.
+
+  `resizable=true` gives every labelled data column a handle on its trailing
+  edge, which a visitor drags, or focuses and moves with the arrow keys. The
+  page loads `resize_scripts()`; without it the handles stay hidden and the
+  table is the ordinary one. A resizable table needs `id=`, because the widths
+  are stored in the browser under that id and a table without one would share
+  its key with every other table on the site. The select column and the
+  `width="min"` columns get no handle: they hold a control or a number whose
+  width the macro already chose.
 #}
 {% macro table(columns, rows=none, empty_title="Nothing here", empty_description=none, empty_icon="list",
                target=none, swap="outerHTML", push_url=true,
-               select_name="selected", select_label="Select all rows") -%}
+               select_name="selected", select_label="Select all rows", resizable=false) -%}
   {% if rows is none or rows %}
+    {% if resizable and not kwargs.get("id") %}
+      {{- fjkit_raise("table(resizable=true) needs an id: it is the key the column widths are stored under.") }}
+    {% endif %}
     <div class="table-container">
-      <table class="table"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+      <table class="table"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}{% if resizable %} data-fjkit-resize{% endif %}>
         <thead>
           <tr>
             {% for column in columns %}
-              {{- _header(column, target, swap, push_url, select_name, select_label) }}
+              {{- _header(column, target, swap, push_url, select_name, select_label, resizable) }}
             {% endfor %}
           </tr>
         </thead>
         <tbody>{{ caller() }}</tbody>
       </table>
     </div>
+  {% elif kwargs %}
+    {#
+      A table that polls, or that a swap targets by id, has to keep doing so
+      while empty, so the caller's attributes go on a wrapper here.
+    #}
+    <div{{ attrs(kwargs) }}>{{ empty_state(empty_title, empty_description, empty_icon) }}</div>
   {% else %}
     {{ empty_state(empty_title, empty_description, empty_icon) }}
   {% endif %}
@@ -101,7 +119,7 @@
   who could reach this one would be able to build a table whose header count
   and column count disagree.
 #}
-{% macro _header(column, target, swap, push_url, select_name, select_label) -%}
+{% macro _header(column, target, swap, push_url, select_name, select_label, resizable) -%}
   {%- if column.get("select") -%}
     {#
       `role="checkbox"` is the implicit role of the element already. It is
@@ -116,6 +134,7 @@
   {%- else -%}
     {%- set sort = column.get("sort") -%}
     {%- set sort_url = column.get("sort_url") -%}
+    {%- set handle = resizable and column.get("label") and column.get("width") != "min" -%}
     <th class="{{ _WIDTH.get(column.get("width"), "") }} {{ _ALIGN.get(column.get("align"), "") }}"
         {%- if sort_url %} aria-sort="{{ _ARIA_SORT.get(sort, "none") }}"{% endif %}
         {#
@@ -125,7 +144,13 @@
           to it, so a narrow column that does have a heading — a row number,
           say — would be announced as "Actions" instead of as itself.
         #}
-        {%- if column.get("width") == "min" and not column.get("label") %} aria-label="Actions"{% endif %}>
+        {%- if column.get("width") == "min" and not column.get("label") %} aria-label="Actions"{% endif %}
+        {#
+          A header is named from its content, and the handle's label is part of
+          that content: without a name of its own the column is announced as
+          "Dataset Dataset".
+        #}
+        {%- if handle %} aria-label="{{ column.get("label") }}"{% endif %}>
       {%- if sort_url -%}
         {#
           `-mx-2` cancels the cell's own padding, so a sortable header's text
@@ -148,6 +173,17 @@
         </a>
       {%- else -%}
         {{ column.get("label", "") }}
+      {%- endif -%}
+      {#
+        Beside the sort link, never inside it, or every drag would also sort.
+        The role says what the control does and the label says which column,
+        so the markup carries no English a translated page would have to
+        replace. Hidden by the stylesheet until `js/resize.js` runs: a focusable
+        separator that does nothing is worse than none.
+      #}
+      {%- if handle -%}
+        <span role="separator" aria-orientation="vertical" aria-label="{{ column.get("label") }}" tabindex="0"
+              data-fjkit-resize-handle></span>
       {%- endif -%}
     </th>
   {%- endif -%}
@@ -226,6 +262,21 @@
 #}
 {% macro select_scripts() -%}
   <script defer src="{{ fjkit_static("js/select.js") }}"></script>
+{%- endmacro %}
+
+{#
+  resize_scripts() — the script behind `table(resizable=true)`.
+
+  Per page, for the reason `select_scripts()` is. It shows the handles, follows
+  a pointer drag or the arrow keys, and stores each table's widths in
+  `localStorage` under `fjkit:column-widths:<table id>`. Home or a double-click
+  gives a column back its natural width. A table htmx swaps in, or morphs,
+  gets its stored widths again without a reload.
+
+  A page that forgets it gets an ordinary table: the handles never appear.
+#}
+{% macro resize_scripts() -%}
+  <script defer src="{{ fjkit_static("js/resize.js") }}"></script>
 {%- endmacro %}
 
 {#

@@ -3,7 +3,7 @@
 {% from "ui/data.html" import kbd %}
 {% from "ui/layout.html" import page_header %}
 {% from "ui/swap.html" import morph_scripts %}
-{% from "ui/table.html" import select_scripts %}
+{% from "ui/table.html" import resize_scripts, select_scripts %}
 
 {% block title %}Records{% endblock %}
 
@@ -22,9 +22,10 @@
 {% endblock %}
 
 {#
-  Two per-page scripts. `select_scripts` ticks the column from the header box
-  and tints the rows it picks; `morph_scripts` is what lets the table ask for
-  `morph:outerHTML`, so a sort relocates the rows it already has instead of
+  Three per-page scripts. `select_scripts` ticks the column from the header box
+  and tints the rows it picks; `resize_scripts` shows the column handles and
+  keeps the widths a visitor drags; `morph_scripts` is what lets the table ask
+  for `morph:outerHTML`, so a sort relocates the rows it already has instead of
   rebuilding every one of them.
 #}
-{% block scripts %}{{ select_scripts() }}{{ morph_scripts() }}{% endblock %}
+{% block scripts %}{{ select_scripts() }}{{ resize_scripts() }}{{ morph_scripts() }}{% endblock %}

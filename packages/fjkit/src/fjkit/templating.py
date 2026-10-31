@@ -6,10 +6,11 @@ profiling have one location.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator, Mapping
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -22,11 +23,12 @@ from jinja2 import (
     FileSystemLoader,
     PrefixLoader,
     StrictUndefined,
+    TemplateRuntimeError,
     pass_context,
     select_autoescape,
 )
 
-from fjkit.config import STATIC_DIR, TEMPLATE_DIR, FjkitConfig
+from fjkit.config import COLOR_SCHEMES, STATIC_DIR, TEMPLATE_DIR, FjkitConfig
 from fjkit.icons import path as _icon_path
 from fjkit.messages import TOAST_EVENT
 from fjkit.messages import queue as _message_queue
@@ -127,7 +129,9 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     env.globals["is_active"] = _is_active
     env.globals["fjkit_static"] = static_url(config.static_url, auto_reload=config.auto_reload)
     env.globals["fjkit_icon_path"] = _icon_path
+    env.globals["fjkit_attr_name"] = _attr_name
     env.globals["fjkit_version"] = _versions()
+    env.globals["fjkit_raise"] = _raise
     # A global rather than a context key: the shell reads it on every page, and
     # a context key would have to be merged into every render — including the
     # ones with nothing to say. It finds the request in the context itself, so
@@ -141,6 +145,9 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     # rather than a finished URL, so a custom shell can also report or switch on
     # which pack is live.
     env.globals["fjkit_style"] = resolve_style(config.style)
+    # A record rather than the scheme's name, so no template re-derives what a
+    # name means.
+    env.globals["fjkit_color_scheme"] = COLOR_SCHEMES[config.color_scheme]
 
     # Plugins before the app's own globals: an app can always override what a
     # plugin exposed, and never the other way round.
@@ -184,6 +191,37 @@ def _url_for(request: Request, name: str, /, **path_params: Any) -> str:
 def _is_active(request: Request, name: str) -> bool:
     route = request.scope.get("route")
     return getattr(route, "name", None) == name
+
+
+def _raise(message: str) -> NoReturn:
+    """Fail the render from a macro. Jinja has no `raise` tag, and a call a
+    macro cannot render correctly must stop the page, not ship a wrong one."""
+    raise TemplateRuntimeError(message)
+
+
+#: The characters that end an attribute name in the HTML tokenizer or are a
+#: parse error inside one. A key containing any of them renders as more than
+#: one attribute.
+_NOT_ONE_NAME = re.compile(r"[\s\"'<>/=\x00-\x1f\x7f]")
+
+
+def _attr_name(key: str) -> str:
+    """The attribute `ui/attrs.html` writes for one macro kwarg.
+
+    Raises rather than skipping, because CHARTER A4 has a macro's parameter list
+    say no: `class` and `style` would restyle the component from outside its
+    closed parameters, and a key that is not one attribute name would write
+    attributes nobody passed.
+    """
+    name = key.replace("_", "-")
+    if not name or _NOT_ONE_NAME.search(name):
+        raise ValueError(f"{key!r} is not an HTML attribute name, so a fjkit macro cannot pass it through.")
+    if name.lower() in ("class", "style"):
+        raise ValueError(
+            f"fjkit macros take no `{name}` (CHARTER A4): a component's look comes from its own "
+            "parameters, such as variant and size, or from a layout macro."
+        )
+    return name
 
 
 def static_url(prefix: str, root: Path | None = None, *, auto_reload: bool = False):
@@ -326,6 +364,10 @@ class Templates:
         status_code: int = 200,
         headers: Mapping[str, str] | None = None,
     ) -> StreamingResponse:
+        if buffer_size < 2:
+            # The same refusal Jinja's `enable_buffering` gives, raised before
+            # the response exists rather than inside its body generator.
+            raise ValueError(f"buffer_size={buffer_size}: a streamed render needs a buffer of at least 2")
         template = self.env.get_template(name)
 
         merged = self._context(request, context)

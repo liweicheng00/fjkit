@@ -64,6 +64,7 @@
 
   {% call card(total ~ " datasets", actions=toolbar, padded=false) %}
     {% call table(columns, rows=records, target="#records", swap="morph:outerHTML",
+                  resizable=true, id="records-table",
                   empty_title="Nothing here",
                   empty_description="No dataset is in this view.",
                   empty_icon="table") %}

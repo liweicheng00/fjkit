@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=cc818caf9ea5">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=bcec078cb3bc">
   <link rel="stylesheet" href="../assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -28,7 +28,7 @@
       data-position="sticky">
 <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
           aria-label="Toggle navigation" aria-controls="sidebar"
-          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>      <div class="ml-auto">
+          onclick="document.getElementById(this.getAttribute('aria-controls')).toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>      <div class="ml-auto">
 <div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit 的 GitHub 原始碼">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
        fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
 </a>
@@ -172,11 +172,11 @@ fjkit
   </div><div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="Representation"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="button-jinja"
+        <button type="button" role="tab" id="button-jinja-tab" aria-controls="button-jinja"
                 aria-selected="true">你寫的</button>
-        <button type="button" role="tab" aria-controls="button-html"
+        <button type="button" role="tab" id="button-html-tab" aria-controls="button-html"
                 aria-selected="false">它產生的</button>
-    </nav><div id="button-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="button-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="button-caption"></footer>
+    </nav><div id="button-jinja" role="tabpanel" aria-labelledby="button-jinja-tab"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="button-html" role="tabpanel" aria-labelledby="button-html-tab"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="button-caption"></footer>
 
   </div>
 
@@ -213,11 +213,11 @@ fjkit
   </div><div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="Representation"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="data-jinja"
+        <button type="button" role="tab" id="data-jinja-tab" aria-controls="data-jinja"
                 aria-selected="true">你寫的</button>
-        <button type="button" role="tab" aria-controls="data-html"
+        <button type="button" role="tab" id="data-html-tab" aria-controls="data-html"
                 aria-selected="false">它產生的</button>
-    </nav><div id="data-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="data-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="data-caption"></footer>
+    </nav><div id="data-jinja" role="tabpanel" aria-labelledby="data-jinja-tab"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="data-html" role="tabpanel" aria-labelledby="data-html-tab"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="data-caption"></footer>
 
   </div>
 
@@ -454,11 +454,11 @@ fjkit
   </div><div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="Representation"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="form-jinja"
+        <button type="button" role="tab" id="form-jinja-tab" aria-controls="form-jinja"
                 aria-selected="true">你寫的</button>
-        <button type="button" role="tab" aria-controls="form-html"
+        <button type="button" role="tab" id="form-html-tab" aria-controls="form-html"
                 aria-selected="false">它產生的</button>
-    </nav><div id="form-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="form-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="form-caption"></footer>
+    </nav><div id="form-jinja" role="tabpanel" aria-labelledby="form-jinja-tab"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="form-html" role="tabpanel" aria-labelledby="form-html-tab"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="form-caption"></footer>
 
   </div>
 
@@ -709,6 +709,11 @@ fjkit
         沒有載入這支腳本時，欄位會送出一整串 JSON 字串，路由回應 422。
       </p>
       <p>
+        multiple 的 <code>combobox</code> 是為窄欄排版的：篩選框自己佔第一行，chips 在它下方換行，
+        控制項撐滿整欄，清單錨定在篩選框而不是 chips 的底部，所以連續選取幾個選項時，
+        游標下的選項不會移動。過長的標籤在清單裡換行，在 chip 裡截斷。
+      </p>
+      <p>
         選項在十來個以內時，放在 <code>fieldset</code> 裡的一組 checkbox 送出相同的內容，而且不需要腳本。
       </p>
 </div>
@@ -903,6 +908,14 @@ fjkit
         而 <code>select_scripts()</code> 負責讓表頭那一格勾選整欄。
       </p>
       <p>
+        <code>resizable=true</code> 會在每個有 label 的欄位右緣放一個把手。訪客可以拖曳它，
+        或是聚焦後按方向鍵；按 Home 或雙擊則把欄寬還原為自然寬度。
+        欄寬存在 <code>localStorage</code>，以表格的 <code>id</code> 為鍵，所以可調寬的表格必須有
+        <code>id</code>；重新載入或經過 htmx swap 後，欄寬都會還原。頁面要載入
+        <code>resize_scripts()</code>；沒有載入時把手不會出現，表格就是一般的表格。
+        CSS 做不到這件事：<code>resize</code> 只作用於帶 overflow 的區塊盒，而表格儲存格不是。
+      </p>
+      <p>
         <code>page_size</code> 是一個 <code>&lt;form method="get"&gt;</code>，因為單獨一個
         <code>&lt;select&gt;</code> 沒有腳本就無法送出。它的 <code>url</code> 不能帶 query string：
         GET 送出會以表單欄位取代整段 query，所以篩選要放進 <code>keep</code>。
@@ -922,11 +935,11 @@ fjkit
   </div><div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="Representation"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="table-jinja"
+        <button type="button" role="tab" id="table-jinja-tab" aria-controls="table-jinja"
                 aria-selected="true">你寫的</button>
-        <button type="button" role="tab" aria-controls="table-html"
+        <button type="button" role="tab" id="table-html-tab" aria-controls="table-html"
                 aria-selected="false">它產生的</button>
-    </nav><div id="table-jinja" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="table-html" role="tabpanel"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="table-caption"></footer>
+    </nav><div id="table-jinja" role="tabpanel" aria-labelledby="table-jinja-tab"><pre class="code-block scrollbar" tabindex="0" role="region" aria-label="那行 Jinja 呼叫"></pre></div><div id="table-html" role="tabpanel" aria-labelledby="table-html-tab"><pre class="code-block scrollbar" tabindex="0" data-wrap="true" role="region" aria-label="產生的 HTML"></pre></div></div>  <footer id="table-caption"></footer>
 
   </div>
 
@@ -1022,9 +1035,10 @@ fjkit
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="../assets/data.js?v=e4b5be20e86a"></script>
+  <script defer src="../assets/data.js?v=8bafbf6c464b"></script>
   <script defer src="../assets/common.js?v=cfc24f854e78"></script>
-  <script defer src="../assets/components.js?v=9e793d51b578"></script>
+  <script defer src="../assets/components.js?v=77de169a66b3"></script>
   <script defer src="../assets/js/reveal.js?v=a668cfecf3ff"></script>
+  <script defer src="../assets/js/resize.js?v=49ba3363eaee"></script>
 </body>
 </html>

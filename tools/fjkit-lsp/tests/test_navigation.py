@@ -197,7 +197,7 @@ def test_an_id_finds_its_hx_targets_but_not_a_comment_quoting_one(rs: Resolver) 
     sym = _at(rs, DEMO / "templates/tasks/_board.html", '<div id="board">', "board")
     assert sym.kind == "id"
     refs = rs.references(sym)
-    assert len(refs) == 3
+    assert len(refs) == 4  # advance, delete, the status buttons and the owner filter
     assert all(loc.path.is_relative_to(DEMO) for loc in refs)  # ui/attrs.html quotes `#board` in a comment
 
 
