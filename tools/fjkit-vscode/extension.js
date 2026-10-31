@@ -5,7 +5,8 @@
 // Plain JavaScript on the VS Code API and nothing else: no vscode-languageclient,
 // no bundler, no npm. The client speaks the three requests the server answers
 // and the four document notifications that keep the server's copy of an open
-// buffer current. `tools/fjkit-vscode/build.py` zips it into a .vsix.
+// buffer current, and reports files created, changed or deleted on disk.
+// `tools/fjkit-vscode/build.py` zips it into a .vsix.
 
 const vscode = require("vscode");
 const { spawn } = require("node:child_process");
@@ -47,6 +48,7 @@ function send(s, message) {
 const REQUEST_TIMEOUT_MS = 10000;
 
 function request(s, method, params) {
+  flushFileChanges();
   const id = s.nextId++;
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -209,6 +211,33 @@ function closed(doc) {
   notify(server, "textDocument/didClose", { textDocument: { uri: doc.uri.toString() } });
 }
 
+// ---- files on disk ---------------------------------------------------------
+
+/** What the server indexes: its TEMPLATE_SUFFIXES, and Python. */
+const WATCHED = "**/*.{py,html,jinja,j2,txt,xml,svg}";
+/** A checkout or `uv sync` changes hundreds of files at once, and the server
+ *  rebuilds its index once per notification, so changes go out together once
+ *  they stop arriving, or before the next request, whichever is first. */
+const FILE_CHANGE_DELAY_MS = 200;
+let fileChanges = [];
+let fileChangeTimer = null;
+
+function fileChanged(type) {
+  return (uri) => {
+    if (!server || !server.ready) return;
+    fileChanges.push({ uri: uri.toString(), type });
+    clearTimeout(fileChangeTimer);
+    fileChangeTimer = setTimeout(flushFileChanges, FILE_CHANGE_DELAY_MS);
+  };
+}
+
+function flushFileChanges() {
+  clearTimeout(fileChangeTimer);
+  const changes = fileChanges;
+  fileChanges = [];
+  if (changes.length && server && server.ready) notify(server, "workspace/didChangeWatchedFiles", { changes });
+}
+
 // ---- providers -------------------------------------------------------------
 
 function at(doc, position) {
@@ -262,7 +291,12 @@ async function hover(doc, position) {
 function activate(context) {
   output = vscode.window.createOutputChannel("fjkit");
   const selector = LANGUAGES.map((language) => ({ language, scheme: "file" }));
+  const watcher = vscode.workspace.createFileSystemWatcher(WATCHED);
   context.subscriptions.push(
+    watcher,
+    watcher.onDidCreate(fileChanged(1)),
+    watcher.onDidChange(fileChanged(2)),
+    watcher.onDidDelete(fileChanged(3)),
     output,
     vscode.commands.registerCommand("fjkit.restartServer", restart),
     vscode.languages.registerDefinitionProvider(selector, {

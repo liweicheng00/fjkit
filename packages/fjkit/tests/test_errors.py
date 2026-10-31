@@ -601,3 +601,20 @@ def test_a_field_that_is_fine_renders_no_message():
     """`None`, not `""`. `error=` is a truthiness switch in `ui/form.html`, and
     the empty string is still a value handed to a macro."""
     assert NO_ERRORS.title is None
+
+
+def test_the_kit_error_page_links_home_under_the_root_path():
+    """An app mounted under a prefix, or behind a proxy, has its start page
+    there; `/` is someone else's."""
+    app = FastAPI()
+    mount_fjkit(app, FjkitConfig())
+
+    @app.post("/save")
+    def save(title: Annotated[str, Form()]) -> dict[str, str]:
+        return {}
+
+    response = TestClient(app, root_path="/ui").post("/save", headers=BROWSER)
+
+    assert response.status_code == 422
+    assert 'href="/ui/"' in response.text
+    assert 'href="/"' not in response.text

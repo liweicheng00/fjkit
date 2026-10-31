@@ -68,6 +68,9 @@
    * grey beside it. They stay surface tokens, not brand tokens. */
   --background: oklch(0.995 0.002 275);
   --card: oklch(1 0 0);
+  /* A popover is a card that floats: one surface, so a `--card` rebrand
+   * repaints dropdowns, comboboxes and popovers too. */
+  --popover: var(--card);
   --muted: oklch(0.968 0.004 275);
   --accent: oklch(0.955 0.008 275);
   --border: oklch(0.918 0.005 275);
@@ -111,7 +114,8 @@
 
   --background: oklch(0.16 0.012 275);
   --card: oklch(0.21 0.014 275);
-  --popover: oklch(0.21 0.014 275);
+  /* Repeated for the reason the --sidebar-* block below gives. */
+  --popover: var(--card);
   --muted: oklch(0.27 0.014 275);
   --accent: oklch(0.32 0.02 275);
   --border: oklch(1 0 0 / 11%);
@@ -364,6 +368,53 @@
    * at any width. */
   .description-list[data-layout="rows"] > div {
     @apply sm:grid-cols-[minmax(0,12rem)_1fr] sm:items-baseline sm:gap-4;
+  }
+
+  /* The multiple combobox in a narrow column.
+   *
+   * Basecoat positions the option list at the bottom of the whole control:
+   * `[data-popover]` is `top: 100%` against the `.combobox` root, and in
+   * multiple mode that root holds the `.combobox-chips` box, which grows by a
+   * row each time the chips wrap. Every pick that wraps moves the list down a
+   * row, and a quick second click lands on the option above the one aimed at.
+   * So the list is anchored to the input instead: `top: anchor(bottom)` reads
+   * the input's own box, whatever height the pack gave it, and a pick that adds
+   * a chip row moves nothing under the pointer. A browser without anchor
+   * positioning drops the declaration and keeps Basecoat's `top: 100%`.
+   *
+   * The input takes the first line on its own and the chips wrap below it,
+   * inside the box the pack already skins, so the border, ring and fill stay
+   * the pack's. The control fills its column and the list is capped at that
+   * width, with option labels wrapping instead of truncating. */
+  .combobox:has(> .combobox-chips) {
+    @apply w-full;
+  }
+
+  .combobox-chips > input[role="combobox"] {
+    @apply order-first basis-full;
+    anchor-name: --fjkit-combobox-input;
+  }
+
+  /* No `anchor-scope`: a popover resolves the last anchor of that name before
+   * it in tree order, which on a page of several multiple comboboxes is each
+   * control's own input. */
+  .combobox:has(> .combobox-chips) > [data-popover] {
+    @apply max-w-full;
+    position-anchor: --fjkit-combobox-input;
+    top: anchor(bottom);
+  }
+
+  .combobox:has(> .combobox-chips) [role="option"] {
+    @apply whitespace-normal;
+  }
+
+  /* A chip never grows past the column; its label truncates instead. */
+  .combobox-chip {
+    @apply max-w-full;
+  }
+
+  .combobox-chip > span {
+    @apply min-w-0 truncate;
   }
 
   /* The chevron in a `collapsible` summary, and the rule that turns it over.

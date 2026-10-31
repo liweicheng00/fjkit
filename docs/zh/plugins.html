@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=cc818caf9ea5">
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=167b5fdd579e">
   <link rel="stylesheet" href="../assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -28,7 +28,7 @@
       data-position="sticky">
 <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
           aria-label="Toggle navigation" aria-controls="sidebar"
-          onclick="document.getElementById('sidebar').toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>      <div class="ml-auto">
+          onclick="document.getElementById(this.getAttribute('aria-controls')).toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>      <div class="ml-auto">
 <div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit 的 GitHub 原始碼">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
        fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
 </a>
@@ -158,8 +158,15 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
 
 <div class="flex flex-col gap-3">      <p>
         路由看不到這些。在 router 上掛 <code>Depends(auth.required)</code>，底下的 handler
-        簽名不用改。session 在 <code>request.state.auth</code> 上，在每個模板裡叫
-        <code>session</code>。
+        簽名不用改。需要 session 的 handler 把它當參數拿：<code>session: Session = Depends(auth.required)</code>，
+        公開頁面則用 <code>Depends(auth.optional)</code>；手上有 plugin 和 request 的程式碼呼叫
+        <code>auth.session(request)</code>；每個模板裡叫 <code>session</code>。
+      </p>
+      <p>
+        只從這幾個地方讀，原因是斷線。身分提供者連不上時，token 已經過期的請求會由任何索取 session
+        的地方回 503，什麼都不索取的 handler，例如登出，照常執行。middleware 自己的
+        <code>request.state.auth</code> 在那次請求裡是 <code>None</code>，直接讀它的 handler
+        會把已登入的使用者當成匿名。
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -316,11 +323,11 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))</pre>
     <div class="card">      <div class="tabs">
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
-        <button type="button" role="tab" aria-controls="charts-router"
+        <button type="button" role="tab" id="charts-router-tab" aria-controls="charts-router"
                 aria-selected="true">app/routers/workload.py</button>
-        <button type="button" role="tab" aria-controls="charts-page"
+        <button type="button" role="tab" id="charts-page-tab" aria-controls="charts-page"
                 aria-selected="false">app/templates/workload/page.html</button>
-    </nav><div id="charts-router" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/routers/workload.py" data-lang="python">import plotly.graph_objects as go
+    </nav><div id="charts-router" role="tabpanel" aria-labelledby="charts-router-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/routers/workload.py" data-lang="python">import plotly.graph_objects as go
 from fastapi import APIRouter
 from fjkit import render
 from fjkit_charts import Chart
@@ -341,7 +348,7 @@ def workload():
         ),
     ]}</pre>
 
-<footer>Chart 需要設定四個欄位：id、title、summary 與 figure。summary 為必填：它是螢幕閱讀器讀出的文字，也是 JavaScript 關閉時顯示的內容。figure 直接接收 go.Figure；Chart 會驗證它，無效的 trace 會在這裡失敗，而不是渲染出一個空框。</footer></div><div id="charts-page" role="tabpanel">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
+<footer>Chart 需要設定四個欄位：id、title、summary 與 figure。summary 為必填：它是螢幕閱讀器讀出的文字，也是 JavaScript 關閉時顯示的內容。figure 直接接收 go.Figure；Chart 會驗證它，無效的 trace 會在這裡失敗，而不是渲染出一個空框。</footer></div><div id="charts-page" role="tabpanel" aria-labelledby="charts-page-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
 {% from &#34;charts/macros.html&#34; import chart, chart_scripts %}
 
 {% block content %}
@@ -675,7 +682,7 @@ mount_fjkit(app, config)</pre>
 
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="auth plugin 的 extend()，全部" data-lang="python">def extend(self, setup: EnvSetup) -&gt; None:
     setup.add_context_processor(
-        lambda request: {&#34;session&#34;: getattr(request.state, &#34;auth&#34;, None)},
+        lambda request: {&#34;session&#34;: self.session(request)},
         provides=[&#34;session&#34;],
     )</pre>
 
@@ -684,7 +691,7 @@ mount_fjkit(app, config)</pre>
         兩個限制都是刻意的。processor 必須<strong>同步</strong>：它在
         <code>Templates.page()</code> 裡執行，而那是 <code>def</code> handler 從 threadpool 進來的。
         需要 I/O 的 plugin 在 middleware 裡做完，把結果留在 <code>request.state</code> 上，
-        上面那一行讀的正是這個。
+        上面那一行的 <code>session()</code> 讀的正是這個。
       </p>
       <p>
         <code>provides=</code> 是強制宣告，不是自動推得。沒有它，兩個 plugin 會默默搶同一個
@@ -781,7 +788,7 @@ mount_fjkit(app, config)</pre>
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="../assets/data.js?v=dc260abe1326"></script>
+  <script defer src="../assets/data.js?v=3faea1cc4e2a"></script>
   <script defer src="../assets/common.js?v=cfc24f854e78"></script>
 </body>
 </html>

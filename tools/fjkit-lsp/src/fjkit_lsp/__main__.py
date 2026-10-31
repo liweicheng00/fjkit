@@ -14,7 +14,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from fjkit_lsp.index import Index, Loc
+from fjkit_lsp.index import Index, Loc, kit_warning, split_lines
 from fjkit_lsp.resolve import Resolver, Symbol, _rel
 
 
@@ -31,6 +31,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     cmd, *rest = argv
     index = Index([Path.cwd()])
+    if warning := kit_warning(index):
+        print(warning, file=sys.stderr)
     rs = Resolver(index)
     if cmd == "index":
         print("app roots:")
@@ -60,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
         if not tpl:
             print(f"unknown template {rest[0]}")
             return 1
-        sym = Symbol("ident", ident, template=tpl, line=len(tpl.text.splitlines()))
+        sym = Symbol("ident", ident, template=tpl, line=len(split_lines(tpl.text)))
         print(rs.hover(sym))
         for loc in rs.definition(sym):
             print("  ", _fmt(loc))

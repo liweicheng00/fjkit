@@ -113,9 +113,9 @@ class AuthFlow(Protocol):
     def state(self, request: Request) -> FlowState:
         """Describe the panel. Synchronous, because it runs during a render.
 
-        A flow needing I/O does it in `sign_in` and reads the result back off
-        `request.state`, which is what `SessionFlow` does with the session
-        `AuthPlugin`'s middleware already loaded.
+        A flow needing I/O does it in `sign_in` and reads the result back on
+        the next request, which is what `SessionFlow` does through
+        `AuthPlugin.session`, the session its middleware already loaded.
         """
 
     async def sign_in(self, request: Request, response: Response, values: Mapping[str, str]) -> None:
@@ -220,7 +220,7 @@ class SessionFlow:
         self.attach_bearer = attach_bearer
 
     def state(self, request: Request) -> FlowState:
-        session = getattr(request.state, "auth", None)
+        session = self.auth.session(request)
         if session is None:
             return FlowState(
                 signed_in=False,
@@ -282,9 +282,8 @@ class SessionFlow:
     def headers(self, request: Request) -> Mapping[str, str]:
         if not self.attach_bearer:
             return {}
-        session = getattr(request.state, "auth", None)
-        access = getattr(session, "access", None)
-        return {"Authorization": f"Bearer {access}"} if access else {}
+        session = self.auth.session(request)
+        return {"Authorization": f"Bearer {session.access}"} if session is not None and session.access else {}
 
 
 class HeaderFlow:

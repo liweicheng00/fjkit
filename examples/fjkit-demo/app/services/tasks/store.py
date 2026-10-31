@@ -9,6 +9,7 @@ not here: they need no lock and no dictionary, so they are functions in
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from itertools import count
 from threading import Lock
@@ -23,12 +24,12 @@ class TaskService:
         self._ids = count(1)
         self._tasks: dict[int, Task] = {task.id: task for task in seed_tasks(self._ids)}
 
-    def list(self, status: Status | None = None, owner: str | None = None) -> list[Task]:
+    def list(self, status: Status | None = None, owners: Sequence[str] = ()) -> list[Task]:
         tasks = self._tasks.values()
         if status is not None:
             tasks = (t for t in tasks if t.status is status)
-        if owner:
-            tasks = (t for t in tasks if t.owner == owner)
+        if owners:
+            tasks = (t for t in tasks if t.owner in owners)
         return sorted(tasks, key=lambda t: (t.status is Status.DONE, -t.id))
 
     def get(self, task_id: int) -> Task | None:
