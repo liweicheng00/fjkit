@@ -97,6 +97,7 @@ const TABLE_STATE = {
   sortable: "sorted",
   "batch select": "select",
   resizable: "resizable",
+  grouped: "grouped",
 };
 
 const TABLE_JINJA = {
@@ -152,6 +153,18 @@ const TABLE_JINJA = {
 {% endcall %}
 
 {% block scripts %}{{ resize_scripts() }}{% endblock %}`,
+
+  grouped: `{% set columns = [
+  {"label": "Adverse event"},
+  {"label": "n", "align": "end", "group": "Dose 1 (N=12)"},
+  {"label": "%", "align": "end", "group": "Dose 1 (N=12)"},
+  {"label": "n", "align": "end", "group": "Dose 2 (N=9)"},
+  {"label": "%", "align": "end", "group": "Dose 2 (N=9)"},
+] %}
+
+{% call table(columns, rows=events) %}
+  {% for event in events %}{{ event_row(event) }}{% endfor %}
+{% endcall %}`,
 };
 
 const TABLE_CAPTION = {
@@ -160,6 +173,7 @@ const TABLE_CAPTION = {
   sortable: "A column becomes sortable by carrying a sort_url, and sort says which way it is going now. The arrow and aria-sort are keyed off that one value, so they cannot disagree. Every header is an href before it is a swap: sorting works with JavaScript off, and a sorted view is a URL you can send someone.",
   "batch select": "{\"select\": true} is the header box, select_cell is the row box, and the name they share is the field the selection posts under — selected=3&selected=7, which is what a checkbox column has always sent. The action collects it with hx-include; nothing maintains a list. select_scripts() is what ticks the column, shows the partial state and tints the picked rows.",
   resizable: "Drag the edge of a heading, or focus it with Tab and press the arrow keys. Home or a double-click resets the column. The widths are stored in localStorage under the table's id and come back after a reload and after an htmx swap. Without resize_scripts() the handles stay hidden and the table is the ordinary one.",
+  grouped: "A group key puts a heading over its column in a second header row. Neighbours with the same group share one centred cell, and a column with none spans both rows, so the label column owns the corner. The heading lives on the column rather than in a list of spans, so adding a column to a set is one dict and nothing has to be recounted. A grouped table cannot also be resizable.",
 };
 
 const MACROS = {
@@ -283,7 +297,7 @@ const MACROS = {
   table: {
     label: "table",
     controls: [
-      { key: "state", type: "select", label: "state", options: ["3 rows", "empty", "sortable", "batch select", "resizable"], value: "3 rows" },
+      { key: "state", type: "select", label: "state", options: ["3 rows", "empty", "sortable", "batch select", "resizable", "grouped"], value: "3 rows" },
     ],
     render: (p) => DATA.tables[TABLE_STATE[p.state]],
     jinja: (p) => TABLE_JINJA[p.state],

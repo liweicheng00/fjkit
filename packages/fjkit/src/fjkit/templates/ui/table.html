@@ -55,6 +55,7 @@
       sort_url    where clicking the header goes; its presence is what makes
                   the column sortable
       select      true, for the batch-selection column
+      group       a heading over this column, in a row above the labels
 
   `sort_url` is a URL the caller built, not a column key the macro turns into
   one. The router already owns the query string — it is the thing that knows
@@ -82,6 +83,25 @@
   its key with every other table on the site. The select column and the
   `width="min"` columns get no handle: they hold a control or a number whose
   width the macro already chose.
+
+  `group` adds a second header row, for the tables whose columns come in sets —
+  a population's "n" and "%", a quarter's three months:
+
+      columns=[{"label": "Category"},
+               {"label": "n", "align": "end", "group": "Dose 1 (N=12)"},
+               {"label": "%", "align": "end", "group": "Dose 1 (N=12)"},
+               {"label": "n", "align": "end", "group": "Dose 2 (N=9)"},
+               {"label": "%", "align": "end", "group": "Dose 2 (N=9)"}]
+
+  Neighbouring columns with the same `group` share one centred cell above them,
+  and a column with none spans both rows. The heading is a key on the column
+  rather than a separate list of spans, so a group cannot be wider or narrower
+  than the columns under it: adding a column to a set is one dict, and nothing
+  elsewhere has to be recounted. Two sets that must stay apart need different
+  text, which a population heading has anyway.
+
+  A grouped table cannot also be `resizable`. The handles store a width per
+  header cell, and with two rows a cell's position no longer names its column.
 #}
 {% macro table(columns, rows=none, empty_title="Nothing here", empty_description=none, empty_icon="list",
                target=none, swap="outerHTML", push_url=true,
@@ -90,14 +110,48 @@
     {% if resizable and not kwargs.get("id") %}
       {{- fjkit_raise("table(resizable=true) needs an id: it is the key the column widths are stored under.") }}
     {% endif %}
+    {% set head = namespace(grouped=false) %}
+    {% for column in columns if column.get("group") %}{% set head.grouped = true %}{% endfor %}
+    {% if resizable and head.grouped %}
+      {{- fjkit_raise("table(resizable=true) cannot take a column with a group: the stored widths are keyed by header position.") }}
+    {% endif %}
     <div class="table-container">
       <table class="table"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}{% if resizable %} data-fjkit-resize{% endif %}>
         <thead>
+          {% if head.grouped %}
+            {#
+              One pass, emitting a group's cell when its run ends: by then the
+              counter holds its width, and a column outside any group has
+              already been written in its place between them.
+            #}
+            {% set run = namespace(span=0) %}
+            <tr>
+              {% for column in columns %}
+                {% if not column.get("group") %}
+                  {{- _header(column, target, swap, push_url, select_name, select_label, false, rowspan=2) }}
+                {% else %}
+                  {% set run.span = run.span + 1 %}
+                  {% if loop.last or loop.nextitem.get("group") != column.group %}
+                    <th class="text-center" scope="colgroup"{% if run.span > 1 %} colspan="{{ run.span }}"{% endif %}>
+                      {{- column.group -}}
+                    </th>
+                    {% set run.span = 0 %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+            </tr>
+            <tr>
+              {% for column in columns if column.get("group") %}
+                {{- _header(column, target, swap, push_url, select_name, select_label, false) }}
+              {% endfor %}
+            </tr>
+          {% else %}
           <tr>
             {% for column in columns %}
               {{- _header(column, target, swap, push_url, select_name, select_label, resizable) }}
             {% endfor %}
           </tr>
+          {% endif %}
         </thead>
         <tbody>{{ caller() }}</tbody>
       </table>
@@ -119,7 +173,7 @@
   who could reach this one would be able to build a table whose header count
   and column count disagree.
 #}
-{% macro _header(column, target, swap, push_url, select_name, select_label, resizable) -%}
+{% macro _header(column, target, swap, push_url, select_name, select_label, resizable, rowspan=none) -%}
   {%- if column.get("select") -%}
     {#
       `role="checkbox"` is the implicit role of the element already. It is
@@ -127,7 +181,7 @@
       `[&:has([role=checkbox])]:pe-0` — to take the trailing padding off a
       column that holds nothing but a tick box.
     #}
-    <th class="w-px">
+    <th class="w-px"{% if rowspan %} rowspan="{{ rowspan }}"{% endif %}>
       <input class="input" type="checkbox" role="checkbox"
              data-fjkit-select-all="{{ select_name }}" aria-label="{{ select_label }}">
     </th>
@@ -136,6 +190,7 @@
     {%- set sort_url = column.get("sort_url") -%}
     {%- set handle = resizable and column.get("label") and column.get("width") != "min" -%}
     <th class="{{ _WIDTH.get(column.get("width"), "") }} {{ _ALIGN.get(column.get("align"), "") }}"
+        {%- if rowspan %} rowspan="{{ rowspan }}"{% endif %}
         {%- if sort_url %} aria-sort="{{ _ARIA_SORT.get(sort, "none") }}"{% endif %}
         {#
           An unlabelled cell is invisible to a screen reader reading out the

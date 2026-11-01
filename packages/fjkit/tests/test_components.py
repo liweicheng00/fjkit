@@ -319,6 +319,85 @@ class TestSortableHeaders:
         assert "aria-sort" not in html
 
 
+class TestHeaderGroups:
+    """A `group` key on a column puts a heading over it in a second header row,
+    for count tables whose columns come in sets — a population's n and %."""
+
+    GROUPED = (
+        '[{"label": "Category"},'
+        ' {"label": "n", "align": "end", "group": "Dose 1", "sort": "asc", "sort_url": "/t?o=-n1"},'
+        ' {"label": "%", "align": "end", "group": "Dose 1"},'
+        ' {"label": "n", "align": "end", "group": "Dose 2", "sort_url": "/t?o=n2"},'
+        ' {"label": "%", "align": "end", "group": "Dose 2"}]'
+    )
+
+    @staticmethod
+    def header_rows(html):
+        return re.findall(r"<tr>(.*?)</tr>", html.split("<tbody>")[0], re.S)
+
+    def test_no_group_keeps_a_single_header_row(self, render):
+        html = render(f'{TABLE}{{% call table([{{"label": "Task"}}]) %}}r{{% endcall %}}')
+        assert len(self.header_rows(html)) == 1
+        assert "rowspan" not in html
+        assert "colgroup" not in html
+
+    def test_neighbouring_columns_share_one_group_cell(self, render):
+        html = render(f"{TABLE}{{% call table({self.GROUPED}) %}}r{{% endcall %}}")
+        top, labels = self.header_rows(html)
+        assert re.findall(r'<th class="text-center" scope="colgroup" colspan="2">(.*?)</th>', top) == [
+            "Dose 1",
+            "Dose 2",
+        ]
+        assert len(re.findall(r"<th\b", labels)) == 4
+
+    def test_a_column_without_a_group_spans_both_rows(self, render):
+        """No empty cell sits over the label column: it owns the corner."""
+        html = render(f"{TABLE}{{% call table({self.GROUPED}) %}}r{{% endcall %}}")
+        top, labels = self.header_rows(html)
+        assert re.search(r'<th class="[^"]*" rowspan="2">Category</th>', top)
+        assert "Category" not in labels
+
+    def test_the_select_column_spans_both_rows(self, render):
+        columns = '[{"select": true}, {"label": "n", "group": "Dose 1"}]'
+        top, labels = self.header_rows(render(f"{TABLE}{{% call table({columns}) %}}r{{% endcall %}}"))
+        assert re.search(r'<th class="w-px" rowspan="2">\s*<input[^>]*data-fjkit-select-all', top)
+        assert "data-fjkit-select-all" not in labels
+
+    def test_a_one_column_group_carries_no_colspan(self, render):
+        columns = '[{"label": "n", "group": "Total"}]'
+        top, _ = self.header_rows(render(f"{TABLE}{{% call table({columns}) %}}r{{% endcall %}}"))
+        assert '<th class="text-center" scope="colgroup">Total</th>' in top
+
+    def test_the_same_group_apart_is_two_cells(self, render):
+        """Only neighbours merge. A heading cannot stretch over a column that
+        is not in its set."""
+        columns = '[{"label": "a", "group": "G"}, {"label": "b"}, {"label": "c", "group": "G"}]'
+        top, labels = self.header_rows(render(f"{TABLE}{{% call table({columns}) %}}r{{% endcall %}}"))
+        assert top.count(">G</th>") == 2
+        assert "colspan" not in top
+        assert re.findall(r">(\w)</th>", labels) == ["a", "c"]
+
+    def test_sorting_is_unchanged_under_a_group(self, render):
+        html = render(f'{TABLE}{{% call table({self.GROUPED}, target="#t") %}}r{{% endcall %}}')
+        _, labels = self.header_rows(html)
+        assert 'aria-sort="ascending"' in labels
+        assert 'aria-sort="none"' in labels
+        assert 'hx-get="/t?o=-n1"' in labels
+
+    def test_an_empty_grouped_table_renders_the_empty_state(self, render):
+        html = render(f'{TABLE}{{% call table({self.GROUPED}, rows=[], empty_title="Nothing") %}}r{{% endcall %}}')
+        assert "Nothing" in html
+        assert "<table" not in html
+
+    def test_a_grouped_table_cannot_be_resizable(self, render):
+        """`js/resize.js` keys a width by the header cell's position in the
+        first row, which with two rows is no longer its column."""
+        from jinja2 import TemplateRuntimeError
+
+        with pytest.raises(TemplateRuntimeError, match="group"):
+            render(f'{TABLE}{{% call table({self.GROUPED}, resizable=true, id="t") %}}r{{% endcall %}}')
+
+
 class TestSelectColumn:
     """0.4. The batch-selection column: a header box, a row box, and the
     readout that says what a bulk action is about to reach."""
