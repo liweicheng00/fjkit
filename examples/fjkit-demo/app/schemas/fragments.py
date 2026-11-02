@@ -60,6 +60,16 @@ class MatchesResponse(Fragment):
     selected_id: int | None = None
 
 
+class PanelsPageResponse(MatchesResponse):
+    """The panels page: the table, and the open panel's body.
+
+    The open tab's panel is rendered with the page rather than fetched after it,
+    so the page reply carries what `DetailResponse` carries as well.
+    """
+
+    selected: Task | None = None
+
+
 class StatsResponse(Fragment):
     query: str
     #: Counts over the matches, not over the board.

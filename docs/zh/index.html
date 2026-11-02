@@ -13,7 +13,7 @@
   </script>
   <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=bcec078cb3bc">
   <link rel="stylesheet" href="../assets/brand.css?v=1df0fccc3b31">
-  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
   <script defer src="../assets/vendor/basecoat/js/all.min.js?v=bdb364d43e0f"></script>
   <script defer src="../assets/js/errors.js?v=b54cb18a438c"></script>
@@ -241,7 +241,7 @@ def overview() -&gt; Overview:
 </div>    </main>
 
       <footer class="text-muted-foreground border-t py-5 text-xs">
-  fjkit 0.2.1 · FastAPI 0.141.1 ·
+  fjkit 0.3.0 · FastAPI 0.141.1 ·
   Jinja2 3.1.6 · Basecoat 1.0.2 ·
   htmx 2.0.10 —
   <a href="https://github.com/liweicheng00/fjkit">原始碼與 issues</a>.
@@ -257,7 +257,7 @@ def overview() -&gt; Overview:
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="../assets/data.js?v=a7071566dfcd"></script>
+  <script defer src="../assets/data.js?v=1b46c3291b5b"></script>
   <script defer src="../assets/common.js?v=cfc24f854e78"></script>
 </body>
 </html>
