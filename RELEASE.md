@@ -12,6 +12,8 @@ This repository publishes six artefacts to two registries: `fjkit`, `fjkit-chart
 
 `main` is protected. Every change arrives as a pull request, and a pull request merges only with CI green.
 
+A `feat:` never targets `main`. It lands on a release branch, and reaches `main` only as part of that release's pull request (see *Release branch*). Open the release branch first when none is open.
+
 | Rule           | Value                                                                    |
 | -------------- | ------------------------------------------------------------------------ |
 | Branch name    | `feat/<slug>`, `fix/<slug>`, `docs/<slug>`, `chore/<slug>`, `rfc/<slug>`; `release/v<X.Y.Z>` for a release |
@@ -27,7 +29,16 @@ A breaking change is `feat!:`, or a `BREAKING CHANGE:` footer. Before 1.0 that n
 
 ### Versions
 
-Each distribution carries its own version, and nothing in the tooling compares one against another. The weekly `0.x.0` cadence is `fjkit`'s; a plugin releases when the plugin changes, on the next release branch. Macro signatures are not frozen until 1.0.
+Each distribution carries its own version, and nothing in the tooling compares one against another. A plugin releases when the plugin changes, on the next release branch. Macro signatures are not frozen until 1.0.
+
+Which number moves is decided by the distribution's **contract**: the macro signatures and the markup an existing call renders, `FjkitConfig`, the importable Python API, the plugin hooks, the `fjkit check` vocabulary and the CLI. A plugin's contract is the same list over its own surface.
+
+| Release contains | Bump | Example |
+|---|---|---|
+| Only fixes, and features every existing caller can ignore | patch | 0.2.1 added an optional `group` key to `table()` columns; a table without one renders byte-identical to 0.2.0 |
+| Anything that makes an existing caller change, or changes what an existing call renders or does | minor | Renaming or removing a parameter, changing a default, changing the markup of a call that does not opt in |
+
+The release takes the highest bump any of its changes needs. A contract change is also a `feat!:` or carries a `BREAKING CHANGE:` footer, so the rule can be read off the commit subjects: any `!` or footer means minor.
 
 Bump one package:
 
@@ -51,7 +62,7 @@ A release is one pull request from `release/v<X.Y.Z>` into `main`. `<X.Y.Z>` is 
    ```bash
    git switch main && git pull
    git switch -c release/v0.2.0
-   uv version --package fjkit 0.2.0       # pyproject.toml and uv.lock
+   uv version --package fjkit 0.2.0       # pyproject.toml and uv.lock; patch or minor per *Versions*
    make docs                              # the site prints the kit version
    git add packages/fjkit/pyproject.toml uv.lock docs/
    git commit -m "chore(release): v0.2.0"
@@ -60,18 +71,22 @@ A release is one pull request from `release/v<X.Y.Z>` into `main`. `<X.Y.Z>` is 
      --body-file .github/PULL_REQUEST_TEMPLATE/release.md
    ```
 
-2. **Collect the work.** Every change for this release lands on the release branch, by either route:
+2. **Collect the work.** Every change for this release lands on the release branch. A pull request is the default; a local merge is allowed:
 
    | Route | How |
    |---|---|
-   | Pull request | `gh pr create --base release/v0.2.0`; squash or merge, as into `main` |
-   | Local merge | `git switch release/v0.2.0 && git merge --no-ff feat/<slug> && git push` |
+   | Pull request (default) | `gh pr create --base release/v0.2.0`; squash or merge, as into `main` |
+   | Local merge | `make check`, then `git switch release/v0.2.0 && git merge --no-ff feat/<slug> && git push` |
+
+   A pull request runs CI on the change before it reaches the release branch; a local merge does not, which is why it runs `make check` first. CI still runs on the release pull request either way.
 
    Both routes carry commit subjects to `main` unchanged, so each one follows Conventional Commits: the squashed pull request's title, or every commit of a locally merged branch.
 
+   If a change moves the release from patch to minor (see *Versions*), re-bump `fjkit` on the branch and rename it: the branch name is the version its tag will carry.
+
    `main` takes no other change while a release branch is open. If one lands anyway, merge `main` into the release branch.
 
-3. **Bump each plugin that changed**, one commit per plugin — `uv version --package fjkit-admin --bump minor`, subject `chore(release): fjkit-admin 0.2.0`; for `fjkit-vscode`, edit `version` in `tools/fjkit-vscode/package.json`. Raise its `fjkit>=` bound in the same branch when it uses something this release adds (see the warning above).
+3. **Bump each plugin that changed**, one commit per plugin, patch or minor by the same rule — `uv version --package fjkit-admin --bump minor`, subject `chore(release): fjkit-admin 0.2.0`; for `fjkit-vscode`, edit `version` in `tools/fjkit-vscode/package.json`. Raise its `fjkit>=` bound in the same branch when it uses something this release adds (see the warning above).
 
 4. **Write the description.** When the branch is complete, replace the pull request's description with the filled-in template from `.github/PULL_REQUEST_TEMPLATE/release.md`. Draft its Changes section from the previous kit tag, not from `main`, which also holds whatever merged after that tag:
 
