@@ -13,7 +13,7 @@
   </script>
   <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=bcec078cb3bc">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
-  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
   <script defer src="assets/vendor/basecoat/js/all.min.js?v=bdb364d43e0f"></script>
   <script defer src="assets/js/errors.js?v=b54cb18a438c"></script>
@@ -415,7 +415,7 @@ fjkit
       <h4><code>tab_panel(id, lazy=none, on=none, include=none)</code></h4><p>id has to match the tab&#39;s. That pairing is the whole aria contract Basecoat&#39;s keyboard behaviour reads.</p>    </section><aside><span class="badge" data-variant="outline">block: the body</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>tab_panel(&#34;detail&#34;, lazy=url_for(request, &#34;detail&#34;),
-          on=[&#34;task-selected&#34;], include=&#34;[name=task_id]&#34;)</code></h4><p>lazy is a URL: the panel fetches its own body when its tab is shown, and the block is what stands in until it arrives. on lists the broadcasts it follows while it is visible, include the selector for what it sends. Not revealed — a panel hidden by display:none reports an all-zero rect, which passes htmx&#39;s visibility test, so a revealed panel fetches at page load.</p>    </section><aside><span class="badge" data-variant="outline">block: the placeholder calls</span></aside>  </div>
+          on=[&#34;task-selected&#34;], include=&#34;[name=task_id]&#34;)</code></h4><p>lazy is a URL: the panel fetches its own body when its tab is shown, and the block is what stands in until it arrives. The open tab is the exception: it does not fetch at load, so its block is the real body, rendered by the page from the partial lazy returns. on lists the broadcasts it follows while it is visible, include the selector for what it sends. Not revealed — a panel hidden by display:none reports an all-zero rect, which passes htmx&#39;s visibility test, so a revealed panel fetches at page load.</p>    </section><aside><span class="badge" data-variant="outline">block: the placeholder, or the open tab&#39;s body calls</span></aside>  </div>
 </div></div>
   </div>
 </section></div>
@@ -726,7 +726,7 @@ HX-Refresh: true                 (response)</code></h4><p>Full-page navigation, 
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=a7071566dfcd"></script>
+  <script defer src="assets/data.js?v=1b46c3291b5b"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
 </body>
 </html>

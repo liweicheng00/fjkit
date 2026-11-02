@@ -227,3 +227,15 @@ def test_the_advance_button_refuses_the_panels_swap(htmx):
 def test_the_counters_take_no_id_at_all(htmx):
     """The route's signature is the argument for `include` being per panel."""
     assert htmx.get("/panels/counters", params={"task_id": 9999}).status_code == 200
+
+
+def test_the_open_panel_comes_with_the_page(client):
+    """`tab_panel` does not fetch the open panel at load, so the page renders
+    the same partial `panels_detail` returns. A skeleton here would never be
+    replaced until the user left the tab and came back."""
+    page = client.get("/panels?task_id=1").text
+    detail = page.split('id="panel-detail"', 1)[1].split('id="panel-related"', 1)[0]
+    assert "Loading the detail" not in detail
+    task = client.get("/panels/detail?task_id=1", headers={"HX-Request": "true"}).text
+    title = re.search(r"<h3[^>]*>(.*?)</h3>", task, re.S).group(1).strip()
+    assert title in detail

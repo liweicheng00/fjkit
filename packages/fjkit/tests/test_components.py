@@ -1631,6 +1631,45 @@ class TestLazyTabPanel:
         assert 'aria-label="Detail"' in html
         assert 'hx-get="/x"' in html
 
+    def test_only_the_tab_the_server_opened_is_marked(self, render):
+        """Basecoat moves `aria-selected` as the user clicks, so the panel needs
+        a mark it never moves to know which body the server rendered."""
+        html = render(f'{TABS}{{% call tabs({FILE_ITEMS}, selected="b") %}}{{% endcall %}}')
+        assert html.count("data-fjkit-open") == 1
+        assert re.search(r'id="b-tab"[^>]*data-fjkit-open', html)
+
+    def test_the_open_panel_skips_its_first_intersect(self, render):
+        """The open panel's body came with the page. Fetching it again costs a
+        request per view, and with `hx_push_url` a duplicate history entry that
+        makes Back land on the same URL. Every later showing still fetches."""
+        html = render(f"{TABS}{self.LAZY}")
+        trigger = re.search(r'hx-trigger="intersect\[(.*?)\]', html).group(1)
+        assert "data-fjkit-open" in trigger
+        assert "this.id + '-tab'" in trigger
+
+    def test_the_filter_returns_a_boolean(self, render):
+        """htmx runs the request only when a filter returns exactly `true`.
+        The mark reads back as a string, so without `!!` every panel would stop
+        fetching after its first showing."""
+        html = render(f"{TABS}{self.LAZY}")
+        assert 'hx-trigger="intersect[!!this.dataset.fjkitSeen || ' in html
+
+
+class TestHistory:
+    def test_back_reloads_instead_of_restoring_a_snapshot(self, render):
+        """htmx saves the snapshot of the page it leaves when the reply arrives,
+        after Basecoat has already switched the tab. Restoring that snapshot
+        re-fires the new tab's request, which pushes again: Back never leaves."""
+        from fjkit.config import TEMPLATE_DIR
+
+        shell = (TEMPLATE_DIR / "ui" / "shell.html").read_text(encoding="utf-8")
+        config = re.search(r"<meta name=\"htmx-config\" content='([^']*)'>", shell).group(1)
+        import json
+
+        parsed = json.loads(config)
+        assert parsed["historyCacheSize"] == 0
+        assert parsed["refreshOnHistoryMiss"] is True
+
 
 class TestCodeBlock:
     def test_a_scroll_region_is_reachable_by_keyboard(self, render):

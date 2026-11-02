@@ -642,15 +642,19 @@ GROUPS = [
                     _m(
                         'tab_panel("detail", lazy=url_for(request, "detail"),\n'
                         '          on=["task-selected"], include="[name=task_id]")',
-                        block="the placeholder",
+                        block="the placeholder, or the open tab's body",
                         en="lazy is a URL: the panel fetches its own body when its tab is shown, "
-                        "and the block is what stands in until it arrives. on lists the "
+                        "and the block is what stands in until it arrives. The open tab is the "
+                        "exception: it does not fetch at load, so its block is the real body, "
+                        "rendered by the page from the partial lazy returns. on lists the "
                         "broadcasts it follows while it is visible, include the selector for "
                         "what it sends. Not revealed — a panel hidden by display:none reports "
                         "an all-zero rect, which passes htmx's visibility test, so a revealed "
                         "panel fetches at page load.",
                         zh="lazy 是一個 URL：分頁被選到時，這個面板才去抓自己的內容，"
-                        "區塊裡放的是在那之前的暫代內容。on 列出它顯示中要跟著更新的廣播，"
+                        "區塊裡放的是在那之前的暫代內容。一開始就打開的分頁例外：它在載入時不抓，"
+                        "所以區塊裡放的是真正的內容，由頁面用 lazy 回傳的同一個 partial 渲染。"
+                        "on 列出它顯示中要跟著更新的廣播，"
                         "include 是它要送出什麼的選擇器。不能用 revealed——"
                         "被 display:none 藏起來的面板回報的是全為零的矩形，"
                         "剛好通過 htmx 的可見性判斷，所以 revealed 會在頁面載入時就抓。",

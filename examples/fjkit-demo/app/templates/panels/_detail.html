@@ -41,7 +41,7 @@
 {% else %}
   {% call card("Detail", "Nothing picked yet.", actions=stamp(rendered_label)) %}
     {{ empty_state("No task open",
-                   "Open a row above. This panel fetched itself when you chose the tab, and it will fetch again when you come back to it.",
+                   "Open a row above. This panel came with the page, and it fetches itself each time you come back to its tab.",
                    icon_name="radio-tower") }}
   {% endcall %}
 {% endif %}

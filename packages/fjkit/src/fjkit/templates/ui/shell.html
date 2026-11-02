@@ -88,8 +88,17 @@
     htmx's default handling: 2xx/3xx swap, 4xx/5xx do not. A 422 is read by
     `js/errors.js` in `htmx:beforeSwap` instead; 204 is what `fjkit.errors`
     answers a swap with when there is only a toast to raise.
+
+    No history snapshots: Back and Forward reload the URL instead. htmx saves
+    the snapshot of the page it is leaving when the reply arrives, and by then
+    a script may already have changed the page — Basecoat switches a tab on the
+    click. The snapshot then pairs the old URL with the new state, and restoring
+    it re-runs the new state's triggers, which push the new URL again: Back
+    never leaves. Every URL fjkit pushes is a real page (sort links, pagination
+    and tabs are `href`s first), so a reload is always right, and it costs one
+    request on Back.
   #}
-  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="{{ fjkit_static('vendor/htmx/htmx.min.js') }}"></script>
   <script defer src="{{ fjkit_static('vendor/basecoat/js/all.min.js') }}"></script>
   {# Draws a 422 under the fields of the form that sent it. After htmx: it listens to htmx's events. #}

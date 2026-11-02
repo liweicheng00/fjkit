@@ -13,7 +13,7 @@
   </script>
   <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=bcec078cb3bc">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
-  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
   <script defer src="assets/vendor/basecoat/js/all.min.js?v=bdb364d43e0f"></script>
   <script defer src="assets/js/errors.js?v=b54cb18a438c"></script>
@@ -457,7 +457,7 @@ fjkit
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
         <button type="button" role="tab" id="part-page-tab" aria-controls="part-page"
-                aria-selected="true">tasks/page.html</button>
+                aria-selected="true" data-fjkit-open>tasks/page.html</button>
         <button type="button" role="tab" id="part-board-tab" aria-controls="part-board"
                 aria-selected="false">tasks/_board.html</button>
         <button type="button" role="tab" id="part-row-tab" aria-controls="part-row"
@@ -605,7 +605,7 @@ fjkit
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
         <button type="button" role="tab" id="oob-call-tab" aria-controls="oob-call"
-                aria-selected="true">the macro call</button>
+                aria-selected="true" data-fjkit-open>the macro call</button>
         <button type="button" role="tab" id="oob-html-tab" aria-controls="oob-html"
                 aria-selected="false">the HTML it emits</button>
     </nav><div id="oob-call" role="tabpanel" aria-labelledby="oob-call-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the macro call" data-lang="jinja">{# search/page.html — the one control that starts all of this #}
@@ -1316,7 +1316,7 @@ messages.add(request, &#34;Could not save&#34;, &#34;The title is required.&#34;
     <nav role="tablist" aria-label="File"
          aria-orientation="horizontal">
         <button type="button" role="tab" id="invalid-route-tab" aria-controls="invalid-route"
-                aria-selected="true">router.py</button>
+                aria-selected="true" data-fjkit-open>router.py</button>
         <button type="button" role="tab" id="invalid-form-tab" aria-controls="invalid-form"
                 aria-selected="false">_new_task.html</button>
     </nav><div id="invalid-route" role="tabpanel" aria-labelledby="invalid-route-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="router.py" data-lang="python">@router.post(&#34;/tasks&#34;, name=&#34;tasks_create&#34;)
@@ -1530,7 +1530,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=a7071566dfcd"></script>
+  <script defer src="assets/data.js?v=1b46c3291b5b"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
   <script defer src="assets/learn.js?v=1cd452b749b0"></script>
 </body>
