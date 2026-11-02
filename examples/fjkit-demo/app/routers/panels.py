@@ -29,6 +29,7 @@ from app.schemas.fragments import (
     SELECTED_EVENT,
     DetailResponse,
     MatchesResponse,
+    PanelsPageResponse,
     RelatedResponse,
     StatsResponse,
 )
@@ -72,14 +73,20 @@ def _matches(service: TaskService, task_id: int | None) -> MatchesResponse:
 
 @router.get("/panels", name="panels_page")
 @render("panels/page.html", partial="panels/_matches.html")
-def panels_page(service: TaskServiceDep, task_id: int | None = None) -> MatchesResponse:
+def panels_page(service: TaskServiceDep, task_id: int | None = None) -> PanelsPageResponse:
     """Render the page, or just the table for an htmx request.
 
     `task_id` is read back so a reload with a panel open still knows what the
     page is about. The selection lives in the browser; this is the server's only
     involvement in it.
+
+    The open tab's body comes with the page: `tab_panel` does not fetch the
+    panel `tabs(selected=…)` names at load, so the page renders the same partial
+    `panels_detail` returns.
     """
-    return _matches(service, _selected(service, task_id).id if task_id else None)
+    selected = _selected(service, task_id)
+    matches = _matches(service, selected.id if selected else None)
+    return PanelsPageResponse(**matches.model_dump(exclude={"rendered_label"}), selected=selected)
 
 
 @router.get("/panels/select/{task_id}", name="panels_select")

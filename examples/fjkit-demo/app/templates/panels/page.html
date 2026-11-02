@@ -21,9 +21,9 @@
 
 {% block content %}
   {% set note %}
-    Three panels over one id, and only the open one costs a request. Each panel
-    fetches on {{ kbd("intersect") }} — when its tab is chosen — and hears a
-    broadcast only while it is visible. The pick raises its event with
+    Three panels over one id. The open one arrives with the page; each other
+    panel fetches on {{ kbd("intersect") }} — when its tab is chosen — and every
+    panel hears a broadcast only while it is visible. The pick raises its event with
     {{ kbd("HX-Trigger-After-Swap") }}, so the id is on the page before anything
     reads it, and pushes {{ kbd("/panels?task_id=") }} with
     {{ kbd("HX-Push-Url") }}, so a reload comes back to the same task and a
@@ -47,11 +47,12 @@
                   {"id": "panel-related",  "label": "Owner's other tasks"},
                   {"id": "panel-counters", "label": "Counters"}], label="Open task") %}
 
+      {# The open tab: rendered with the page, from the partial `lazy` returns. #}
       {% call tab_panel("panel-detail",
                         lazy=url_for(request, "panels_detail"),
                         on=["task-selected", "task-changed"],
                         include="[name=task_id]") %}
-        {{ skeleton(lines=4, label="Loading the detail") }}
+        {% include "panels/_detail.html" %}
       {% endcall %}
 
       {% call tab_panel("panel-related",

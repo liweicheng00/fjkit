@@ -13,7 +13,7 @@
   </script>
   <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=bcec078cb3bc">
   <link rel="stylesheet" href="../assets/brand.css?v=1df0fccc3b31">
-  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
   <script defer src="../assets/vendor/basecoat/js/all.min.js?v=bdb364d43e0f"></script>
   <script defer src="../assets/js/errors.js?v=b54cb18a438c"></script>
@@ -412,7 +412,7 @@ fjkit
       <h4><code>tab_panel(id, lazy=none, on=none, include=none)</code></h4><p>id 必須跟分頁的一致。這組配對就是 Basecoat 鍵盤行為所讀的整份 aria 契約。</p>    </section><aside><span class="badge" data-variant="outline">區塊：內容</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>tab_panel(&#34;detail&#34;, lazy=url_for(request, &#34;detail&#34;),
-          on=[&#34;task-selected&#34;], include=&#34;[name=task_id]&#34;)</code></h4><p>lazy 是一個 URL：分頁被選到時，這個面板才去抓自己的內容，區塊裡放的是在那之前的暫代內容。on 列出它顯示中要跟著更新的廣播，include 是它要送出什麼的選擇器。不能用 revealed——被 display:none 藏起來的面板回報的是全為零的矩形，剛好通過 htmx 的可見性判斷，所以 revealed 會在頁面載入時就抓。</p>    </section><aside><span class="badge" data-variant="outline">區塊：the placeholder 呼叫</span></aside>  </div>
+          on=[&#34;task-selected&#34;], include=&#34;[name=task_id]&#34;)</code></h4><p>lazy 是一個 URL：分頁被選到時，這個面板才去抓自己的內容，區塊裡放的是在那之前的暫代內容。一開始就打開的分頁例外：它在載入時不抓，所以區塊裡放的是真正的內容，由頁面用 lazy 回傳的同一個 partial 渲染。on 列出它顯示中要跟著更新的廣播，include 是它要送出什麼的選擇器。不能用 revealed——被 display:none 藏起來的面板回報的是全為零的矩形，剛好通過 htmx 的可見性判斷，所以 revealed 會在頁面載入時就抓。</p>    </section><aside><span class="badge" data-variant="outline">區塊：the placeholder, or the open tab&#39;s body 呼叫</span></aside>  </div>
 </div></div>
   </div>
 </section></div>
@@ -720,7 +720,7 @@ HX-Refresh: true                 (response)</code></h4><p>由 fragment 回應要
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="../assets/data.js?v=a7071566dfcd"></script>
+  <script defer src="../assets/data.js?v=1b46c3291b5b"></script>
   <script defer src="../assets/common.js?v=cfc24f854e78"></script>
 </body>
 </html>

@@ -63,7 +63,9 @@
 
   `selected` names the item that starts open; the first one by default. The
   server knows which tab the request was for, so this is a parameter and not
-  something a script decides after paint.
+  something a script decides after paint. That tab also carries
+  `data-fjkit-open`, which Basecoat never moves: it is how a lazy panel knows,
+  after the user has switched tabs, which panel the server rendered.
 #}
 {% macro tabs(items, label="Tabs", selected=none, orientation="horizontal", variant="underline") -%}
   {%- set body = caller() -%}
@@ -77,7 +79,8 @@
          {%- if shape %} data-variant="{{ shape }}"{% endif %}>
       {% for item in items %}
         <button type="button" role="tab" id="{{ item.id }}-tab" aria-controls="{{ item.id }}"
-                aria-selected="{{ "true" if item.id == active else "false" }}">{{ item.label }}</button>
+                aria-selected="{{ "true" if item.id == active else "false" }}"
+                {%- if item.id == active %} data-fjkit-open{% endif %}>{{ item.label }}</button>
       {% endfor %}
     </nav>
     {{- body -}}
@@ -93,12 +96,24 @@
   This way the panels stack and every one is legible.
 
   `lazy` is a URL, and it is all a panel needs to fetch its own body when it is
-  shown rather than when the page loads. The block's body then stands in until
-  the answer arrives — usually a `skeleton`. Without `lazy` the panel is inert
+  shown rather than when the page loads. Without `lazy` the panel is inert
   markup, and `on` and `include` are read only alongside it because neither
   means anything on its own.
 
-  Three decisions are baked in here so that no app template has to remember
+  The block's body means two things, depending on the panel:
+
+  * **The open panel** — the one `tabs(selected=…)` names — holds its real
+    content, rendered by the page route: the same partial `lazy` returns. It
+    does not fetch at load. The server already knows which tab the request was
+    for, and a panel that fetched what the page had just rendered would cost a
+    request per page view and, with `hx_push_url`, a duplicate history entry
+    that makes Back land on the same URL.
+  * **Every other panel** holds a stand-in, usually a `skeleton`, shown until
+    its first fetch arrives.
+
+  Every panel fetches each later time it is shown, the open one included.
+
+  Four decisions are baked in here so that no app template has to remember
   them. Each is a way this goes silently wrong when written by hand:
 
   * `intersect`, never `revealed`. htmx tests `revealed` with
@@ -118,6 +133,18 @@
   * `innerHTML` onto the panel. An element carrying `intersect` has to survive
     its own reply. A panel replaced by markup that asked for `intersect` again
     would be processed while on screen, fire immediately, and loop.
+  * The first `intersect` of the open panel is dropped. The filter marks the
+    panel seen and lets the request through only when its tab is not the one
+    carrying `data-fjkit-open`. The mark is on the panel and the test is on the
+    tab because Basecoat moves `aria-selected` and `hidden` as the user clicks,
+    and neither says what the server rendered. The `!!` is load-bearing: htmx
+    runs the request only when a filter returns exactly `true`, and the mark
+    reads back as the string `"y"`.
+
+  `hx_push_url="true"` passes through and is supported: each tab becomes a URL.
+  Back and Forward then reload the page at that URL rather than restore an htmx
+  snapshot — `ui/shell.html` turns the snapshot cache off for every page, and
+  says why.
 
   `include` is a selector for what the panel has to send: the id it is about,
   the query it is filtered by. A selector rather than a value carried in the
@@ -132,13 +159,19 @@
   that would need a listener on `<body>` — a script, for a page that otherwise
   has none.
 
-      {% call tab_panel("tab-detail", lazy=url_for(request, "search_detail"),
-                        on=["task-selected"], include="[name=task_id]") %}
-        {{ skeleton(lines=4, label="Loading the detail") }}
+      {% call tabs(items, selected="tab-detail") %}
+        {% call tab_panel("tab-detail", lazy=url_for(request, "search_detail"),
+                          on=["task-selected"], include="[name=task_id]") %}
+          {% include "search/_detail.html" %}
+        {% endcall %}
+        {% call tab_panel("tab-history", lazy=url_for(request, "search_history"),
+                          include="[name=task_id]") %}
+          {{ skeleton(lines=4, label="Loading the history") }}
+        {% endcall %}
       {% endcall %}
 #}
 {% macro tab_panel(id, lazy=none, on=none, include=none) -%}
-  {%- set trigger %}intersect
+  {%- set trigger %}intersect[!!this.dataset.fjkitSeen || (this.dataset.fjkitSeen = 'y', !document.getElementById(this.id + '-tab')?.hasAttribute('data-fjkit-open'))]
     {%- for event in on or [] %}, {{ event }}[!this.hidden] from:body{% endfor %}
   {%- endset -%}
   <div id="{{ id }}" role="tabpanel"
