@@ -244,6 +244,23 @@ select_row_src = "".join(
     for n, (title, status, variant, owner, points) in enumerate(ROWS, start=1)
 )
 
+# A count table: a heading over each population's n and %, and the label column
+# spanning both header rows.
+GROUPED_COLUMNS = (
+    '[{"label": "Adverse event"}, '
+    '{"label": "n", "align": "end", "group": "Dose 1 (N=12)"}, '
+    '{"label": "%", "align": "end", "group": "Dose 1 (N=12)"}, '
+    '{"label": "n", "align": "end", "group": "Dose 2 (N=9)"}, '
+    '{"label": "%", "align": "end", "group": "Dose 2 (N=9)"}]'
+)
+GROUPED_ROWS = [("Headache", 4, 33.3, 2, 22.2), ("Nausea", 3, 25.0, 5, 55.6), ("Fatigue", 1, 8.3, 0, 0.0)]
+grouped_row_src = "".join(
+    f"<tr>{{{{ cell('{event}', tone='strong') }}}}"
+    + "".join(f"{{{{ cell('{value}', numeric=true, align='end') }}}}" for value in values)
+    + "</tr>"
+    for event, *values in GROUPED_ROWS
+)
+
 tables = {
     "filled": render(
         f"{TABLE}{DATA}{BUTTON}{{% call table({COLUMNS}, rows=[1, 2, 3]) %}}{row_src}{{% endcall %}}"
@@ -269,6 +286,7 @@ tables = {
         f"{TABLE}{DATA}{BUTTON}"
         f'{{% call table({COLUMNS}, rows=[1, 2, 3], resizable=true, id="docs-resizable") %}}{row_src}{{% endcall %}}'
     ),
+    "grouped": render(f"{TABLE}{{% call table({GROUPED_COLUMNS}, rows=[1, 2, 3]) %}}{grouped_row_src}{{% endcall %}}"),
 }
 
 # ---------------------------------------------------------------- pagination
