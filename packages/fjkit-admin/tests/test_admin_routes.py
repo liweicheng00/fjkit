@@ -432,6 +432,90 @@ def test_get_queryset_scopes_every_route_and_the_count():
         assert task is not None and task.done is False
 
 
+class CoreProjects(ProjectAdmin):
+    """Project admin that shows the Core project only (id 1); Docs (id 2) is hidden."""
+
+    key = "project"
+
+    def get_queryset(self, request: Request, stmt):
+        return stmt.where(Project.id == 1)
+
+
+def test_foreign_key_options_go_through_the_related_admins_get_queryset():
+    app, _, _ = make_app(TaskAdmin, CoreProjects)
+    client = TestClient(app)
+    add = client.get("/admin/task/new", headers=HX).text
+    assert ">Core</option>" in add and ">Docs</option>" not in add
+    # The list filter over the same relation is scoped the same way.
+    listing = client.get("/admin/task", headers=HX).text
+    assert ">Core</option>" in listing and ">Docs</option>" not in listing
+
+
+def test_a_posted_foreign_key_outside_the_related_scope_is_a_422():
+    app, db, _ = make_app(TaskAdmin, CoreProjects)
+    client = TestClient(app)
+    with db() as session:
+        core_task = session.scalar(select(Task.id).where(Task.project_id == 1))
+        before = session.scalar(select(text("count(*)")).select_from(Task))
+
+    created = client.post("/admin/task", json={"title": "Sneaky", "project_id": "2"}, headers=HX)
+    assert created.status_code == 422
+    assert [tuple(e["loc"]) for e in created.json()["detail"]] == [("body", "project_id")]
+
+    moved = client.post(f"/admin/task/{core_task}", json={"title": "Moved", "project_id": "2"}, headers=HX)
+    assert moved.status_code == 422
+    assert [tuple(e["loc"]) for e in moved.json()["detail"]] == [("body", "project_id")]
+
+    with db() as session:
+        assert session.scalar(select(text("count(*)")).select_from(Task)) == before
+        assert session.get(Task, core_task).project_id == 1
+
+    # A reference inside the scope is still accepted.
+    assert client.post("/admin/task", json={"title": "Fine", "project_id": "1"}, headers=HX).status_code == 200
+
+
+def test_a_row_that_already_points_outside_the_scope_keeps_its_reference():
+    app, db, _ = make_app(TaskAdmin, CoreProjects)
+    client = TestClient(app)
+    with db() as session:
+        docs_task = session.scalar(select(Task.id).where(Task.project_id == 2))
+
+    # The change form offers the current value, so saving it does not silently move the row.
+    form = client.get(f"/admin/task/{docs_task}", headers=HX).text
+    assert ">Docs</option>" in form
+    saved = client.post(f"/admin/task/{docs_task}", json={"title": "Renamed", "project_id": "2"}, headers=HX)
+    assert saved.status_code == 200
+    with db() as session:
+        task = session.get(Task, docs_task)
+        assert task.title == "Renamed" and task.project_id == 2
+
+
+def test_a_bulk_action_loads_the_selection_in_one_query():
+    from sqlalchemy import event
+
+    app, db, _ = make_app()
+    client = TestClient(app)
+    engine = db.kw["bind"]
+    task_selects: list[str] = []
+
+    def record(conn, cursor, statement, parameters, context, executemany):
+        if statement.lstrip().upper().startswith("SELECT") and "FROM task" in statement and "count(" not in statement:
+            task_selects.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        body = "selected=2&selected=3&selected=4&selected=x&selected=999"
+        response = client.post("/admin/task/action/mark_done", content=body, headers=FORM)
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+    assert response.status_code == 200
+    assert "3 marked done" in response.headers["HX-Trigger"]
+    # One read of the selection; the second is the list the response re-renders.
+    assert len(task_selects) == 2, task_selects
+    with db() as session:
+        assert all(session.get(Task, pk).done for pk in (2, 3, 4))
+
+
 def test_dependencies_gate_every_route():
     from fastapi import Depends, HTTPException
 
