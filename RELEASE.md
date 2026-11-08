@@ -180,11 +180,28 @@ One-time setup, before the first extension release:
 1. Sign in at [https://open-vsx.org](https://open-vsx.org) with GitHub.
 2. Sign the Eclipse Publisher Agreement. An unsigned agreement is the usual cause of a rejected publish.
 3. Create an access token, and store it as the repository secret `OPEN_VSX_TOKEN`.
-4. Claim the namespace once, from a machine: `npx ovsx create-namespace fjkit -p <token>`.
+4. Claim the namespace once, from a machine: `npx ovsx@1.3.0 create-namespace fjkit -p <token>`.
 
 `npx` runs from npm's cache and leaves no `node_modules` in the repository. The `.vsix` itself is built by `tools/fjkit-vscode/build.py`, which writes the zip directly and needs neither npm nor `vsce`. The archive embeds timestamps, so two builds of one commit differ by hash; do not treat the hash as a version identifier.
 
 Open VSX serves Cursor, VSCodium, Windsurf and Gitpod. VS Code reads only Microsoft's Marketplace, so those users sideload the `.vsix`. Publishing there as well is undecided and would need a separate Azure DevOps account and token.
+
+### Pinned toolchain
+
+Every tool that writes a committed byte or runs a release step is pinned, so a laptop and CI build one commit into the same files. Raising a pin is its own commit, and one that changes built output rebuilds `static/dist/` and `docs/` in the same commit.
+
+| Tool | Pinned in |
+|---|---|
+| uv | `required-version` in the root `pyproject.toml`; `setup-uv` reads it |
+| Python | `.python-version`, exact patch |
+| Python packages, build group included | `uv.lock` |
+| Tailwind binary | `TAILWIND_VERSION` in `packages/fjkit/src/fjkit/cli/build_css.py`; `test_every_pack_is_built_by_the_pinned_tailwind` fails a stylesheet another binary wrote |
+| htmx, its extensions, Basecoat | `packages/fjkit/src/fjkit/vendored.py`; Plotly in `fjkit_charts` |
+| GitHub Actions | commit SHA in each `uses:`, the tag in a comment beside it |
+| Runner image | `ubuntu-24.04`, not `ubuntu-latest` |
+| Node, for `ovsx` only | `node-version` in `release-vscode.yml`; `ovsx@<version>` in the `Makefile` |
+
+A plugin's `fjkit>=` bound is deliberately not pinned from above; see *Versions*.
 
 ### Rehearsing the whole thing locally
 

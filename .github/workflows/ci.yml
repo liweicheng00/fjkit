@@ -15,10 +15,10 @@ concurrency:
 jobs:
   check:
     name: pytest, ruff, fjkit check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
       # `uv sync --group build` first: the tests read static/dist/, which is
@@ -32,10 +32,10 @@ jobs:
     # .githooks/pre-push catches it locally, this catches it when the hook
     # was not enabled.
     name: docs/ is current
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
       - run: make css
@@ -45,10 +45,10 @@ jobs:
     # The five distributions build and pass `make verify` on every push, so a
     # broken wheel is found before a tag is cut, not after.
     name: build and verify dist/
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
       - run: make build
