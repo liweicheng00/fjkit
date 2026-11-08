@@ -241,6 +241,13 @@ GROUPS = [
                         zh="route 是路由名稱，不是網址。作用中狀態由 is_active 決定，"
                         "連結不可能跟所在頁面對不上。",
                     ),
+                    _m(
+                        "sidebar_item(label, href, active=false, icon_name=none, lead=none)",
+                        en="For a URL that is not one route: the same route with a different "
+                        "parameter per row. lead puts a badge in a fixed-width cell so labels align.",
+                        zh="給不是單一路由的網址用：同一條路由、每列帶不同參數。"
+                        "lead 把徽章放進固定寬度的格子，讓標籤對齊。",
+                    ),
                     _m("sidebar_submenu(label, icon_name=none, open=false)", block="sidebar_link()"),
                     _m(
                         'sidebar_trigger(target="sidebar", label="Toggle navigation")',
@@ -307,7 +314,14 @@ GROUPS = [
                     _m('bullet_list(tone="muted")', block="list_item()"),
                     _m("list_item()", block="text"),
                     _m("item_list()", block="item()"),
-                    _m("description_list(layout=\"rows\")", block="description_item()"),
+                    _m(
+                        "description_list(layout=\"rows\")",
+                        block="description_item()",
+                        en="layout: rows | stacked | inline. inline is a few short facts on one "
+                        "wrapping line, in small type.",
+                        zh="layout：rows | stacked | inline。inline 把幾個短事實排在一行、"
+                        "可換行，字級較小。",
+                    ),
                     _m(
                         "description_item(term, value=none)",
                         block="value",
@@ -338,7 +352,7 @@ GROUPS = [
                         zh="它自己帶捲動區與可聚焦性，溢出的程式碼用鍵盤也到得了。",
                     ),
                     _m(
-                        "caption(text=none)",
+                        'caption(text=none, size="sm", tone="muted", icon_name=none)',
                         block="text",
                         optional=True,
                         en="A muted line that stands on its own. card, section and page_header "
@@ -483,8 +497,10 @@ GROUPS = [
                     _m(
                         'field_row(template="two", gap=3)',
                         block="fields",
-                        en="Two or three fields on one line, collapsing to one column when narrow.",
-                        zh="一行放兩到三個欄位，窄螢幕收成一欄。",
+                        en="Two or three fields on one line, collapsing to one column when narrow. "
+                        "template=\"inline\" gives each short field a fixed 16rem cell instead.",
+                        zh="一行放兩到三個欄位，窄螢幕收成一欄。"
+                        "template=\"inline\" 改為每個短欄位固定 16rem 一格。",
                     ),
                     _m(
                         "fieldset(legend=none, hint=none)",

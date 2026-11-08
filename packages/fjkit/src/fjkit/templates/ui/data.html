@@ -167,10 +167,32 @@
       {% call caption() %}
         Source: {{ link("the trial registry", href=registry_url) }}
       {% endcall %}
+
+  size: sm | xs
+  tone: muted | success | warning | info | destructive | none
+
+  `xs` is the small print under a control or a result — the size the field
+  macros give a hint. `tone` is the lookup `stat` uses, so a caption can be a
+  refusal (`destructive`), a caveat (`warning`) or, with `tone=none`, a plain
+  line in the body colour; it can never be a hue. The default stays muted,
+  which is what a caption is for.
+
+  `icon_name` leads the line with an icon, sized and spaced for the text, and
+  the line becomes a flex row so the two stay centred on each other:
+
+      {{ caption(error, tone="destructive", icon_name="circle-alert", role="alert") }}
 #}
-{% macro caption(text=none) -%}
-  <p class="text-muted-foreground text-sm"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+{% set _CAPTION_SIZES = {"sm": "text-sm", "xs": "text-xs"} %}
+{% set _CAPTION_ICON = {"sm": (16, "flex items-center gap-2"), "xs": (14, "flex items-center gap-1")} %}
+
+{% macro caption(text=none, size="sm", tone="muted", icon_name=none) -%}
+  {%- set size = size if size in _CAPTION_SIZES else "sm" -%}
+  {%- set classes = [_TONES.get(tone, ""), _CAPTION_SIZES[size]] -%}
+  {%- if icon_name %}{% set classes = classes + [_CAPTION_ICON[size][1]] %}{% endif -%}
+  <p class="{{ classes | select | join(" ") }}"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+    {%- if icon_name %}{{ icon(icon_name, _CAPTION_ICON[size][0]) }}<span>{% endif -%}
     {{- caller() if caller is defined else text -}}
+    {%- if icon_name %}</span>{% endif -%}
   </p>
 {%- endmacro %}
 
@@ -279,13 +301,16 @@
   than one expression, `{% call description_item("Notes") %}…{% endcall %}` puts
   it in the body instead; `value` wins if both are given.
 
-  Two layouts, and the difference is only where the term sits. `rows` moves it
+  Three layouts, and the difference is where the term sits. `rows` moves it
   beside the value once the viewport is wide enough for two columns. `stacked`
   keeps it above at every width, which is what a card too narrow for a label
-  column needs. Neither is a class the caller writes — see `fjkit.css`, where
-  the `<dd>` margin reset that both depend on also lives.
+  column needs. `inline` puts every pair on one wrapping line in small type —
+  three or four short facts in a panel that cannot spend a row on each, such
+  as the signed-in identity above an API console. None is a class the caller
+  writes — see `fjkit.css`, where the `<dd>` margin reset that all three
+  depend on also lives.
 #}
-{% set _DL_LAYOUTS = ("rows", "stacked") %}
+{% set _DL_LAYOUTS = ("rows", "stacked", "inline") %}
 
 {% macro description_list(layout="rows") -%}
   <dl class="description-list" data-layout="{{ layout if layout in _DL_LAYOUTS else "rows" }}"

@@ -20,8 +20,7 @@ from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, PluginWarning, mount_fjkit, render
 from fjkit.auth import AuthPlugin, CookieSpec, NoCsrf
 from fjkit.auth.types import Session
-from fjkit.cli.vocabulary import component_classes, emitted_classes
-from fjkit.config import STATIC_DIR
+from fjkit.cli.check import assert_templates_clean
 from fjkit_apidocs import ApiDocsPlugin, FlowError, HeaderFlow, NoFlow, SessionFlow
 from fjkit_apidocs import spec as specmod
 from fjkit_apidocs.plugin import DETAIL_ID, RESULT_ID, SESSION_ID, TEMPLATE_DIR
@@ -1338,46 +1337,32 @@ def test_the_response_example_says_on_screen_which_status_it_is(client: TestClie
     assert page.text.count("Example 200 response") == 2  # the caption and the region name
 
 
-def test_every_class_in_the_console_s_templates_exists_in_the_stylesheet():
-    """A class that is not in the built CSS has no effect, and nothing says so.
-
-    These templates ship inside the wheel, so they may use the utilities an app
-    may not — but only the ones `fjkit build-css` emitted. Getting this wrong
-    produces a page that renders and looks broken, which is the hardest kind of
-    failure to attribute.
-    """
-    known = component_classes() | emitted_classes() | {"htmx-indicator"}
-    attribute = re.compile(r'class\s*=\s*"([^"]*)"', re.DOTALL)
-    expression = re.compile(r"\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}", re.DOTALL)
-
+def console_templates():
     templates = sorted((TEMPLATE_DIR / "apidocs").glob("*.html"))
-    # These files live in the plugin's own directory, and the scan below passes
-    # trivially if they are moved again and this test is not.
+    # These files live in the plugin's own directory, and every scan below
+    # passes trivially if they are moved again and this list is not.
     assert templates, f"no console templates under {TEMPLATE_DIR / 'apidocs'}"
-    # Resolved, not matched as a string: since the 0.1 split the path reaches
-    # out of fjkit's own package into this one, and a literal would go stale the
-    # next time either end moves while still passing.
-    stylesheet = STATIC_DIR / "src" / "fjkit.css"
-    source = stylesheet.read_text(encoding="utf-8")
-    scanned = {
-        (stylesheet.parent / m.group(1)).resolve() for m in re.finditer(r'@source "([^"]+)"', source)
-    }
-    assert TEMPLATE_DIR.resolve() in scanned, (
-        f"fjkit.css no longer scans the console's templates ({TEMPLATE_DIR}) — every "
-        f"utility class in them would be missing from the built stylesheet, and "
-        f"Tailwind reports nothing when a @source path does not exist. Scanned: {sorted(scanned)}"
-    )
+    return templates
 
-    unknown: set[str] = set()
-    for path in templates:
-        for match in attribute.finditer(path.read_text(encoding="utf-8")):
-            for token in expression.sub(" ", match.group(1)).split():
-                if "{" in token or "}" in token:
-                    continue
-                if token.rsplit(":", 1)[-1] not in known:
-                    unknown.add(f"{path.name}: {token}")
 
-    assert not unknown, f"classes absent from the stylesheet: {sorted(unknown)}"
+def test_no_console_template_writes_a_class_attribute():
+    """The console composes `ui/*` macros and writes no class of its own.
+
+    fjkit's stylesheet is built from fjkit's own templates only. A class this
+    package wrote would be in the CSS only while fjkit's build happened to scan
+    these files, and it would have no effect — and report nothing — against any
+    fjkit built without them. With no class here, what the console needs from
+    fjkit is its macro signatures, which `fjkit>=` can state. The rule is the
+    one `fjkit-admin` keeps.
+    """
+    for path in console_templates():
+        assert 'class="' not in path.read_text(encoding="utf-8"), (
+            f"{path.name} writes a class; compose a ui/ macro instead"
+        )
+
+
+def test_every_console_template_stays_inside_the_fjkit_vocabulary():
+    assert_templates_clean(TEMPLATE_DIR)
 
 
 # ------------------------------------------------- what the endpoint receives

@@ -184,6 +184,16 @@
 
   `template` is a closed lookup key, not a raw grid-template string: an
   interpolated `sm:grid-cols-[…]` would not exist in the stylesheet.
+
+  template: two | three | four | wide-then-actions | field-and-button | inline
+
+  `inline` is for short values whose count the caller does not know — a
+  sign-in form whose fields come from configuration. Every cell is 16rem, about
+  as wide as a username or a password is ever typed, and as many cells sit on a
+  line as fit, so one field and four both look intended. A button group is one
+  more cell, bottom-aligned with the inputs. The other templates divide the
+  width by a fixed count, which stretches a four-character value across half a
+  card.
 #}
 {% set _ROWS = {
   "wide-then-actions": "sm:grid-cols-[1fr_8.5rem_8.5rem_auto]",
@@ -191,6 +201,7 @@
   "three": "sm:grid-cols-3",
   "four": "sm:grid-cols-2 lg:grid-cols-4",
   "field-and-button": "sm:grid-cols-[1fr_auto]",
+  "inline": "sm:grid-cols-[repeat(auto-fill,16rem)]",
 } %}
 
 {% macro field_row(template="two", gap=3) -%}
