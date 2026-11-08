@@ -127,7 +127,7 @@ async function start() {
     return;
   }
   const proc = spawn(command, args, { cwd: folder, env: process.env });
-  const s = { proc, pending: new Map(), nextId: 1, buffer: Buffer.alloc(0), ready: false };
+  const s = { proc, folder, pending: new Map(), nextId: 1, buffer: Buffer.alloc(0), ready: false };
   server = s;
   proc.on("error", (e) => log(`could not start ${command}: ${e.message}`));
   proc.on("exit", (code, signal) => {
@@ -215,16 +215,24 @@ function closed(doc) {
 
 /** What the server indexes: its TEMPLATE_SUFFIXES, and Python. */
 const WATCHED = "**/*.{py,html,jinja,j2,txt,xml,svg}";
-/** A checkout or `uv sync` changes hundreds of files at once, and the server
- *  rebuilds its index once per notification, so changes go out together once
- *  they stop arriving, or before the next request, whichever is first. */
+/** Directories the server never reads, its `SKIP_DIRS`, besides every one whose
+ *  name starts with a dot. A `uv sync` rewrites thousands of files under `.venv`. */
+const SKIPPED = new Set(["venv", "node_modules", "__pycache__", "dist", "build", "tests"]);
+/** A checkout changes hundreds of files at once, and a create or delete makes
+ *  the server rebuild its index once per notification, so changes go out
+ *  together once they stop arriving, or before the next request, whichever is first. */
 const FILE_CHANGE_DELAY_MS = 200;
 let fileChanges = [];
 let fileChangeTimer = null;
 
+function skipped(file) {
+  const dirs = path.relative(server.folder, file).split(path.sep).slice(0, -1);
+  return dirs.some((d) => d.startsWith(".") || SKIPPED.has(d));
+}
+
 function fileChanged(type) {
   return (uri) => {
-    if (!server || !server.ready) return;
+    if (!server || !server.ready || skipped(uri.fsPath)) return;
     fileChanges.push({ uri: uri.toString(), type });
     clearTimeout(fileChangeTimer);
     fileChangeTimer = setTimeout(flushFileChanges, FILE_CHANGE_DELAY_MS);

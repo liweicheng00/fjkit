@@ -68,7 +68,7 @@ def test_a_file_that_is_not_utf8_does_not_stop_the_index(tmp_path: Path) -> None
 
 
 def test_the_index_does_not_read_inside_a_virtualenv(tmp_path: Path) -> None:
-    """The server rebuilds on every save, so a 10,000-file `.venv` must cost nothing."""
+    """The server rebuilds when a file is created or deleted, so a 10,000-file `.venv` must cost nothing."""
     ws = _workspace(tmp_path, {"app/templates/page.html": "<p></p>\n", "app/main.py": "x = 1\n"})
 
     def build_ms() -> float:
@@ -171,6 +171,26 @@ def test_the_kit_and_a_plugin_installed_in_the_workspace_venv_are_found(tmp_path
     )
 
 
+def test_a_plugin_whose_import_name_differs_and_has_no_top_level_txt_is_found(tmp_path: Path) -> None:
+    """`top_level.txt` is a setuptools file; hatchling and uv_build do not write one.
+    The import name then comes from the files the distribution installed."""
+    record = "acme/__init__.py,,\nacme/templates/acme/card.html,,\nacme_cards-1.0.dist-info/METADATA,,\n"
+    ws = _workspace(
+        tmp_path,
+        {
+            **KIT,
+            f"{SITE}/acme/__init__.py": "",
+            f"{SITE}/acme/templates/acme/card.html": "<div></div>\n",
+            f"{SITE}/acme_cards-1.0.dist-info/METADATA": _metadata("acme-cards"),
+            f"{SITE}/acme_cards-1.0.dist-info/RECORD": record,
+            "app/templates/page.html": '{% include "acme/card.html" %}\n',
+        },
+    )
+    assert _definition(ws, "app/templates/page.html", 1, "acme/card.html", [ws / SITE]) == (
+        f"{SITE}/acme/templates/acme/card.html:1:1"
+    )
+
+
 def test_an_app_installed_into_its_own_venv_is_not_a_plugin(tmp_path: Path) -> None:
     """`uv sync` installs the project itself, editable, into `.venv`, and it requires
     fjkit like a plugin does. Two such apps and one plugin they share, all developed
@@ -261,7 +281,7 @@ def test_an_interpreter_without_fjkit_says_so_and_names_itself(tmp_path: Path) -
 
 
 def test_the_server_warns_once_about_a_missing_kit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """The editor shows the warning on start; a rebuild on every save must not repeat it."""
+    """The editor shows the warning on start; a later rebuild must not repeat it."""
     from fjkit_lsp import server as srv
     from lsprotocol import types as t
 
