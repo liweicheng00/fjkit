@@ -39,6 +39,7 @@ BROWSER = {"accept": "text/html,application/xhtml+xml"}
 TEMPLATES = {
     "who.html": "{{ session.claims.name if session else 'anonymous' }}",
     "ok.html": "ok",
+    "errors/page.html": "error {{ status_code }}",
 }
 
 
@@ -887,6 +888,22 @@ def test_an_outage_past_expiry_answers_503_wherever_the_session_is_needed(path):
     assert during.headers["retry-after"].isdigit()
     assert after.text == "ada", "the session survives the outage"
     assert source.refreshes == 1
+
+
+def test_an_error_page_during_an_outage_is_the_outage_answer(caplog):
+    """The error page renders through the `session` context processor, which
+    raises the deferred outage. The visitor gets the 503 every other page
+    gives, not a plain-text fallback, and the log gets no traceback."""
+    source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
+    client = make_app(make_auth(source=source))
+    client.post("/login", headers={"origin": ORIGIN})
+
+    with caplog.at_level(logging.ERROR, logger="fjkit.errors"):
+        response = client.get("/nowhere", headers=BROWSER, follow_redirects=False)
+
+    assert response.status_code == 503
+    assert response.headers["retry-after"].isdigit()
+    assert caplog.records == []
 
 
 def test_logging_out_needs_no_upstream():
