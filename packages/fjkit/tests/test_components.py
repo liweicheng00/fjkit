@@ -204,6 +204,31 @@ class TestSwap:
         shell = (TEMPLATE_DIR / "ui" / "shell.html").read_text(encoding="utf-8")
         assert "idiomorph" not in shell
 
+    def test_sse_scripts_loads_the_extension_after_htmx(self, render):
+        """`defer` for the same reason: the extension registers itself with
+        `htmx.defineExtension` the moment it runs."""
+        html = render('{% from "ui/swap.html" import sse_scripts %}{{ sse_scripts() }}')
+        assert "<script defer" in html
+        assert "vendor/htmx/sse.min.js" in html
+
+    def test_the_sse_extension_is_pinned_and_in_the_package(self):
+        """Missing, `hx-ext="sse"` names an extension htmx never heard of: no
+        connection opens, the reply bubble stays empty, and nothing logs why."""
+        from fjkit import vendored
+        from fjkit.config import STATIC_DIR
+
+        assert vendored.HTMX_SSE_VERSION == "2.2.4"
+        path = STATIC_DIR / "vendor" / "htmx" / "sse.min.js"
+        assert path.is_file()
+        assert b"defineExtension" in path.read_bytes()
+
+    def test_the_shell_does_not_load_the_sse_extension(self):
+        """CHARTER §2.2: only the page that streams pays for it."""
+        from fjkit.config import TEMPLATE_DIR
+
+        shell = (TEMPLATE_DIR / "ui" / "shell.html").read_text(encoding="utf-8")
+        assert "sse.min.js" not in shell
+
 
 class TestTable:
     COLUMNS = '[{"label": "Task"}, {"label": "Owner"}, {"width": "min"}]'

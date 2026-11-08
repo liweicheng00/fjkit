@@ -127,6 +127,18 @@ GROUPS = [
                         "都撐得過一次排序。分兩半——要 morph 的元素自己宣告 "
                         'hx-ext="morph"，swap 本身寫 swap="morph:outerHTML"。逐頁載入，不進 shell。',
                     ),
+                    _m(
+                        "sse_scripts()",
+                        en="Loads htmx's sse extension, so a reply can arrive in pieces over one "
+                        'connection: hx-ext="sse" and sse-connect on the container, sse-swap on '
+                        "each element an event fills, sse-close naming the event that ends it. "
+                        "The server side is templates.events(), which always sends that event — "
+                        "without it the extension reconnects forever. Per page, never the shell.",
+                        zh="載入 htmx 的 sse 擴充，讓一段回覆經由同一條連線分段抵達：容器寫 "
+                        'hx-ext="sse" 與 sse-connect，每個要被事件填入的元素寫 sse-swap，'
+                        "sse-close 指定結束串流的事件名稱。伺服器端是 templates.events()，"
+                        "它一定會送出這個結束事件——少了它，擴充會無限重連。逐頁載入，不進 shell。",
+                    ),
                 ],
             },
         ],

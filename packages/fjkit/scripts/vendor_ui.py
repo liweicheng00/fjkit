@@ -21,6 +21,7 @@ from pathlib import Path
 from fjkit.vendored import (  # noqa: E402
     BASECOAT_VERSION,
     HTMX_JSON_ENC_VERSION,
+    HTMX_SSE_VERSION,
     HTMX_VERSION,
     IDIOMORPH_VERSION,
 )
@@ -124,6 +125,15 @@ def vendor_htmx() -> None:
     write(
         VENDOR / "htmx" / "idiomorph-ext.min.js",
         fetch(f"{JSDELIVR}/idiomorph@{IDIOMORPH_VERSION}/dist/idiomorph-ext.min.js"),
+    )
+
+    # The minified build, like idiomorph: upstream's readable `sse.js` is
+    # 8,921 bytes with comments; this is 2,853 (1,074 gzip), and a page
+    # downloads what it loads.
+    print(f"htmx-ext-sse@{HTMX_SSE_VERSION}")
+    write(
+        VENDOR / "htmx" / "sse.min.js",
+        fetch(f"{JSDELIVR}/htmx-ext-sse@{HTMX_SSE_VERSION}/dist/sse.min.js"),
     )
 
 
