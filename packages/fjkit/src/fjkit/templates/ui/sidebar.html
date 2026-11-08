@@ -122,6 +122,43 @@
 {%- endmacro %}
 
 {#
+  sidebar_item(label, href, active, icon_name, lead, **html_attrs) — a sidebar
+  row for a URL that is not one route.
+
+  `sidebar_link` takes a route name and calls `url_for(request, route)` with no
+  parameters, and its active state compares routes. A list whose entries are
+  one route with a different parameter each — every operation of an API, every
+  record of a table — gets the same href and the same active state on every
+  row from it. This is the same `li > a` contract with the two facts handed in:
+  the caller built the URL, and the caller knows which entry the page shows.
+
+  `lead` takes pre-rendered markup — typically a `badge` — and puts it in a
+  fixed-width cell ahead of the label. `GET` and `DELETE` are different widths,
+  so without the cell every label starts at a different x and a long list
+  reads as ragged. The cell is 4.5rem, a six-letter badge plus a gutter. It is
+  a minimum and not a grid track, so a wider badge pushes its own label along
+  rather than overlapping it.
+
+  The label is the last <span>, which is what Basecoat truncates; pass `title`
+  through `**html_attrs` when a truncated label must still be readable.
+
+      {{ sidebar_item(op.summary, url, active=op.id == current,
+                      lead=badge(op.method, "info"), title=op.path,
+                      hx_get=url, hx_target="#detail", hx_push_url="true") }}
+#}
+{% macro sidebar_item(label, href, active=false, icon_name=none, lead=none) -%}
+  <li>
+    <a href="{{ href }}"
+      {%- if active %} aria-current="page"{% endif %}
+      {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
+      {%- if icon_name %}{{ icon(icon_name, 16) }}{% endif %}
+      {%- if lead %}<span class="flex min-w-18 shrink-0">{{ lead }}</span>{% endif %}
+      <span>{{ label }}</span>
+    </a>
+  </li>
+{%- endmacro %}
+
+{#
   sidebar_submenu(label, icon_name, open) — a second level of links.
 
       {% call sidebar_submenu("Reports", icon_name="chart-bar") %}

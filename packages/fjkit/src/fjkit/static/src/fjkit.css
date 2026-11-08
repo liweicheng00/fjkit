@@ -370,6 +370,27 @@
     @apply sm:grid-cols-[minmax(0,12rem)_1fr] sm:items-baseline sm:gap-4;
   }
 
+  /* `inline` is three or four short facts on one wrapping line — who is signed
+   * in, how long a call took. A row per pair costs a panel that has to stay
+   * visible its height; wrapping truncates nothing, a long value takes the next
+   * line. The pair stays one flex item, so the wrap cannot part a term from its
+   * value. */
+  .description-list[data-layout="inline"] {
+    @apply flex flex-wrap items-baseline gap-x-5 gap-y-1;
+  }
+
+  .description-list[data-layout="inline"] > div {
+    @apply flex items-baseline gap-2;
+  }
+
+  .description-list[data-layout="inline"] dt {
+    @apply text-xs;
+  }
+
+  .description-list[data-layout="inline"] dd {
+    @apply text-xs font-medium;
+  }
+
   /* The multiple combobox in a narrow column.
    *
    * Basecoat positions the option list at the bottom of the whole control:
