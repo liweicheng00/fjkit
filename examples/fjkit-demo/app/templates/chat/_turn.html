@@ -1,0 +1,7 @@
+{#
+  One question and its reply bubble. Returned by POST /chat, which the form
+  appends to `#chat-log`; the page draws every turn with the same macro.
+#}
+{% from "chat/macros.html" import turn %}
+
+{{ turn(request, reply) }}

@@ -1,0 +1,40 @@
+{# The chat page: the shell, the conversation so far, and the question box. #}
+{% extends "base.html" %}
+{% from "ui/button.html" import button %}
+{% from "ui/data.html" import kbd %}
+{% from "ui/form.html" import form, field_row, text_field %}
+{% from "ui/layout.html" import page_header, stack %}
+{% from "ui/swap.html" import sse_scripts %}
+{% from "chat/macros.html" import turn %}
+
+{% block title %}Chat{% endblock %}
+
+{% block content %}
+  {% set note %}
+    A question is an ordinary htmx form. The reply is one response the server
+    keeps writing to: {{ kbd("GET /chat/{id}/stream") }} sends a snapshot, then
+    each word as it is written, then {{ kbd("done") }}. Reload mid-reply and the
+    bubble picks up where it was.
+  {% endset %}
+
+  {{ page_header("Chat", note) }}
+
+  {% call stack(4) %}
+    {% call stack(4, id="chat-log") %}
+      {% for reply in replies %}{{ turn(request, reply) }}{% endfor %}
+    {% endcall %}
+
+    {% call form(action=url_for(request, "chat_ask"), target="#chat-log", swap="beforeend",
+                 reset_on_success=true, hx_disabled_elt="find button[type=submit]") %}
+      {% call field_row("field-and-button") %}
+        {{ text_field("question", label="Ask the assistant", required=true,
+                      placeholder="How does the reply reach the page?",
+                      hint="The answer is scripted. Put the word fail in the question to see a reply stop halfway.") }}
+        {{ button("Send", variant="primary", type="submit", icon_name="send") }}
+      {% endcall %}
+    {% endcall %}
+  {% endcall %}
+{% endblock %}
+
+{# Loads htmx-ext-sse for this page only. #}
+{% block scripts %}{{ sse_scripts() }}{% endblock %}

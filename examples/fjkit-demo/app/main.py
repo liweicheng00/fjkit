@@ -1,7 +1,7 @@
 """The demo app: fjkit config, plugins, and the routers.
 
 Nothing here computes. It reads the settings, builds the four plugins, puts the
-three stores where `Depends` can reach them, and includes the routers.
+stores where `Depends` can reach them, and includes the routers.
 """
 
 from __future__ import annotations
@@ -18,8 +18,9 @@ from fjkit_apidocs import ApiDocsPlugin, FlowField, SessionFlow
 from fjkit_charts import ChartsPlugin
 
 from app.config import settings
-from app.routers import auth, charts, dashboard, failures, jobs, panels, records, search, tasks
+from app.routers import auth, charts, chat, dashboard, failures, jobs, panels, records, search, tasks
 from app.services.auth import DemoSource
+from app.services.chat import ChatService
 from app.services.jobs import JobService
 from app.services.records import RecordService
 from app.services.tasks import TaskService
@@ -93,7 +94,9 @@ async def lifespan(app: FastAPI):
     app.state.tasks = TaskService()
     app.state.jobs = JobService()
     app.state.records = RecordService()
+    app.state.chat = ChatService()
     yield
+    await app.state.chat.aclose()
 
 
 def create_app() -> FastAPI:
@@ -112,6 +115,7 @@ def create_app() -> FastAPI:
     app.include_router(search.router)
     app.include_router(panels.router)
     app.include_router(jobs.router)
+    app.include_router(chat.router)
     app.include_router(failures.router)
     app.include_router(auth.router)
     app.include_router(auth.protected)
