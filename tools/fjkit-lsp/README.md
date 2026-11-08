@@ -35,6 +35,12 @@ would only lengthen the editor's list. What the kit adds there is references.
 
 Files under `tests/` are not indexed. A route in a test never ships.
 
+An edit on disk re-reads the file it names; creating or deleting a file, or
+changing a `pyproject.toml`, rebuilds the index. Changes under `.venv` and the
+other directories the index skips are not watched, so after a `uv sync` that
+upgrades the kit or a plugin, run **fjkit: Restart language server** (or
+restart the server however your editor does it).
+
 ## One repository, several applications
 
 A template name is only unique inside one application's loader chain. This
