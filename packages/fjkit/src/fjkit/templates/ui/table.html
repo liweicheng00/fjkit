@@ -102,6 +102,19 @@
 
   A grouped table cannot also be `resizable`. The handles store a width per
   header cell, and with two rows a cell's position no longer names its column.
+
+  Caller attributes (`id=`, `hx_get=`, `aria_label=`, the rest of `**kwargs`)
+  land together on the element that stands for the table: the `<table>` when
+  there are rows, and a `<div>` around the empty state when there are none.
+  Aim a selector or a swap by id or by attribute, which finds either one, and
+  not by tag: `table#feed` misses the empty state. They stay on the `<table>`
+  rather than the `.table-container` around it, because the column widths are
+  stored under the table's id and its accessible name belongs on the table.
+
+  To replace the whole table, target an element around the call, as the demo's
+  `#records` does. The macro's output is the `.table-container` and the table
+  inside it, so an `outerHTML` swap aimed at the table's own id puts one
+  container inside the other.
 #}
 {% macro table(columns, rows=none, empty_title="Nothing here", empty_description=none, empty_icon="list",
                target=none, swap="outerHTML", push_url=true,
@@ -159,7 +172,8 @@
   {% elif kwargs %}
     {#
       A table that polls, or that a swap targets by id, has to keep doing so
-      while empty, so the caller's attributes go on a wrapper here.
+      while empty, so the caller's attributes go on a wrapper here. Same
+      attributes, different tag: see the signature comment.
     #}
     <div{{ attrs(kwargs) }}>{{ empty_state(empty_title, empty_description, empty_icon) }}</div>
   {% else %}

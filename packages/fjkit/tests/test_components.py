@@ -2868,6 +2868,31 @@ class TestTableEmptyCase:
         assert 'class="empty"' in html
         assert 'id="feed"' in html and 'hx-get="/feed"' in html and 'hx-trigger="every 5s"' in html
 
+    @pytest.mark.parametrize(("rows", "tag"), [("[1]", "table"), ("[]", "div")])
+    def test_one_element_carries_the_caller_attributes_in_either_state(self, render, rows, tag):
+        """The documented contract: the attributes land together on the element
+        that stands for the table, so `#feed` finds it with rows or without.
+        Only the tag differs, which is why the signature comment says to aim by
+        id rather than by `table#feed`."""
+        html = render(
+            f'{TABLE}{{% call table([{{"label": "A"}}], rows={rows}, id="feed", hx_get="/feed",'
+            ' aria_label="Feed") %}<tr><td>x</td></tr>{% endcall %}'
+        )
+        carriers = [(t, a) for t, a in _Tags(html).elements if "id" in a]
+        assert [(t, a["id"], a["hx-get"], a["aria-label"]) for t, a in carriers] == [(tag, "feed", "/feed", "Feed")]
+
+
+class _Tags(HTMLParser):
+    """Every start tag with its attributes."""
+
+    def __init__(self, html):
+        super().__init__()
+        self.elements: list[tuple[str, dict[str, str | None]]] = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        self.elements.append((tag, dict(attrs)))
+
 
 class TestTabPanelNames:
     def test_each_panel_is_labelled_by_the_tab_that_controls_it(self, render):
