@@ -27,6 +27,12 @@ class FjkitServer(LanguageServer):
             self.warned = True
             self.window_show_message(t.ShowMessageParams(type=t.MessageType.Warning, message=warning))
 
+    def update(self, changed: list[Path], moved: list[Path]) -> None:
+        """The files named, re-read in place; the whole index rebuilt only when they
+        can change its shape. See `Index.update`."""
+        if self.index is None or not self.index.update(changed, moved):
+            self.build(self.roots())
+
     def roots(self) -> list[Path]:
         folders = [to_fs_path(f.uri) for f in self.workspace.folders.values()]
         if not folders and self.workspace.root_path:
@@ -58,15 +64,23 @@ def on_initialized(ls: FjkitServer, _params: t.InitializedParams) -> None:
     ls.build(ls.roots())
 
 
+def _path(uri: str) -> Path:
+    return Path(to_fs_path(uri) or "")
+
+
 @server.feature(t.TEXT_DOCUMENT_DID_SAVE)
-def on_save(ls: FjkitServer, _params: t.DidSaveTextDocumentParams) -> None:
-    ls.build(ls.roots())
+def on_save(ls: FjkitServer, params: t.DidSaveTextDocumentParams) -> None:
+    ls.update(changed=[_path(params.text_document.uri)], moved=[])
 
 
 @server.feature(t.WORKSPACE_DID_CHANGE_WATCHED_FILES)
-def on_files_changed(ls: FjkitServer, _params: t.DidChangeWatchedFilesParams) -> None:
+def on_files_changed(ls: FjkitServer, params: t.DidChangeWatchedFilesParams) -> None:
     """A create, delete or rename on disk, or a checkout: no save follows any of them."""
-    ls.build(ls.roots())
+    edited = t.FileChangeType.Changed
+    ls.update(
+        changed=[_path(c.uri) for c in params.changes if c.type == edited],
+        moved=[_path(c.uri) for c in params.changes if c.type != edited],
+    )
 
 
 @server.feature(t.TEXT_DOCUMENT_DEFINITION)

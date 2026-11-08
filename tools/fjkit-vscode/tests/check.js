@@ -106,6 +106,19 @@ const vscode = {
   },
   commands: { registerCommand: () => disposable() },
 };
+// Every message the client writes to the server, parsed.
+const sent = [];
+const childProcess = require("node:child_process");
+const realSpawn = childProcess.spawn;
+childProcess.spawn = (...args) => {
+  const proc = realSpawn(...args);
+  const write = proc.stdin.write.bind(proc.stdin);
+  proc.stdin.write = (chunk, ...rest) => {
+    if (Buffer.isBuffer(chunk)) sent.push(JSON.parse(chunk.toString("utf8")));
+    return write(chunk, ...rest);
+  };
+  return proc;
+};
 const resolve = Module._resolveFilename;
 Module._resolveFilename = function (request, ...rest) {
   return request === "vscode" ? "vscode" : resolve.call(this, request, ...rest);
@@ -235,6 +248,18 @@ async function watch() {
   fire("delete", later);
   const deleted = await providers.definition.provideDefinition(doc, pos);
   assert(!deleted || deleted.length === 0, "a file deleted on disk is dropped without a save");
+
+  // `uv sync` rewrites thousands of files under `.venv`, none of which the server reads.
+  const site = path.join(ws, ".venv/lib/python3.13/site-packages/pkg/__init__.py");
+  fs.mkdirSync(path.dirname(site), { recursive: true });
+  fs.writeFileSync(site, "");
+  fire("create", site);
+  fire("change", path.join(ws, "app/tests/test_page.py"));
+  await providers.definition.provideDefinition(doc, pos);
+  const reported = sent
+    .filter((m) => m.method === "workspace/didChangeWatchedFiles")
+    .flatMap((m) => m.params.changes.map((c) => c.uri));
+  assert(reported.length === 2 && !reported.some((u) => u.includes("/.venv/") || u.includes("/tests/")), "a change under .venv or tests is not reported");
 
   await ext.deactivate();
   fs.rmSync(ws, { recursive: true, force: true });

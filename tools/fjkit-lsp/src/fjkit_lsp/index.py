@@ -56,6 +56,15 @@ class Package:
     path: Path  # that package's directory, in site-packages or, editable, in a checkout
 
 
+def _import_names(dist: importlib.metadata.Distribution) -> set[str]:
+    """The packages a distribution installs: `top_level.txt` where setuptools wrote
+    one, and the top directory of every file its `RECORD` lists, which every
+    installer writes and hatchling or uv_build leave as the only record."""
+    names = set((dist.read_text("top_level.txt") or "").split())
+    names.update(f.parts[0] for f in dist.files or () if len(f.parts) > 1 and f.parts[0].isidentifier())
+    return names
+
+
 def installed_packages() -> list[Package]:
     """fjkit and every installed distribution requiring it, one entry per import name.
 
@@ -68,7 +77,7 @@ def installed_packages() -> list[Package]:
         if any(_REQUIRES_FJKIT.match(req) for req in dist.requires or ()):
             norm = _normalize(dist.metadata["Name"])
             names[norm] = norm
-            names.update(dict.fromkeys((dist.read_text("top_level.txt") or "").split(), norm))
+            names.update(dict.fromkeys(_import_names(dist), norm))
     out = []
     for name, dist in sorted(names.items()):
         spec = importlib.util.find_spec(name)
@@ -428,6 +437,14 @@ def scan_template(path: Path, name: str, text: str) -> Template:
     return t
 
 
+def _read(path: Path) -> bool:
+    """Whether `Index._files` reads a file at this path, once it is in a walked directory.
+    A template counts only inside a `templates` directory, as `_classify_roots` has it."""
+    if path.suffix in TEMPLATE_SUFFIXES:
+        return any(parent.name == "templates" for parent in path.parents)
+    return path.suffix == ".py" or path.name == "pyproject.toml"
+
+
 def _annotation_name(node: ast.AST | None) -> str | None:
     if node is None:
         return None
@@ -703,6 +720,68 @@ class Index:
                 emits=tuple(emits),
             )
         )
+
+    # ---- updating in place ----------------------------------------------
+
+    def update(self, changed: list[Path], moved: list[Path]) -> bool:
+        """Re-read files edited on disk, leaving the rest of the index as it is.
+
+        `changed` were edited; `moved` were created or deleted, files or whole
+        directories. An event in a place the walk never enters — `.venv`, a
+        `tests` directory — or for a file it would not read is dropped. False
+        means only a rebuild is right: a file appeared or went away, which can
+        add a templates root or change what a name resolves to, or a
+        `pyproject.toml` changed, which decides what is a plugin.
+        """
+        moved = [p for p in map(Path.resolve, moved) if self._walked(p) and (_read(p) or not p.suffix)]
+        changed = [p for p in map(Path.resolve, changed) if self._walked(p) and _read(p)]
+        if moved or any(p.name == "pyproject.toml" for p in changed):
+            return False
+        templates = [p for p in changed if p.suffix in TEMPLATE_SUFFIXES]
+        if any(p not in self.by_path for p in templates):
+            return False
+        for p in templates:
+            self._rescan(p)
+        for p in changed:
+            if p.suffix == ".py":
+                self._forget_module(p)
+                self._index_python(p)
+        self._events = None
+        return True
+
+    def _walked(self, path: Path) -> bool:
+        """Whether `_files` would enter the directory holding this path."""
+        tops = [pkg.path for pkg in self.packages] + self.roots  # a plugin's own walk, even inside `.venv`
+        top = next((t for t in tops if path.is_relative_to(t)), None)
+        if top is None:
+            return False
+        return not any(d in SKIP_DIRS or d.startswith(".") for d in path.relative_to(top).parts[:-1])
+
+    def _rescan(self, path: Path) -> None:
+        old = self.by_path[path]
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            text = ""
+        t = scan_template(path, old.name, text)
+        t.root = old.root
+        self.by_path[path] = t
+        if old.root is not None and self.by_root.get(old.root, {}).get(old.name) is old:
+            self.by_root[old.root][old.name] = t
+        if self.templates.get(old.name) is old:
+            self.templates[old.name] = t
+
+    def _forget_module(self, path: Path) -> None:
+        """Everything `_index_python` recorded for one module."""
+        self.routes = [r for r in self.routes if r.module != path]
+        for name, models in list(self.models.items()):
+            self.models[name] = [m for m in models if m.module != path]
+            if not self.models[name]:
+                del self.models[name]
+        self.literals = [lit for lit in self.literals if lit.loc.path != path]
+        self.globals = {k: loc for k, loc in self.globals.items() if loc.path != path}
+        for table in (self.imports, self.constants, self.prefixes):
+            table.pop(path, None)
 
     # ---- queries --------------------------------------------------------
 
