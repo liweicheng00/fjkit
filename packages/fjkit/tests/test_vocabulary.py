@@ -244,6 +244,47 @@ class TestCheck:
         )
         assert [v.token for v in check_templates(tmp_path)] == ["#ccc", "#0f172a", "#abc"]
 
+    @pytest.mark.parametrize(
+        ("markup", "tokens"),
+        [
+            ('<svg><rect fill="crimson" stroke="Navy"/></svg>', ["crimson", "Navy"]),
+            ("<svg><stop stop-color='gold'/><feFlood flood-color=\"red\"/></svg>", ["gold", "red"]),
+            ('<svg><circle fill="{{ \'teal\' if late else \'none\' }}"/></svg>', ["teal"]),
+            ('<font color="maroon">x</font>', ["maroon"]),
+        ],
+    )
+    def test_a_named_colour_in_an_svg_paint_attribute_is_caught(self, tmp_path, markup, tokens):
+        """`fill="crimson"` paints exactly as `style="fill: crimson"` does, so
+        looking only inside `style=` let the same hue through by another door."""
+        (tmp_path / "page.html").write_text(markup)
+        assert [v.token for v in check_templates(tmp_path)] == tokens
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<svg><path fill="none" stroke="currentColor"/></svg>',
+            '<svg><rect fill="url(#grad)"/><rect fill="var(--primary)"/></svg>',
+            '<input name="fill" value="red"><div data-fill="red" aria-label="red">x</div>',
+            "<p>The fill is red.</p>",
+        ],
+    )
+    def test_a_paint_attribute_without_a_named_colour_passes(self, tmp_path, markup):
+        (tmp_path / "page.html").write_text(markup)
+        assert check_templates(tmp_path) == []
+
+    def test_a_named_colour_in_a_style_block_is_caught(self, tmp_path):
+        """A `<style>` block is CSS the browser applies like any `style=`."""
+        (tmp_path / "page.html").write_text(
+            "<style>\n"
+            "  .late { color: crimson }\n"
+            "  a:hover { background: navy; }\n"
+            "  .red, .gold { border-color: var(--destructive) }\n"
+            "  @media (min-width: 40rem) { .x { outline: 1px solid red } }\n"
+            "</style>\n"
+            "<p class='card'>red</p>"
+        )
+        assert [(v.line, v.token) for v in check_templates(tmp_path)] == [(2, "crimson"), (3, "navy"), (5, "red")]
+
     def test_keywords_that_are_not_hues_pass_in_a_style_attribute(self, tmp_path):
         (tmp_path / "page.html").write_text(
             '<p style="color: currentColor; background: color-mix(in srgb, var(--primary) 50%, transparent)">x</p>'
@@ -458,6 +499,20 @@ class TestEjectStamp:
         target.parent.mkdir(parents=True)
         target.write_text(f'{{# fjkit:eject {name} 0.1.0 sha256:000000000000 #}}\n<div class="flex gap-4">x</div>')
         assert {v.token for v in check_templates(tmp_path)} == {"flex", "gap-4"}
+
+    @pytest.mark.parametrize(
+        ("where", "name"),
+        [("orders/page.html", "gone"), ("orders/page.html", "button"), ("ui/data.html", "button")],
+    )
+    def test_a_stamp_away_from_the_file_it_names_is_not_an_eject(self, tmp_path, where, name):
+        """`check` already refused such a stamp its amnesty; the stale-eject
+        report trusted it, and told the author a page was an outdated copy of
+        a component."""
+        target = tmp_path / where
+        target.parent.mkdir(parents=True)
+        target.write_text(f"{{# fjkit:eject {name} 0.1.0 sha256:000000000000 #}}\n<p>x</p>")
+        assert find_ejected(tmp_path) == []
+        assert stale_ejects(tmp_path) == []
 
     def test_a_stale_eject_does_not_fail_the_check(self, tmp_path, capsys):
         from fjkit.cli.check import main as check_main

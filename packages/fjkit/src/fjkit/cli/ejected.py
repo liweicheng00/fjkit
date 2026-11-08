@@ -162,6 +162,11 @@ def find_ejected(template_dir: Path) -> list[Ejected]:
     Only the first line is read. A stamp anywhere else is not a stamp: `eject`
     writes it at the top, and scanning the whole file would match a stamp quoted
     inside documentation about this feature.
+
+    Only at `ui/<name>.html`, the one path `eject` writes for that name. A stamp
+    on `orders/page.html`, or one on `ui/data.html` naming `button`, marks
+    nothing the kit wrote: reporting it as a copy that fell behind would send
+    the author to diff a page against a component it never was.
     """
     from fjkit.cli.eject import kit_macro_digests
 
@@ -170,7 +175,7 @@ def find_ejected(template_dir: Path) -> list[Ejected]:
         with path.open(encoding="utf-8", errors="replace") as handle:
             first = handle.readline()
         match = STAMP.match(first.strip())
-        if match is None:
+        if match is None or path != template_dir / "ui" / f"{match['name']}.html":
             continue
         name = match["name"]
 
