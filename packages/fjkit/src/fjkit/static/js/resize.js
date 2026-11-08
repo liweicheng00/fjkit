@@ -9,8 +9,13 @@
   The contract with the markup is three attributes:
 
     data-fjkit-resize          on the <table>; its id is the storage key
-    data-fjkit-resize-handle   on each handle, inside the <th> it resizes
+    data-fjkit-resize-handle   on each handle, inside the <th> it resizes;
+                               its aria-label, the column's label, names it
     data-fjkit-resized         written here once a column has a set width
+
+  A width is stored under its column's label, not its position. An app that
+  adds, removes or reorders a column would otherwise hand a stored width to
+  whichever column now sits where the old one was.
 
   Events are delegated from `document`, so a table htmx swaps in needs nothing
   bound to it. Stored widths go back on in `htmx:load`, which htmx fires for the
@@ -29,20 +34,25 @@
   const MAX = 1600
   const STEP = 16
 
-  const key = (table) => `fjkit:column-widths:${table.id}`
+  const key = (table) => `fjkit:column-widths-by-label:${table.id}`
+  /* Where widths were stored by position, before #52. Not migrated: which
+     column a position meant is exactly what an app may have changed since. */
+  const legacy = (table) => `fjkit:column-widths:${table.id}`
 
   /* Storage throws in a private window, on a blocked site or a full quota. A
      width that cannot be saved is still worth applying, so both sides fail to
      "nothing stored" rather than to an error. */
   const load = (table) => {
     try {
-      const widths = {}
-      for (const [column, width] of Object.entries(JSON.parse(localStorage.getItem(key(table)) || "{}"))) {
-        if (Number.isFinite(width)) widths[column] = width
+      localStorage.removeItem(legacy(table))
+      /* No prototype: a column labelled "constructor" must find nothing. */
+      const widths = Object.create(null)
+      for (const [name, width] of Object.entries(JSON.parse(localStorage.getItem(key(table)) || "{}"))) {
+        if (Number.isFinite(width)) widths[name] = width
       }
       return widths
     } catch {
-      return {}
+      return Object.create(null)
     }
   }
 
@@ -54,6 +64,21 @@
   }
 
   const headers = (table) => [...(table.tHead?.rows[0]?.cells ?? [])]
+
+  /* One name per header cell, in order: the handle's label, or null for a
+     cell without a handle, which never has a stored width. A label repeated in
+     one table is told apart by its count, "n", "n#2", so two columns do not
+     share a width. */
+  const columns = (table) => {
+    const seen = Object.create(null)
+    return headers(table).map((cell) => {
+      const label = cell.querySelector(`[${HANDLE}]`)?.getAttribute("aria-label")
+      if (label == null) return null
+      seen[label] = (seen[label] ?? 0) + 1
+      return seen[label] > 1 ? `${label}#${seen[label]}` : label
+    })
+  }
+  const column = (header) => columns(header.closest("table"))[header.cellIndex]
   const clamp = (width) => Math.round(Math.min(MAX, Math.max(MIN, width)))
   const direction = (table) => (getComputedStyle(table).direction === "rtl" ? -1 : 1)
   const parts = (handle) => {
@@ -67,7 +92,8 @@
      the browser lays the table out once. */
   const freeze = (table, widths) => {
     const cells = headers(table)
-    const px = cells.map((cell) => widths[cell.cellIndex] ?? cell.getBoundingClientRect().width)
+    const names = columns(table)
+    const px = cells.map((cell, i) => (names[i] != null && widths[names[i]]) || cell.getBoundingClientRect().width)
     cells.forEach((cell, i) => {
       cell.style.width = `${px[i]}px`
     })
@@ -100,7 +126,7 @@
   const set = (handle, width) => {
     const { header, table } = parts(handle)
     const widths = load(table)
-    widths[header.cellIndex] = clamp(width)
+    widths[column(header)] = clamp(width)
     freeze(table, widths)
     describe(table)
     save(table, widths)
@@ -109,7 +135,7 @@
   const reset = (handle) => {
     const { header, table } = parts(handle)
     const widths = load(table)
-    delete widths[header.cellIndex]
+    delete widths[column(header)]
     save(table, widths)
     restore(table)
   }
@@ -129,7 +155,7 @@
     drag = {
       handle,
       table,
-      column: header.cellIndex,
+      column: column(header),
       widths: load(table),
       pointer: event.pointerId,
       startX: event.clientX,

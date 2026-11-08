@@ -159,7 +159,7 @@ The only real lever left is subsetting Basecoat, and `styles/<pack>.css` is one 
 |---|---|---|
 | `reveal.js` | `reveal_scripts()`, in `ui/form.html` | 2,508 / 1,273 |
 | `select.js` | `select_scripts()`, in `ui/table.html` | 5,172 / 2,151 |
-| `resize.js` | `resize_scripts()`, in `ui/table.html` | 7,435 / 2,745 |
+| `resize.js` | `resize_scripts()`, in `ui/table.html` | 8,823 / 3,240, measured 2026-11-08 |
 | `multiselect.js` | `multiselect_scripts()`, in `ui/overlay.html` | 5,461 / 2,456 |
 | `charts.js` | `chart_scripts()` | 8,953 / 3,810, in `fjkit-charts` |
 | `json-enc.js` | `form_scripts()` | vendored, 1,012 raw |

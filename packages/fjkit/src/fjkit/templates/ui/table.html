@@ -101,7 +101,8 @@
   text, which a population heading has anyway.
 
   A grouped table cannot also be `resizable`. The handles store a width per
-  header cell, and with two rows a cell's position no longer names its column.
+  column label, and in a grouped table a label — "n", "%" — names a column only
+  together with its group, on a header row of its own.
 #}
 {% macro table(columns, rows=none, empty_title="Nothing here", empty_description=none, empty_icon="list",
                target=none, swap="outerHTML", push_url=true,
@@ -113,7 +114,7 @@
     {% set head = namespace(grouped=false) %}
     {% for column in columns if column.get("group") %}{% set head.grouped = true %}{% endfor %}
     {% if resizable and head.grouped %}
-      {{- fjkit_raise("table(resizable=true) cannot take a column with a group: the stored widths are keyed by header position.") }}
+      {{- fjkit_raise("table(resizable=true) cannot take a column with a group: the stored widths are keyed by column label, and a grouped label is not unique.") }}
     {% endif %}
     <div class="table-container">
       <table class="table"{% if kwargs %}{{ attrs(kwargs) }}{% endif %}{% if resizable %} data-fjkit-resize{% endif %}>
@@ -324,7 +325,10 @@
 
   Per page, for the reason `select_scripts()` is. It shows the handles, follows
   a pointer drag or the arrow keys, and stores each table's widths in
-  `localStorage` under `fjkit:column-widths:<table id>`. Home or a double-click
+  `localStorage` under `fjkit:column-widths-by-label:<table id>`, one per
+  column label. A column the app adds, removes or moves keeps its own width
+  rather than inheriting its neighbour's; a column whose label changes starts
+  at its natural width. Home or a double-click
   gives a column back its natural width. A table htmx swaps in, or morphs,
   gets its stored widths again without a reload.
 
