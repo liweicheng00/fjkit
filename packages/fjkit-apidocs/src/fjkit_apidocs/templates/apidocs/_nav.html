@@ -9,6 +9,7 @@
   It renders standalone: the page embeds it and `GET …/nav?q=` returns it.
 #}
 {% from "apidocs/macros.html" import model_link, op_link %}
+{% from "ui/data.html" import caption %}
 {% from "ui/sidebar.html" import sidebar_group %}
 
 {#
@@ -57,8 +58,6 @@
   {% endif %}
 
   {% if query and not groups %}
-    <p class="text-muted-foreground px-2 py-1 text-xs" role="status">
-      Nothing matches “{{ query }}”.
-    </p>
+    {{ caption("Nothing matches “" ~ query ~ "”.", size="xs", role="status") }}
   {% endif %}
 </div>

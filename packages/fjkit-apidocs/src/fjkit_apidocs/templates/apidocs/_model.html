@@ -12,28 +12,28 @@
   of thing into the same place.
 #}
 {% from "apidocs/macros.html" import field_table, op_line %}
-{% from "ui/data.html" import badge, card, code_block, empty_state %}
-{% from "ui/layout.html" import section, stack %}
+{% from "ui/data.html" import badge, caption, card, code_block, empty_state, kbd %}
+{% from "ui/layout.html" import row, section, stack %}
 {% from "ui/tabs.html" import tab_panel, tabs %}
 
 <div id="{{ ids.detail }}">
   {% call stack(gap=5) %}
 
     {% call stack(gap=2) %}
-      <div class="flex flex-wrap items-center gap-2">
-        <code class="kbd">{{ model.name }}</code>
+      {% call row(gap=2) %}
+        {{ kbd(model.name) }}
         {{ badge(model.kind, "secondary") }}
-      </div>
+      {% endcall %}
       {% if model.description %}
-        <p class="text-muted-foreground text-sm">{{ model.description }}</p>
+        {{ caption(model.description) }}
       {% endif %}
     {% endcall %}
 
     {% if model.kind == "enum" %}
       {% call section("Values", "The complete set. Anything else is a 422.") %}
-        <div class="flex flex-wrap items-center gap-2">
-          {% for choice in model.choices %}<code class="kbd">{{ choice }}</code>{% endfor %}
-        </div>
+        {% call row(gap=2) %}
+          {% for choice in model.choices %}{{ kbd(choice) }}{% endfor %}
+        {% endcall %}
       {% endcall %}
     {% elif model.fields %}
       {% call section("Fields") %}

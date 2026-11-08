@@ -11,10 +11,10 @@
 #}
 {% from "apidocs/macros.html" import facts %}
 {% from "ui/button.html" import button %}
-{% from "ui/data.html" import badge, card %}
+{% from "ui/data.html" import badge, caption, card %}
 {% from "ui/feedback.html" import spinner %}
-{% from "ui/form.html" import form, text_field %}
-{% from "ui/icon.html" import icon %}
+{% from "ui/form.html" import field_row, form, text_field %}
+{% from "ui/layout.html" import row, stack %}
 
 <div id="{{ ids.session }}">
   {#
@@ -26,7 +26,7 @@
     where it is findable — at no cost to the body.
   #}
   {%- set status %}
-    <div class="flex flex-wrap items-center gap-2">
+    {% call row(gap=2) %}
       {{ badge("signed in" if flow_state.signed_in else "anonymous",
                "success" if flow_state.signed_in else "outline") }}
       {% if flow_state.signed_in and flow_state.can_sign_out %}
@@ -36,12 +36,12 @@
                     type="submit", icon_name="log-out") }}
         {% endcall %}
       {% endif %}
-    </div>
+    {% endcall %}
   {%- endset %}
   {% call card(flow.label, flow_state.headline, actions=status, size="sm") %}
-    <div class="flex flex-col gap-3">
+    {% call stack(gap=3) %}
       {% if flow_state.detail %}
-        <p class="text-muted-foreground text-xs">{{ flow_state.detail }}</p>
+        {{ caption(flow_state.detail, size="xs") }}
       {% endif %}
 
       {% if flow_state.error %}
@@ -51,9 +51,7 @@
           again. `role="alert"` so a screen reader hears the refusal — the swap
           is otherwise silent, and the visible change is off-screen.
         #}
-        <p class="text-destructive flex items-center gap-2 text-sm" role="alert">
-          {{ icon("circle-alert", 16) }}<span>{{ flow_state.error }}</span>
-        </p>
+        {{ caption(flow_state.error, tone="destructive", icon_name="circle-alert", role="alert") }}
       {% endif %}
 
       {% if flow_state.facts %}{{ facts(flow_state.facts) }}{% endif %}
@@ -61,18 +59,18 @@
       {% if not flow_state.signed_in and flow_state.fields %}
         {% call form(action=url_for(request, routes.auth), target="#" ~ ids.session, card=false) %}
           {#
-            Fields and the submit button on one line — a wrapping flex row,
-            deliberately not `grid` or `field_row`.
+            Fields and the submit button on one line — `field_row("inline")`,
+            not a fixed column count.
 
-            A username and a password are short values: a fixed `sm:w-64` is
+            A username and a password are short values: a fixed 16rem cell is
             about as wide as either is ever typed, and one per half card width
-            reads as though something long is expected. The row wraps rather
-            than reflowing to a column count, so it is right for one field and
-            for four — which matters, because the flow decides how many there
-            are, not this template.
+            reads as though something long is expected. The cells wrap rather
+            than reflowing to a column count, so the row is right for one field
+            and for four — which matters, because the flow decides how many
+            there are, not this template.
 
-            `items-end` aligns the bottoms, which puts the button on the
-            inputs' line. That alignment is why the fields carry no `hint=`:
+            The row aligns the bottoms, which puts the button on the inputs'
+            line. That alignment is why the fields carry no `hint=`:
             one field with a hint and one without have different heights, and
             bottom-aligning those two would leave their inputs on different
             lines. The hints are collected under the row instead — one line
@@ -84,31 +82,29 @@
             than as loose text after the form.
           #}
           {%- set hints = flow_state.fields | selectattr("hint") | list %}
-          <div class="flex flex-col gap-2">
-            <div class="flex flex-wrap items-end gap-3">
+          {% call stack(gap=2) %}
+            {% call field_row("inline") %}
               {% for entry in flow_state.fields %}
-                <div class="w-full sm:w-64">
-                  {{ text_field(entry.name, label=entry.label, type=entry.type,
-                                required=entry.required, placeholder=entry.placeholder,
-                                aria_describedby=("f-" ~ entry.name ~ "-hint") if entry.hint else none) }}
-                </div>
+                {{ text_field(entry.name, label=entry.label, type=entry.type,
+                              required=entry.required, placeholder=entry.placeholder,
+                              aria_describedby=("f-" ~ entry.name ~ "-hint") if entry.hint else none) }}
               {% endfor %}
-              <div class="flex items-center gap-2">
+              {% call row(gap=2, wrap=false) %}
                 {{ button(flow_state.submit_label, type="submit", icon_name="log-in", size="sm") }}
                 {{ spinner(size="sm", indicator=true) }}
-              </div>
-            </div>
+              {% endcall %}
+            {% endcall %}
             {% if hints %}
-              <p class="text-muted-foreground text-xs">
+              {% call caption(size="xs") %}
                 {%- for entry in hints -%}
                   {% if not loop.first %} · {% endif %}
                   <span id="f-{{ entry.name }}-hint">{{ entry.label }}: {{ entry.hint }}</span>
                 {%- endfor -%}
-              </p>
+              {% endcall %}
             {% endif %}
-          </div>
+          {% endcall %}
         {% endcall %}
       {% endif %}
-    </div>
+    {% endcall %}
   {% endcall %}
 </div>
