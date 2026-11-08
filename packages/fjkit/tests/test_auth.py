@@ -528,6 +528,90 @@ def test_a_login_cookie_older_than_its_ttl_is_refused(monkeypatch):
     assert source.exchanges == 0
 
 
+# ------------------------------------------------- the __Host- prefix (opt-in)
+
+HTTPS = "https://testserver"
+
+
+def host_prefixed_client(source: CodeSource | None = None) -> tuple[AuthPlugin, TestClient]:
+    """An app whose session cookie is named `__Host-…`, over https so the
+    client sends a `Secure` cookie back."""
+    auth = make_auth(
+        source=source or CodeSource(),
+        trusted_origins=[HTTPS],
+        cookie=CookieSpec(name="__Host-fjkit_session"),
+    )
+    return auth, TestClient(make_app(auth).app, base_url=HTTPS)
+
+
+def cookie_attributes(header: str) -> tuple[str, set[str]]:
+    """The name and the lower-cased attribute names of one `Set-Cookie`."""
+    first, *attributes = (part.strip() for part in header.split(";"))
+    return first.partition("=")[0], {attribute.partition("=")[0].lower() for attribute in attributes}
+
+
+def test_a_host_prefixed_session_name_prefixes_the_login_cookie_too():
+    """The login nonce is the cookie a sibling subdomain would plant to bind
+    a victim's callback to the attacker's login. It follows the session
+    cookie's name, so naming that one `__Host-…` covers both."""
+    auth, client = host_prefixed_client()
+
+    start = client.get("/oidc/start", follow_redirects=False)
+    name, attributes = cookie_attributes(start.headers["set-cookie"])
+
+    assert name == "__Host-fjkit_session_login"
+    assert {"secure", "path"} <= attributes
+    assert "domain" not in attributes
+
+
+def test_a_host_prefixed_login_round_trips_and_its_cookies_can_be_deleted():
+    """A browser ignores a `Set-Cookie` for a `__Host-` name that lacks
+    `Secure`, the deleting one included. Each deletion has to carry it, or
+    the callback leaves the nonce behind and a logout leaves the session."""
+    auth, client = host_prefixed_client()
+    state = state_of(client.get("/oidc/start", follow_redirects=False))
+
+    callback = client.get("/oidc/callback", params={"code": "c1", "state": state})
+    signed_in = client.get("/who").text
+    logout = client.post("/logout", headers={"origin": HTTPS})
+
+    deletions = [cookie_attributes(h) for h in callback.headers.get_list("set-cookie")]
+    deletions += [cookie_attributes(h) for h in logout.headers.get_list("set-cookie")]
+    assert signed_in == "owner-of-c1"
+    assert all("secure" in attributes for _, attributes in deletions)
+    assert {name for name, _ in deletions} >= {"__Host-fjkit_session_login", "__Host-fjkit_session"}
+    assert client.get("/who").text == "anonymous"
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        {"name": "__Host-s", "secure": False},
+        {"name": "__Host-s", "domain": "example.com"},
+        {"name": "__Host-s", "path": "/app"},
+        {"name": "__host-s", "secure": False},
+        {"name": "__Secure-s", "secure": False},
+    ],
+)
+def test_a_prefixed_name_the_browser_would_drop_is_refused(spec):
+    """A browser silently drops a `__Host-` cookie that is not `Secure`, has
+    a `Domain` or a `Path` other than `/`, and a `__Secure-` one that is not
+    `Secure`. Every login would appear to work and none would stick."""
+    with pytest.raises(ValueError, match="__"):
+        CookieSpec(**spec)
+
+
+def test_the_default_cookie_names_are_unchanged():
+    """Opt-in: an app that names nothing keeps the names its browsers hold."""
+    client = make_app(make_auth())
+
+    login = client.post("/login", headers={"origin": ORIGIN})
+    start = client.get("/oidc/start", follow_redirects=False)
+
+    assert cookie_attributes(login.headers["set-cookie"])[0] == "fjkit_session"
+    assert cookie_attributes(start.headers["set-cookie"])[0] == "fjkit_session_login"
+
+
 def test_no_csrf_lets_everything_through_and_says_so():
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")

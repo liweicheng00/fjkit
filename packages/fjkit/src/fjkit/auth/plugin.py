@@ -104,11 +104,23 @@ def _is_navigation(request) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class CookieSpec:
-    """The one cookie this plugin sets.
+    """The session cookie, and the login cookie `start_login` names after it.
 
     `httponly` is not a field. This plugin exists so no script can read the
     credential, and a setting to turn that off would only ever be turned off by
     mistake.
+
+    A sibling subdomain on the same site can set a cookie for this host, and
+    so plant a session or a login nonce of its own choosing. A name starting
+    `__Host-` stops that: a browser accepts such a cookie only from this
+    origin, `Secure`, with `Path=/` and no `Domain`. It is opt-in, because
+    renaming the cookie signs out every browser holding the old name once:
+
+        CookieSpec(name="__Host-fjkit_session")
+
+    The login cookie becomes `__Host-fjkit_session_login` with it. A prefixed
+    name with attributes the browser would drop the cookie for is refused
+    here, since otherwise every login appears to work and none sticks.
     """
 
     name: str = "fjkit_session"
@@ -122,6 +134,17 @@ class CookieSpec:
     #: `Origin` check alone; use it only for an app embedded in another site's
     #: iframe.
     same_site: Literal["lax", "strict", "none"] = "lax"
+
+    def __post_init__(self) -> None:
+        # Browsers match the prefixes without regard to case.
+        lowered = self.name.lower()
+        if lowered.startswith("__host-") and (not self.secure or self.domain is not None or self.path != "/"):
+            raise ValueError(
+                f"CookieSpec(name={self.name!r}): a `__Host-` cookie needs secure=True, "
+                "domain=None and path='/', or browsers drop it."
+            )
+        if lowered.startswith("__secure-") and not self.secure:
+            raise ValueError(f"CookieSpec(name={self.name!r}): a `__Secure-` cookie needs secure=True.")
 
 
 class AuthPlugin:
@@ -266,7 +289,7 @@ class AuthPlugin:
             domain=self.cookie.domain,
             secure=self.cookie.secure,
             httponly=True,
-            samesite="none" if self.cookie.same_site == "none" else "lax",
+            samesite=self._login_same_site,
         )
         return nonce
 
@@ -304,11 +327,7 @@ class AuthPlugin:
             raise CsrfRejected("the login cookie is older than its TTL")
         if not hmac.compare_digest(nonce.encode("utf-8"), state.encode("utf-8")):
             raise CsrfRejected("`state` is not the one this browser's login started with")
-        response.delete_cookie(
-            self._login_cookie,
-            path=self.cookie.path,
-            domain=self.cookie.domain,
-        )
+        self._delete_cookie(response, self._login_cookie, same_site=self._login_same_site)
 
     async def issue(self, request: Request, response: Response, credentials: Any) -> Session:
         """Log in: exchange `credentials`, store the session, set the cookie.
@@ -350,11 +369,7 @@ class AuthPlugin:
         sid = self._read_cookie(request)
         if sid is not None:
             await self.store.delete(sid)
-        response.delete_cookie(
-            self.cookie.name,
-            path=self.cookie.path,
-            domain=self.cookie.domain,
-        )
+        self._delete_cookie(response, self.cookie.name, same_site=self.cookie.same_site)
         request.state.auth = None
         request.state.auth_unavailable = None
 
@@ -588,6 +603,24 @@ class AuthPlugin:
             secure=self.cookie.secure,
             httponly=True,
             samesite=self.cookie.same_site,
+        )
+
+    @property
+    def _login_same_site(self) -> Literal["lax", "none"]:
+        """The login cookie's `SameSite`: `None` if the session's is, else `Lax`; see `start_login`."""
+        return "none" if self.cookie.same_site == "none" else "lax"
+
+    def _delete_cookie(self, response: Response, name: str, *, same_site: Literal["lax", "strict", "none"]) -> None:
+        """Expire `name` with the attributes it was set with. A browser ignores
+        a deletion of a `__Host-` cookie that lacks `Secure`, and one of a
+        `SameSite=None` cookie from an embedding site unless it says `None`."""
+        response.delete_cookie(
+            name,
+            path=self.cookie.path,
+            domain=self.cookie.domain,
+            secure=self.cookie.secure,
+            httponly=True,
+            samesite=same_site,
         )
 
     # ------------------------------------------------------------- responses
