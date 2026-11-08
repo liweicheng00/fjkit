@@ -12,7 +12,7 @@ import gzip
 import pytest
 from fastapi import FastAPI
 from fjkit import FjkitConfig, build_environment, mount_fjkit
-from fjkit.cli.build_css import GZIP_BUDGET, RAW_BUDGET, output_for
+from fjkit.cli.build_css import GZIP_BUDGET, RAW_BUDGET, TAILWIND_VERSION, output_for
 from fjkit.config import STATIC_DIR
 from fjkit.vendored import DEFAULT_STYLE, STYLE_PACKS
 
@@ -39,6 +39,18 @@ def test_every_pack_is_built_and_within_budget(pack: str):
     compressed = len(gzip.compress(built.read_bytes(), 9))
     assert compressed <= GZIP_BUDGET, f"{built.name}: {compressed / 1024:.1f} KB gzip"
     assert raw <= RAW_BUDGET, f"{built.name}: {raw:,} bytes raw"
+
+
+@pytest.mark.parametrize("pack", STYLE_PACKS)
+def test_every_pack_is_built_by_the_pinned_tailwind(pack: str):
+    """An unpinned Tailwind is whatever the machine downloaded first, so a
+    checkout and CI built the same source into different bytes and the
+    committed site went stale on a Tailwind release. The banner names the
+    binary that wrote the file."""
+    banner = output_for(pack).read_text(encoding="utf-8")[:60]
+    assert banner.startswith(f"/*! tailwindcss {TAILWIND_VERSION} "), (
+        f"{output_for(pack).name} was built by {banner[4:30]!r}, not {TAILWIND_VERSION} — run: uv run fjkit build-css"
+    )
 
 
 @pytest.mark.parametrize("pack", STYLE_PACKS)

@@ -155,10 +155,10 @@ publish: verify ## Upload to PyPI, fjkit first (UV_PUBLISH_TOKEN = PyPI token)
 $(addprefix publish-,$(PYTHON_DISTS)): publish-%:
 	uv publish --check-url $(PYPI_URL) $(call dist_files,$*)
 
-# One-time, before the first publish: `npx ovsx create-namespace fjkit -p $OPEN_VSX_TOKEN`.
+# One-time, before the first publish: `npx ovsx@1.3.0 create-namespace fjkit -p $OPEN_VSX_TOKEN`.
 publish-vsix: vsix ## Upload the extension to Open VSX (OPEN_VSX_TOKEN; PRE_RELEASE=1 to flag it)
 	@test -n "$$OPEN_VSX_TOKEN" || { echo "set OPEN_VSX_TOKEN"; exit 1; }
-	npx --yes ovsx publish $(VSIX_DIR)/fjkit-vscode-$(VSIX_VERSION).vsix $(if $(PRE_RELEASE),--pre-release) -p "$$OPEN_VSX_TOKEN"
+	npx --yes ovsx@1.3.0 publish $(VSIX_DIR)/fjkit-vscode-$(VSIX_VERSION).vsix $(if $(PRE_RELEASE),--pre-release) -p "$$OPEN_VSX_TOKEN"
 
 clean: ## Remove dist/ and the built .vsix
 	rm -rf $(DIST) $(VSIX_DIR)

@@ -14,6 +14,7 @@ choice a config value rather than a reinstall.
 from __future__ import annotations
 
 import gzip
+import os
 import re
 import shutil
 import subprocess
@@ -22,6 +23,13 @@ from pathlib import Path
 
 from fjkit.config import STATIC_DIR
 from fjkit.vendored import DEFAULT_STYLE, STYLE_PACKS, StylePack
+
+#: The Tailwind binary that compiles every pack. `pytailwindcss` downloads
+#: "latest" unless told otherwise and caches whichever binary it fetched first,
+#: so two machines building one commit wrote different bytes and the committed
+#: `docs/` went stale on every Tailwind release. Raising this is a deliberate
+#: commit that rebuilds the stylesheets and the site with it.
+TAILWIND_VERSION = "v4.3.5"
 
 SRC = STATIC_DIR / "src" / "fjkit.css"
 DIST = STATIC_DIR / "dist"
@@ -69,7 +77,8 @@ def _compile(style: str, watch: bool) -> int:
     cmd = ["tailwindcss", "--input", str(entry), "--output", str(output_for(style))]
     cmd += ["--watch"] if watch else ["--minify"]
     try:
-        return subprocess.run(cmd, cwd=STATIC_DIR.parent).returncode
+        env = {**os.environ, "TAILWINDCSS_VERSION": TAILWIND_VERSION}
+        return subprocess.run(cmd, cwd=STATIC_DIR.parent, env=env).returncode
     finally:
         # Kept alive for the whole of `--watch`, which only returns on Ctrl-C.
         entry.unlink(missing_ok=True)
