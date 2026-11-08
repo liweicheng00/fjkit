@@ -733,7 +733,9 @@ class Index:
         add a templates root or change what a name resolves to, or a
         `pyproject.toml` changed, which decides what is a plugin.
         """
-        moved = [p for p in map(Path.resolve, moved) if self._walked(p) and (_read(p) or not p.suffix)]
+        moved = [
+            p for p in map(Path.resolve, moved) if self._walked(p) and (_read(p) or not p.suffix or self._holds(p))
+        ]
         changed = [p for p in map(Path.resolve, changed) if self._walked(p) and _read(p)]
         if moved or any(p.name == "pyproject.toml" for p in changed):
             return False
@@ -756,6 +758,11 @@ class Index:
         if top is None:
             return False
         return not any(d in SKIP_DIRS or d.startswith(".") for d in path.relative_to(top).parts[:-1])
+
+    def _holds(self, directory: Path) -> bool:
+        """Whether an indexed file is under this path. A deleted directory named
+        `v1.2` has a suffix, so only the files under it say it was one."""
+        return any(p.is_relative_to(directory) for p in (*self.by_path, *self.imports))
 
     def _rescan(self, path: Path) -> None:
         old = self.by_path[path]

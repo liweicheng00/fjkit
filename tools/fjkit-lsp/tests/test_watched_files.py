@@ -111,3 +111,16 @@ def test_a_deleted_directory_drops_the_files_under_it(ls: srv.FjkitServer, ws: P
     templates.rmdir()
     _notify(ls, (templates, t.FileChangeType.Deleted))
     assert not ls.index.by_path
+
+
+def test_a_deleted_directory_with_a_dot_in_its_name_drops_its_files(ls: srv.FjkitServer, ws: Path) -> None:
+    """`v1.2` reads like a file with an unknown suffix; the files under it decide."""
+    page = ws / "app/templates/v1.2/page.html"
+    page.parent.mkdir()
+    page.write_text("<p></p>\n", encoding="utf-8")
+    ls.build([ws])
+    assert page in ls.index.by_path
+    page.unlink()
+    page.parent.rmdir()
+    _notify(ls, (page.parent, t.FileChangeType.Deleted))
+    assert page not in ls.index.by_path
