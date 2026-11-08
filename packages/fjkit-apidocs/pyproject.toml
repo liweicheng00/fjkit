@@ -37,11 +37,11 @@ classifiers = [
 # parameter these templates call. They write no class of their own — they
 # compose `ui/*` macros, the rule `fjkit-admin` follows — so fjkit's
 # stylesheet no longer scans them, and what they need from fjkit is its macro
-# signatures. 0.3.1 added `sidebar_item`, `caption(size, tone, icon_name)`,
+# signatures. 0.4.0 added `sidebar_item`, `caption(size, tone, icon_name)`,
 # `description_list(layout="inline")` and `field_row("inline")`. A template
 # change that calls something newer raises this bound with it.
 dependencies = [
-    "fjkit>=0.3.1",
+    "fjkit>=0.4.0",
 ]
 
 [project.urls]
