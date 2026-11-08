@@ -27,6 +27,7 @@ from jinja2 import (
     pass_context,
     select_autoescape,
 )
+from markupsafe import Markup
 
 from fjkit.config import COLOR_SCHEMES, STATIC_DIR, TEMPLATE_DIR, FjkitConfig
 from fjkit.icons import path as _icon_path
@@ -311,6 +312,9 @@ class Templates:
       unbounded (exports, long report tables): peak memory becomes one buffer
       instead of the whole document, and the browser starts painting the
       `<head>` before the query at the bottom has finished.
+
+    And `fragment()`, which is not a way out but a piece of one: a partial as
+    `Markup`, for the payload of a server-sent event (`fjkit.sse`).
     """
 
     __slots__ = ("config", "env")
@@ -346,13 +350,28 @@ class Templates:
         status_code: int = 200,
         headers: Mapping[str, str] | None = None,
     ) -> HTMLResponse:
+        html = self._render(request, name, context)
+        return HTMLResponse(html, status_code=status_code, headers=dict(headers or {}))
+
+    def fragment(self, request: Request, name: str, context: Mapping[str, Any] | None = None) -> Markup:
+        """Render a partial to markup rather than to a response.
+
+        For a reply that is not one response: a server-sent event carries a
+        rendered partial as its payload (`fjkit.sse.Event`). `Markup`, because
+        the result is already HTML and `fjkit.sse.frame()` escapes a plain
+        string — the same contract Jinja keeps between a macro's output and
+        autoescape. Same context and root path as `page()`, so a partial renders
+        identically in an event and in a swap.
+        """
+        return Markup(self._render(request, name, context))
+
+    def _render(self, request: Request, name: str, context: Mapping[str, Any] | None) -> str:
         template = self.env.get_template(name)
         token = _ROOT_PATH.set(request.scope.get("root_path", ""))
         try:
-            html = template.render(request=request, **self._context(request, context))
+            return template.render(request=request, **self._context(request, context))
         finally:
             _ROOT_PATH.reset(token)
-        return HTMLResponse(html, status_code=status_code, headers=dict(headers or {}))
 
     def stream(
         self,

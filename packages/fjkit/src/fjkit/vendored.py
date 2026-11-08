@@ -6,7 +6,7 @@ therefore cannot drift from the bytes on disk.
 
 These pins are also CHARTER §4.1's whitelist of client-side JavaScript: what is
 listed here, and nothing else, may ship inside this wheel. Two of them reach
-every page; `HTMX_JSON_ENC_VERSION` does not, which is why it is a separate pin.
+every page; the htmx extensions do not, which is why each is a separate pin.
 
 Plotly is not on that list. CHARTER A11(1) lets a plugin distribution pin its
 own bundle, so Plotly is pinned in `fjkit_charts`: the bundle ships in that
@@ -50,6 +50,22 @@ HTMX_JSON_ENC_VERSION = "2.0.3"
 #: is the library plus the htmx glue in one file, which is what a page loads;
 #: vendoring the bare library as well would ship the same algorithm twice.
 IDIOMORPH_VERSION = "0.8.0"
+
+#: htmx's `sse` extension, which opens an `EventSource` from `sse-connect` and
+#: swaps each named event into the element that carries `sse-swap`. It is what
+#: lets a reply arrive token by token into a bubble with no JavaScript in the
+#: app: `Templates.events()` writes the frames, this file reads them.
+#:
+#: **No page loads it unless that page asks for it** — `sse_scripts()` in
+#: `ui/swap.html`, the same opt-in as `morph_scripts()`. CHARTER §2.2: a page
+#: that does not stream pays nothing for it.
+#:
+#: Two properties of this version decide how a stream endpoint has to behave,
+#: and `Templates.events()` is shaped by them. It reconnects forever, with
+#: backoff, whenever the connection closes for any reason — a 204 or a 404
+#: does not stop it — until the event named in `sse-close` arrives. And a
+#: reconnect is a fresh `EventSource`, so `Last-Event-ID` is never sent.
+HTMX_SSE_VERSION = "2.2.4"
 
 
 #: The Basecoat style packs vendored alongside each other under

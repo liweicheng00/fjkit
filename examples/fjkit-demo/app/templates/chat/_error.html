@@ -1,0 +1,8 @@
+{#
+  Why a reply stopped. The payload of the stream's `failure` event: the response
+  is already a 200 by then, so the failure travels as an event rather than as a
+  status code, and `errors.js` never sees it.
+#}
+{% from "chat/macros.html" import reply_error %}
+
+{{ reply_error(reason) }}

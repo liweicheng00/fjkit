@@ -193,7 +193,7 @@
 
     {% set poll_toggle %}{{ button("start polling", variant="outline", size="xs", id="demo-poll-toggle") }}{% endset %}
     {% call stage_with("every 2s — polling", poll_toggle,
-                       "Polling stops when the element is removed. For anything chattier, reach for SSE.") %}
+                       "Polling stops when the element is removed. For anything chattier — a reply arriving word by word — load sse_scripts() and return fjkit.sse.events() from an async route; it always ends with the done event sse-close waits for.") %}
       <div id="demo-poll-host">
         <p>Build status, refreshed by the server.</p>
       </div>
