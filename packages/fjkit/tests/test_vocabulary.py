@@ -725,6 +725,72 @@ class TestMacroEject:
         )
         assert 'data-mine="1" class="w-16"' in html
 
+    _LEGACY_CLOSING = (
+        "  To take another macro, run `fjkit eject` again — it rewrites this file. To give\n"
+        "  one back, delete it here and re-run. To give all of them back, delete this file.\n"
+    )
+
+    @staticmethod
+    def _header(text):
+        """The comment block fjkit writes under the stamp."""
+        return text[text.index("{#\n  Ejected from fjkit") : text.index("\n#}\n") + 4]
+
+    @pytest.mark.parametrize("older", ["count", "wording"])
+    def test_a_second_eject_after_an_upgrade_refreshes_the_header(self, tmp_path, older):
+        """An override written by an older kit carries a header that counted
+        that kit's macros, or that used that kit's wording. Matching it byte for
+        byte against what this kit would write misses both, and left the header
+        listing only the first macro taken."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        text = target.read_text()
+        if older == "count":
+            text = re.sub(r"The other \d+ macro", "The other 12 macro", text)
+        else:
+            closing = text[text.index("  To take another macro") : text.index("#}\n", text.index("To take another"))]
+            text = text.replace(closing, self._LEGACY_CLOSING)
+        target.write_text(text)
+
+        header = self._header((self._eject(tmp_path, "stat") / "ui" / "data.html").read_text())
+
+        assert "your copy of `badge` and `stat`" in header
+        assert "The other 16 macro(s)" in header
+        assert "it rewrites this file" not in header
+
+    def test_a_second_eject_says_when_it_left_an_edited_header_alone(self, tmp_path, capsys):
+        """A header the author rewrote is theirs; fjkit does not overwrite it,
+        and says that it may now be out of date rather than staying silent."""
+        target = self._eject(tmp_path, "badge") / "ui" / "data.html"
+        text = target.read_text().replace("Edit it freely.", "Edit it freely. Ours: matches the brand.")
+        target.write_text(text)
+        capsys.readouterr()
+
+        after = (self._eject(tmp_path, "stat") / "ui" / "data.html").read_text()
+
+        assert "Ours: matches the brand." in after
+        assert "{% macro stat(" in after
+        out = capsys.readouterr()
+        assert "header" in out.out + out.err
+        assert "`stat`" in out.out + out.err
+
+    def test_taking_a_macro_by_hand_names_everything_it_needs(self, tmp_path, capsys):
+        """`table` calls the private `_header` and reads `_WIDTH`, `_ALIGN` and
+        the imports above it. A by-hand instruction that names only `table`
+        leaves a file that fails at render time."""
+        target = self._eject(tmp_path, "table.pagination") / "ui" / "table.html"
+        target.write_text(target.read_text().replace("{% set table = _fjkit.table %}\n", ""))
+        capsys.readouterr()
+
+        self._eject(tmp_path, "table.table", expect=1)
+
+        err = capsys.readouterr().err
+        from fjkit.cli.eject import components, digest_of, parse
+
+        component = parse(components()["table"])
+        for name in ("_header", "_WIDTH", "_ALIGN", "_ARIA_SORT", "_SORT_ICON", "attrs", "icon"):
+            assert f"`{name}`" in err, name
+        assert f"_header={digest_of(component, '_header')}" in err
+        assert f"table={digest_of(component, 'table')}" in err
+
     def test_taking_a_macro_you_already_own_is_refused(self, tmp_path):
         self._eject(tmp_path, "badge")
         self._eject(tmp_path, "badge", expect=1)
