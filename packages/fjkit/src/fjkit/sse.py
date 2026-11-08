@@ -64,6 +64,9 @@ _LINE = re.compile(r"\r\n|\r|\n")
 
 _PING = ": ping\n\n"
 
+#: Event types `EventSource` dispatches about the connection itself.
+_RESERVED = frozenset({"error", "open"})
+
 
 @dataclass(frozen=True, slots=True)
 class Event:
@@ -82,6 +85,15 @@ class Event:
     def __post_init__(self) -> None:
         if not self.name or _LINE.search(self.name):
             raise ValueError(f"{self.name!r} is not an event name: it must be one non-empty line.")
+        if self.name in _RESERVED:
+            # Found in Chrome, not in a spec reading: `onerror` is the handler
+            # for every event of type `error`, the server's included, so the
+            # extension logged `htmx:sseError` for a message that arrived fine.
+            raise ValueError(
+                f"{self.name!r} is the name EventSource gives its own connection events; a message "
+                f"named so also reaches `on{self.name}`, and htmx-ext-sse treats it as a connection "
+                "event. Name it for what it carries, such as 'failure'."
+            )
 
 
 def frame(event: Event) -> str:

@@ -27,8 +27,8 @@ class TestFrame:
         """A newline inside one `data:` field ends the field, and a blank line
         ends the event: the rest of the partial would arrive as junk fields."""
         html = Markup('<div class="alert">\n  <h2>Failed</h2>\n\n</div>')
-        assert frame(Event("error", html)) == (
-            'event: error\ndata: <div class="alert">\ndata:   <h2>Failed</h2>\ndata: \ndata: </div>\n\n'
+        assert frame(Event("failure", html)) == (
+            'event: failure\ndata: <div class="alert">\ndata:   <h2>Failed</h2>\ndata: \ndata: </div>\n\n'
         )
 
     @pytest.mark.parametrize("newline", ["\r\n", "\r"])
@@ -49,6 +49,14 @@ class TestFrame:
     @pytest.mark.parametrize("name", ["", "two\nlines", "a\rb"])
     def test_a_name_that_is_not_one_line_is_refused(self, name):
         with pytest.raises(ValueError):
+            Event(name)
+
+    @pytest.mark.parametrize("name", ["error", "open"])
+    def test_the_names_eventsource_uses_for_itself_are_refused(self, name):
+        """An event named `error` is dispatched to `EventSource.onerror` as
+        well as to `sse-swap`, so htmx-ext-sse reports a connection error for a
+        message — seen in Chrome as `htmx:sseError` with a `MessageEvent`."""
+        with pytest.raises(ValueError, match="EventSource"):
             Event(name)
 
 
