@@ -190,7 +190,7 @@
 
     {% set poll_toggle %}{{ button("開始輪詢", variant="outline", size="xs", id="demo-poll-toggle") }}{% endset %}
     {% call stage_with("every 2s —— 輪詢", poll_toggle,
-                       "元素被移除時輪詢自動停止。需要更高的頻率時改用 SSE。") %}
+                       "元素被移除時輪詢自動停止。需要更高的頻率時——例如逐字抵達的回覆——頁面載入 sse_scripts()，由 async 路由回傳 fjkit.sse.events()；串流一定以 sse-close 所等待的 done 事件結束。") %}
       <div id="demo-poll-host">
         <p>建置狀態，由伺服器重新整理。</p>
       </div>
