@@ -341,6 +341,52 @@ class TestPlugin:
         assert "Plotly.react" in body.text
 
 
+class TestPlotlyVersion:
+    """The app's plotly.py writes figures for one plotly.js; the browser runs the
+    vendored one. A newer minor can emit attributes the bundle does not know, and
+    the chart then degrades without an error anywhere."""
+
+    @staticmethod
+    def _installed(monkeypatch, version):
+        """plotly.py as the app installed it, or (`None`) not at all."""
+        module = None if version is None else SimpleNamespace(get_plotlyjs_version=lambda: version)
+        monkeypatch.setitem(sys.modules, "plotly.offline", module)
+
+    @staticmethod
+    def _start(plugin=None):
+        mount_fjkit(FastAPI(), FjkitConfig(plugins=(plugin or ChartsPlugin(),)))
+
+    @pytest.mark.parametrize("bump", [(1, 0), (0, 1), (0, -1)])
+    def test_a_different_major_or_minor_warns_and_names_both(self, monkeypatch, bump):
+        from fjkit import PluginWarning
+
+        major, minor, _ = (int(n) for n in PLOTLY_VERSION.split("."))
+        theirs = f"{major + bump[0]}.{minor + bump[1]}.0"
+        self._installed(monkeypatch, theirs)
+        with pytest.warns(PluginWarning, match=rf"{re.escape(theirs)}.*{re.escape(PLOTLY_VERSION)}"):
+            self._start()
+
+    @pytest.mark.parametrize("version", ["same", "patch", None])
+    def test_a_patch_difference_or_no_plotly_is_silent(self, monkeypatch, version):
+        import warnings
+
+        major, minor, patch = PLOTLY_VERSION.split(".")
+        theirs = {"same": PLOTLY_VERSION, "patch": f"{major}.{minor}.{int(patch) + 1}", None: None}[version]
+        self._installed(monkeypatch, theirs)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            self._start()
+
+    def test_a_plotly_url_of_the_apps_own_is_not_compared(self, monkeypatch):
+        """The bundle is then the app's, at a version this plugin cannot know."""
+        import warnings
+
+        self._installed(monkeypatch, "99.0.0")
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            self._start(ChartsPlugin(plotly_url="/static/plotly.js"))
+
+
 def test_this_package_ships_exactly_the_whitelisted_plotly():
     """CHARTER A11(1) lets a plugin distribution pin, vendor and serve its own
     bundle, and Plotly's basic bundle is this one's: one copy, at the pinned
@@ -370,7 +416,8 @@ def test_this_package_never_imports_the_plotly_library():
     figures with `plotly.py` declares it itself and an app that builds them by
     hand installs nothing extra. A single `import plotly` here would make the
     20 MB library a runtime dependency of every install of this package, and
-    the only visible symptom would be a slower `uv sync`.
+    the only visible symptom would be a slower `uv sync`. The startup version
+    check reads plotly only through `importlib`, and only when the app has it.
     """
     import ast
 

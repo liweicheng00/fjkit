@@ -28,6 +28,7 @@ never carries the 1.1 MB at all.
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 
 from fjkit.plugins import AppSetup, EnvSetup
@@ -60,6 +61,24 @@ PLOTLY_PATH = f"vendor/plotly/{PLOTLY_FILENAME}"
 PLOTLY_URL = f"https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@{PLOTLY_VERSION}/{PLOTLY_FILENAME}"
 
 
+def _installed_plotlyjs_version() -> str | None:
+    """The plotly.js the app's plotly.py writes figures for, or `None` without plotly.py.
+
+    Through `importlib` rather than an `import` statement: plotly stays out of
+    this package's dependencies, and an app that builds figures by hand never
+    loads it.
+    """
+    try:
+        offline = importlib.import_module("plotly.offline")
+    except ImportError:
+        return None
+    return str(offline.get_plotlyjs_version())
+
+
+def _minor(version: str) -> tuple[str, ...]:
+    return tuple(version.split(".")[:2])
+
+
 class ChartsPlugin:
     """Register in `FjkitConfig.plugins`.
 
@@ -88,6 +107,16 @@ class ChartsPlugin:
         # The bridge and the bundle both. `STATIC_DIR` holds `charts.js` beside
         # `vendor/plotly/`, so one mount serves everything this plugin ships.
         setup.mount_static(f"{self.url}/assets", STATIC_DIR)
+        # Only the vendored bundle has a version to compare: a `plotly_url` is
+        # the app's own copy, at whatever version the app chose.
+        theirs = _installed_plotlyjs_version() if self.plotly_url is None else None
+        if theirs is not None and _minor(theirs) != _minor(PLOTLY_VERSION):
+            setup.warn(
+                f"the installed plotly.py writes figures for plotly.js {theirs}, but the bundle this "
+                f"plugin serves is plotly.js {PLOTLY_VERSION}. Attributes one knows and the other does "
+                "not are dropped in the browser without an error. Pin plotly to the release that targets "
+                f"plotly.js {'.'.join(_minor(PLOTLY_VERSION))}, or serve a matching bundle with `plotly_url=`."
+            )
 
     def extend(self, setup: EnvSetup) -> None:
         """Contribute the templates and the two URLs they need.
