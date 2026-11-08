@@ -166,6 +166,7 @@ class AuthPlugin:
         refresh_leeway: timedelta = timedelta(seconds=60),
         refresh_lock_ttl: timedelta = timedelta(seconds=10),
         refresh_wait: timedelta = timedelta(seconds=10),
+        refresh_backoff: timedelta = timedelta(seconds=_RETRY_AFTER_SECONDS),
     ) -> None:
         self.secret = secret.encode("utf-8") if isinstance(secret, str) else secret
         self.store: SessionStore = store if store is not None else MemoryStore()
@@ -185,6 +186,14 @@ class AuthPlugin:
         self.refresh_leeway = refresh_leeway
         self.refresh_lock_ttl = refresh_lock_ttl
         self.refresh_wait = refresh_wait
+        #: How long a session whose renewal found the upstream unreachable
+        #: waits before its next attempt. Inside it a request is served on the
+        #: token it has, or answered 503 if that token has expired, without
+        #: waiting out the upstream's timeout or logging the outage again. The
+        #: default matches the 503's `Retry-After`. Kept per process: a second
+        #: worker makes its own first attempt. `timedelta(0)` turns it off.
+        self.refresh_backoff = refresh_backoff
+        self._backoff_until: dict[str, float] = {}
         self._warned_no_refresh = False
 
         if csrf is None:
@@ -207,7 +216,15 @@ class AuthPlugin:
             if isinstance(found, FlashPlugin):
                 self.flash = found
 
-        setup.add_middleware(_SessionMiddleware, plugin=self, static_url=setup.config.static_url)
+        static_url = setup.config.static_url
+        if not static_url.startswith("/") or not static_url.rstrip("/"):
+            # The middleware loads no session under this prefix. At the root
+            # that is every route, and every signed-in page reads anonymous.
+            raise ValueError(
+                f"AuthPlugin needs `FjkitConfig.static_url` to be a path below the root, not {static_url!r}: "
+                "requests under it skip session loading."
+            )
+        setup.add_middleware(_SessionMiddleware, plugin=self, static_url=static_url)
         setup.add_exception_handler(NotAuthenticated, self._handle)
         setup.add_exception_handler(CsrfRejected, self._handle)
         setup.add_exception_handler(RefreshUnavailable, self._handle)
@@ -468,6 +485,11 @@ class AuthPlugin:
                 )
             return session
 
+        if self._backing_off(sid):
+            if self._expired(session):
+                raise RefreshUnavailable("the upstream did not answer the last attempt to renew this session")
+            return session
+
         if not await self.store.acquire_refresh_lock(sid, int(self.refresh_lock_ttl.total_seconds())):
             return await self._await_refresh(sid, session)
 
@@ -489,18 +511,42 @@ class AuthPlugin:
             try:
                 fresh = await self.source.refresh(current)  # type: ignore[attr-defined]
             except RefreshRefused as exc:
+                self._backoff_until.pop(sid, None)
                 await self.store.delete(sid)
                 raise RefreshFailed(f"the upstream refused to renew the session: {exc}") from exc
             except Exception as exc:
+                self._back_off(sid)
                 if self._expired(current):
                     raise RefreshUnavailable(f"could not reach the upstream to renew the session: {exc}") from exc
                 _log.warning("could not reach the upstream to renew a session ahead of expiry: %s", exc)
                 return current
 
             await self._write(sid, fresh)
+            self._backoff_until.pop(sid, None)
             return fresh
         finally:
             await self.store.release_refresh_lock(sid)
+
+    def _backing_off(self, sid: str) -> bool:
+        """Report whether `sid`'s last renewal failed less than `refresh_backoff` ago."""
+        until = self._backoff_until.get(sid)
+        if until is None:
+            return False
+        if time.monotonic() < until:
+            return True
+        del self._backoff_until[sid]
+        return False
+
+    def _back_off(self, sid: str) -> None:
+        """Hold `sid`'s next renewal for `refresh_backoff`.
+
+        Drops every entry that has run out, so a session that never returns
+        does not keep one for the life of the process."""
+        now = time.monotonic()
+        for stale in [key for key, until in self._backoff_until.items() if until <= now]:
+            del self._backoff_until[stale]
+        if self.refresh_backoff > timedelta(0):
+            self._backoff_until[sid] = now + self.refresh_backoff.total_seconds()
 
     async def _await_refresh(self, sid: str, stale: Session) -> Session:
         """Wait for whoever won the lock, then read what they wrote.

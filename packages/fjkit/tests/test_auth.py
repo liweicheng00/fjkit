@@ -781,9 +781,9 @@ def test_an_unreachable_upstream_keeps_the_session_and_says_when_to_retry(error)
     """An outage is not a refusal. The user stays signed in, this one request,
     whose token has expired, is answered 503 with a `Retry-After`, and the
     next request after the upstream is back renews the token as if nothing
-    had happened."""
+    had happened. No backoff, so "after" is the very next request."""
     source = FlakySource(error, ttl=timedelta(seconds=-1))
-    client = make_app(make_auth(source=source))
+    client = make_app(make_auth(source=source, refresh_backoff=timedelta(0)))
     client.post("/login", headers={"origin": ORIGIN})
 
     during = client.get("/who", headers=BROWSER, follow_redirects=False)
@@ -850,24 +850,70 @@ def test_an_outage_inside_the_leeway_serves_the_token_that_is_still_good(caplog)
     """The refresh runs `refresh_leeway` ahead of expiry, while the token is
     still valid. An upstream that cannot be reached in that window costs the
     user nothing: the request is served on the token they have, the attempt is
-    logged, and the next request tries again."""
-    source = FlakySource(ConnectionError("no route to host"))
-    client = make_app(make_auth(source=source))
+    logged, and a request after `refresh_backoff` tries again."""
+    source = FlakySource(ConnectionError("no route to host"), delay=0.3)
+    client = make_app(make_auth(source=source, refresh_backoff=timedelta(seconds=0.5)))
     client.post("/login", headers={"origin": ORIGIN})
 
     with caplog.at_level(logging.WARNING, logger="fjkit.auth"):
         first = client.get("/who", follow_redirects=False)
+        started = time.monotonic()
         second = client.get("/who", follow_redirects=False)
+        second_elapsed = time.monotonic() - started
     attempts_during = source.attempts
+    time.sleep(0.5)
     source.error = None
     after = client.get("/who")
 
     assert (first.status_code, first.text) == (200, "ada")
     assert (second.status_code, second.text) == (200, "ada")
-    assert attempts_during == 2, "every request inside the leeway tries again"
-    assert len(caplog.records) == 2, "one warning per attempt, so an operator sees the outage"
+    assert attempts_during == 1, "a request inside the backoff does not ask the upstream again"
+    assert second_elapsed < 0.2, "so it does not wait out the upstream's timeout either"
+    assert len(caplog.records) == 1, "one warning per attempt, so an operator sees the outage"
     assert after.text == "ada"
-    assert source.refreshes == 1
+    assert source.refreshes == 1, "the backoff is over, so the next request renews"
+
+
+def test_an_outage_past_expiry_answers_503_at_once_while_backing_off():
+    """A token that has expired has nothing to serve on, and a request inside
+    the backoff gets the same 503 without waiting on an upstream that did not
+    answer a moment ago."""
+    source = FlakySource(ConnectionError("no route to host"), delay=0.3, ttl=timedelta(seconds=-1))
+    client = make_app(make_auth(source=source))
+    client.post("/login", headers={"origin": ORIGIN})
+
+    first = client.get("/who", follow_redirects=False)
+    started = time.monotonic()
+    second = client.get("/who", follow_redirects=False)
+    second_elapsed = time.monotonic() - started
+
+    assert (first.status_code, second.status_code) == (503, 503)
+    assert second.headers["retry-after"].isdigit()
+    assert source.attempts == 1
+    assert second_elapsed < 0.2
+
+
+def test_the_backoff_is_per_session():
+    """One user's failed renewal says nothing about when another user's
+    session last asked, so a second session still tries."""
+    source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
+    auth = make_auth(source=source)
+    ada, bob = make_app(auth), make_app(auth)
+    ada.post("/login", headers={"origin": ORIGIN})
+    bob.post("/login?name=bob", headers={"origin": ORIGIN})
+
+    ada.get("/who")
+    bob.get("/who")
+    ada.get("/who")
+
+    assert source.attempts == 2
+
+
+def test_a_static_url_at_the_root_is_refused():
+    """The middleware skips session loading under `static_url`. At `/` that
+    is every route, so every page would read as anonymous."""
+    with pytest.raises(ValueError, match="static_url"):
+        make_app(make_auth(), static_url="/")
 
 
 @pytest.mark.parametrize("path", ["/who", "/private/thing", "/optional", "/direct"])
@@ -877,7 +923,7 @@ def test_an_outage_past_expiry_answers_503_wherever_the_session_is_needed(path):
     taking `optional` and one calling `auth.session()` all wait for the
     upstream; the session itself is kept for when it returns."""
     source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
-    client = make_app(make_auth(source=source))
+    client = make_app(make_auth(source=source, refresh_backoff=timedelta(0)))
     client.post("/login", headers={"origin": ORIGIN})
 
     during = client.get(path, headers=BROWSER, follow_redirects=False)
