@@ -120,14 +120,25 @@ def test_the_table_writes_the_open_id_down_only_when_there_is_one(client):
     """`intersect` carries no event, and a panel hidden at the time of the pick
     never heard one, so the page is the only thing both paths can read.
 
-    Nothing picked is an absent input, not an empty one. `hx-include` sends
+    Nothing picked is a disabled input, not an empty one. `hx-include` sends
     whatever it selects, so `value=""` would send `task_id=`; an empty string is
     not an integer, and the first panel to open on a fresh page would answer 422
-    before anyone had picked anything.
+    before anyone had picked anything. htmx leaves a disabled field out.
     """
-    assert HIDDEN_INPUT.search(client.get("/panels").text) is None
+    cold = client.get("/panels").text
+    assert HIDDEN_INPUT.search(cold) is None
+    assert re.search(r'<input type="hidden" name="task_id" disabled>', cold)
     picked = client.get("/panels/select/1", headers={"HX-Request": "true"})
     assert HIDDEN_INPUT.search(picked.text).group(1) == "1"
+
+
+@pytest.mark.parametrize("panel", WITH_ID)
+def test_every_include_selects_something_on_a_cold_page(page, panel):
+    """A selector that matches nothing makes htmx log "returned no matches!"
+    on every fetch before the first pick (#36). The input is there from the
+    start; whether it sends anything is its `disabled`, not its absence."""
+    for name in INCLUDE_SELECTOR.findall(_attrs(page)[panel]):
+        assert re.search(rf'<input[^>]*name="{name}"', page), f"[name={name}] matches nothing on /panels"
 
 
 def test_a_pick_puts_itself_in_the_address_bar(htmx):
