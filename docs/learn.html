@@ -12,7 +12,7 @@
     })();
   </script>
   <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=a49bf3337aa9">
-  <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
+  <link rel="stylesheet" href="assets/brand.css?v=a6ea2b17990b">
   <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
   <script defer src="assets/vendor/basecoat/js/all.min.js?v=bdb364d43e0f"></script>
@@ -44,6 +44,14 @@
 fjkit
   </a></header>      <section><div role="group" aria-label="Documentation"><h3>Documentation</h3>    <ul>        <li>
     <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>Introduction</span>
+    </a>
+  </li>
+        <li>
+    <a href="why.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/></svg>      <span>Why fjkit</span>
+    </a>
+  </li>
+        <li>
+    <a href="architecture.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>      <span>Architecture</span>
     </a>
   </li>
         <li>
@@ -1507,7 +1515,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
       <h4>Components</h4><p><a href="components.html">every signature and enumeration, live</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>examples/fjkit-demo/</h4><p><a href="https://github.com/liweicheng00/fjkit/tree/main/examples/fjkit-demo">the same patterns in a working app</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>fjkit.css</h4><p><a href="https://github.com/liweicheng00/fjkit/tree/main/packages/fjkit/src/fjkit/static/src/fjkit.css">every token, defined once — the file a rebrand overrides</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>jinja-performance.md</h4><p><a href="https://github.com/liweicheng00/fjkit/tree/main/docs/jinja-performance.md"><code>page()</code> against <code>stream()</code>, and the numbers behind the advice</a></p>    </section>  </div></div></div>
+      <h4>jinja-performance.md</h4><p><a href="https://github.com/liweicheng00/fjkit/tree/main/notes/jinja-performance.md"><code>page()</code> against <code>stream()</code>, and the numbers behind the advice</a></p>    </section>  </div></div></div>
   </div>
 </div>
 </section></div></div>

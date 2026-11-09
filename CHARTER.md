@@ -1,6 +1,6 @@
 # fjkit — Charter
 
-What this document settles: what fjkit is for, where it stops, and which decisions are closed. It contains nothing that expires. Measurements and the record of assumptions that turned out wrong live in [`docs/BACKLOG.md`](docs/BACKLOG.md).
+What this document settles: what fjkit is for, where it stops, and which decisions are closed. It contains nothing that expires. Measurements and the record of assumptions that turned out wrong live in [`notes/BACKLOG.md`](notes/BACKLOG.md).
 
 Version scope is not in the repository. It lives in `goal/ROADMAP.md`, which is untracked, because a roadmap is the one document here that is wrong the moment it is committed: it states what is true this week, and a reader who finds it in git history reads a plan as a promise. Nothing in this file depends on it.
 
@@ -98,7 +98,7 @@ Measured corollary: Basecoat's CSS covers 38 components, and **CSS without a mac
 | `fjkit.auth` | Cookie ⇄ token transport and CSRF. `TokenSource` and `SessionStore` are seams the app fills; the kit never sees a credential's meaning. |
 | `fjkit-apidocs` | A page, replacing Swagger UI. It owns `/api-docs` under §2.3. Its own distribution. |
 | `fjkit-charts` | The `chart()` macro, the asset loader, and the figure contract. Data, service and route stay in the app — 370 of the demo's 517 chart lines. Its own distribution. |
-| `fjkit-admin` | A Django-style admin over SQLAlchemy models, added on the project owner's decision of 2026-09-04 (`docs/BACKLOG.md`). It reads your schema, so it stays out of the `fjkit` wheel: its own distribution, carrying the `sqlalchemy>=2.0` runtime dependency, so `fjkit` itself still does not touch the data layer (§2.1). It lives in this repository because `fjkit` was unpublished when it was built, and a change to a macro and to its first consumer was one commit. |
+| `fjkit-admin` | A Django-style admin over SQLAlchemy models, added on the project owner's decision of 2026-09-04 (`notes/BACKLOG.md`). It reads your schema, so it stays out of the `fjkit` wheel: its own distribution, carrying the `sqlalchemy>=2.0` runtime dependency, so `fjkit` itself still does not touch the data layer (§2.1). It lives in this repository because `fjkit` was unpublished when it was built, and a change to a macro and to its first consumer was one commit. |
 | Five `.js` files fjkit wrote | See §4.2. |
 
 ---
@@ -121,7 +121,7 @@ Settled. Implement against them; do not re-propose. Changing one needs an RFC an
 | A10 | **All eight style packs ship in the wheel; the pack is a config value.** `FjkitConfig(style=…)`, and nothing else. Install-time selection (`uv add "fjkit[nova]"`, eight marker distributions) was built, then withdrawn before 0.1.0 and never published. | The budget is per page and a page loads one. The markers cost eight PyPI names and eight version streams to carry one word the config already says; the ambiguity they created — appearance depending on metadata scan order — is a bug that cannot even be bisected, and removing them removed it. |
 | A11 | **Third-party front-end assets in the wheel are a whitelist (§4); every asset is loaded by an explicit page.** Two separate claims. **(1)** Only whitelisted bundles enter the wheel: `htmx.org`, `htmx-ext-json-enc`, `htmx-ext-sse`, `idiomorph`, `basecoat-css`. Each is pinned in `fjkit/vendored.py`, downloaded by `scripts/vendor_ui.py`, committed to `static/vendor/`, and served by `mount_fjkit`'s static mount. A plugin shipped as its own distribution pins, vendors and serves its own. **(2)** A plugin's own assets live with the plugin in the wheel, because the §4 ceiling governs *what a page downloads by default*, not what files exist. A plugin still may not inject markup into the shell; assets arrive through a macro the page calls in `{% block scripts %}`, and must degrade when a third-party asset is absent. | "No build" promises that *you* need not build, not that nobody may load anything. Naming the load per page is stricter than a shell hook any plugin could use to add a `<script>` to every page. |
 
-Five architecture diagrams — package boundary, template resolution, build timing, render path, gate loop — are in `docs/architecture.md`. That file is authoritative.
+Five pictures of these decisions — package boundary, template resolution, build timing, render path, gate loop — are the site's [Architecture page](https://liweicheng00.github.io/fjkit/architecture.html), whose source is `packages/fjkit/docs/workbench/templates/architecture.html`. The table above is authoritative; that page draws it. There is no third copy: the Markdown the diagrams used to live in was published as unrendered text, in one language, linked from nowhere.
 
 ---
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_parts.html" import code, defs, lesson, prose %}
+{% from "_parts.html" import code, defs, lesson, prose, stage %}
 {% from "ui/layout.html" import grid, page_header, stack %}
 
 {#
@@ -44,6 +44,48 @@
     your routes.
   {% endset %}
   {{ page_header("A Fast UI for FastAPI", intro) }}
+
+  {#
+    The problem, before the features.
+
+    What this page used to open with was three features, and a feature only
+    means something to a reader who already has the problem. Two paragraphs,
+    naming the two routes a FastAPI author actually takes today and what each
+    one costs, so "no build step" arrives as the answer to something.
+
+    Neither route is named as a product. A comparison against named tools is a
+    page that goes stale on somebody else's release schedule.
+  #}
+  {% call prose() %}
+    <p>
+      A FastAPI service that needs a real interface has two usual routes. Write Jinja and hand-roll
+      the CSS, and you own a design system you did not set out to build. Reach for a front-end
+      framework, and you own a second build, a second language and a second thing to deploy.
+    </p>
+    <p>
+      fjkit is a third route. The interface is Jinja macros beside your routes, and the stylesheet
+      was compiled when fjkit was released — so your repository gets no <code>package.json</code>,
+      and there is nothing to rebuild when you edit a template.
+    </p>
+  {% endcall %}
+
+  {#
+    The proof, before the pitch. A UI kit whose landing page shows nothing it
+    rendered is asking to be taken on trust.
+
+    Two files, swapped by the theme. The claim in the caption includes dark
+    mode, and one picture can only make half of it. The cost is recorded in
+    `assets/brand.css`, GAP 2.
+  #}
+  {% set shot_caption %}The demo in <code>examples/fjkit-demo</code>. Navigation, dark mode, a filterable table, a form that validates and htmx swaps — and no <code>.css</code> or <code>.js</code> file anywhere in that app.{% endset %}
+  {% call stage("A page the kit rendered", shot_caption, padded=false) %}
+    <img data-figure="light" width="1120" height="693"
+         src="{{ fjkit_static('demo-light.jpg') }}"
+         alt="A task board: a sidebar of nine sections, a new-task form, a table of eight tasks with status and priority badges, and a progress card.">
+    <img data-figure="dark" width="1120" height="693"
+         src="{{ fjkit_static('demo-dark.jpg') }}"
+         alt="The same task board in dark mode.">
+  {% endcall %}
 
   {{ defs("The key features are:", features) }}
 
@@ -129,10 +171,15 @@ def overview() -> Overview:
   {# ============================================================== 03 #}
   {% set i03 %}One wheel, two runtime dependencies, and nothing for you to compile.{% endset %}
   {% call lesson("box", "03", "What ships in the wheel", i03) %}
+    {#
+      The three numbers come from `css`, measured by `build.py` against the
+      stylesheet this site links to. They were typed here once and were wrong.
+    #}
+    {% set css_line %}the compiled stylesheet, one per style pack. {{ css.raw_kb }} KB raw, {{ css.gzip_kb }} KB gzip; the build fails above {{ css.budget_kb }} KB. A page loads one.{% endset %}
     {% call grid(cols=2, gap=4) %}
       {{ defs("Shipped in the package", [
         ("templates/ui/", "the macros: layout, buttons, data, forms, tables, tabs, navigation, sidebar, feedback, icons, and the document shell"),
-        ("static/dist/fjkit-<pack>.css", "the compiled stylesheet, one per style pack. 234 KB raw, 23.9 KB gzip; the build fails above 28 KB. A page loads one."),
+        ("static/dist/fjkit-<pack>.css", css_line),
         ("static/vendor/", "htmx and Basecoat's JavaScript, pinned and served out of the package"),
         ("1,767 icons", "Lucide, inlined by name. No icon font, no sprite request, no runtime JS."),
       ]) }}
@@ -154,7 +201,11 @@ def overview() -> Overview:
     {% set n_components %}<a href="{{ url_for(request, "components") }}">Components</a> — every macro, live, with the call that produced it{% endset %}
     {% set n_cheatsheet %}<a href="{{ url_for(request, "cheatsheet") }}">Cheatsheet</a> — every signature, shell block, template global and htmx attribute on one page{% endset %}
     {% set n_plugins %}<a href="{{ url_for(request, "plugins") }}">Plugins</a> — sign-in, flash messages, charts, an API console and an admin, and how to write your own{% endset %}
+    {% set n_arch %}<a href="{{ url_for(request, "architecture") }}">Architecture</a> — the five closed decisions as pictures: the package boundary, eject, when the build runs, one partial with two entry points, and the gate loop{% endset %}
+    {% set n_why %}<a href="{{ url_for(request, "why") }}">Why fjkit</a> — what the alternatives cost, and what this one gives up in exchange{% endset %}
     {{ defs("On this site", [
+      ("decide whether to use it at all", n_why),
+      ("see the shape before I commit to it", n_arch),
       ("build my first real screen", n_learn),
       ("find a component", n_components),
       ("look up a parameter", n_cheatsheet),

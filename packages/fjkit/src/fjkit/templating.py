@@ -398,7 +398,7 @@ class Templates:
             # and every fragment costs an ASGI message plus an HTTP chunk frame.
             # Buffering batches them. The win scales with the fragment count, so
             # it is large on a page that yields thousands and small on one whose
-            # body is a `{% call %}` block. See `docs/jinja-performance.md`.
+            # body is a `{% call %}` block. See `notes/jinja-performance.md`.
             stream.enable_buffering(buffer_size)
             # Set per chunk, not once: Starlette pulls each chunk in its own
             # threadpool call, and each call runs in a fresh copy of the context.

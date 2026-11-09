@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_parts.html" import code, defs, lesson, prose %}
+{% from "_parts.html" import code, defs, lesson, prose, stage %}
 {% from "ui/layout.html" import grid, page_header, stack %}
 
 {#
@@ -38,6 +38,45 @@
     給 FastAPI 的頁面、表格、表單、導覽與 htmx 局部更新，以 Jinja macro 寫在路由旁邊。
   {% endset %}
   {{ page_header("給 FastAPI 的快速 UI", intro) }}
+
+  {#
+    先講問題，再講特色。
+
+    這一頁原本開頭就是三條特色，而特色只對「已經有這個問題」的讀者有意義。兩段，
+    點名 FastAPI 作者今天實際會走的兩條路，以及各自的代價，讓「零建置」是在回答
+    某件事，而不是憑空的形容詞。
+
+    兩條路都不指名產品。跟具名工具比較的頁面，會因為別人發版而過期。
+  #}
+  {% call prose() %}
+    <p>
+      一個需要真正介面的 FastAPI 服務，通常只有兩條路。自己寫 Jinja 再手刻 CSS，
+      於是你多了一套本來沒打算做的設計系統。改用前端框架，於是你多了一套建置、
+      一種語言，以及第二個要部署的東西。
+    </p>
+    <p>
+      fjkit 是第三條路。介面是寫在路由旁邊的 Jinja macro，stylesheet 在 fjkit 發佈時
+      就編譯好了——所以你的專案不會出現 <code>package.json</code>，改模板也沒有任何
+      東西要重新 build。
+    </p>
+  {% endcall %}
+
+  {#
+    先給證據，再給說法。一個 UI 套件的首頁如果沒有任何它產出的畫面，就是要讀者
+    憑信任。
+
+    兩個檔案，跟著主題切換。說明文字裡的主張包含深色模式，一張圖只能證明一半。
+    代價記在 `assets/brand.css` 的 GAP 2。
+  #}
+  {% set shot_caption %}位於 <code>examples/fjkit-demo</code> 的示範。導覽、深色模式、可篩選表格、會驗證的表單與 htmx 局部更新——而那個 app 裡沒有任何一個 <code>.css</code> 或 <code>.js</code> 檔。{% endset %}
+  {% call stage("這一頁是 kit 畫出來的", shot_caption, padded=false) %}
+    <img data-figure="light" width="1120" height="693"
+         src="{{ fjkit_static('demo-light.jpg') }}"
+         alt="一個任務看板：左側九個區段的側欄、新增任務表單、八列任務的表格（含狀態與優先度標籤），右側是進度卡片。">
+    <img data-figure="dark" width="1120" height="693"
+         src="{{ fjkit_static('demo-dark.jpg') }}"
+         alt="同一個任務看板的深色模式。">
+  {% endcall %}
 
   {{ defs("主要特色", features) }}
 
@@ -121,10 +160,15 @@ def overview() -> Overview:
   {# ============================================================== 03 #}
   {% set i03 %}一個 wheel、兩個執行期依賴，不需要自行編譯任何東西。{% endset %}
   {% call lesson("box", "03", "wheel 裡裝了什麼", i03) %}
+    {#
+      三個數字來自 `css`，由 `build.py` 量測本站連到的那份 stylesheet。
+      手寫過一次，而且是錯的。
+    #}
+    {% set css_line %}編譯好的 stylesheet，每個風格包一份。{{ css.raw_kb }} KB 原始、{{ css.gzip_kb }} KB gzip；超過 {{ css.budget_kb }} KB 時 build 失敗。一頁只載一份。{% endset %}
     {% call grid(cols=2, gap=4) %}
       {{ defs("套件裡帶的", [
         ("templates/ui/", "macro：版面、按鈕、資料、表單、表格、分頁、導覽、側欄、回饋、圖示與文件外殼"),
-        ("static/dist/fjkit-<pack>.css", "編譯好的 stylesheet，每個風格包一份。234 KB 原始、23.9 KB gzip；超過 28 KB 時 build 失敗。一頁只載一份。"),
+        ("static/dist/fjkit-<pack>.css", css_line),
         ("static/vendor/", "htmx 與 Basecoat 的 JavaScript，版本釘死，直接從套件裡供應"),
         ("1,767 個圖示", "Lucide，按名字內嵌。沒有 icon font、沒有 sprite 請求、執行期沒有 JS。"),
       ]) }}
@@ -146,7 +190,11 @@ def overview() -> Overview:
     {% set n_components %}<a href="{{ url_for(request, "components") }}">元件</a>——每支 macro 的實際渲染，附上產生它的呼叫{% endset %}
     {% set n_cheatsheet %}<a href="{{ url_for(request, "cheatsheet") }}">速查表</a>——所有簽名、外殼 block、模板全域變數與 htmx 屬性，集中在一頁{% endset %}
     {% set n_plugins %}<a href="{{ url_for(request, "plugins") }}">外掛</a>——登入、flash 訊息、圖表、API 主控台與 admin，以及如何自己寫外掛{% endset %}
+    {% set n_arch %}<a href="{{ url_for(request, "architecture") }}">架構</a>——五個已定案的決定，用圖說明：套件邊界、eject、build 發生的時機、一份 partial 兩個入口，以及守門迴圈{% endset %}
+    {% set n_why %}<a href="{{ url_for(request, "why") }}">為什麼用</a>——其他做法的代價，以及這個做法換來什麼又放棄什麼{% endset %}
     {{ defs("這個站上", [
+      ("決定到底要不要用它", n_why),
+      ("先看清楚它的形狀再決定要不要用", n_arch),
       ("做出第一個真正的畫面", n_learn),
       ("找一個元件", n_components),
       ("查一個參數", n_cheatsheet),

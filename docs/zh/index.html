@@ -12,7 +12,7 @@
     })();
   </script>
   <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=a49bf3337aa9">
-  <link rel="stylesheet" href="../assets/brand.css?v=1df0fccc3b31">
+  <link rel="stylesheet" href="../assets/brand.css?v=a6ea2b17990b">
   <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="../assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
   <script defer src="../assets/vendor/basecoat/js/all.min.js?v=bdb364d43e0f"></script>
@@ -44,6 +44,14 @@
 fjkit
   </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
     <a href="index.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
+    </a>
+  </li>
+        <li>
+    <a href="why.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/></svg>      <span>為什麼用</span>
+    </a>
+  </li>
+        <li>
+    <a href="architecture.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>      <span>架構</span>
     </a>
   </li>
         <li>
@@ -100,6 +108,29 @@ fjkit
 </p>    </div>
   </div>
 
+<div class="flex flex-col gap-3">    <p>
+      一個需要真正介面的 FastAPI 服務，通常只有兩條路。自己寫 Jinja 再手刻 CSS，
+      於是你多了一套本來沒打算做的設計系統。改用前端框架，於是你多了一套建置、
+      一種語言，以及第二個要部署的東西。
+    </p>
+    <p>
+      fjkit 是第三條路。介面是寫在路由旁邊的 Jinja macro，stylesheet 在 fjkit 發佈時
+      就編譯好了——所以你的專案不會出現 <code>package.json</code>，改模板也沒有任何
+      東西要重新 build。
+    </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>這一頁是 kit 畫出來的</h3><p>位於 <code>examples/fjkit-demo</code> 的示範。導覽、深色模式、可篩選表格、會驗證的表單與 htmx 局部更新——而那個 app 裡沒有任何一個 <code>.css</code> 或 <code>.js</code> 檔。</p>      </div>
+    </header>      <div class="border-t">      <img data-figure="light" width="1120" height="693"
+         src="../assets/demo-light.jpg?v=50fa1641d40f"
+         alt="一個任務看板：左側九個區段的側欄、新增任務表單、八列任務的表格（含狀態與優先度標籤），右側是進度卡片。">
+    <img data-figure="dark" width="1120" height="693"
+         src="../assets/demo-dark.jpg?v=16147a924342"
+         alt="同一個任務看板的深色模式。">
+
+</div>
+  </div>
   <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>主要特色</h3>      </div>
@@ -203,7 +234,7 @@ def overview() -&gt; Overview:
 <h3>套件裡帶的</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>templates/ui/</h4><p>macro：版面、按鈕、資料、表單、表格、分頁、導覽、側欄、回饋、圖示與文件外殼</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>編譯好的 stylesheet，每個風格包一份。234 KB 原始、23.9 KB gzip；超過 28 KB 時 build 失敗。一頁只載一份。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>編譯好的 stylesheet，每個風格包一份。236 KB 原始、25.2 KB gzip；超過 28 KB 時 build 失敗。一頁只載一份。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>static/vendor/</h4><p>htmx 與 Basecoat 的 JavaScript，版本釘死，直接從套件裡供應</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>1,767 個圖示</h4><p>Lucide，按名字內嵌。沒有 icon font、沒有 sprite 請求、執行期沒有 JS。</p>    </section>  </div></div></div>
   </div>
@@ -229,6 +260,8 @@ def overview() -&gt; Overview:
       <div>
 <h3>這個站上</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>決定到底要不要用它</h4><p><a href="why.html">為什麼用</a>——其他做法的代價，以及這個做法換來什麼又放棄什麼</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>先看清楚它的形狀再決定要不要用</h4><p><a href="architecture.html">架構</a>——五個已定案的決定，用圖說明：套件邊界、eject、build 發生的時機、一份 partial 兩個入口，以及守門迴圈</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>做出第一個真正的畫面</h4><p><a href="learn.html">上手</a>——app 怎麼接線、htmx 局部更新怎麼運作、表單錯誤、訊息、換品牌與 <code>fjkit check</code>。先讀 01–05。</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>找一個元件</h4><p><a href="components.html">元件</a>——每支 macro 的實際渲染，附上產生它的呼叫</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>查一個參數</h4><p><a href="cheatsheet.html">速查表</a>——所有簽名、外殼 block、模板全域變數與 htmx 屬性，集中在一頁</p>    </section>  </div><div class="item" data-clamp="false">    <section>

@@ -49,7 +49,7 @@ async def upload_file(file: UploadFile) -> UploadResponse:
     """Accept the uploaded file and report what arrived.
 
     `async def`, unlike every rendering handler in this demo: reading an
-    `UploadFile` is awaited, and the threadpool rule in CLAUDE.md is about
+    `UploadFile` is awaited, and the threadpool rule in AGENTS.md is about
     handlers whose work is rendering. This one's work is the read.
 
     Nothing is stored. The demo exists to show that the bytes arrived, which is
