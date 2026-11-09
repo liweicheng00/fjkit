@@ -12,7 +12,7 @@
     })();
   </script>
   <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=a49bf3337aa9">
-  <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
+  <link rel="stylesheet" href="assets/brand.css?v=a6ea2b17990b">
   <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
   <script defer src="assets/vendor/basecoat/js/all.min.js?v=bdb364d43e0f"></script>
@@ -44,6 +44,14 @@
 fjkit
   </a></header>      <section><div role="group" aria-label="Documentation"><h3>Documentation</h3>    <ul>        <li>
     <a href="index.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>Introduction</span>
+    </a>
+  </li>
+        <li>
+    <a href="why.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/></svg>      <span>Why fjkit</span>
+    </a>
+  </li>
+        <li>
+    <a href="architecture.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>      <span>Architecture</span>
     </a>
   </li>
         <li>
@@ -101,6 +109,29 @@ fjkit
 </p>    </div>
   </div>
 
+<div class="flex flex-col gap-3">    <p>
+      A FastAPI service that needs a real interface has two usual routes. Write Jinja and hand-roll
+      the CSS, and you own a design system you did not set out to build. Reach for a front-end
+      framework, and you own a second build, a second language and a second thing to deploy.
+    </p>
+    <p>
+      fjkit is a third route. The interface is Jinja macros beside your routes, and the stylesheet
+      was compiled when fjkit was released — so your repository gets no <code>package.json</code>,
+      and there is nothing to rebuild when you edit a template.
+    </p>
+</div>
+<div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>A page the kit rendered</h3><p>The demo in <code>examples/fjkit-demo</code>. Navigation, dark mode, a filterable table, a form that validates and htmx swaps — and no <code>.css</code> or <code>.js</code> file anywhere in that app.</p>      </div>
+    </header>      <div class="border-t">      <img data-figure="light" width="1120" height="693"
+         src="assets/demo-light.jpg?v=50fa1641d40f"
+         alt="A task board: a sidebar of nine sections, a new-task form, a table of eight tasks with status and priority badges, and a progress card.">
+    <img data-figure="dark" width="1120" height="693"
+         src="assets/demo-dark.jpg?v=16147a924342"
+         alt="The same task board in dark mode.">
+
+</div>
+  </div>
   <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>The key features are:</h3>      </div>
@@ -206,7 +237,7 @@ def overview() -&gt; Overview:
 <h3>Shipped in the package</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>templates/ui/</h4><p>the macros: layout, buttons, data, forms, tables, tabs, navigation, sidebar, feedback, icons, and the document shell</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>the compiled stylesheet, one per style pack. 234 KB raw, 23.9 KB gzip; the build fails above 28 KB. A page loads one.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>static/dist/fjkit-&lt;pack&gt;.css</h4><p>the compiled stylesheet, one per style pack. 236 KB raw, 25.2 KB gzip; the build fails above 28 KB. A page loads one.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>static/vendor/</h4><p>htmx and Basecoat&#39;s JavaScript, pinned and served out of the package</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>1,767 icons</h4><p>Lucide, inlined by name. No icon font, no sprite request, no runtime JS.</p>    </section>  </div></div></div>
   </div>
@@ -232,6 +263,8 @@ def overview() -&gt; Overview:
       <div>
 <h3>On this site</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>decide whether to use it at all</h4><p><a href="why.html">Why fjkit</a> — what the alternatives cost, and what this one gives up in exchange</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>see the shape before I commit to it</h4><p><a href="architecture.html">Architecture</a> — the five closed decisions as pictures: the package boundary, eject, when the build runs, one partial with two entry points, and the gate loop</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>build my first real screen</h4><p><a href="learn.html">Learn</a> — how the app is wired, how htmx swaps work, form errors, messages, rebranding and <code>fjkit check</code>. Read 01–05 first.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>find a component</h4><p><a href="components.html">Components</a> — every macro, live, with the call that produced it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>look up a parameter</h4><p><a href="cheatsheet.html">Cheatsheet</a> — every signature, shell block, template global and htmx attribute on one page</p>    </section>  </div><div class="item" data-clamp="false">    <section>
@@ -244,7 +277,7 @@ def overview() -&gt; Overview:
 </div>    </main>
 
       <footer class="text-muted-foreground border-t py-5 text-xs">
-  fjkit 0.4.0 · FastAPI 0.141.1 ·
+  fjkit 0.4.1 · FastAPI 0.141.1 ·
   Jinja2 3.1.6 · Basecoat 1.0.2 ·
   htmx 2.0.10 —
   <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.

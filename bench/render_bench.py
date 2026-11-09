@@ -1,6 +1,6 @@
 """Measure what costs CPU and memory when Jinja2 renders.
 
-Every claim in `docs/jinja-performance.md` comes from a case below. The ordering
+Every claim in `notes/jinja-performance.md` comes from a case below. The ordering
 of the results holds across machines; the absolute microseconds do not, so
 re-run this on your own hardware before quoting a number.
 

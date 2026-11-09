@@ -1,0 +1,113 @@
+# AGENTS.md
+
+The entry point for any agent working in this repository, whichever one it is. `CLAUDE.md` is a symlink to this file, so the two cannot say different things.
+
+**fjkit** is what this repository builds: the UI layer for FastAPI — pages, tables, forms, navigation and htmx swaps, composed as Jinja macros in the same codebase as the routes. It reaches that with **no front-end build step on the user's side**, which is the constraint every rule below protects. `examples/fjkit-demo` is the demo, and it is also the kit's acceptance test.
+
+Toolchain is **uv only**. Never add `npm`, `package.json` or `node_modules` — not to the kit, and not to the demo.
+
+## Where things are
+
+```
+packages/fjkit/        the package — this is the product
+  src/fjkit/           templating, mounting, config, icons, cli
+  src/fjkit/templates/ui/   the component macros
+  src/fjkit/static/    src/fjkit.css (tokens), dist/ (built), vendor/ (htmx, Basecoat)
+  docs/                the docs-site source — workbench generator and templates
+  tests/               component contracts, vocabulary, loader override
+examples/fjkit-demo/        the demo app — a workspace member, depends on fjkit
+  app/                 main.py, config.py, dependencies.py
+  app/routers/         one module per resource
+  app/schemas/         one module per resource — wire contracts, variant maps
+  app/services/<feature>/   business logic, one file per operation
+  app/templates/<name>/     page.html, _partials, macros.html
+  tests/               routes, htmx contract, parity, conventions
+packages/fjkit-admin/  a second distribution: Django-style admin over SQLAlchemy, built on fjkit
+  src/fjkit_admin/     plugin (routes), options (ModelAdmin), introspect, schema, queries
+  src/fjkit_admin/templates/admin/   page, _index, _list, _form, macros — zero class attributes
+  tests/               routes, vocabulary gate, introspection, SQLModel
+examples/fjkit-admin-demo/  the admin demo — SQLite, two models, one AdminPlugin
+  admin_demo/          main.py, config.py, db.py, models.py, admin.py, seed.py
+bench/                 render_bench.py — guards the performance claims
+docs/                  the published site — a build artefact, nothing hand-written
+notes/                 tracked, not published: the benchmark write-up and the work log
+CHARTER.md             mission, scope, architecture decisions, quality budgets
+goal/                  untracked: ROADMAP.md (version scope), OPERATING.md
+```
+
+## Commands
+
+```bash
+uv run fastapi dev examples/fjkit-demo/app/main.py    # the demo
+uv run fastapi dev examples/fjkit-admin-demo/admin_demo/main.py   # the admin demo
+uv run pytest                                    # kit suite + admin suite + both demos
+uv run ruff check
+uv run fjkit check examples/fjkit-demo/app/templates  # closed-vocabulary gate
+uv run python bench/render_bench.py              # performance
+```
+
+Only when working on the kit itself:
+
+```bash
+uv sync --group build && uv run fjkit build-css        # rebuild dist/fjkit.css
+uv run python packages/fjkit/scripts/vendor_ui.py      # re-download htmx/Basecoat
+uv run python packages/fjkit/docs/workbench/build.py   # rebuild the docs site
+```
+
+The docs site is the documentation — there is no Markdown copy of it in the repo. `docs/` at the root is a build artefact, so **rebuild it and commit the result before every push** that touched `packages/fjkit/docs/workbench/`, `src/fjkit/templates/ui/` or `static/src/fjkit.css`. `.githooks/pre-push` enforces this; enable it once with `git config core.hooksPath .githooks`.
+
+An app author runs none of the second group. That asymmetry is the product.
+
+Before reporting done: `make check` — it is `uv run pytest`, `uv run ruff check` and `fjkit check` on both demos' templates, which is what CI runs. `make docs-check` as well when the change touched the docs-site source.
+
+## Which document decides what
+
+This table is the only authority map in the repository. Add a row here rather than a second table somewhere else.
+
+| Question | Authority |
+|---|---|
+| How do I build a page with fjkit? | `.claude/skills/fjkit/SKILL.md`, then <https://liweicheng00.github.io/fjkit/> |
+| What does this macro accept? | its signature comment in `packages/fjkit/src/fjkit/templates/ui/*.html` |
+| Should this feature exist? | `CHARTER.md` §2 |
+| What is next? | `goal/ROADMAP.md` — untracked, and the only document here that expires |
+| What am I allowed to do without asking? | `CHARTER.md` §6, then `goal/OPERATING.md` §1 |
+| How does a branch, a version or a tag become a release? | `RELEASE.md` |
+| What did the benchmarks actually measure? | `notes/jinja-performance.md` |
+
+Read the authority rather than restating it here. This file is loaded on every turn, so it stays a map. `packages/fjkit/tests/test_authority.py` fails when a copy of this table appears elsewhere.
+
+## Layer boundaries in the demo
+
+| Layer | Owns | Must not contain |
+|---|---|---|
+| `routers/` | routes, `Depends`, status codes, template choice | business logic, DB queries |
+| `services/` | business logic, transaction boundaries | `Request`/`Response`, template names |
+| `schemas/` | wire contracts, domain→variant maps | a mirror of the DB table |
+| `templates/` | markup | data reshaping, business rules |
+
+Three kinds of template, three rules:
+
+| Kind | Path | Extends the shell | Returned by a route |
+|---|---|---|---|
+| Page | `<feature>/page.html` | always | full GET |
+| Partial | `<feature>/_*.html` | never | htmx swaps |
+| Macros | `<feature>/macros.html`, `ui/*.html` | never | never |
+
+1. A partial renders standalone. It declares its own imports and reads only what the router put in the context.
+2. The page embeds the same partial the htmx endpoints return.
+3. A repeated component is a macro, never `{% include %}` in a loop.
+
+`examples/fjkit-demo/tests/test_conventions.py` enforces 1, 2 and the naming rules.
+
+## Colour
+
+Every colour is defined once, in `packages/fjkit/src/fjkit/static/src/fjkit.css`. Templates name a **role** (`variant="success"`, `bg-primary text-primary-foreground`), never a hue. Status colours are deliberately not tied to `--primary`, because "green means done" has to survive a rebrand. `fjkit check` fails the build on hex codes, `rgb()`/`oklch()`, Tailwind palette hues and `text-white`/`text-black`.
+
+The token table is that file itself; rebranding is covered on the site's Learn page.
+
+## Rendering
+
+- `templates.page()` for normal responses. `templates.stream()` when the row count is user-controlled.
+- Streaming must be buffered. Unbuffered is 65× slower over ASGI.
+- A handler that renders should be `def`, not `async def`, so Starlette runs it in the threadpool.
+- Every Jinja knob lives in `FjkitConfig`. Re-run `bench/render_bench.py` when a change is meant to be an optimisation.

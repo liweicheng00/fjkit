@@ -31,6 +31,9 @@ the authority, and source cannot describe a macro the package stopped shipping.
 comment that lists its closed enumerations. A guessed parameter does not fail.
 It renders wrong markup silently.
 
+Which *document* settles which question is one table, in `AGENTS.md`. This one
+is narrower: which **source file** decides a thing you are about to write.
+
 | Task | Where it is decided |
 |---|---|
 | macro signatures, shell blocks, closed enumerations | `src/fjkit/templates/ui/*.html` |
@@ -41,7 +44,6 @@ It renders wrong markup silently.
 | icons | `ui/icon.html`, `src/fjkit/icons.py` |
 | tokens, rebranding, dark mode, style packs | `src/fjkit/static/src/fjkit.css`, `src/fjkit/styles.py`, `FjkitConfig.color_scheme` in `src/fjkit/config.py` |
 | a blocked class, `eject`, building the CSS | `src/fjkit/cli/` |
-| what the benchmarks measured | `docs/jinja-performance.md` |
 
 `examples/fjkit-demo` is the acceptance test. A pattern that appears there is a
 pattern the kit supports. Read it before you invent one.
@@ -240,17 +242,13 @@ When you change the package:
   `ui/attrs.html` are the house style.
 - After touching `ui/*.html` or `static/src/fjkit.css`, run `uv sync --group build &&
   uv run fjkit build-css`. It prints the size and fails over budget (28 KB gzip).
-  Record the number in `docs/BACKLOG.md`.
+  Record the number in `notes/BACKLOG.md`.
 - Files under `static/vendor/` are upstream. Regenerate them with
   `packages/fjkit/scripts/vendor_ui.py`. Upstream's own Jinja macros are not
   vendored; fjkit writes its own against the same CSS.
 - `static/dist/fjkit-<pack>.css` are build artefacts, not source.
 
-Stop and ask the user before you do any of these:
-
-- add a runtime dependency (`pyproject.toml` declares two, `fastapi` and
-  `jinja2`; `pydantic` arrives through FastAPI)
-- change a published macro signature
-- add hand-written JavaScript
-- add npm, `package.json` or `node_modules`
-- relax a budget in `CHARTER.md` §4
+**What needs a human is `CHARTER.md` §6, and that list is the whole list.** It
+was copied here once and the copy was already short by three items, so read the
+section. Everything it does not name — issues, code, pull requests, merges,
+documentation, releasing an `0.x` — proceeds without asking.

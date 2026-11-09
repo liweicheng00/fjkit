@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-Hant" class="h-full scroll-pt-16">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>為什麼選 fjkit，以及什麼時候不要 · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/dist/fjkit-vega.css?v=a49bf3337aa9">
+  <link rel="stylesheet" href="../assets/brand.css?v=a6ea2b17990b">
+  <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <script defer src="../assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
+  <script defer src="../assets/vendor/basecoat/js/all.min.js?v=bdb364d43e0f"></script>
+  <script defer src="../assets/js/errors.js?v=b54cb18a438c"></script>
+  <meta name="description" content="幫 FastAPI app 做介面的三種做法各自的代價，以及這個做法換來什麼又放棄什麼。">
+  <meta property="og:title" content="為什麼選 fjkit，以及什麼時候不要">
+  <meta property="og:description" content="幫 FastAPI app 做介面的三種做法各自的代價，以及這個做法換來什麼又放棄什麼。">
+  <meta property="og:type" content="article">
+  <script src="../assets/mock-server.js?v=956d5ea778b1"></script>
+</head>
+<body class="min-h-full antialiased">
+    <header class="bg-background sticky top-0 z-30 flex h-14 items-center gap-6 border-b px-5"
+      data-position="sticky">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById(this.getAttribute('aria-controls')).toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>      <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit 的 GitHub 原始碼">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>      </div>
+    </header>
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="文件"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="../assets/brand/torii-bolt.png?v=bd3730c7661d" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="文件"><h3>文件</h3>    <ul>        <li>
+    <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>簡介</span>
+    </a>
+  </li>
+        <li>
+    <a href="why.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/></svg>      <span>為什麼用</span>
+    </a>
+  </li>
+        <li>
+    <a href="architecture.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>      <span>架構</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>上手</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>外掛</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>元件</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>      <span>速查表</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="本頁章節"><h3>本頁章節</h3>    <ul>          <li>
+    <a href="why.html#ways">      <span>01 · 三種做法</span>
+    </a>
+  </li>
+          <li>
+    <a href="why.html#costs">      <span>02 · 這個做法的代價</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="語言"><h3>語言</h3>    <ul>      <li>
+    <a href="../why.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>English</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-[calc(100vh-3.5rem)] flex-col px-5 pt-5">
+
+    <main class="flex flex-1 flex-col pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">為什麼選 fjkit，以及什麼時候不要</h1>
+<p class="text-muted-foreground text-sm">    其他做法的代價，以及這個做法的代價。在你決定形狀之前讀，不是之後。
+</p>    </div>
+  </div>
+
+<div id="ways">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">幫 FastAPI app 做介面的三種做法</h2><p class="text-muted-foreground text-sm">三種做法，以及各自的代價。</p>      </div>
+      <div class="flex flex-col gap-3">      <p>
+        這三種都沒有錯。差別在代價是什麼，以及代價什麼時候才出現。
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>① 模板加上自己的 CSS</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>你要寫的</h4><p>Jinja，外加一份你自己擁有的 stylesheet——手刻的，或是一套你自己編譯的 utility 框架</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>代價</h4><p>一套你本來沒打算做的設計系統。間距、狀態、focus ring、深色模式與無障礙全是你的，而且會隨著 app 變大而腐化，因為某一頁偏離其他頁時，不會有任何東西失敗</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>什麼時候適合</h4><p>頁面只有幾頁，或者你要的外觀沒有現成東西給得起</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>② 前端自己渲染</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>你要寫的</h4><p>一個元件化的前端應用，與 API 分開供應、分開部署</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>代價</h4><p>多一套建置、多一種語言、多一個要部署的東西。你的資料會被塑形兩次——一次給 API、一次給畫面——而原本由伺服器回答的載入中、錯誤與空狀態，變成你要自己拿著</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>什麼時候適合</h4><p>真的有客戶端狀態：編輯器、畫布、即時文件，任何在兩次請求之間還要繼續運作的東西</p>    </section>  </div></div></div>
+  </div>
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>③ 伺服器渲染的元件套件——也就是這一個</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>你要寫的</h4><p>回傳 model 的 handler，以及呼叫 macro 的模板。瀏覽器拿到的是 HTML</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>代價</h4><p>見第 02 節</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>什麼時候適合</h4><p>後台、內部工具、內容網站、admin——在你已經有的 API 上做一個真正的介面，以「頁」為單位，而伺服器本來就什麼都知道</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="costs">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+</div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">這個做法的代價</h2><p class="text-muted-foreground text-sm">三件你要放棄的事。每一件都是第 01 節某樣東西的價錢。</p>      </div>
+          <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>這筆交易</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>你不能自由寫 CSS</h4><p>class 詞彙表是封閉的，<code>fjkit check</code> 會讓任何在它之外的東西 build 失敗。這正是「不用 build」買來的：stylesheet 能在你還不存在時就編譯好，只因為你的模板能要求什麼是事先知道的。當一個版面看起來需要某個 utility，答案是一個 macro 參數——也就是一次上游修改，而不是一次本地修改</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>kit 還沒寫的元件會卡住你</h4><p>gate 會擋下那個 class，而它指出來的東西必須先做出來，那一頁才出得去。<code>fjkit eject</code> 把 macro 複製進你的倉庫當逃生門——而你接手的那份檔案從此收不到上游修正，所以文件不主推它</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>外觀一開始是別人的</h4><p>出貨八個風格包，改一個 token 就能把整站重新上色，但這仍然是一套你採用的設計系統，不是你撰寫的</p>    </section>  </div></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        前兩項是同一筆交易的兩端，而那就是這筆交易：窄到可以預先編譯的詞彙表，
+        也就窄到會用完。
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.4.1 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">原始碼與 issues</a>.
+  這個站本身就是一支 fjkit app：它 extends <code class="kbd">ui/shell.html</code>，而且通過 <code class="kbd">fjkit check</code>——所以它不可能展示套件裡沒有的元件。
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script>
+    document.body.addEventListener("fjkit:toast", (event) => {
+      const toaster = document.getElementById("toaster");
+      if (!toaster || !toaster.toast) return;
+      for (const message of event.detail?.messages ?? []) toaster.toast(message);
+    });
+  </script>
+  <script defer src="../assets/data.js?v=c9d679b5903a"></script>
+  <script defer src="../assets/common.js?v=cfc24f854e78"></script>
+</body>
+</html>

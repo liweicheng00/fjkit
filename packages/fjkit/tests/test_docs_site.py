@@ -26,11 +26,15 @@ TEMPLATES = DOCS / "templates"
 #: to the same assertions rather than a relaxed set.
 PAGES = [
     "introduction.html",
+    "why.html",
+    "architecture.html",
     "learn.html",
     "plugins.html",
     "components.html",
     "cheatsheet.html",
     "zh/introduction.html",
+    "zh/why.html",
+    "zh/architecture.html",
     "zh/learn.html",
     "zh/plugins.html",
     "zh/components.html",
@@ -221,6 +225,56 @@ def test_the_cheatsheet_reads_the_same_in_both_languages():
                 )
 
 
+def _build():
+    """Import `build.py` the way `_cheatsheet()` imports its neighbour."""
+    import sys
+
+    sys.path.insert(0, str(DOCS))
+    try:
+        import build  # type: ignore[import-not-found]
+    finally:
+        sys.path.pop(0)
+    return build
+
+
+def test_docs_holds_nothing_but_the_built_site():
+    """`docs/` is a build artefact, and only a build artefact.
+
+    It used to hold three hand-written Markdown files as well — the architecture
+    diagrams, the benchmark write-up and the work log — which made "rebuild it
+    and commit the result" a rule with exceptions nobody could see. Two costs
+    followed. `make docs-check` guards the generated half only, so the
+    hand-written half could rot unnoticed; and everything in here is served by
+    GitHub Pages, so an internal log was public without anyone deciding it
+    should be. They live in `notes/` now.
+
+    `assets/` is checked by weight rather than by name: `build.py` copies
+    whatever is in `docs/workbench/assets/` plus the vendored files, and
+    enumerating that here would be a second copy of the copy list.
+    """
+    build = _build()
+    out = Path(__file__).resolve().parents[3] / "docs"
+    if not (out / "index.html").exists():
+        pytest.skip("the site has not been built in this checkout")
+
+    expected = {".nojekyll"}
+    for lang in build.LANGS:
+        prefix = f"{lang['dir']}/" if lang["dir"] else ""
+        expected |= {f"{prefix}{page['file']}" for page in build.PAGES}
+
+    found = {
+        path.relative_to(out).as_posix()
+        for path in out.rglob("*")
+        if path.is_file() and not path.relative_to(out).as_posix().startswith("assets/")
+    }
+
+    assert found == expected, (
+        "docs/ should hold the built site and nothing else.\n"
+        f"  unexpected: {sorted(found - expected)}\n"
+        f"  missing:    {sorted(expected - found)}"
+    )
+
+
 def test_the_site_builds():
     """End to end: all ten pages (five, twice) render through the real
     `Environment`.
@@ -247,7 +301,10 @@ def test_the_site_builds():
                 template_dir=TEMPLATES,
                 static_url=lang["static"],
                 auto_reload=False,
-                globals={"url_for": build.url_for, "is_active": build.is_active, "repo": build.repo},
+                # The build's own globals, not a copy of them: a global added
+                # there and not here would let this test pass against a site
+                # that cannot build.
+                globals=build.site_globals(),
             )
         )
         pages = [{k: v for k, v in p.items() if k not in build.LANG_BY_CODE} | p[lang["code"]] for p in build.PAGES]

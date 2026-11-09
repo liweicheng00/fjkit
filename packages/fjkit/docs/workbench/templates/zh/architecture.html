@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% from "_architecture.html" import boundary, render_path %}
+{% from "_parts.html" import code, defs, lesson, prose, stage %}
+{% from "ui/layout.html" import grid, page_header, stack %}
+
+{#
+  從外面看，這個 kit 長什麼樣子——五張圖。
+
+  這五張圖在這一頁之前就存在了，是一份只有中文的 Markdown 裡的 mermaid 區塊，而且那份
+  檔案放在 `docs/`，也就是建置輸出目錄：它以純文字被發佈、從未被渲染、也沒有任何導覽
+  連到它。五張沒有人看得到的圖。現在它們住在這裡，那份檔案已經刪掉：一個家、兩種語言、
+  而且在詞彙表之內。
+
+  每一節對應 `CHARTER.md` 第 3 節的一個決定。憲章寫的是「決定了什麼、為什麼」，這一頁
+  畫的是「那個決定長什麼樣子」。兩邊不互相複述，而且每節都標出自己是哪一條。
+
+  行文規則：一句話講一件事，結論放前面。
+#}
+{% set sections = [
+  {"id": "boundary", "num": "01", "title": "套件邊界"},
+  {"id": "loader",   "num": "02", "title": "模板解析"},
+  {"id": "timing",   "num": "03", "title": "build 發生的時機"},
+  {"id": "render",   "num": "04", "title": "渲染路徑"},
+  {"id": "gate",     "num": "05", "title": "守門迴圈"},
+] %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    五張圖，對應五個已經定案的架構決定。決定了什麼、為什麼，在 CHARTER.md 第 3 節；
+    這一頁畫的是那些決定長什麼樣子。
+  {% endset %}
+  {{ page_header("fjkit 是怎麼組起來的", intro) }}
+
+  {# ============================================================== 01 #}
+  {% set a01 %}你的 app 只在四個地方碰到 kit，其餘都封在套件裡。{% endset %}
+  {% call lesson("boundary", "01", "套件邊界", a01, tag="A2") %}
+    {% set fig = {
+      "alt": "你的 app 裡四個方塊——routers、page 模板、partial 與 brand.css——各有一條箭頭指向它用到的 fjkit 方塊。",
+      "app": "你的 APP",
+      "routers": "路由、Depends、選模板",
+      "page": "只呼叫 macro，不寫 class",
+      "partial": "htmx 片段",
+      "brand": "只有 --primary 那幾行",
+      "override": "覆寫 token",
+      "shell": "head、主題、資產連結",
+      "vocab": "封閉詞彙表",
+      "css": "八個風格包，發佈時 build 好",
+    } %}
+    {{ boundary(fig) }}
+
+    {% call prose() %}
+      <p>
+        四條箭頭都是單向的。你的 app 依賴 fjkit；kit 不會反過來引用你的 app，
+        也不知道你的資料長什麼形狀。
+      </p>
+      <p>
+        <code>brand.css</code> 就是全部的設定介面，內容是純 CSS 變數。沒有任何步驟會編譯它。
+      </p>
+    {% endcall %}
+
+    {{ defs("這讓你的專案少掉什麼", [
+      ("一份 Tailwind 安裝", "那支執行檔在 fjkit 發佈時跑，不在你的 app 跑"),
+      ("一個 watcher", "改完模板沒有任何東西要重新 build"),
+      ("一支 vendoring 腳本", "htmx 與 Basecoat 版本釘在 wheel 裡，由 mount_fjkit 供應"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 02 #}
+  {% set a02 %}app 的模板目錄排在前面，所以同一行 import 在 eject 前後解析到不同檔案——而呼叫端一個字都不用改。{% endset %}
+  {% call lesson("loader", "02", "模板解析，以及 eject 改變了什麼", a02, tag="A5") %}
+    {{ code('{% from "ui/button.html" import button %}', "jinja", label="同一行，eject 前後都一樣") }}
+
+    {% call grid(cols=2, gap=4) %}
+      {{ defs("eject 之前", [
+        ("① app/templates/ui/button.html", "不存在——loader 往下找"),
+        ("② fjkit/templates/ui/button.html", "命中，渲染的是這一份"),
+      ]) }}
+      {{ defs("fjkit eject button 之後", [
+        ("① app/templates/ui/button.html", "命中，渲染的是這一份"),
+        ("② fjkit/templates/ui/button.html", "不會走到"),
+      ]) }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        遮蔽是功能，不是意外：<code>ChoiceLoader</code> 把你的目錄排在套件前面。
+      </p>
+      <p>
+        代價是 eject 出去的檔案不再收到上游修正，所以文件不主推它。
+        <code>fjkit eject</code> 只複製你指名的 macro，其餘重新匯出，所以你接手的檔案很小
+        ——以 <code>badge</code> 為例，49 行對上原本的 289 行。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 03 #}
+  {% set a03 %}兩邊跑的是同一條管線。差別在誰來跑，以及跑幾次。{% endset %}
+  {% call lesson("timing", "03", "build 發生的時機", a03, tag="A1") %}
+    {% call grid(cols=2, gap=4) %}
+      {{ defs("每個 app 自己 build", [
+        ("你的模板 + 元件 CSS", "一起進 Tailwind CLI"),
+        ("那支 CLI", "你要裝、你要釘版本、你要跑"),
+        ("--watch", "工作期間得一直開著"),
+        ("產出", "是你的部署流程必須生出來的一個檔案"),
+      ]) }}
+      {{ defs("fjkit 在發佈時 build", [
+        ("kit 的模板 + 元件 CSS", "進同一支 CLI，在 fjkit 的 CI，只跑一次"),
+        ("產出", "隨 wheel 出貨，每個風格包一份"),
+        ("你的 brand.css", "是第二個 <link>，不是第二次 build"),
+        ("--watch", "在你這端不存在"),
+      ]) }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        以本站載入的那個風格包實測：{{ css.raw_kb }} KB 原始、{{ css.gzip_kb }} KB gzip，
+        預算是 build 會強制執行的 {{ css.budget_kb }} KB。原始大小裡約 217 KB 是 Basecoat
+        自己的元件層，無論 fjkit 在它上面寫了一個 macro 還是四十個，都整份出貨。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 04 #}
+  {% set a04 %}完整頁面與 htmx swap 走不同的路，落在同一份模板上。{% endset %}
+  {% call lesson("render", "04", "渲染路徑：一份 partial，兩個入口", a04, tag="A6") %}
+    {% set fig = {
+      "alt": "一個 GET 與一個 POST 都走到 tasks/_board.html，然後一條路以完整文件離開，另一條以片段離開。",
+      "only": "唯一的定義",
+      "only_2": "被 include，也被回傳",
+      "document": "一份完整文件",
+      "document_2": "page.html，穿過 shell",
+      "fragment": "一個片段",
+      "fragment_2": "swap 進 #board",
+    } %}
+    {{ render_path(fig) }}
+
+    {% call prose() %}
+      <p>
+        <code>_board.html</code> 有兩條進、兩條出，中間只有一份定義。第一次繪製看到的東西，
+        與 swap 換上去的東西，因此渲染自同一份原始碼，不可能漂移。
+      </p>
+    {% endcall %}
+
+    {{ code('@router.get("/tasks", name="tasks_page")
+@render("tasks/page.html", partial="tasks/_board.html")
+def tasks_page(service: TaskServiceDep) -> BoardResponse:
+    return board(service)', label="保證它的那一行") }}
+
+    {% call prose() %}
+      <p>
+        保證來自 <code>partial=</code>。同一條路由對導覽回整頁、對 htmx 請求回片段，
+        所以不存在第二條路由要跟著維護。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 05 #}
+  {% set a05 %}封閉詞彙表要成立，違反就必須失敗。而每一次失敗，都指出少了哪個元件。{% endset %}
+  {% call lesson("gate", "05", "守門迴圈", a05, tag="A7") %}
+    {{ defs("這個迴圈", [
+      ("① 你寫模板", "然後伸手去拿 kit 不會吐出來的 class——例如 grid-cols-7"),
+      ("② fjkit check 讓 build 失敗", "那個 class 不在白名單裡，而白名單是從 Basecoat 自己的 CSS 推導出來的，不是手工維護的"),
+      ("③ 被擋下的 class 就是答案", "它指出一個還不存在的元件，或一個還不存在的 macro 參數"),
+      ("④ 把它補進 ui/*.html", "下一份需要它的模板就會通過"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        這條回饋邊是 kit 唯一的擴張機制，而示範 app 是它的測試案例。0.1 完成時實測：
+        同樣的畫面在 fjkit 之前寫出來有 258 個違規；用 kit 重寫之後是 0。
+      </p>
+      <p>
+        這個檢查也擋「目前碰巧存在的 utility」。app 若因為 shell 剛好吐出
+        <code>gap-4</code> 就拿來用，哪天 shell 不吐了，它就會無聲壞掉。
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}

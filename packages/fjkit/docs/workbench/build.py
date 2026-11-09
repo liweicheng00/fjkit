@@ -1,17 +1,19 @@
-"""Build the documentation site: five pages in two languages, rendered by fjkit.
+"""Build the documentation site: seven pages in two languages, rendered by fjkit.
 
     uv run python packages/fjkit/docs/workbench/build.py
 
 Output, all under `docs/` at the repo root, which is what GitHub Pages serves:
 
     index.html       Introduction — what the kit is, who it is for, what it is not
+    why.html         Why fjkit    — the three approaches, and what this one costs
+    architecture.html Architecture — the closed decisions, as pictures
     learn.html       Learn        — the narrative: wiring, htmx, theming, the gate
     plugins.html     Plugins      — the extension seam, and the session plugin
     components.html  Components   — every macro, live, with the code that made it,
                                     one section per file in templates/ui/
     cheatsheet.html  Cheatsheet   — the index: every macro in one table each, with
                                     the block it takes stated rather than encoded
-    zh/              the same five pages in Chinese, from `templates/zh/`
+    zh/              the same seven pages in Chinese, from `templates/zh/`
     assets/dist/     fjkit.css, exactly as the wheel ships it
     assets/vendor/   htmx and Basecoat's JS, exactly as the wheel ships them
     assets/js/       errors.js, the kit's own script the shell loads
@@ -56,6 +58,7 @@ sliders on these pages), and every component preview — all rendered by
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import shutil
@@ -93,7 +96,7 @@ OUT_ASSETS = OUT / "assets"
 
 DEMO = REPO / "examples" / "fjkit-demo"
 
-#: The five pages, in reading order. The sidebar and `url_for` are both built
+#: The pages, in reading order. The sidebar and `url_for` are both built
 #: from this, so a page added here appears in the others' navigation and becomes
 #: addressable by name without touching a template. The first entry is
 #: `index.html`, which is what GitHub Pages serves to someone arriving with no
@@ -121,6 +124,48 @@ PAGES = [
             "description": (
                 "fjkit 把 Jinja、Tailwind CSS 與 shadcn 風格元件整合給 FastAPI 用：頁面、表格、表單、"
                 "導覽與 htmx 局部更新全部是 Jinja macro，而且你這端零建置。"
+            ),
+        },
+    },
+    {
+        "route": "why",
+        "file": "why.html",
+        "icon": "scale",
+        "en": {
+            "label": "Why fjkit",
+            "title": "Why fjkit, and when not",
+            "description": (
+                "Three ways to put a UI on a FastAPI app and what each one costs, and what this "
+                "one gives up in exchange."
+            ),
+        },
+        "zh": {
+            "label": "為什麼用",
+            "title": "為什麼選 fjkit，以及什麼時候不要",
+            "description": (
+                "幫 FastAPI app 做介面的三種做法各自的代價，以及這個做法換來什麼又放棄什麼。"
+            ),
+        },
+    },
+    {
+        "route": "architecture",
+        "file": "architecture.html",
+        "icon": "layers",
+        "en": {
+            "label": "Architecture",
+            "title": "How fjkit is put together",
+            "description": (
+                "The five closed architecture decisions as pictures: the package boundary, template "
+                "resolution and eject, when the build runs, one partial with two entry points, and "
+                "the loop that grows the vocabulary."
+            ),
+        },
+        "zh": {
+            "label": "架構",
+            "title": "fjkit 是怎麼組起來的",
+            "description": (
+                "五個已經定案的架構決定，用圖說明：套件邊界、模板解析與 eject、build 發生的時機、"
+                "一份 partial 兩個入口，以及那條讓詞彙表長大的迴圈。"
             ),
         },
     },
@@ -424,6 +469,39 @@ def is_active(request, name: str) -> bool:
     return getattr(request, "route", None) == name
 
 
+def css_size() -> SimpleNamespace:
+    """The stylesheet's measured size, and the budget it is held to.
+
+    These three numbers were written by hand on the Introduction page and in
+    `notes/architecture.md`, and both copies were wrong: the page claimed 23.9 KB
+    gzip against a real 25.5, which is outside the range `CHARTER.md` §4.1 had
+    already recorded. Nothing read them, so nothing said so.
+
+    Measured here, from the same file the site links to, the way the footer's
+    version stamp is. A number a reader can check should not be a number anyone
+    types.
+    """
+    from fjkit.cli.build_css import GZIP_BUDGET
+
+    raw = CSS.read_bytes()
+    return SimpleNamespace(
+        raw_kb=f"{len(raw) / 1024:.0f}",
+        gzip_kb=f"{len(gzip.compress(raw)) / 1024:.1f}",
+        budget_kb=f"{GZIP_BUDGET / 1024:.0f}",
+        pack=DOCS_STYLE,
+    )
+
+
+def site_globals() -> dict:
+    """Every template global the site needs, in one place.
+
+    `build()` and `tests/test_docs_site.py::test_the_site_builds` both construct
+    an `Environment`, and a global added to one and not the other makes the test
+    pass against a site that cannot build.
+    """
+    return {"url_for": url_for, "is_active": is_active, "repo": repo, "css": css_size()}
+
+
 def content_stamped(prefix: str):
     """Build the site's `fjkit_static`: the kit's URL, stamped with a hash of
     the file's bytes rather than its mtime.
@@ -491,7 +569,7 @@ def build() -> int:
                 # into `assets/dist/` come from one word.
                 style=DOCS_STYLE,
                 auto_reload=False,
-                globals={"url_for": url_for, "is_active": is_active, "repo": repo},
+                globals=site_globals(),
             )
         )
         env.globals["fjkit_static"] = content_stamped(lang["static"])
