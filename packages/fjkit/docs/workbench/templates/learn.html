@@ -1166,7 +1166,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
       {% set d_primary %}brand fill, plus <code>ring</code> for focus{% endset %}
       {# `fjkit check` scans every line for colour literals, not just class
          attributes, so prose cannot name the utility it is warning you off.
-         Recorded in docs/BACKLOG.md: the colour rules should skip comments and
+         Recorded in notes/BACKLOG.md: the colour rules should skip comments and
          text nodes. #}
       {% set d_pfg %}text on a brand fill — never an absolute white{% endset %}
       {{ defs("On the knob", [
@@ -1236,7 +1236,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
       {% set d_components %}<a href="{{ url_for(request, "components") }}">every signature and enumeration, live</a>{% endset %}
       {% set d_demo %}<a href="{{ repo("examples/fjkit-demo") }}">the same patterns in a working app</a>{% endset %}
       {% set d_tokens %}<a href="{{ repo("packages/fjkit/src/fjkit/static/src/fjkit.css") }}">every token, defined once — the file a rebrand overrides</a>{% endset %}
-      {% set d_perf %}<a href="{{ repo("docs/jinja-performance.md") }}"><code>page()</code> against <code>stream()</code>, and the numbers behind the advice</a>{% endset %}
+      {% set d_perf %}<a href="{{ repo("notes/jinja-performance.md") }}"><code>page()</code> against <code>stream()</code>, and the numbers behind the advice</a>{% endset %}
       {{ defs("Read next", [
         ("Components", d_components),
         ("examples/fjkit-demo/", d_demo),

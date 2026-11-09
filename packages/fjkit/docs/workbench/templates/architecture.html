@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% from "_architecture.html" import boundary, render_path %}
+{% from "_parts.html" import code, defs, lesson, prose, stage %}
+{% from "ui/layout.html" import grid, page_header, stack %}
+
+{#
+  What the kit looks like from outside, in five pictures.
+
+  These five existed before this page did, as mermaid blocks in a Chinese-only
+  Markdown file sitting in `docs/` — which is the build output, so the file was
+  published as plain text, never rendered, and never linked from any
+  navigation. Five diagrams nobody could see. They live here now, and that file
+  is gone: one home, in both languages, inside the vocabulary.
+
+  Each section is one decision from `CHARTER.md` §3. The charter says what was
+  decided and why; this page is what the decision looks like. Neither repeats
+  the other, and the section says which letter it is drawing.
+
+  House style: one idea per sentence, the takeaway first.
+#}
+{% set sections = [
+  {"id": "boundary", "num": "01", "title": "The package boundary"},
+  {"id": "loader",   "num": "02", "title": "Template resolution"},
+  {"id": "timing",   "num": "03", "title": "When the build runs"},
+  {"id": "render",   "num": "04", "title": "The render path"},
+  {"id": "gate",     "num": "05", "title": "The gate loop"},
+] %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    Five pictures, one for each architecture decision that is closed. What was decided and why is
+    CHARTER.md §3; this is what the decisions look like.
+  {% endset %}
+  {{ page_header("How fjkit is put together", intro) }}
+
+  {# ============================================================== 01 #}
+  {% set a01 %}Your app touches the kit in four places. Everything else is sealed in the package.{% endset %}
+  {% call lesson("boundary", "01", "The package boundary", a01, tag="A2") %}
+    {% set fig = {
+      "alt": "Four boxes in your app — routers, a page template, a partial and brand.css — each with one arrow to the fjkit box it uses.",
+      "app": "YOUR APP",
+      "routers": "routes, Depends, template choice",
+      "page": "calls macros, writes no classes",
+      "partial": "the htmx fragment",
+      "brand": "the --primary lines, nothing else",
+      "override": "overrides tokens",
+      "shell": "head, theme, asset links",
+      "vocab": "the closed vocabulary",
+      "css": "eight packs, built at release",
+    } %}
+    {{ boundary(fig) }}
+
+    {% call prose() %}
+      <p>
+        All four arrows point one way. Your app depends on fjkit; nothing in the kit reaches back
+        into your app, and nothing in it knows the shape of your data.
+      </p>
+      <p>
+        <code>brand.css</code> is the whole configuration surface, and it is plain CSS variables.
+        No step compiles it.
+      </p>
+    {% endcall %}
+
+    {{ defs("What this removes from your repository", [
+      ("a Tailwind install", "the binary runs when fjkit is released, not when your app does"),
+      ("a watcher", "there is nothing to rebuild after you edit a template"),
+      ("a vendoring script", "htmx and Basecoat are pinned in the wheel and served by mount_fjkit"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 02 #}
+  {% set a02 %}The app's template directory is searched first, so one import line resolves differently after an eject — and the caller never changes.{% endset %}
+  {% call lesson("loader", "02", "Template resolution, and what eject changes", a02, tag="A5") %}
+    {{ code('{% from "ui/button.html" import button %}', "jinja", label="the same line, before and after") }}
+
+    {% call grid(cols=2, gap=4) %}
+      {{ defs("Before", [
+        ("① app/templates/ui/button.html", "not there — the loader moves on"),
+        ("② fjkit/templates/ui/button.html", "found, and this is what renders"),
+      ]) }}
+      {{ defs("After fjkit eject button", [
+        ("① app/templates/ui/button.html", "found, and this is what renders"),
+        ("② fjkit/templates/ui/button.html", "never reached"),
+      ]) }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        Shadowing is the feature, not an accident: <code>ChoiceLoader</code> puts your directory in
+        front of the package's.
+      </p>
+      <p>
+        The price is that an ejected file stops receiving upstream fixes, which is why the
+        documentation does not lead with it. <code>fjkit eject</code> copies the macros you name
+        and re-exports the rest, so the file you own stays small — 49 lines against a 289-line
+        source, for <code>badge</code>.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 03 #}
+  {% set a03 %}The same pipeline runs either way. The difference is who runs it, and how often.{% endset %}
+  {% call lesson("timing", "03", "When the build runs", a03, tag="A1") %}
+    {% call grid(cols=2, gap=4) %}
+      {{ defs("Every app builds its own", [
+        ("your templates + the component CSS", "go into the Tailwind CLI"),
+        ("the CLI", "is yours to install, pin and run"),
+        ("--watch", "stays open while you work"),
+        ("the output", "is a file your deployment has to produce"),
+      ]) }}
+      {{ defs("fjkit builds at release", [
+        ("the kit's templates + the component CSS", "go into the same CLI, in fjkit's CI, once"),
+        ("the output", "ships inside the wheel, one file per style pack"),
+        ("your brand.css", "is a second <link>, not a second build"),
+        ("--watch", "does not exist on your side"),
+      ]) }}
+    {% endcall %}
+
+    {% call prose() %}
+      <p>
+        Measured on the pack this site loads: {{ css.raw_kb }} KB raw, {{ css.gzip_kb }} KB gzip,
+        against a {{ css.budget_kb }} KB budget the build enforces. About 217 KB of the raw figure
+        is Basecoat's component layer, which ships whole whether fjkit writes one macro over it or
+        forty.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 04 #}
+  {% set a04 %}A full page and an htmx swap take different routes into the same template.{% endset %}
+  {% call lesson("render", "04", "The render path: one partial, two entry points", a04, tag="A6") %}
+    {% set fig = {
+      "alt": "A GET and a POST both arrive at tasks/_board.html, which leaves as a whole document on one path and as a fragment on the other.",
+      "only": "the only definition",
+      "only_2": "included, and returned",
+      "document": "a whole document",
+      "document_2": "page.html, through the shell",
+      "fragment": "a fragment",
+      "fragment_2": "swapped into #board",
+    } %}
+    {{ render_path(fig) }}
+
+    {% call prose() %}
+      <p>
+        <code>_board.html</code> has two ways in and two ways out, and one definition in the middle.
+        What the first paint shows and what the swap replaces it with are therefore rendered from
+        the same source, so they cannot drift.
+      </p>
+    {% endcall %}
+
+    {{ code('@router.get("/tasks", name="tasks_page")
+@render("tasks/page.html", partial="tasks/_board.html")
+def tasks_page(service: TaskServiceDep) -> BoardResponse:
+    return board(service)', label="what guarantees it") }}
+
+    {% call prose() %}
+      <p>
+        <code>partial=</code> is the guarantee. One route answers a navigation with the page and an
+        htmx request with the fragment, so there is no second route to keep in step.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+  {# ============================================================== 05 #}
+  {% set a05 %}A closed vocabulary only holds if breaking it fails. Every failure names the component that is missing.{% endset %}
+  {% call lesson("gate", "05", "The gate loop", a05, tag="A7") %}
+    {{ defs("The loop", [
+      ("① you write a template", "and reach for a class the kit does not emit — grid-cols-7, say"),
+      ("② fjkit check fails the build", "the class is not in the whitelist, and the whitelist is derived from Basecoat's own CSS rather than maintained by hand"),
+      ("③ the blocked class is the answer", "it names a component, or a macro parameter, that does not exist yet"),
+      ("④ it goes into ui/*.html", "and the next template that needs it passes"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        This feedback edge is the kit's only expansion mechanism, and the demo is its test case.
+        Measured when 0.1 was finished: the same screens written before fjkit produced 258
+        violations; rewritten against the kit, 0.
+      </p>
+      <p>
+        The check also blocks a utility that merely happens to exist today. An app that borrows
+        <code>gap-4</code> because the shell emits it breaks silently on the day the shell stops.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}

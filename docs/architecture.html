@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en" class="h-full scroll-pt-16">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How fjkit is put together · fjkit</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=a49bf3337aa9">
+  <link rel="stylesheet" href="assets/brand.css?v=a6ea2b17990b">
+  <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
+  <script defer src="assets/vendor/basecoat/js/all.min.js?v=bdb364d43e0f"></script>
+  <script defer src="assets/js/errors.js?v=b54cb18a438c"></script>
+  <meta name="description" content="The five closed architecture decisions as pictures: the package boundary, template resolution and eject, when the build runs, one partial with two entry points, and the loop that grows the vocabulary.">
+  <meta property="og:title" content="How fjkit is put together">
+  <meta property="og:description" content="The five closed architecture decisions as pictures: the package boundary, template resolution and eject, when the build runs, one partial with two entry points, and the loop that grows the vocabulary.">
+  <meta property="og:type" content="article">
+  <script src="assets/mock-server.js?v=956d5ea778b1"></script>
+</head>
+<body class="min-h-full antialiased">
+    <header class="bg-background sticky top-0 z-30 flex h-14 items-center gap-6 border-b px-5"
+      data-position="sticky">
+<button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle navigation" aria-controls="sidebar"
+          onclick="document.getElementById(this.getAttribute('aria-controls')).toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>      <div class="ml-auto">
+<div class="flex flex-wrap gap-2 items-center">    <a class="btn" data-variant="ghost" data-size="icon-sm" href="https://github.com/liweicheng00/fjkit" aria-label="fjkit on GitHub">  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+       fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+    <button class="btn" data-variant="ghost" data-size="icon-sm" type="button"
+          aria-label="Toggle theme"
+          onclick="document.documentElement.classList.toggle('dark');
+                   localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+</div>      </div>
+    </header>
+  <aside class="sidebar" id="sidebar" data-side="left"
+         aria-hidden="false">
+    <nav aria-label="Documentation"><header><a href="index.html" class="flex items-center gap-2 font-semibold tracking-tight">      <img class="size-7" src="assets/brand/torii-bolt.png?v=bd3730c7661d" width="28" height="28" alt="">
+fjkit
+  </a></header>      <section><div role="group" aria-label="Documentation"><h3>Documentation</h3>    <ul>        <li>
+    <a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg>      <span>Introduction</span>
+    </a>
+  </li>
+        <li>
+    <a href="why.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/></svg>      <span>Why fjkit</span>
+    </a>
+  </li>
+        <li>
+    <a href="architecture.html" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>      <span>Architecture</span>
+    </a>
+  </li>
+        <li>
+    <a href="learn.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>      <span>Learn</span>
+    </a>
+  </li>
+        <li>
+    <a href="plugins.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>      <span>Plugins</span>
+    </a>
+  </li>
+        <li>
+    <a href="components.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>      <span>Components</span>
+    </a>
+  </li>
+        <li>
+    <a href="cheatsheet.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>      <span>Cheatsheet</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="On this page"><h3>On this page</h3>    <ul>          <li>
+    <a href="architecture.html#boundary">      <span>01 · The package boundary</span>
+    </a>
+  </li>
+          <li>
+    <a href="architecture.html#loader">      <span>02 · Template resolution</span>
+    </a>
+  </li>
+          <li>
+    <a href="architecture.html#timing">      <span>03 · When the build runs</span>
+    </a>
+  </li>
+          <li>
+    <a href="architecture.html#render">      <span>04 · The render path</span>
+    </a>
+  </li>
+          <li>
+    <a href="architecture.html#gate">      <span>05 · The gate loop</span>
+    </a>
+  </li>
+</ul>
+  </div>
+<div role="group" aria-label="Language"><h3>Language</h3>    <ul>      <li>
+    <a href="zh/architecture.html"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>      <span>中文</span>
+    </a>
+  </li>
+</ul>
+  </div></section>    </nav>
+  </aside>
+  <div class="flex min-h-[calc(100vh-3.5rem)] flex-col px-5 pt-5">
+
+    <main class="flex flex-1 flex-col pb-16">
+<div class="flex flex-col gap-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">How fjkit is put together</h1>
+<p class="text-muted-foreground text-sm">    Five pictures, one for each architecture decision that is closed. What was decided and why is
+    CHARTER.md §3; this is what the decisions look like.
+</p>    </div>
+  </div>
+
+<div id="boundary">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">01</span>
+<span class="badge" data-variant="secondary">A2</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">The package boundary</h2><p class="text-muted-foreground text-sm">Your app touches the kit in four places. Everything else is sealed in the package.</p>      </div>
+          <svg viewBox="0 0 720 300" role="img" fill="none"
+     font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+     aria-label="Four boxes in your app — routers, a page template, a partial and brand.css — each with one arrow to the fjkit box it uses.">
+  <defs>
+    <marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+    </marker>
+  </defs>
+
+  <rect x="8" y="28" width="268" height="262" rx="8" fill="var(--card)" stroke="currentColor"></rect>
+  <text x="24" y="50" font-size="10" fill="var(--muted-foreground)">YOUR APP</text>
+
+  <rect x="24" y="62" width="236" height="46" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+  <text x="36" y="82" font-size="11" fill="currentColor">routers/*.py</text>
+  <text x="36" y="98" font-size="9" fill="var(--muted-foreground)">routes, Depends, template choice</text>
+
+  <rect x="24" y="120" width="236" height="46" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+  <text x="36" y="140" font-size="11" fill="currentColor">page.html</text>
+  <text x="36" y="156" font-size="9" fill="var(--muted-foreground)">calls macros, writes no classes</text>
+
+  <rect x="24" y="178" width="236" height="46" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+  <text x="36" y="198" font-size="11" fill="currentColor">_board.html</text>
+  <text x="36" y="214" font-size="9" fill="var(--muted-foreground)">the htmx fragment</text>
+
+  <rect x="24" y="236" width="236" height="46" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+  <text x="36" y="256" font-size="11" fill="currentColor">brand.css</text>
+  <text x="36" y="272" font-size="9" fill="var(--muted-foreground)">the --primary lines, nothing else</text>
+
+  <line data-accent x1="276" y1="85" x2="436" y2="85" stroke="currentColor" stroke-width="1.5" marker-end="url(#arch-arrow)"></line>
+  <text x="356" y="78" font-size="9" fill="var(--muted-foreground)" text-anchor="middle">import</text>
+
+  <line data-accent x1="276" y1="143" x2="436" y2="143" stroke="currentColor" stroke-width="1.5" marker-end="url(#arch-arrow)"></line>
+  <text x="356" y="136" font-size="9" fill="var(--muted-foreground)" text-anchor="middle">extends</text>
+
+  <line data-accent x1="276" y1="201" x2="436" y2="201" stroke="currentColor" stroke-width="1.5" marker-end="url(#arch-arrow)"></line>
+  <text x="356" y="194" font-size="9" fill="var(--muted-foreground)" text-anchor="middle">{% from %}</text>
+
+  <line data-accent x1="276" y1="259" x2="436" y2="259" stroke="currentColor" stroke-width="1.5" marker-end="url(#arch-arrow)"></line>
+  <text x="356" y="252" font-size="9" fill="var(--muted-foreground)" text-anchor="middle">overrides tokens</text>
+
+  <rect x="444" y="28" width="268" height="262" rx="8" fill="var(--card)" stroke="currentColor"></rect>
+  <text x="460" y="50" font-size="10" fill="var(--muted-foreground)">FJKIT</text>
+
+  <rect x="460" y="62" width="236" height="46" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+  <text x="472" y="82" font-size="11" fill="currentColor">fjkit.Templates</text>
+  <text x="472" y="98" font-size="9" fill="var(--muted-foreground)">page() · stream()</text>
+
+  <rect x="460" y="120" width="236" height="46" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+  <text x="472" y="140" font-size="11" fill="currentColor">ui/shell.html</text>
+  <text x="472" y="156" font-size="9" fill="var(--muted-foreground)">head, theme, asset links</text>
+
+  <rect x="460" y="178" width="236" height="46" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+  <text x="472" y="198" font-size="11" fill="currentColor">ui/layout · data · form · table</text>
+  <text x="472" y="214" font-size="9" fill="var(--muted-foreground)">the closed vocabulary</text>
+
+  <rect x="460" y="236" width="236" height="46" rx="5" stroke="currentColor" stroke-dasharray="3 3"></rect>
+  <text x="472" y="256" font-size="11" fill="currentColor">dist/fjkit-&lt;pack&gt;.css</text>
+  <text x="472" y="272" font-size="9" fill="var(--muted-foreground)">eight packs, built at release</text>
+</svg>
+
+
+<div class="flex flex-col gap-3">      <p>
+        All four arrows point one way. Your app depends on fjkit; nothing in the kit reaches back
+        into your app, and nothing in it knows the shape of your data.
+      </p>
+      <p>
+        <code>brand.css</code> is the whole configuration surface, and it is plain CSS variables.
+        No step compiles it.
+      </p>
+</div>
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>What this removes from your repository</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>a Tailwind install</h4><p>the binary runs when fjkit is released, not when your app does</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a watcher</h4><p>there is nothing to rebuild after you edit a template</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a vendoring script</h4><p>htmx and Basecoat are pinned in the wheel and served by mount_fjkit</p>    </section>  </div></div></div>
+  </div>
+
+</section></div></div>
+<hr class="border-border">
+
+<div id="loader">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">02</span>
+<span class="badge" data-variant="secondary">A5</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">Template resolution, and what eject changes</h2><p class="text-muted-foreground text-sm">The app's template directory is searched first, so one import line resolves differently after an eject — and the caller never changes.</p>      </div>
+          <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="the same line, before and after" data-lang="jinja">{% from &#34;ui/button.html&#34; import button %}</pre>
+
+
+<div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Before</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>① app/templates/ui/button.html</h4><p>not there — the loader moves on</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>② fjkit/templates/ui/button.html</h4><p>found, and this is what renders</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>After fjkit eject button</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>① app/templates/ui/button.html</h4><p>found, and this is what renders</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>② fjkit/templates/ui/button.html</h4><p>never reached</p>    </section>  </div></div></div>
+  </div>
+</div>
+<div class="flex flex-col gap-3">      <p>
+        Shadowing is the feature, not an accident: <code>ChoiceLoader</code> puts your directory in
+        front of the package's.
+      </p>
+      <p>
+        The price is that an ejected file stops receiving upstream fixes, which is why the
+        documentation does not lead with it. <code>fjkit eject</code> copies the macros you name
+        and re-exports the rest, so the file you own stays small — 49 lines against a 289-line
+        source, for <code>badge</code>.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="timing">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">03</span>
+<span class="badge" data-variant="secondary">A1</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">When the build runs</h2><p class="text-muted-foreground text-sm">The same pipeline runs either way. The difference is who runs it, and how often.</p>      </div>
+      <div class="grid gap-4 sm:grid-cols-2">      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>Every app builds its own</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>your templates + the component CSS</h4><p>go into the Tailwind CLI</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the CLI</h4><p>is yours to install, pin and run</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>--watch</h4><p>stays open while you work</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the output</h4><p>is a file your deployment has to produce</p>    </section>  </div></div></div>
+  </div>
+      <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>fjkit builds at release</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>the kit&#39;s templates + the component CSS</h4><p>go into the same CLI, in fjkit&#39;s CI, once</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the output</h4><p>ships inside the wheel, one file per style pack</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>your brand.css</h4><p>is a second &lt;link&gt;, not a second build</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>--watch</h4><p>does not exist on your side</p>    </section>  </div></div></div>
+  </div>
+</div>
+<div class="flex flex-col gap-3">      <p>
+        Measured on the pack this site loads: 236 KB raw, 25.2 KB gzip,
+        against a 28 KB budget the build enforces. About 217 KB of the raw figure
+        is Basecoat's component layer, which ships whole whether fjkit writes one macro over it or
+        forty.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="render">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">04</span>
+<span class="badge" data-variant="secondary">A6</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">The render path: one partial, two entry points</h2><p class="text-muted-foreground text-sm">A full page and an htmx swap take different routes into the same template.</p>      </div>
+          <svg viewBox="0 0 720 240" role="img" fill="none"
+     font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+     aria-label="A GET and a POST both arrive at tasks/_board.html, which leaves as a whole document on one path and as a fragment on the other.">
+  <defs>
+    <marker id="path-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+    </marker>
+  </defs>
+
+  <rect x="8" y="26" width="186" height="52" rx="6" fill="var(--card)" stroke="currentColor"></rect>
+  <text x="24" y="48" font-size="11" fill="currentColor">GET /tasks</text>
+  <text x="24" y="64" font-size="9" fill="var(--muted-foreground)">tasks_page()</text>
+
+  <rect x="8" y="162" width="186" height="52" rx="6" fill="var(--card)" stroke="currentColor"></rect>
+  <text x="24" y="184" font-size="11" fill="currentColor">POST /tasks</text>
+  <text x="24" y="200" font-size="9" fill="var(--muted-foreground)">create_task() · hx-post</text>
+
+  <path d="M 194 52 C 240 52 240 104 272 104" stroke="currentColor" stroke-width="1.5" marker-end="url(#path-arrow)"></path>
+  <path d="M 194 188 C 240 188 240 136 272 136" stroke="currentColor" stroke-width="1.5" marker-end="url(#path-arrow)"></path>
+
+  <rect data-accent x="276" y="88" width="190" height="64" rx="6" fill="var(--card)" stroke="currentColor"></rect>
+  <text data-accent x="292" y="112" font-size="11" fill="currentColor">tasks/_board.html</text>
+  <text x="292" y="130" font-size="9" fill="var(--muted-foreground)">the only definition</text>
+  <text x="292" y="144" font-size="9" fill="var(--muted-foreground)">included, and returned</text>
+
+  <path d="M 466 104 C 498 104 498 52 528 52" stroke="currentColor" stroke-width="1.5" marker-end="url(#path-arrow)"></path>
+  <path d="M 466 136 C 498 136 498 188 528 188" stroke="currentColor" stroke-width="1.5" marker-end="url(#path-arrow)"></path>
+
+  <rect x="528" y="26" width="184" height="52" rx="6" fill="var(--card)" stroke="currentColor"></rect>
+  <text x="544" y="48" font-size="11" fill="currentColor">a whole document</text>
+  <text x="544" y="64" font-size="9" fill="var(--muted-foreground)">page.html, through the shell</text>
+
+  <rect x="528" y="162" width="184" height="52" rx="6" fill="var(--card)" stroke="currentColor"></rect>
+  <text x="544" y="184" font-size="11" fill="currentColor">a fragment</text>
+  <text x="544" y="200" font-size="9" fill="var(--muted-foreground)">swapped into #board</text>
+</svg>
+
+
+<div class="flex flex-col gap-3">      <p>
+        <code>_board.html</code> has two ways in and two ways out, and one definition in the middle.
+        What the first paint shows and what the swap replaces it with are therefore rendered from
+        the same source, so they cannot drift.
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="what guarantees it" data-lang="python">@router.get(&#34;/tasks&#34;, name=&#34;tasks_page&#34;)
+@render(&#34;tasks/page.html&#34;, partial=&#34;tasks/_board.html&#34;)
+def tasks_page(service: TaskServiceDep) -&gt; BoardResponse:
+    return board(service)</pre>
+
+
+<div class="flex flex-col gap-3">      <p>
+        <code>partial=</code> is the guarantee. One route answers a navigation with the page and an
+        htmx request with the fragment, so there is no second route to keep in step.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+<div id="gate">
+<div class="flex flex-col gap-5"><div class="flex flex-wrap gap-2 items-center">      <span class="badge" data-variant="outline">05</span>
+<span class="badge" data-variant="secondary">A7</span></div><section class="flex flex-col gap-6">
+      <div>
+<h2 class="text-lg font-semibold tracking-tight">The gate loop</h2><p class="text-muted-foreground text-sm">A closed vocabulary only holds if breaking it fails. Every failure names the component that is missing.</p>      </div>
+          <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>The loop</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>① you write a template</h4><p>and reach for a class the kit does not emit — grid-cols-7, say</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>② fjkit check fails the build</h4><p>the class is not in the whitelist, and the whitelist is derived from Basecoat&#39;s own CSS rather than maintained by hand</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>③ the blocked class is the answer</h4><p>it names a component, or a macro parameter, that does not exist yet</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>④ it goes into ui/*.html</h4><p>and the next template that needs it passes</p>    </section>  </div></div></div>
+  </div>
+
+<div class="flex flex-col gap-3">      <p>
+        This feedback edge is the kit's only expansion mechanism, and the demo is its test case.
+        Measured when 0.1 was finished: the same screens written before fjkit produced 258
+        violations; rewritten against the kit, 0.
+      </p>
+      <p>
+        The check also blocks a utility that merely happens to exist today. An app that borrows
+        <code>gap-4</code> because the shell emits it breaks silently on the day the shell stops.
+      </p>
+</div>
+</section></div></div>
+<hr class="border-border">
+
+</div>    </main>
+
+      <footer class="text-muted-foreground border-t py-5 text-xs">
+  fjkit 0.4.0 · FastAPI 0.141.1 ·
+  Jinja2 3.1.6 · Basecoat 1.0.2 ·
+  htmx 2.0.10 —
+  <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
+  This site is a fjkit app: it extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
+      </footer>
+  </div>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+  <script>
+    document.body.addEventListener("fjkit:toast", (event) => {
+      const toaster = document.getElementById("toaster");
+      if (!toaster || !toaster.toast) return;
+      for (const message of event.detail?.messages ?? []) toaster.toast(message);
+    });
+  </script>
+  <script defer src="assets/data.js?v=c9d679b5903a"></script>
+  <script defer src="assets/common.js?v=cfc24f854e78"></script>
+</body>
+</html>

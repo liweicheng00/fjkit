@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_parts.html" import defs, lesson, prose %}
+{% from "ui/layout.html" import page_header, stack %}
+
+{#
+  The page for the decision, not for the task.
+
+  Everything else on this site assumes you have already chosen fjkit. This one
+  does not, and it is the page a reader needs first: what the alternatives cost,
+  and what this one costs. Two sections, and no more. Scope and anti-goals are
+  CHARTER.md §2.1 and §2.4's business, and are not restated here.
+
+  Two rules this page is held to.
+
+  One: no named competitor. A page that compares products is a page that goes
+  stale on somebody else's release schedule, and it invites an argument about
+  their trade-offs instead of a decision about yours. Three approaches, named by
+  what they are.
+
+  Two: every cost here is real, and stated as a cost. A "when not to use this"
+  section that nobody could act on is marketing with a humble voice.
+
+  House style: one idea per sentence, the takeaway first.
+#}
+{% set sections = [
+  {"id": "ways",   "num": "01", "title": "Three ways to do this"},
+  {"id": "costs",  "num": "02", "title": "What this one costs"},
+] %}
+
+{% block content %}
+{% call stack(8) %}
+
+  {% set intro %}
+    What the alternatives cost, and what this one costs. Read this before you commit to the shape,
+    not after.
+  {% endset %}
+  {{ page_header("Why fjkit, and when not", intro) }}
+
+  {# ============================================================== 01 #}
+  {% set w01 %}Three approaches, and what each one costs.{% endset %}
+  {% call lesson("ways", "01", "Three ways to put a UI on a FastAPI app", w01) %}
+    {% call prose() %}
+      <p>
+        None of these is wrong. They differ in what the cost is, and in when the cost arrives.
+      </p>
+    {% endcall %}
+
+    {{ defs("① Templates and your own CSS", [
+      ("what you write", "Jinja, plus a stylesheet you own — hand-written, or a utility framework you compile yourself"),
+      ("what it costs", "a design system you did not set out to build. Spacing, states, focus rings, dark mode and accessibility are all yours, and they decay as the app grows, because nothing fails when one page drifts from another"),
+      ("when it is right", "a handful of pages, or a look that nothing off the shelf will give you"),
+    ]) }}
+
+    {{ defs("② A client-rendered front end", [
+      ("what you write", "a component application, served and deployed separately from the API"),
+      ("what it costs", "a second build, a second language and a second thing to deploy. Your data gets shaped twice — once for the API, once for the view — and the loading, error and empty states the server used to answer become yours to hold"),
+      ("when it is right", "genuine client state: an editor, a canvas, a live document, anything that keeps working between requests"),
+    ]) }}
+
+    {{ defs("③ A server-rendered component kit — this one", [
+      ("what you write", "handlers that return a model, and templates that call macros. The browser gets HTML"),
+      ("what it costs", "section 02"),
+      ("when it is right", "a back office, an internal tool, a content site, an admin — a real interface over an API you already have, where the page is the unit and the server already knows everything"),
+    ]) }}
+  {% endcall %}
+
+  {# ============================================================== 02 #}
+  {% set w02 %}Three things you give up. Each one is the price of something in section 01.{% endset %}
+  {% call lesson("costs", "02", "What this one costs", w02) %}
+    {#
+      The first two carry a <code>, so they are `{% set %}` blocks rather than
+      plain strings: a block yields Markup, and a plain string is escaped. The
+      third has no markup in it and stays a string.
+    #}
+    {% set c_css %}the class vocabulary is closed and <code>fjkit check</code> fails the build on anything outside it. That is what buys the missing build step: the stylesheet can be compiled before you exist only because what your templates may ask for is known in advance. When a layout seems to need a utility, the answer is a macro parameter, which means an upstream change rather than a local one{% endset %}
+    {% set c_missing %}the gate blocks the class, and the thing it names has to be built before that page ships. <code>fjkit eject</code> copies a macro into your repository as an escape hatch — and the file you take stops receiving upstream fixes, which is why the documentation does not lead with it{% endset %}
+    {{ defs("The trade", [
+      ("You cannot write arbitrary CSS", c_css),
+      ("A component the kit has not written stops you", c_missing),
+      ("The look starts as someone else's", "eight style packs ship, and a token override repaints all of it, but this is a design system you adopt rather than one you author"),
+    ]) }}
+
+    {% call prose() %}
+      <p>
+        The first two are the same trade seen from both ends, and it is the trade: a vocabulary
+        narrow enough to pre-compile is a vocabulary narrow enough to run out.
+      </p>
+    {% endcall %}
+  {% endcall %}
+
+{% endcall %}
+{% endblock %}

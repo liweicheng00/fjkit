@@ -1127,7 +1127,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
       {% set d_primary %}品牌填色，外加 focus 用的 <code>ring</code>{% endset %}
       {# `fjkit check` scans every line for colour literals, not just class attributes,
    so prose cannot name the utility it is warning you off. Recorded in
-   docs/BACKLOG.md: the colour rules should skip comments and text nodes. #}
+   notes/BACKLOG.md: the colour rules should skip comments and text nodes. #}
       {% set d_pfg %}品牌填色上的文字，不是固定不變的色值{% endset %}
       {{ defs("會跟著品牌變的", [
         ("primary", d_primary),
@@ -1194,7 +1194,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -> BoardResponse:
       {% set d_components %}<a href="{{ url_for(request, "components") }}">每個簽名與列舉的實際渲染</a>{% endset %}
       {% set d_demo %}<a href="{{ repo("examples/fjkit-demo") }}">同樣這些模式放在一支能跑的 app 裡</a>{% endset %}
       {% set d_tokens %}<a href="{{ repo("packages/fjkit/src/fjkit/static/src/fjkit.css") }}">每個 token 只定義一次；換品牌覆蓋的就是這支檔案</a>{% endset %}
-      {% set d_perf %}<a href="{{ repo("docs/jinja-performance.md") }}"><code>page()</code> 對 <code>stream()</code>，以及那些建議背後的數字</a>{% endset %}
+      {% set d_perf %}<a href="{{ repo("notes/jinja-performance.md") }}"><code>page()</code> 對 <code>stream()</code>，以及那些建議背後的數字</a>{% endset %}
       {{ defs("接著讀", [
         ("元件", d_components),
         ("examples/fjkit-demo/", d_demo),

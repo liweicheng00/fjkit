@@ -1,4 +1,4 @@
-"""Enforces the template rules in CLAUDE.md, "Layer boundaries in the demo".
+"""Enforces the template rules in AGENTS.md, "Layer boundaries in the demo".
 
 The demo is the kit's acceptance test, so a convention broken here has to fail
 in this suite rather than in an app built on the kit.
@@ -50,9 +50,16 @@ def test_templates_stay_inside_the_fjkit_vocabulary():
 
 
 def test_the_app_ships_no_static_assets_of_its_own():
-    """No front-end build step in the app: the kit serves every asset, so an app owns none of them."""
+    """No front-end build step in the app: the kit serves every asset, so an app owns none of them.
+
+    The site's Introduction page shows a screenshot of this demo captioned "no
+    `.css` or `.js` file anywhere in that app". A caption is a claim, so the
+    sweep below is the whole demo rather than `app/`, and it covers both
+    extensions rather than just the stylesheet it used to check.
+    """
     assert not (ROOT / "app" / "static").exists(), "the kit serves every asset; the demo mounts none"
-    assert not list((ROOT / "app").rglob("*.css")), "the kit's stylesheet is the app's stylesheet"
+    assert not list(ROOT.rglob("*.css")), "the kit's stylesheet is the app's stylesheet"
+    assert not list(ROOT.rglob("*.js")), "the kit serves the JavaScript; the demo writes none"
     assert not list(ROOT.rglob("package.json")), "no npm in the demo, not even a manifest"
     assert not (ROOT / "node_modules").exists()
 

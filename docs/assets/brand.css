@@ -111,13 +111,32 @@ main .card > footer:first-child {
 .code-block [data-t="a"] { color: var(--info); }
 
 /*
- * GAP 2 — a diagram surface.
+ * GAP 2 — a figure surface: a diagram, and now a screenshot.
  *
  * `_diagram.html` is an SVG, and no component library should be drawing one.
  * What is missing is only the frame and the "stage lighting" the request demo
  * drives — both keyed off `data-lit`, so the markup carries no class either
  * way. Arguably a `figure()` macro; more likely this stays an app's problem.
+ *
+ * The Introduction page added the second half of the same gap: a raster figure.
+ * A UI kit whose landing page shows nothing it rendered is asking to be taken
+ * on trust, so the page carries a screenshot of `examples/fjkit-demo` — and
+ * carries it twice, because the claim being illustrated includes dark mode and
+ * one picture can only make half of it. Measured: 47 KB each, 94 KB for the
+ * pair, on one page. `data-figure` names which scheme a file is for, so the
+ * markup stays class-free; `.dark` on the right of the selector is the kit's
+ * own theme hook, documented in `ui/shell.html`, not a class this site coined.
+ *
+ * What a `figure()` macro would own: these four rules and the caption. What it
+ * would not solve: both files download whichever scheme is showing. Fixing
+ * that needs `<picture>`, and `<picture>` keys off the media query while the
+ * toggle keys off the class, so the two disagree the moment a visitor toggles.
  */
+img[data-figure] { display: block; width: 100%; height: auto; }
+img[data-figure="dark"] { display: none; }
+.dark img[data-figure="light"] { display: none; }
+.dark img[data-figure="dark"] { display: block; }
+
 svg[role="img"] {
   display: block;
   width: 100%;

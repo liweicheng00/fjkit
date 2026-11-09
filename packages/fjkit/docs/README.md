@@ -111,8 +111,8 @@ your app.
 | A macro cannot be misused | signatures take closed enumerations and never a class string |
 | Page and htmx swap cannot drift | one partial, embedded by the page and returned by the endpoints |
 
-The diagrams behind these decisions are in `docs/architecture.md`, at the repo
-root.
+The diagrams behind these decisions are the site's Architecture page —
+`templates/architecture.html`, beside this file.
 
 ## Commands
 
