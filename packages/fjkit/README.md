@@ -102,7 +102,7 @@ uv run fjkit check app/templates
 
 **[Docs](https://liweicheng00.github.io/fjkit/)**
 
-Status: 0.1.0. Macro signatures can change before 1.0.
+Status: 0.4.0. Macro signatures can change before 1.0.
 
 ## License
 

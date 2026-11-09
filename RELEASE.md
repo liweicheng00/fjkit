@@ -63,8 +63,13 @@ A release is one pull request from `release/v<X.Y.Z>` into `main`. `<X.Y.Z>` is 
    git switch main && git pull
    git switch -c release/v0.2.0
    uv version --package fjkit 0.2.0       # pyproject.toml and uv.lock; patch or minor per *Versions*
+   # Both READMEs carry a Status line, and a test compares each against
+   # pyproject.toml. The packaged one is the long description PyPI renders, so
+   # skipping it ships a wrong version number to the project page — which is
+   # how 0.4.0 went out saying 0.1.0.
+   $EDITOR README.md packages/fjkit/README.md   # Status: 0.2.0
    make docs                              # the site prints the kit version
-   git add packages/fjkit/pyproject.toml uv.lock docs/
+   git add packages/fjkit/pyproject.toml uv.lock README.md packages/fjkit/README.md docs/
    git commit -m "chore(release): v0.2.0"
    git push -u origin release/v0.2.0
    gh pr create --draft --base main --title "chore(release): v0.2.0" \
@@ -223,7 +228,7 @@ make vsix                   # the extension archive
 | Step                                                | Status                                                                                                                                                                                                         |
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GitHub Release and its notes                        | Manual. Copied from the release pull request's Changes section.                                                                                                                                                 |
-| Version bumps | Manual: the first commit of a release branch bumps `fjkit`, then one `uv version --package <dist>` call per plugin. |
+| Version bumps | Manual: the first commit of a release branch bumps `fjkit`, then one `uv version --package <dist>` call per plugin. The two `Status:` lines are gated — `test_readme.py` compares `README.md` and `packages/fjkit/README.md` against `packages/fjkit/pyproject.toml`, so a bump that forgets either one is a red build rather than a wrong number on the PyPI page. |
 | Release branch shape | Unchecked: the branch name, a first commit that bumps `fjkit`, and the merge method are conventions, not gates. |
 | Extension version against the Python version        | Unchecked. The two tags are independent.                                                                                                                                                                       |
 | Whether a plugin's `fjkit>=` bound is high enough | Unchecked. `make verify` fails a plugin that declares no bound; it cannot tell that an existing one is too low. |
