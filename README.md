@@ -121,7 +121,7 @@ Rendering performance: [notes/jinja-performance.md](notes/jinja-performance.md).
 
 ## Status
 
-0.4.0, on PyPI. Macro signatures can change before 1.0.
+0.4.1, on PyPI. Macro signatures can change before 1.0.
 
 ## License
 
