@@ -1,6 +1,6 @@
 """What a handler asks for with `Depends`, declared once.
 
-The three stores are read off `app.state`, where `lifespan` put them. The stack
+The stores are read off `app.state`, where `lifespan` put them. The stack
 guide says a service instance is built by its caller and passed as an argument,
 and this is the exception the shape of a web app forces: the rows are the demo's
 data, so a store has to outlive the request that reads it, and `app.state` is
@@ -14,8 +14,10 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import Depends, Request
+from fjkit import Templates, get_templates
 from fjkit.auth import Session
 
+from app.services.chat import ChatService
 from app.services.jobs import JobService
 from app.services.records import RecordService
 from app.services.tasks import TaskService
@@ -33,6 +35,10 @@ def get_records(request: Request) -> RecordService:
     return request.app.state.records
 
 
+def get_chat(request: Request) -> ChatService:
+    return request.app.state.chat
+
+
 async def require_session(request: Request) -> Session:
     """Require a session via the app's auth plugin. Answers 401 when there is none."""
     return await request.app.state.auth.required(request)
@@ -46,5 +52,9 @@ async def optional_session(request: Request) -> Session | None:
 TaskServiceDep = Annotated[TaskService, Depends(get_tasks)]
 JobServiceDep = Annotated[JobService, Depends(get_jobs)]
 RecordServiceDep = Annotated[RecordService, Depends(get_records)]
+ChatServiceDep = Annotated[ChatService, Depends(get_chat)]
+#: For the one route that renders without `@render`: the chat stream, whose
+#: events carry partials rendered with `Templates.fragment()`.
+TemplatesDep = Annotated[Templates, Depends(get_templates)]
 SessionDep = Annotated[Session, Depends(require_session)]
 OptionalSessionDep = Annotated[Session | None, Depends(optional_session)]

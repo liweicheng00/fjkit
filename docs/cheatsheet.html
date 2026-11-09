@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=bcec078cb3bc">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=a49bf3337aa9">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -208,6 +208,8 @@ fjkit
 <h3>ui/swap.html</h3>      </div>
     </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
       <h4><code>morph_scripts()</code></h4><p>Loads the idiomorph extension, which adds the morph:* swap styles: the reply patches the DOM instead of replacing it, so focus, scroll position, an open details and a ticked box survive a sort. Two halves — the element whose swaps should morph declares hx-ext=&#34;morph&#34;, and the swap itself is swap=&#34;morph:outerHTML&#34;. Per page, never the shell.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
+      <h4><code>sse_scripts()</code></h4><p>Loads htmx&#39;s sse extension, so a reply can arrive in pieces over one connection: hx-ext=&#34;sse&#34; and sse-connect on the container, sse-swap on each element an event fills, sse-close naming the event that ends it. The server side is templates.events(), which always sends that event — without it the extension reconnects forever. Per page, never the shell.</p>    </section>  </div>
 </div></div>
   </div>
 </section></div>
@@ -249,6 +251,8 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>sidebar_link(request, route, label, icon_name=none)</code></h4><p>route is a route name, not a URL. The active state is is_active&#39;s, so a link cannot disagree with the page it is on.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
+      <h4><code>sidebar_item(label, href, active=false, icon_name=none, lead=none)</code></h4><p>For a URL that is not one route: the same route with a different parameter per row. lead puts a badge in a fixed-width cell so labels align.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
       <h4><code>sidebar_submenu(label, icon_name=none, open=false)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: sidebar_link() calls</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>sidebar_trigger(target=&#34;sidebar&#34;, label=&#34;Toggle navigation&#34;)</code></h4><p>The shell already renders one in the header when a sidebar is present.</p>    </section>  </div>
@@ -282,7 +286,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>item_list()</code></h4>    </section><aside><span class="badge" data-variant="outline">block: item() calls</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>description_list(layout=&#34;rows&#34;)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: description_item() calls</span></aside>  </div>
+      <h4><code>description_list(layout=&#34;rows&#34;)</code></h4><p>layout: rows | stacked | inline. inline is a few short facts on one wrapping line, in small type.</p>    </section><aside><span class="badge" data-variant="outline">block: description_item() calls</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>description_item(term, value=none)</code></h4><p>A native &lt;dl&gt;: the value is announced as the definition of its term. item_list is a list of things; this is a list of facts about one.</p>    </section><aside><span class="badge" data-variant="outline">block: value calls (optional)</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -296,7 +300,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>code_block(source, label=none, wrap=false)</code></h4><p>Carries the scroll region and its focusability, so a keyboard can reach a listing that overflows.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>caption(text=none)</code></h4><p>A muted line that stands on its own. card, section and page_header each render a description already, but those are bound to a heading.</p>    </section><aside><span class="badge" data-variant="outline">block: the text (optional)</span></aside>  </div>
+      <h4><code>caption(text=none, size=&#34;sm&#34;, tone=&#34;muted&#34;, icon_name=none)</code></h4><p>A muted line that stands on its own. card, section and page_header each render a description already, but those are bound to a heading.</p>    </section><aside><span class="badge" data-variant="outline">block: the text (optional)</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>link(label, href)</code></h4>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -349,7 +353,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>form_scripts()</code></h4><p>Per page, not in the shell — this is what encoding=&#34;json&#34; needs.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>field_row(template=&#34;two&#34;, gap=3)</code></h4><p>Two or three fields on one line, collapsing to one column when narrow.</p>    </section><aside><span class="badge" data-variant="outline">block: the fields</span></aside>  </div>
+      <h4><code>field_row(template=&#34;two&#34;, gap=3)</code></h4><p>Two or three fields on one line, collapsing to one column when narrow. template=&#34;inline&#34; gives each short field a fixed 16rem cell instead.</p>    </section><aside><span class="badge" data-variant="outline">block: the fields</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>fieldset(legend=none, hint=none)</code></h4><p>A named group inside a form, with the legend the group needs.</p>    </section><aside><span class="badge" data-variant="outline">block: the fields</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -710,7 +714,7 @@ HX-Refresh: true                 (response)</code></h4><p>Full-page navigation, 
 </div>    </main>
 
       <footer class="text-muted-foreground border-t py-5 text-xs">
-  fjkit 0.3.0 · FastAPI 0.141.1 ·
+  fjkit 0.4.0 · FastAPI 0.141.1 ·
   Jinja2 3.1.6 · Basecoat 1.0.2 ·
   htmx 2.0.10 —
   <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
@@ -726,7 +730,7 @@ HX-Refresh: true                 (response)</code></h4><p>Full-page navigation, 
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=1b46c3291b5b"></script>
+  <script defer src="assets/data.js?v=c9d679b5903a"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
 </body>
 </html>

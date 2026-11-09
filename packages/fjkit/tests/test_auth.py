@@ -39,6 +39,7 @@ BROWSER = {"accept": "text/html,application/xhtml+xml"}
 TEMPLATES = {
     "who.html": "{{ session.claims.name if session else 'anonymous' }}",
     "ok.html": "ok",
+    "errors/page.html": "error {{ status_code }}",
 }
 
 
@@ -528,6 +529,90 @@ def test_a_login_cookie_older_than_its_ttl_is_refused(monkeypatch):
     assert source.exchanges == 0
 
 
+# ------------------------------------------------- the __Host- prefix (opt-in)
+
+HTTPS = "https://testserver"
+
+
+def host_prefixed_client(source: CodeSource | None = None) -> tuple[AuthPlugin, TestClient]:
+    """An app whose session cookie is named `__Host-…`, over https so the
+    client sends a `Secure` cookie back."""
+    auth = make_auth(
+        source=source or CodeSource(),
+        trusted_origins=[HTTPS],
+        cookie=CookieSpec(name="__Host-fjkit_session"),
+    )
+    return auth, TestClient(make_app(auth).app, base_url=HTTPS)
+
+
+def cookie_attributes(header: str) -> tuple[str, set[str]]:
+    """The name and the lower-cased attribute names of one `Set-Cookie`."""
+    first, *attributes = (part.strip() for part in header.split(";"))
+    return first.partition("=")[0], {attribute.partition("=")[0].lower() for attribute in attributes}
+
+
+def test_a_host_prefixed_session_name_prefixes_the_login_cookie_too():
+    """The login nonce is the cookie a sibling subdomain would plant to bind
+    a victim's callback to the attacker's login. It follows the session
+    cookie's name, so naming that one `__Host-…` covers both."""
+    auth, client = host_prefixed_client()
+
+    start = client.get("/oidc/start", follow_redirects=False)
+    name, attributes = cookie_attributes(start.headers["set-cookie"])
+
+    assert name == "__Host-fjkit_session_login"
+    assert {"secure", "path"} <= attributes
+    assert "domain" not in attributes
+
+
+def test_a_host_prefixed_login_round_trips_and_its_cookies_can_be_deleted():
+    """A browser ignores a `Set-Cookie` for a `__Host-` name that lacks
+    `Secure`, the deleting one included. Each deletion has to carry it, or
+    the callback leaves the nonce behind and a logout leaves the session."""
+    auth, client = host_prefixed_client()
+    state = state_of(client.get("/oidc/start", follow_redirects=False))
+
+    callback = client.get("/oidc/callback", params={"code": "c1", "state": state})
+    signed_in = client.get("/who").text
+    logout = client.post("/logout", headers={"origin": HTTPS})
+
+    deletions = [cookie_attributes(h) for h in callback.headers.get_list("set-cookie")]
+    deletions += [cookie_attributes(h) for h in logout.headers.get_list("set-cookie")]
+    assert signed_in == "owner-of-c1"
+    assert all("secure" in attributes for _, attributes in deletions)
+    assert {name for name, _ in deletions} >= {"__Host-fjkit_session_login", "__Host-fjkit_session"}
+    assert client.get("/who").text == "anonymous"
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        {"name": "__Host-s", "secure": False},
+        {"name": "__Host-s", "domain": "example.com"},
+        {"name": "__Host-s", "path": "/app"},
+        {"name": "__host-s", "secure": False},
+        {"name": "__Secure-s", "secure": False},
+    ],
+)
+def test_a_prefixed_name_the_browser_would_drop_is_refused(spec):
+    """A browser silently drops a `__Host-` cookie that is not `Secure`, has
+    a `Domain` or a `Path` other than `/`, and a `__Secure-` one that is not
+    `Secure`. Every login would appear to work and none would stick."""
+    with pytest.raises(ValueError, match="__"):
+        CookieSpec(**spec)
+
+
+def test_the_default_cookie_names_are_unchanged():
+    """Opt-in: an app that names nothing keeps the names its browsers hold."""
+    client = make_app(make_auth())
+
+    login = client.post("/login", headers={"origin": ORIGIN})
+    start = client.get("/oidc/start", follow_redirects=False)
+
+    assert cookie_attributes(login.headers["set-cookie"])[0] == "fjkit_session"
+    assert cookie_attributes(start.headers["set-cookie"])[0] == "fjkit_session_login"
+
+
 def test_no_csrf_lets_everything_through_and_says_so():
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
@@ -780,9 +865,9 @@ def test_an_unreachable_upstream_keeps_the_session_and_says_when_to_retry(error)
     """An outage is not a refusal. The user stays signed in, this one request,
     whose token has expired, is answered 503 with a `Retry-After`, and the
     next request after the upstream is back renews the token as if nothing
-    had happened."""
+    had happened. No backoff, so "after" is the very next request."""
     source = FlakySource(error, ttl=timedelta(seconds=-1))
-    client = make_app(make_auth(source=source))
+    client = make_app(make_auth(source=source, refresh_backoff=timedelta(0)))
     client.post("/login", headers={"origin": ORIGIN})
 
     during = client.get("/who", headers=BROWSER, follow_redirects=False)
@@ -849,24 +934,70 @@ def test_an_outage_inside_the_leeway_serves_the_token_that_is_still_good(caplog)
     """The refresh runs `refresh_leeway` ahead of expiry, while the token is
     still valid. An upstream that cannot be reached in that window costs the
     user nothing: the request is served on the token they have, the attempt is
-    logged, and the next request tries again."""
-    source = FlakySource(ConnectionError("no route to host"))
-    client = make_app(make_auth(source=source))
+    logged, and a request after `refresh_backoff` tries again."""
+    source = FlakySource(ConnectionError("no route to host"), delay=0.3)
+    client = make_app(make_auth(source=source, refresh_backoff=timedelta(seconds=0.5)))
     client.post("/login", headers={"origin": ORIGIN})
 
     with caplog.at_level(logging.WARNING, logger="fjkit.auth"):
         first = client.get("/who", follow_redirects=False)
+        started = time.monotonic()
         second = client.get("/who", follow_redirects=False)
+        second_elapsed = time.monotonic() - started
     attempts_during = source.attempts
+    time.sleep(0.5)
     source.error = None
     after = client.get("/who")
 
     assert (first.status_code, first.text) == (200, "ada")
     assert (second.status_code, second.text) == (200, "ada")
-    assert attempts_during == 2, "every request inside the leeway tries again"
-    assert len(caplog.records) == 2, "one warning per attempt, so an operator sees the outage"
+    assert attempts_during == 1, "a request inside the backoff does not ask the upstream again"
+    assert second_elapsed < 0.2, "so it does not wait out the upstream's timeout either"
+    assert len(caplog.records) == 1, "one warning per attempt, so an operator sees the outage"
     assert after.text == "ada"
-    assert source.refreshes == 1
+    assert source.refreshes == 1, "the backoff is over, so the next request renews"
+
+
+def test_an_outage_past_expiry_answers_503_at_once_while_backing_off():
+    """A token that has expired has nothing to serve on, and a request inside
+    the backoff gets the same 503 without waiting on an upstream that did not
+    answer a moment ago."""
+    source = FlakySource(ConnectionError("no route to host"), delay=0.3, ttl=timedelta(seconds=-1))
+    client = make_app(make_auth(source=source))
+    client.post("/login", headers={"origin": ORIGIN})
+
+    first = client.get("/who", follow_redirects=False)
+    started = time.monotonic()
+    second = client.get("/who", follow_redirects=False)
+    second_elapsed = time.monotonic() - started
+
+    assert (first.status_code, second.status_code) == (503, 503)
+    assert second.headers["retry-after"].isdigit()
+    assert source.attempts == 1
+    assert second_elapsed < 0.2
+
+
+def test_the_backoff_is_per_session():
+    """One user's failed renewal says nothing about when another user's
+    session last asked, so a second session still tries."""
+    source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
+    auth = make_auth(source=source)
+    ada, bob = make_app(auth), make_app(auth)
+    ada.post("/login", headers={"origin": ORIGIN})
+    bob.post("/login?name=bob", headers={"origin": ORIGIN})
+
+    ada.get("/who")
+    bob.get("/who")
+    ada.get("/who")
+
+    assert source.attempts == 2
+
+
+def test_a_static_url_at_the_root_is_refused():
+    """The middleware skips session loading under `static_url`. At `/` that
+    is every route, so every page would read as anonymous."""
+    with pytest.raises(ValueError, match="static_url"):
+        make_app(make_auth(), static_url="/")
 
 
 @pytest.mark.parametrize("path", ["/who", "/private/thing", "/optional", "/direct"])
@@ -876,7 +1007,7 @@ def test_an_outage_past_expiry_answers_503_wherever_the_session_is_needed(path):
     taking `optional` and one calling `auth.session()` all wait for the
     upstream; the session itself is kept for when it returns."""
     source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
-    client = make_app(make_auth(source=source))
+    client = make_app(make_auth(source=source, refresh_backoff=timedelta(0)))
     client.post("/login", headers={"origin": ORIGIN})
 
     during = client.get(path, headers=BROWSER, follow_redirects=False)
@@ -887,6 +1018,22 @@ def test_an_outage_past_expiry_answers_503_wherever_the_session_is_needed(path):
     assert during.headers["retry-after"].isdigit()
     assert after.text == "ada", "the session survives the outage"
     assert source.refreshes == 1
+
+
+def test_an_error_page_during_an_outage_is_the_outage_answer(caplog):
+    """The error page renders through the `session` context processor, which
+    raises the deferred outage. The visitor gets the 503 every other page
+    gives, not a plain-text fallback, and the log gets no traceback."""
+    source = FlakySource(ConnectionError("no route to host"), ttl=timedelta(seconds=-1))
+    client = make_app(make_auth(source=source))
+    client.post("/login", headers={"origin": ORIGIN})
+
+    with caplog.at_level(logging.ERROR, logger="fjkit.errors"):
+        response = client.get("/nowhere", headers=BROWSER, follow_redirects=False)
+
+    assert response.status_code == 503
+    assert response.headers["retry-after"].isdigit()
+    assert caplog.records == []
 
 
 def test_logging_out_needs_no_upstream():

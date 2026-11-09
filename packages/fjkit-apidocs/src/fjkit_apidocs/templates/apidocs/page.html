@@ -12,8 +12,9 @@
 {% extends base_template %}
 
 {% from "ui/button.html" import button %}
-{% from "ui/data.html" import card, empty_state, item, item_list, link %}
-{% from "ui/layout.html" import page_header, section, stack %}
+{% from "ui/data.html" import caption, card, empty_state, item, item_list, link %}
+{% from "ui/form.html" import text_field %}
+{% from "ui/layout.html" import page_header, row, section, stack %}
 {% from "ui/nav.html" import brand %}
 {% from "ui/sidebar.html" import sidebar %}
 
@@ -44,12 +45,15 @@
 
       A `name` and a real URL, so this is also a GET anybody can bookmark: the
       page route reads the same `?q=`.
+
+      No visible label: the placeholder says what it is and the sidebar has no
+      room for a second line. `aria-label` names it for a screen reader.
     #}
-    <input class="input" type="search" name="{{ query_field }}" value="{{ query }}"
-           placeholder="Filter operations" aria-label="Filter operations"
-           hx-get="{{ url_for(request, routes.nav) }}"
-           hx-trigger="input changed delay:250ms, search"
-           hx-target="#{{ ids.nav }}" hx-swap="outerHTML">
+    {{ text_field(query_field, value=query, type="search",
+                  placeholder="Filter operations", aria_label="Filter operations",
+                  hx_get=url_for(request, routes.nav),
+                  hx_trigger="input changed delay:250ms, search",
+                  hx_target="#" ~ ids.nav, hx_swap="outerHTML") }}
   {%- endset %}
   {#
     The way back out. The operation list has taken the sidebar, so without this
@@ -96,19 +100,19 @@
           {% if docs.count %}
             {% call card("What this is") %}
               {% call stack(gap=3) %}
-                <p class="text-muted-foreground text-sm">
+                {% call caption() %}
                   {{ docs.count }} operation{{ "" if docs.count == 1 else "s" }} across
                   {{ docs.groups | length }} group{{ "" if docs.groups | length == 1 else "s" }}{%
                   if docs.models %}, exchanging {{ docs.models | length }}
                   type{{ "" if docs.models | length == 1 else "s" }}{% endif %},
                   read from the same OpenAPI document
                   {{ link("/openapi.json", "/openapi.json") }} serves. Pick one on the left.
-                </p>
-                <p class="text-muted-foreground text-sm">
+                {% endcall %}
+                {% call caption() %}
                   Calls you make here are replayed through this app on the server, carrying your own
                   session. Nothing on this page can read the credential — which is why signing in
                   above is a form your app defines rather than a box to paste a token into.
-                </p>
+                {% endcall %}
               {% endcall %}
             {% endcall %}
           {% else %}
@@ -201,11 +205,11 @@
                             clamp=false) }}
                   {% endfor %}
                 {% endcall %}
-                <p class="text-muted-foreground text-xs">
+                {% call caption(size="xs") %}
                   OpenAPI can only describe an API key, an HTTP scheme, OAuth2 or OpenID Connect.
                   A session cookie issued by your own login is none of those, so it will not appear
                   here even when it is the thing that actually authenticates every call.
-                </p>
+                {% endcall %}
               {% endcall %}
             {% endcall %}
           {% endif %}
@@ -217,14 +221,13 @@
               finding out that the section exists.
             #}
             {% call section("Schemas", "The types this API exchanges — what every generated client is built from.") %}
-              <div class="flex flex-wrap items-center gap-2">
+              {% call row(gap=2) %}
                 {% for entry in docs.models %}
-                  <a class="btn" data-variant="outline" data-size="sm"
-                     href="{{ url_for(request, routes.model, model_slug=entry.slug) }}"
-                     hx-get="{{ url_for(request, routes.model, model_slug=entry.slug) }}"
-                     hx-target="#{{ ids.detail }}" hx-swap="outerHTML" hx-push-url="true">{{ entry.name }}</a>
+                  {%- set href = url_for(request, routes.model, model_slug=entry.slug) -%}
+                  {{ button(entry.name, variant="outline", size="sm", href=href,
+                            hx_get=href, hx_target="#" ~ ids.detail, hx_swap="outerHTML", hx_push_url="true") }}
                 {% endfor %}
-              </div>
+              {% endcall %}
             {% endcall %}
           {% endif %}
         {% endcall %}

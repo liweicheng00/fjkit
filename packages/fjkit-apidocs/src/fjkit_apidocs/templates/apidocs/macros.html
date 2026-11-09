@@ -6,11 +6,10 @@
   with two hundred routes renders the navigation two hundred times per page
   load — the case `{% include %}` in a loop is wrong for.
 #}
-{% from "ui/attrs.html" import attrs %}
-{% from "ui/data.html" import badge, code_block, link %}
+{% from "ui/data.html" import badge, caption, code_block, description_item, description_list, kbd, link %}
 {% from "ui/form.html" import select_field, text_field %}
-{% from "ui/icon.html" import icon %}
-{% from "ui/layout.html" import stack %}
+{% from "ui/layout.html" import row, stack %}
+{% from "ui/sidebar.html" import sidebar_item %}
 {% from "ui/table.html" import cell, table %}
 {% from "ui/tabs.html" import tab_panel, tabs %}
 
@@ -45,9 +44,9 @@
   `{task_id}` from prose without counting braces.
 #}
 {% macro op_line(operation) -%}
-  <div class="flex flex-wrap items-center gap-2">
+  {% call row(gap=2) %}
     {{ method(operation.method) }}
-    <code class="kbd">{{ operation.path }}</code>
+    {{ kbd(operation.path) }}
     {% if operation.deprecated %}{{ badge("deprecated", "outline") }}{% endif %}
     {#
       The padlock. An operation the document declares `security` on needs an
@@ -57,26 +56,29 @@
       secured, the same three words after every path is noise.
     #}
     {% if operation.security %}
-      <span class="text-muted-foreground inline-flex items-center gap-1 text-xs"
-            title="Requires {{ operation.security | join(', ') }}">
-        {{ icon("lock", 14) }}<span>{{ operation.security | join(", ") }}</span>
-      </span>
+      {{ caption(operation.security | join(", "), size="xs", icon_name="lock",
+                 title="Requires " ~ operation.security | join(", ")) }}
     {% endif %}
-  </div>
+  {% endcall %}
 {%- endmacro %}
 
 {#
   op_link(request, route, operation, target) — one row of the sidebar.
 
-  Basecoat's `li > a` sidebar contract written out rather than a call to
-  `ui/sidebar.html`'s `sidebar_link`, for one reason: that macro takes a route
-  name and calls `url_for(request, route)` with no parameters. Every operation
-  here is the same route with a different `operation_id`, so it has nothing to
-  tell them apart by.
+  `sidebar_item` rather than `sidebar_link`: that macro takes a route name and
+  calls `url_for(request, route)` with no parameters, and every operation here
+  is the same route with a different `operation_id`.
+
+  The method badge is the item's `lead`, which sits in a fixed-width cell.
+  `GET` and `DELETE` are different widths, and without the cell every name
+  starts at a different x and a two-hundred-row index reads as ragged.
 
   `hx-*` on the anchor alongside a real `href`: the swap replaces only the
   detail panel, and the same URL still serves the whole page to a cold
   navigation, a crawler, or a middle-click.
+
+  `title` is the path, not the summary. The sidebar already shows the summary,
+  and the path is what you want on hover — the one place it is not on screen.
 #}
 {% macro op_link(request, route, operation, target, active=false, query="") -%}
   {#
@@ -86,47 +88,10 @@
     back to all two hundred rows.
   #}
   {%- set href = url_for(request, route, operation_id=operation.id) ~ ("?q=" ~ query | urlencode if query else "") -%}
-  {#
-    Aligned by giving the method a fixed-width cell, not by turning the row
-    into a grid.
-
-    `GET` and `DELETE` are different widths, so Basecoat's plain flex row
-    starts every name at a different x and the list reads as ragged — the one
-    thing a two-hundred-row index cannot afford. A grid column and a
-    fixed-width flex cell both fix that. They differ in how they fail.
-
-    A `grid grid-cols-4` row with the name on `col-span-3` breaks badly when
-    `col-span-3` is missing from the stylesheet the browser happens to hold:
-    the name falls back to a single column, about 55px, and every entry
-    truncates to "Charts …". That is a worse page than the ragged one, and
-    nothing on it says why. A fixed-width cell degrades the other way — lose
-    `w-18` and the cell shrinks to its content, which is the
-    ragged-but-entirely-readable list we started from.
-
-    `w-18` is 72px against a 63px `DELETE`: the badge plus a gutter, nothing
-    spare. Sized against the widest method rather than each row's own, which is
-    the point — `GET` leaves more air, and that difference is what makes it a
-    column. `shrink-0`, so a long summary takes its space out of its own cell
-    rather than this one.
-
-    Plain utilities, no `[...]` arbitrary values: an arbitrary value never
-    appears in `emitted_classes()`, so the stylesheet check cannot vouch for
-    it.
-
-    `title` is the path, not the summary. The sidebar already shows the
-    summary, and the path is what you want on hover — the one place it is not
-    on screen.
-  #}
-  <li>
-    <a href="{{ href }}" title="{{ operation.method }} {{ operation.path }}"
-       hx-get="{{ href }}" hx-target="#{{ target }}" hx-swap="outerHTML" hx-push-url="true"
-       {%- if active %} aria-current="page"{% endif %}
-       {%- if kwargs %}{{ attrs(kwargs) }}{% endif %}>
-      <span class="flex w-18 shrink-0">{{ method(operation.method) }}</span>
-      {# Still the last span, which is what Basecoat's `:last-child` truncate rule finds. #}
-      <span class="min-w-0">{{ operation.summary or operation.path }}</span>
-    </a>
-  </li>
+  {{ sidebar_item(operation.summary or operation.path, href, active=active,
+                  lead=method(operation.method),
+                  title=operation.method ~ " " ~ operation.path,
+                  hx_get=href, hx_target="#" ~ target, hx_swap="outerHTML", hx_push_url="true") }}
 {%- endmacro %}
 
 {#
@@ -154,14 +119,9 @@
     sidebar width worth having accommodates that. Truncation is the right
     answer; being unable to read the whole name anywhere is not.
   #}
-  <li>
-    <a href="{{ href }}" title="{{ model.name }}"
-       hx-get="{{ href }}" hx-target="#{{ target }}" hx-swap="outerHTML" hx-push-url="true"
-       {%- if active %} aria-current="page"{% endif %}>
-      {{ icon(KIND_ICON.get(model.kind, "braces"), 16) }}
-      <span>{{ model.name }}</span>
-    </a>
-  </li>
+  {{ sidebar_item(model.name, href, active=active, icon_name=KIND_ICON.get(model.kind, "braces"),
+                  title=model.name,
+                  hx_get=href, hx_target="#" ~ target, hx_swap="outerHTML", hx_push_url="true") }}
 {%- endmacro %}
 
 {#
@@ -174,19 +134,14 @@
   rest of the page is read. Wrapping keeps that honest when a value is long:
   nothing is truncated, it takes the next line.
 
-  `<dl>` with a `<div>` per pair, the grouping HTML defines for this: the label
-  and its value stay associated when a screen reader reads them, and the flex
+  `description_list(layout="inline")`: a `<dl>` with a `<div>` per pair, so the
+  label and its value stay associated when a screen reader reads them, and the
   wrap cannot separate a `dt` from its `dd`.
 #}
 {% macro facts(rows) -%}
-  <dl class="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-xs">
-    {% for label, value in rows %}
-      <div class="flex items-baseline gap-2">
-        <dt class="text-muted-foreground">{{ label }}</dt>
-        <dd class="font-medium">{{ value }}</dd>
-      </div>
-    {% endfor %}
-  </dl>
+  {% call description_list(layout="inline") %}
+    {% for label, value in rows %}{{ description_item(label, value) }}{% endfor %}
+  {% endcall %}
 {%- endmacro %}
 
 {#
@@ -238,6 +193,30 @@
 {%- endmacro %}
 
 {#
+  required_name(entry) — a parameter's or a property's name, starred when the
+  document marks it required. The star is the convention every API reference
+  shares; `aria-label` says the word a screen reader would otherwise read as
+  "star".
+#}
+{% macro required_name(entry) -%}
+  {% call row(gap=1) %}
+    {{ kbd(entry.name) }}
+    {%- if entry.required %}{{ caption("*", tone="destructive", aria_label="required") }}{% endif %}
+  {% endcall %}
+{%- endmacro %}
+
+{#
+  described(description, choices) — a description cell, with an enum's
+  permitted values after it in small print.
+#}
+{% macro described(description, choices) -%}
+  {% call row(gap=1, align="baseline") %}
+    {{ description }}
+    {%- if choices %}{{ caption(choices | join(" | "), size="xs") }}{% endif %}
+  {% endcall %}
+{%- endmacro %}
+
+{#
   param_table(params) — the parameters as a reference table rather than a form.
 
   What the console renders when it is switched off, and what the Schema half of
@@ -248,20 +227,10 @@
                 rows=params) %}
     {% for param in params %}
       <tr>
-        {% call cell() %}
-          <code class="kbd">{{ param.name }}</code>
-          {%- if param.required %} <span class="text-destructive" aria-label="required">*</span>{% endif %}
-        {% endcall %}
+        {% call cell() %}{{ required_name(param) }}{% endcall %}
         {{ cell(param.location, tone="muted") }}
-        {% call cell() %}
-          <span class="text-muted-foreground text-xs">{{ param.type_detail }}</span>
-        {% endcall %}
-        {% call cell() %}
-          {{ param.description }}
-          {%- if param.choices %}
-            <span class="text-muted-foreground text-xs">{{ param.choices | join(" | ") }}</span>
-          {% endif %}
-        {% endcall %}
+        {% call cell() %}{{ caption(param.type_detail, size="xs") }}{% endcall %}
+        {% call cell() %}{{ described(param.description, param.choices) }}{% endcall %}
       </tr>
     {% endfor %}
   {% endcall %}
@@ -277,32 +246,22 @@
 #}
 {% macro field_table(request, routes, docs, fields) -%}
   {% call table(columns=[{"label": "Field"}, {"label": "Type"}, {"label": "Description"}], rows=fields) %}
-    {% for row in fields %}
+    {% for prop in fields %}
       <tr>
+        {% call cell() %}{{ required_name(prop) }}{% endcall %}
         {% call cell() %}
-          <code class="kbd">{{ row.name }}</code>
-          {%- if row.required %} <span class="text-destructive" aria-label="required">*</span>{% endif %}
-        {% endcall %}
-        {% call cell() %}
-          {%- set target = docs.by_name.get(row.ref) if row.ref else none -%}
-          {% if target %}
-            {{ link(target.name, url_for(request, routes.model, model_slug=target.slug)) }}
-            {%- if row.qualifiers %}
-              <span class="text-muted-foreground text-xs">{{ row.qualifiers }}</span>
+          {%- set target = docs.by_name.get(prop.ref) if prop.ref else none -%}
+          {% call row(gap=1, align="baseline") %}
+            {% if target %}
+              {{ link(target.name, url_for(request, routes.model, model_slug=target.slug)) }}
+              {%- if prop.qualifiers %}{{ caption(prop.qualifiers, size="xs") }}{% endif %}
+            {% else %}
+              {{ caption(prop.detail, size="xs") }}
             {% endif %}
-          {% else %}
-            <span class="text-muted-foreground text-xs">{{ row.detail }}</span>
-          {% endif %}
-          {%- if row.default %}
-            <span class="text-muted-foreground text-xs">· default {{ row.default }}</span>
-          {% endif %}
+            {%- if prop.default %}{{ caption("· default " ~ prop.default, size="xs") }}{% endif %}
+          {% endcall %}
         {% endcall %}
-        {% call cell() %}
-          {{ row.description }}
-          {%- if row.choices %}
-            <span class="text-muted-foreground text-xs">{{ row.choices | join(" | ") }}</span>
-          {% endif %}
-        {% endcall %}
+        {% call cell() %}{{ described(prop.description, prop.choices) }}{% endcall %}
       </tr>
     {% endfor %}
   {% endcall %}
@@ -320,12 +279,12 @@
 #}
 {% macro shape_view(request, routes, docs, shape) -%}
   {% call stack(gap=2) %}
-    <p class="text-muted-foreground text-sm">
+    {% call caption() %}
       {{- shape.label -}}
       {%- set target = docs.by_name.get(shape.model) if shape.model else none -%}
       {%- if target %} — {{ link("the " ~ target.name ~ " schema",
                                  url_for(request, routes.model, model_slug=target.slug)) }}{% endif -%}
-    </p>
+    {% endcall %}
     {% if shape.has_rows %}
       {{ field_table(request, routes, docs, shape.fields) }}
     {% elif not shape.model %}
@@ -388,7 +347,7 @@
     {% endcall %}
   {% elif example %}
     {% call stack(gap=2) %}
-      <span class="label">{{ example_label }}</span>
+      {{ caption(example_label, tone=none) }}
       {{ code_block(example, label=example_label) }}
     {% endcall %}
   {% elif shape %}

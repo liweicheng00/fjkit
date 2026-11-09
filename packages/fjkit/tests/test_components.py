@@ -32,6 +32,7 @@ FORM = (
     ' textarea_field, checkbox_field, switch_field, radio_group, fieldset, form_scripts,'
     ' file_field %}'
 )
+SIDEBAR_ITEM = '{% from "ui/sidebar.html" import sidebar_item %}'
 FEEDBACK = '{% from "ui/feedback.html" import spinner %}'
 FEEDBACK_DIALOG = '{% from "ui/feedback.html" import dialog %}'
 SIDEBAR = (
@@ -203,6 +204,31 @@ class TestSwap:
 
         shell = (TEMPLATE_DIR / "ui" / "shell.html").read_text(encoding="utf-8")
         assert "idiomorph" not in shell
+
+    def test_sse_scripts_loads_the_extension_after_htmx(self, render):
+        """`defer` for the same reason: the extension registers itself with
+        `htmx.defineExtension` the moment it runs."""
+        html = render('{% from "ui/swap.html" import sse_scripts %}{{ sse_scripts() }}')
+        assert "<script defer" in html
+        assert "vendor/htmx/sse.min.js" in html
+
+    def test_the_sse_extension_is_pinned_and_in_the_package(self):
+        """Missing, `hx-ext="sse"` names an extension htmx never heard of: no
+        connection opens, the reply bubble stays empty, and nothing logs why."""
+        from fjkit import vendored
+        from fjkit.config import STATIC_DIR
+
+        assert vendored.HTMX_SSE_VERSION == "2.2.4"
+        path = STATIC_DIR / "vendor" / "htmx" / "sse.min.js"
+        assert path.is_file()
+        assert b"defineExtension" in path.read_bytes()
+
+    def test_the_shell_does_not_load_the_sse_extension(self):
+        """CHARTER §2.2: only the page that streams pays for it."""
+        from fjkit.config import TEMPLATE_DIR
+
+        shell = (TEMPLATE_DIR / "ui" / "shell.html").read_text(encoding="utf-8")
+        assert "sse.min.js" not in shell
 
 
 class TestTable:
@@ -740,6 +766,21 @@ class TestPageSize:
 
 
 class TestForm:
+    @pytest.mark.parametrize(
+        ("template", "expected"),
+        [
+            ("two", "sm:grid-cols-2"),
+            ("three", "sm:grid-cols-3"),
+            ("four", "sm:grid-cols-2 lg:grid-cols-4"),
+            ("wide-then-actions", "sm:grid-cols-[1fr_8.5rem_8.5rem_auto]"),
+            ("field-and-button", "sm:grid-cols-[1fr_auto]"),
+            ("inline", "sm:grid-cols-[repeat(auto-fill,16rem)]"),
+        ],
+    )
+    def test_field_row_renders_every_template(self, render, template, expected):
+        html = render(f'{FORM}{{% call field_row("{template}") %}}x{{% endcall %}}')
+        assert f"{expected} sm:items-end" in html
+
     def test_field_wires_label_to_input(self, render):
         html = render(f'{FORM}{{{{ text_field("title", label="Title") }}}}')
         ids = re.findall(r'id="([^"]+)"', html)
@@ -978,6 +1019,45 @@ class TestData:
         html = render(f'{DATA}{{% call caption() %}}See {{{{ link("docs", "/d") }}}}{{% endcall %}}')
         assert "text-muted-foreground" in html
         assert 'href="/d"' in html
+
+    @pytest.mark.parametrize(("size", "expected"), [("sm", "text-sm"), ("xs", "text-xs")])
+    def test_caption_renders_every_size(self, render, size, expected):
+        html = render(f'{DATA}{{{{ caption("Note", size="{size}") }}}}')
+        assert f'<p class="text-muted-foreground {expected}">Note</p>' in html
+
+    def test_an_unknown_caption_size_falls_back_to_sm(self, render):
+        html = render(f'{DATA}{{{{ caption("Note", size="huge") }}}}')
+        assert '<p class="text-muted-foreground text-sm">Note</p>' in html
+
+    @pytest.mark.parametrize(
+        ("tone", "expected"),
+        [
+            ("muted", "text-muted-foreground"),
+            ("success", "text-success"),
+            ("warning", "text-warning"),
+            ("info", "text-info"),
+            ("destructive", "text-destructive"),
+        ],
+    )
+    def test_caption_renders_every_tone(self, render, tone, expected):
+        assert f'<p class="{expected} text-sm">' in render(f'{DATA}{{{{ caption("x", tone="{tone}") }}}}')
+
+    def test_caption_tone_none_is_the_body_colour_and_never_a_hue(self, render):
+        """`none` is a plain line; an unknown tone is the same, never a class
+        built from the word."""
+        assert '<p class="text-sm">x</p>' in render(f'{DATA}{{{{ caption("x", tone=none) }}}}')
+        assert "magenta" not in render(f'{DATA}{{{{ caption("x", tone="magenta") }}}}')
+
+    @pytest.mark.parametrize(("size", "px", "gap"), [("sm", "16", "gap-2"), ("xs", "14", "gap-1")])
+    def test_caption_icon_is_sized_for_the_text(self, render, size, px, gap):
+        html = render(
+            f'{DATA}{{{{ caption("Failed", size="{size}", tone="destructive",'
+            f' icon_name="circle-alert", role="alert") }}}}'
+        )
+        assert f"flex items-center {gap}" in html
+        assert f'width="{px}"' in html
+        assert 'role="alert"' in html
+        assert html.index("<svg") < html.index("<span>Failed</span>")
 
     def test_stat_tone_is_a_closed_lookup(self, render):
         assert "text-success" in render(f'{DATA}{{{{ stat("Done", 5, tone="success") }}}}')
@@ -1271,6 +1351,33 @@ class TestSidebar:
             request=FakeRequest(),
         )
         assert 'hx-boost="true"' in html
+
+    def test_item_takes_a_url_and_an_explicit_active_state(self, render):
+        """Every row of a parametrised route shares one route name, so neither
+        the href nor the active state can come from it."""
+        active = render(f'{SIDEBAR_ITEM}{{{{ sidebar_item("Create", "/op/create?q=t", active=true) }}}}')
+        idle = render(f'{SIDEBAR_ITEM}{{{{ sidebar_item("Create", "/op/create") }}}}')
+        assert 'href="/op/create?q=t"' in active and 'aria-current="page"' in active
+        assert "aria-current" not in idle
+        assert idle.strip().startswith("<li>")
+
+    def test_item_puts_the_lead_in_a_fixed_cell_before_the_label(self, render):
+        html = render(
+            f'{SIDEBAR_ITEM}{{% set lead %}}<b>GET</b>{{% endset %}}'
+            f'{{{{ sidebar_item("List", "/l", lead=lead) }}}}'
+        )
+        assert '<span class="flex min-w-18 shrink-0"><b>GET</b></span>' in html
+        assert html.index("<b>GET</b>") < html.index("<span>List</span>")
+        assert "min-w-18" not in render(f'{SIDEBAR_ITEM}{{{{ sidebar_item("List", "/l") }}}}')
+
+    def test_item_label_is_the_last_span_after_an_icon(self, render):
+        html = render(f'{SIDEBAR_ITEM}{{{{ sidebar_item("Task", "/t", icon_name="braces") }}}}')
+        assert html.index("<svg") < html.index("<span>Task</span>")
+        assert html.rstrip().endswith("<span>Task</span>\n    </a>\n  </li>")
+
+    def test_item_passes_attributes_through(self, render):
+        html = render(f'{SIDEBAR_ITEM}{{{{ sidebar_item("T", "/t", hx_get="/t", title="GET /t") }}}}')
+        assert 'hx-get="/t"' in html and 'title="GET /t"' in html
 
     def test_submenu_is_a_details_so_the_browser_owns_the_disclosure(self, render):
         html = render(f'{SIDEBAR}{{% call sidebar_submenu("Reports") %}}<li>a</li>{{% endcall %}}')
@@ -1858,7 +1965,7 @@ class TestDescriptionList:
         assert '<dl class="description-list"' in html
         assert "<div>\n    <dt>Status</dt>\n    <dd>Active</dd>\n  </div>" in html
 
-    @pytest.mark.parametrize("layout", ["rows", "stacked"])
+    @pytest.mark.parametrize("layout", ["rows", "stacked", "inline"])
     def test_renders_every_layout(self, render, layout):
         html = render(
             f'{DL}{{% call description_list(layout="{layout}") %}}x{{% endcall %}}'
@@ -2867,6 +2974,31 @@ class TestTableEmptyCase:
         )
         assert 'class="empty"' in html
         assert 'id="feed"' in html and 'hx-get="/feed"' in html and 'hx-trigger="every 5s"' in html
+
+    @pytest.mark.parametrize(("rows", "tag"), [("[1]", "table"), ("[]", "div")])
+    def test_one_element_carries_the_caller_attributes_in_either_state(self, render, rows, tag):
+        """The documented contract: the attributes land together on the element
+        that stands for the table, so `#feed` finds it with rows or without.
+        Only the tag differs, which is why the signature comment says to aim by
+        id rather than by `table#feed`."""
+        html = render(
+            f'{TABLE}{{% call table([{{"label": "A"}}], rows={rows}, id="feed", hx_get="/feed",'
+            ' aria_label="Feed") %}<tr><td>x</td></tr>{% endcall %}'
+        )
+        carriers = [(t, a) for t, a in _Tags(html).elements if "id" in a]
+        assert [(t, a["id"], a["hx-get"], a["aria-label"]) for t, a in carriers] == [(tag, "feed", "/feed", "Feed")]
+
+
+class _Tags(HTMLParser):
+    """Every start tag with its attributes."""
+
+    def __init__(self, html):
+        super().__init__()
+        self.elements: list[tuple[str, dict[str, str | None]]] = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        self.elements.append((tag, dict(attrs)))
 
 
 class TestTabPanelNames:

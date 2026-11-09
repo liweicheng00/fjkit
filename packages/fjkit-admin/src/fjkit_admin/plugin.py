@@ -38,10 +38,11 @@ from fastapi.responses import HTMLResponse
 from fjkit import htmx, messages
 from fjkit.plugins import AppSetup, EnvSetup
 from fjkit.templating import get_templates
+from sqlalchemy import Select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from fjkit_admin.introspect import ColumnInfo, inspect_model
+from fjkit_admin.introspect import ColumnInfo, RelationInfo, inspect_model
 from fjkit_admin.options import ModelAdmin, relation_options_query
 from fjkit_admin.queries import FILTER_PREFIX, ListParams, coerce_filter, count_rows, run_list, scoped_select
 from fjkit_admin.schema import apply, enum_options, sqlmodel_errors
@@ -269,7 +270,8 @@ class AdminPlugin:
         def create(request: Request, payload: Any) -> HTMLResponse:
             data = payload.model_dump()
             with self.session_factory() as session:
-                errors = sqlmodel_errors(view.model, None, data, view.info)
+                errors = self._reference_errors(request, session, view, data, None)
+                errors += sqlmodel_errors(view.model, None, data, view.info)
                 if errors:
                     raise RequestValidationError(errors)
                 obj = view.model()
@@ -295,7 +297,8 @@ class AdminPlugin:
             with self.session_factory() as session:
                 obj = self._load(request, session, view, pk)
                 self._require(view.has_change_permission(request, obj))
-                errors = sqlmodel_errors(view.model, obj, data, view.info)
+                errors = self._reference_errors(request, session, view, data, obj)
+                errors += sqlmodel_errors(view.model, obj, data, view.info)
                 if errors:
                     raise RequestValidationError(errors)
                 apply(view.info, obj, data, view.form_fields())
@@ -334,11 +337,7 @@ class AdminPlugin:
                 raise HTTPException(status_code=404, detail=f"No action {action!r}.")
             params = ListParams.from_request(request, view)
             with self.session_factory() as session:
-                objs = [
-                    obj
-                    for obj in (self._load(request, session, view, value, missing_ok=True) for value in selected)
-                    if obj is not None
-                ]
+                objs = self._load_many(request, session, view, selected)
                 # One refused row refuses the whole selection, as Django does:
                 # the action runs over everything ticked or over nothing.
                 self._require(all(view.allows_action_on(request, spec, obj) for obj in objs))
@@ -384,6 +383,49 @@ class AdminPlugin:
         if obj is None and not missing_ok:
             raise HTTPException(status_code=404, detail=f"No {view.verbose_name} {raw!r}.")
         return obj
+
+    def _load_many(self, request: Request, session: Session, view: ModelAdmin, raws: Sequence[str]) -> list[Any]:
+        """The rows `raws` name, in that order, read in one query through
+        `get_queryset`. A value that is not a key, or names a hidden row, is
+        dropped, as `_load(missing_ok=True)` drops it."""
+        pks: list[Any] = []
+        for raw in raws:
+            ok, pk = coerce_filter(view.info.pk, raw)
+            if ok and pk not in pks:
+                pks.append(pk)
+        if not pks:
+            return []
+        stmt = scoped_select(view, request).where(getattr(view.model, view.info.pk.key).in_(pks))
+        found = {view.info.identity(obj): obj for obj in session.scalars(stmt).unique()}
+        return [found[pk] for pk in pks if pk in found]
+
+    def _scoped_targets(self, request: Request, relation: RelationInfo) -> Select:
+        """`select(Target)` for a foreign-key select, through the target's own
+        admin when one is registered: a row its `get_queryset` hides is not
+        one this person may point at either."""
+        stmt = relation_options_query(relation)
+        target_view = self.view_for(relation.target)
+        return target_view.get_queryset(request, stmt) if target_view is not None else stmt
+
+    def _reference_errors(
+        self, request: Request, session: Session, view: ModelAdmin, data: Mapping[str, Any], obj: Any | None
+    ) -> list[dict[str, Any]]:
+        """A 422 entry for each posted foreign key that names a row outside the
+        target's scope. The value the row already holds is kept as it is: the
+        form offers it, and refusing it would make the row unsaveable."""
+        errors: list[dict[str, Any]] = []
+        for key in view.form_fields():
+            value = data.get(key)
+            relation = view.info.relation_for_column(key)
+            if value is None or relation is None or view.widget_for(key) != "select":
+                continue
+            if obj is not None and getattr(obj, key) == value:
+                continue
+            target_pk = getattr(relation.target, inspect_model(relation.target).pk.key)
+            exists = session.scalars(self._scoped_targets(request, relation).where(target_pk == value).limit(1)).first()
+            if exists is None:
+                errors.append({"type": "invalid_choice", "loc": ("body", key), "msg": "Select a valid choice."})
+        return errors
 
     def _render(
         self,
@@ -485,7 +527,7 @@ class AdminPlugin:
                 {
                     "name": FILTER_PREFIX + column.key,
                     "label": view.field_label(column.key),
-                    "options": self._filter_options(session, view, column),
+                    "options": self._filter_options(request, session, view, column),
                     "selected": params.filters.get(column.key, ""),
                     "blank": "All",
                 }
@@ -522,7 +564,9 @@ class AdminPlugin:
             else f"No {view.verbose_name} has been added yet.",
         }
 
-    def _filter_options(self, session: Session, view: ModelAdmin, column: ColumnInfo) -> list[tuple[str, str]]:
+    def _filter_options(
+        self, request: Request, session: Session, view: ModelAdmin, column: ColumnInfo
+    ) -> list[tuple[str, str]]:
         if column.kind == "boolean":
             return [("1", "Yes"), ("0", "No")]
         if column.kind == "enum":
@@ -530,13 +574,21 @@ class AdminPlugin:
         relation = view.info.relation_for_column(column.key)
         if relation is None:
             return []
-        return self._relation_options(session, view, relation.target, relation)
+        return self._relation_options(request, session, view, relation)
 
     def _relation_options(
-        self, session: Session, view: ModelAdmin, target: type, relation: Any
+        self, request: Request, session: Session, view: ModelAdmin, relation: RelationInfo, current: Any = None
     ) -> list[tuple[str, str]]:
-        target_info = inspect_model(target)
-        rows = session.scalars(relation_options_query(relation).limit(view.fk_limit)).all()
+        """`(value, label)` pairs for a foreign-key select or filter, scoped by
+        the target's admin. `current`, the value a change form already holds,
+        is offered even when the scope hides it, so saving the form unchanged
+        does not move the row to whichever option the browser picks first."""
+        target_info = inspect_model(relation.target)
+        rows = list(session.scalars(self._scoped_targets(request, relation).limit(view.fk_limit)).unique())
+        if current is not None and all(target_info.identity(row) != current for row in rows):
+            held = session.get(relation.target, current)
+            if held is not None:
+                rows.append(held)
         return [(str(target_info.identity(row)), self.label_for_instance(row)) for row in rows]
 
     # --------------------------------------------------------- form context
@@ -568,7 +620,11 @@ class AdminPlugin:
                 spec["options"] = enum_options(column)
             elif widget == "select":
                 relation = view.info.relation_for_column(key)
-                spec["options"] = self._relation_options(session, view, relation.target, relation) if relation else []
+                spec["options"] = (
+                    self._relation_options(request, session, view, relation, value if is_change else None)
+                    if relation
+                    else []
+                )
             if widget in ("enum", "select"):
                 spec["blank"] = "—" if not spec["required"] or value is None else None
             fields.append(spec)

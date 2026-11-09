@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 from app.config import settings
@@ -26,6 +27,22 @@ def console(client):
         base_url=ORIGIN,
         headers={"Origin": ORIGIN, "Referer": f"{ORIGIN}{DOCS}"},
     )
+
+
+#: The status badge in the result panel's header: `200 OK`, `401 Unauthorized`.
+STATUS = re.compile(r'<span class="badge"[^>]*>(\d{3})\b')
+
+
+def status_of(result: str) -> int:
+    """Read the response status off a result panel.
+
+    Not `"403" in result`: the panel prints the response body too, and a body
+    of microsecond timestamps holds any three digits sooner or later. That
+    substring check failed about once in seventy runs (#35).
+    """
+    match = STATUS.search(result)
+    assert match, "the result panel shows no status"
+    return int(match.group(1))
 
 
 def sign_in(console) -> None:
@@ -57,27 +74,27 @@ def test_signing_in_runs_the_app_s_own_token_source(console):
 
 def test_a_protected_route_answers_the_console_and_refuses_a_stranger(console):
     anonymous = console.post(SECRET_OP)
-    assert "401" in anonymous.text
+    assert status_of(anonymous.text) == 401
     assert "authentication required" in anonymous.text
 
     sign_in(console)
 
     allowed = console.post(SECRET_OP)
-    assert "200" in allowed.text
+    assert status_of(allowed.text) == 200
     assert settings.username in allowed.text
 
 
 def test_a_fragment_endpoint_answers_the_console_with_its_model(console):
     result = console.post(BOARD_OP)
 
-    assert "200" in result.text
+    assert status_of(result.text) == 200
     assert "application/json" in result.text
 
 
 def test_even_a_page_route_answers_the_console_with_its_model(console):
     result = console.post(TASKS_OP, data={"p.query.status": "todo"})
 
-    assert "200" in result.text
+    assert status_of(result.text) == 200
     assert "/tasks?status=todo" in result.text
     assert "application/json" in result.text
     assert "&lt;!doctype" not in result.text.lower()
@@ -110,11 +127,13 @@ def test_a_json_body_gets_one_editable_example(console):
 def test_a_write_from_the_console_reaches_the_service(console):
     sign_in(console)
 
+    # A title holding the status a refused write would show, so a check that
+    # reads the body instead of the status fails every time rather than by chance.
     created = console.post(
         CREATE_OP,
-        data={"body": json.dumps({"title": "from the console", "owner": "ada", "priority": "normal"})},
+        data={"body": json.dumps({"title": "from the console 403", "owner": "ada", "priority": "normal"})},
     )
-    assert "403" not in created.text
+    assert status_of(created.text) == 200
     assert "from the console" in console.get("/tasks").text
 
 

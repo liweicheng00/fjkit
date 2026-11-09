@@ -11,7 +11,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=bcec078cb3bc">
+  <link rel="stylesheet" href="assets/dist/fjkit-vega.css?v=a49bf3337aa9">
   <link rel="stylesheet" href="assets/brand.css?v=1df0fccc3b31">
   <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
@@ -400,7 +400,7 @@ fjkit
   </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>every 2s — polling</h3><p>Polling stops when the element is removed. For anything chattier, reach for SSE.</p>      </div>
+<h3>every 2s — polling</h3><p>Polling stops when the element is removed. For anything chattier — a reply arriving word by word — load sse_scripts() and return fjkit.sse.events() from an async route; it always ends with the done event sse-close waits for.</p>      </div>
 <button class="btn" data-variant="outline" data-size="xs" type="button" id="demo-poll-toggle">start polling</button>    </header>      <section>        <div id="demo-poll-host">
         <p>Build status, refreshed by the server.</p>
       </div>
@@ -1364,6 +1364,8 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 </p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>unexpected_error</h4><p>the words that toast says. Leave it and the kit says &lt;em&gt;Something went wrong&lt;/em&gt;; set a &lt;code&gt;Message&lt;/code&gt; to change them once, or a callable &lt;code&gt;(request, exc) -&amp;gt; Message&lt;/code&gt; to pick them per exception. Choose the words from the exception — never put &lt;code&gt;str(exc)&lt;/code&gt; in them, that is the inside of your app</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>a 404</h4><p>an unknown address, or a route that raised &lt;code&gt;HTTPException(404)&lt;/code&gt;. A navigation gets errors/page.html, which says the page may have moved. An htmx swap gets an empty 404 and a toast, so the page it came from stays as it was. A JSON client gets FastAPI&#39;s own reply. Every other &lt;code&gt;HTTPException&lt;/code&gt; is FastAPI&#39;s reply, headers included. Register your own &lt;code&gt;HTTPException&lt;/code&gt; handler after &lt;code&gt;mount_fjkit()&lt;/code&gt; and it replaces this one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>not_found_error</h4><p>the words of that 404 toast, taking the same &lt;code&gt;Message&lt;/code&gt; or callable as &lt;code&gt;unexpected_error&lt;/code&gt;. Leave it and the kit says &lt;em&gt;That could not be found&lt;/em&gt;</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>your own handlers</h4><p>a 404, a &lt;code&gt;RequestValidationError&lt;/code&gt; or an &lt;code&gt;Exception&lt;/code&gt;/500 handler you registered before &lt;code&gt;mount_fjkit()&lt;/code&gt; is kept; one registered after it replaces the kit&#39;s. When the error page itself cannot render because a plugin raised what a route would have — the auth plugin&#39;s 503 during an outage — the visitor gets that handler&#39;s answer</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>errors/page.html</h4><p>the page a failed navigation lands on. Replace it by writing a file at the same path in your own template directory — the same shadowing fjkit eject uses, so there is no separate custom-error-page mechanism to learn</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>js/errors.js</h4><p>the third and last file every page loads, after htmx and Basecoat. It listens to htmx:beforeSwap, so a 422 that is not FastAPI&#39;s list — a route answering with markup of its own — is left alone</p>    </section>  </div></div></div>
   </div>
@@ -1514,7 +1516,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 </div>    </main>
 
       <footer class="text-muted-foreground border-t py-5 text-xs">
-  fjkit 0.3.0 · FastAPI 0.141.1 ·
+  fjkit 0.4.0 · FastAPI 0.141.1 ·
   Jinja2 3.1.6 · Basecoat 1.0.2 ·
   htmx 2.0.10 —
   <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
@@ -1530,7 +1532,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
       for (const message of event.detail?.messages ?? []) toaster.toast(message);
     });
   </script>
-  <script defer src="assets/data.js?v=1b46c3291b5b"></script>
+  <script defer src="assets/data.js?v=c9d679b5903a"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
   <script defer src="assets/learn.js?v=1cd452b749b0"></script>
 </body>

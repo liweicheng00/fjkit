@@ -7,7 +7,8 @@
 #}
 {% from "apidocs/macros.html" import field, op_line, param_table, payload %}
 {% from "ui/button.html" import button %}
-{% from "ui/data.html" import badge, card, item, item_list, link %}
+{% from "ui/data.html" import badge, caption, card, item, item_list, kbd, link %}
+{% from "ui/disclosure.html" import collapsible %}
 {% from "ui/feedback.html" import spinner %}
 {#
   `textarea_field` is the kit's own, as of 0.2. This template carried a local
@@ -21,38 +22,39 @@
   validation for a reason nothing on screen explains.
 #}
 {% from "ui/form.html" import form, textarea_field %}
-{% from "ui/icon.html" import icon %}
-{% from "ui/layout.html" import divider, grid, section, stack %}
+{% from "ui/layout.html" import divider, grid, row, section, stack %}
 
 <div id="{{ ids.detail }}">
   {% call stack(gap=5) %}
 
     {% call stack(gap=2) %}
       {{ op_line(operation) }}
-      {% if operation.summary %}<h2 class="text-xl font-semibold tracking-tight">{{ operation.summary }}</h2>{% endif %}
-      {% if operation.description %}
-        <p class="text-muted-foreground text-sm">{{ operation.description }}</p>
-      {% endif %}
-      {% if operation.deprecated %}
-        <p class="text-warning text-sm" role="note">
-          Deprecated. It still answers, but it is on its way out — check the changelog before building on it.
-        </p>
-      {% endif %}
       {#
-        The document's two pointers outwards: the name every generated client
-        gives this call, and the link its author wrote to the real
-        explanation. Both are in the schema and neither usually survives being
-        rendered, which leaves a reference less informative than the file it
-        came from.
+        The summary is the section's heading and the description its line
+        underneath — `section` draws both, so the pair is the kit's title block
+        and not one invented here.
       #}
-      <div class="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
-        {% if operation.operation_id %}
-          <span>operationId <code class="kbd">{{ operation.operation_id }}</code></span>
+      {% call section(operation.summary or none, operation.description or none, gap=2) %}
+        {% if operation.deprecated %}
+          {{ caption("Deprecated. It still answers, but it is on its way out — check the changelog before building on it.",
+                     tone="warning", role="note") }}
         {% endif %}
-        {% if operation.external_url %}
-          <span>{{ link(operation.external_label, operation.external_url) }}</span>
-        {% endif %}
-      </div>
+        {#
+          The document's two pointers outwards: the name every generated client
+          gives this call, and the link its author wrote to the real
+          explanation. Both are in the schema and neither usually survives being
+          rendered, which leaves a reference less informative than the file it
+          came from.
+        #}
+        {% call row(gap=3) %}
+          {% if operation.operation_id %}
+            {% call caption(size="xs") %}operationId {{ kbd(operation.operation_id) }}{% endcall %}
+          {% endif %}
+          {% if operation.external_url %}
+            {% call caption(size="xs") %}{{ link(operation.external_label, operation.external_url) }}{% endcall %}
+          {% endif %}
+        {% endcall %}
+      {% endcall %}
     {% endcall %}
 
     {% if try_it %}
@@ -75,7 +77,7 @@
                      target="#" ~ ids.result, card=false,
                      enctype="multipart/form-data" if operation.multipart else none,
                      hx_encoding="multipart/form-data" if operation.multipart else none) %}
-          <div class="flex flex-col gap-4">
+          {% call stack(gap=4) %}
             {#
               Parameters and form-body fields in one run of inputs. They are
               different things to the document and the same thing to the person
@@ -125,10 +127,10 @@
                                   spellcheck="false", autocapitalize="off", autocorrect="off") }}
               {% endif %}
               {% if operation.media_types | length > 1 %}
-                <p class="text-muted-foreground text-xs">
+                {% call caption(size="xs") %}
                   The document also accepts {{ operation.media_types | reject("equalto", operation.body_media) | join(", ") }}.
                   The console sends {{ operation.body_media }}; use the curl snippet for the others.
-                </p>
+                {% endcall %}
               {% endif %}
             {% endif %}
 
@@ -142,29 +144,20 @@
               a two-line textarea between the parameters and the Send button,
               and it is empty on almost every call anybody makes.
 
-              `<details>` rather than a scripted panel: the browser owns the
-              open state, the keyboard handling and the expanded announcement,
-              and nothing is left for JavaScript to add.
+              `collapsible`, which is a `<details>`: the browser owns the open
+              state, the keyboard handling and the expanded announcement, and
+              nothing is left for JavaScript to add. Its chevron is the
+              affordance — Basecoat's base layer removes the native marker, and
+              a bare line of text does not read as something you can open.
             #}
-            <details class="text-sm">
-              {#
-                The chevron is the whole affordance. Basecoat's base layer
-                removes the native marker, and a bare line of muted text does
-                not read as something you can open — which is a different
-                failure from being too loud, and just as bad.
-              #}
-              <summary class="text-muted-foreground flex cursor-pointer items-center gap-1 text-xs">
-                {{ icon("chevron-right", 12) }}<span>Extra headers</span>
-              </summary>
-              <div class="pt-3">
-                {{ textarea_field(headers_field, label=none, rows=2,
-                                  placeholder="X-Debug: 1",
-                                  hint="One per line, `Name: value`. The session cookie is attached for you.",
-                                  spellcheck="false", autocapitalize="off", autocorrect="off") }}
-              </div>
-            </details>
+            {% call collapsible("Extra headers") %}
+              {{ textarea_field(headers_field, label=none, rows=2,
+                                placeholder="X-Debug: 1",
+                                hint="One per line, `Name: value`. The session cookie is attached for you.",
+                                spellcheck="false", autocapitalize="off", autocorrect="off") }}
+            {% endcall %}
 
-            <div class="flex items-center gap-3">
+            {% call row(gap=3) %}
               {{ button("Send", type="submit", icon_name="send") }}
               {#
                 A native reset, which puts every field back to the default the
@@ -174,8 +167,8 @@
               #}
               {{ button("Reset", type="reset", variant="ghost", size="sm") }}
               {{ spinner(size="sm", indicator=true, label="Calling") }}
-            </div>
-          </div>
+            {% endcall %}
+          {% endcall %}
         {% endcall %}
       {% endcall %}
 
@@ -208,11 +201,11 @@
           #}
           {% for entry in operation.responses %}
             {% call stack(gap=2) %}
-              <div class="flex flex-wrap items-center gap-2">
+              {% call row(gap=2) %}
                 {{ badge(entry.status, entry.tone) }}
-                {% if entry.description %}<span class="text-sm">{{ entry.description }}</span>{% endif %}
-                {% if entry.media_type %}<code class="kbd">{{ entry.media_type }}</code>{% endif %}
-              </div>
+                {% if entry.description %}{{ caption(entry.description, tone=none) }}{% endif %}
+                {% if entry.media_type %}{{ kbd(entry.media_type) }}{% endif %}
+              {% endcall %}
 
               {% if entry.headers %}
                 {#

@@ -119,7 +119,7 @@ Settled. Implement against them; do not re-propose. Changing one needs an RFC an
 | A8 | **Repeated components are macros, never `{% include %}` in a loop.** | Measured 20–30% slower, degrading linearly with row count. |
 | A9 | **The return annotation is the route's only contract.** The handler returns a response model; `@render` spreads that same model into the template context. OpenAPI and the template are fed by one declaration. Display values use `@computed_field`. | Two contracts always disagree. |
 | A10 | **All eight style packs ship in the wheel; the pack is a config value.** `FjkitConfig(style=…)`, and nothing else. Install-time selection (`uv add "fjkit[nova]"`, eight marker distributions) was built, then withdrawn before 0.1.0 and never published. | The budget is per page and a page loads one. The markers cost eight PyPI names and eight version streams to carry one word the config already says; the ambiguity they created — appearance depending on metadata scan order — is a bug that cannot even be bisected, and removing them removed it. |
-| A11 | **Third-party front-end assets in the wheel are a whitelist (§4); every asset is loaded by an explicit page.** Two separate claims. **(1)** Only whitelisted bundles enter the wheel: `htmx.org`, `htmx-ext-json-enc`, `idiomorph`, `basecoat-css`. Each is pinned in `fjkit/vendored.py`, downloaded by `scripts/vendor_ui.py`, committed to `static/vendor/`, and served by `mount_fjkit`'s static mount. A plugin shipped as its own distribution pins, vendors and serves its own. **(2)** A plugin's own assets live with the plugin in the wheel, because the §4 ceiling governs *what a page downloads by default*, not what files exist. A plugin still may not inject markup into the shell; assets arrive through a macro the page calls in `{% block scripts %}`, and must degrade when a third-party asset is absent. | "No build" promises that *you* need not build, not that nobody may load anything. Naming the load per page is stricter than a shell hook any plugin could use to add a `<script>` to every page. |
+| A11 | **Third-party front-end assets in the wheel are a whitelist (§4); every asset is loaded by an explicit page.** Two separate claims. **(1)** Only whitelisted bundles enter the wheel: `htmx.org`, `htmx-ext-json-enc`, `htmx-ext-sse`, `idiomorph`, `basecoat-css`. Each is pinned in `fjkit/vendored.py`, downloaded by `scripts/vendor_ui.py`, committed to `static/vendor/`, and served by `mount_fjkit`'s static mount. A plugin shipped as its own distribution pins, vendors and serves its own. **(2)** A plugin's own assets live with the plugin in the wheel, because the §4 ceiling governs *what a page downloads by default*, not what files exist. A plugin still may not inject markup into the shell; assets arrive through a macro the page calls in `{% block scripts %}`, and must degrade when a third-party asset is absent. | "No build" promises that *you* need not build, not that nobody may load anything. Naming the load per page is stricter than a shell hook any plugin could use to add a `<script>` to every page. |
 
 Five architecture diagrams — package boundary, template resolution, build timing, render path, gate loop — are in `docs/architecture.md`. That file is authoritative.
 
@@ -138,7 +138,7 @@ The CSS budget is **per page**: eight packs ship, a page loads one.
 | `fjkit-<pack>.css`, gzip — **the governed number** | ≤ 28 KB | 24.8–25.5 KB across eight packs (vega 25.2) |
 | `fjkit-<pack>.css`, uncompressed — blowout guard | ≤ 260 KB | 221.6–239.7 KB (sera smallest, nova largest) |
 | fjkit runtime dependencies | `fastapi`, `jinja2`. A third needs an RFC | 2 |
-| Third-party JS permitted in the wheel — **whitelist** | Only what `fjkit/vendored.py` pins: `htmx.org`, `htmx-ext-json-enc`, `idiomorph`, `basecoat-css` (with `all.min.js`). Adding one edits this cell (A11) | 4 |
+| Third-party JS permitted in the wheel — **whitelist** | Only what `fjkit/vendored.py` pins: `htmx.org`, `htmx-ext-json-enc`, `htmx-ext-sse`, `idiomorph`, `basecoat-css` (with `all.min.js`). Adding one edits this cell (A11) | 5 |
 | Single-page render regression | No more than 10% slower than the previous version | Threshold definition still open |
 
 **Why gzip and not raw.** CSS compresses about 10:1, and the user downloads the compressed bytes; raw is an implementation detail. The budget uses stdlib `gzip` rather than brotli because it is everywhere, needs no dependency, and reproduces. Brotli is roughly 20% smaller — a reference number, not the gate.
@@ -159,11 +159,12 @@ The only real lever left is subsetting Basecoat, and `styles/<pack>.css` is one 
 |---|---|---|
 | `reveal.js` | `reveal_scripts()`, in `ui/form.html` | 2,508 / 1,273 |
 | `select.js` | `select_scripts()`, in `ui/table.html` | 5,172 / 2,151 |
-| `resize.js` | `resize_scripts()`, in `ui/table.html` | 7,435 / 2,745 |
+| `resize.js` | `resize_scripts()`, in `ui/table.html` | 8,823 / 3,240, measured 2026-11-08 |
 | `multiselect.js` | `multiselect_scripts()`, in `ui/overlay.html` | 5,461 / 2,456 |
 | `charts.js` | `chart_scripts()` | 8,953 / 3,810, in `fjkit-charts` |
 | `json-enc.js` | `form_scripts()` | vendored, 1,012 raw |
 | `idiomorph-ext.min.js` | `morph_scripts()` | vendored, 11,037 / 3,924 |
+| `sse.min.js` | `sse_scripts()` | vendored, 2,853 / 1,074 |
 
 **A vendored file is on the same footing.** `idiomorph-ext.min.js` is the largest thing in the table above, and it stays out of the shell for that reason: it is a swap strategy, not a component, so the page that wants one asks for it. Every page downloading it would have bought, for most pages, nothing — a swap only morphs where a caller wrote `morph:*`, and the reason to write that is state the browser holds on nodes the reply is about to replace. Measured on the demo's records table: a row still in the reply keeps its DOM node and is relocated when a sort moves it, where `outerHTML` gives a new one. Not measured as a win for focus, which htmx already restores by id, and not for a ticked box, which the reply describes and the morph therefore syncs.
 

@@ -32,6 +32,13 @@ against the workspace folder. Any change to it restarts the server, as does
 the **fjkit: Restart language server** command. The **fjkit** channel in the
 Output panel has the start-up line, or the reason there was none.
 
+## When answers go stale
+
+The extension reports files created, changed or deleted on disk, except under
+`.venv`, `tests` and the other directories the server never reads. A `uv sync`
+that upgrades fjkit or a plugin therefore reaches the server only after
+**fjkit: Restart language server**.
+
 ## What it does not do
 
 Publish to a marketplace. That needs publisher accounts on two of them and a

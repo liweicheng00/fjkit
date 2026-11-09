@@ -129,6 +129,13 @@ class FjkitConfig:
     #: logging.
     unexpected_error: UnexpectedErrorMessage | None = None
 
+    #: The toast an htmx swap gets when its URL answers 404. `None` uses the
+    #: kit's own wording — "That could not be found", advising a reload. Takes
+    #: the same `Message` or `(request, exc) -> Message` as `unexpected_error`.
+    #: A navigation that finds nothing gets `errors/page.html`, whose words live
+    #: in the template.
+    not_found_error: UnexpectedErrorMessage | None = None
+
     #: Extra values exposed to every template. Prefer this over threading the
     #: same key through every route's context dict.
     globals: dict[str, object] = field(default_factory=dict)

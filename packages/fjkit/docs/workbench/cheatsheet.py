@@ -127,6 +127,18 @@ GROUPS = [
                         "都撐得過一次排序。分兩半——要 morph 的元素自己宣告 "
                         'hx-ext="morph"，swap 本身寫 swap="morph:outerHTML"。逐頁載入，不進 shell。',
                     ),
+                    _m(
+                        "sse_scripts()",
+                        en="Loads htmx's sse extension, so a reply can arrive in pieces over one "
+                        'connection: hx-ext="sse" and sse-connect on the container, sse-swap on '
+                        "each element an event fills, sse-close naming the event that ends it. "
+                        "The server side is templates.events(), which always sends that event — "
+                        "without it the extension reconnects forever. Per page, never the shell.",
+                        zh="載入 htmx 的 sse 擴充，讓一段回覆經由同一條連線分段抵達：容器寫 "
+                        'hx-ext="sse" 與 sse-connect，每個要被事件填入的元素寫 sse-swap，'
+                        "sse-close 指定結束串流的事件名稱。伺服器端是 templates.events()，"
+                        "它一定會送出這個結束事件——少了它，擴充會無限重連。逐頁載入，不進 shell。",
+                    ),
                 ],
             },
         ],
@@ -241,6 +253,13 @@ GROUPS = [
                         zh="route 是路由名稱，不是網址。作用中狀態由 is_active 決定，"
                         "連結不可能跟所在頁面對不上。",
                     ),
+                    _m(
+                        "sidebar_item(label, href, active=false, icon_name=none, lead=none)",
+                        en="For a URL that is not one route: the same route with a different "
+                        "parameter per row. lead puts a badge in a fixed-width cell so labels align.",
+                        zh="給不是單一路由的網址用：同一條路由、每列帶不同參數。"
+                        "lead 把徽章放進固定寬度的格子，讓標籤對齊。",
+                    ),
                     _m("sidebar_submenu(label, icon_name=none, open=false)", block="sidebar_link()"),
                     _m(
                         'sidebar_trigger(target="sidebar", label="Toggle navigation")',
@@ -307,7 +326,14 @@ GROUPS = [
                     _m('bullet_list(tone="muted")', block="list_item()"),
                     _m("list_item()", block="text"),
                     _m("item_list()", block="item()"),
-                    _m("description_list(layout=\"rows\")", block="description_item()"),
+                    _m(
+                        "description_list(layout=\"rows\")",
+                        block="description_item()",
+                        en="layout: rows | stacked | inline. inline is a few short facts on one "
+                        "wrapping line, in small type.",
+                        zh="layout：rows | stacked | inline。inline 把幾個短事實排在一行、"
+                        "可換行，字級較小。",
+                    ),
                     _m(
                         "description_item(term, value=none)",
                         block="value",
@@ -338,7 +364,7 @@ GROUPS = [
                         zh="它自己帶捲動區與可聚焦性，溢出的程式碼用鍵盤也到得了。",
                     ),
                     _m(
-                        "caption(text=none)",
+                        'caption(text=none, size="sm", tone="muted", icon_name=none)',
                         block="text",
                         optional=True,
                         en="A muted line that stands on its own. card, section and page_header "
@@ -483,8 +509,10 @@ GROUPS = [
                     _m(
                         'field_row(template="two", gap=3)',
                         block="fields",
-                        en="Two or three fields on one line, collapsing to one column when narrow.",
-                        zh="一行放兩到三個欄位，窄螢幕收成一欄。",
+                        en="Two or three fields on one line, collapsing to one column when narrow. "
+                        "template=\"inline\" gives each short field a fixed 16rem cell instead.",
+                        zh="一行放兩到三個欄位，窄螢幕收成一欄。"
+                        "template=\"inline\" 改為每個短欄位固定 16rem 一格。",
                     ),
                     _m(
                         "fieldset(legend=none, hint=none)",

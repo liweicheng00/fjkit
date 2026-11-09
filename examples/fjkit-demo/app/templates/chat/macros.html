@@ -1,0 +1,73 @@
+{#
+  Feature-local macros for the chat page. `request` is a parameter, so this file
+  imports without context.
+#}
+{% from "ui/data.html" import badge, card %}
+{% from "ui/feedback.html" import alert, spinner %}
+{% from "ui/layout.html" import row, stack %}
+
+{# The reply's state: a spinner and "Writing" while it streams, a badge after. #}
+{% macro reply_status(reply) -%}
+  {% call row(gap=2) %}
+    {# Decorative: the badge beside it already says "Writing". #}
+    {% if reply.streaming %}{{ spinner(size="sm", tone="info") }}{% endif %}
+    {{ badge(reply.state_label, variant=reply.state_variant) }}
+  {% endcall %}
+{%- endmacro %}
+
+{# Why a reply stopped. The `failure` event's payload, and drawn by the page for a reply that already failed. #}
+{% macro reply_error(reason) -%}
+  {{ alert("The reply stopped", reason, variant="destructive") }}
+{%- endmacro %}
+
+{#
+  One turn: the question, and the reply to it.
+
+  While the reply streams, its card is the event source: `hx-ext="sse"` and
+  `sse-connect` open the connection, and `sse-close="done"` names the event that
+  ends it — the one `fjkit.sse` always sends last. Each child that an event
+  fills says which event in `sse-swap`:
+
+  - `snapshot` replaces the text with everything written so far. It is the
+    first event of every connection, so a reconnect redraws the reply rather
+    than appending a second copy to it.
+  - `token` appends to that same text. It is a sibling with `hx-target`, not
+    the text itself, because one element has one `hx-swap` and the two events
+    need two.
+  - `status` and `failure` are rendered partials, sent once at the end.
+
+  A finished reply is drawn without any of it, so a reload opens no connection
+  for a turn that has nothing left to say.
+#}
+{% macro turn(request, reply) -%}
+  {% set text_id = "reply-" ~ reply.id ~ "-text" %}
+  {% set status %}
+    <span aria-live="polite"{% if reply.streaming %} sse-swap="status" hx-swap="innerHTML"{% endif %}>
+      {{- reply_status(reply) -}}
+    </span>
+  {% endset %}
+
+  {% call stack(3, id="turn-" ~ reply.id) %}
+    {% call card("You", size="sm") %}
+      <p>{{ reply.question }}</p>
+    {% endcall %}
+
+    {% call card("Assistant", size="sm", actions=status,
+                 id="reply-" ~ reply.id,
+                 hx_ext="sse" if reply.streaming else none,
+                 sse_connect=url_for(request, "chat_stream", reply_id=reply.id) if reply.streaming else none,
+                 sse_close="done" if reply.streaming else none) %}
+      {% call stack(3) %}
+        <p>
+          <span id="{{ text_id }}"{% if reply.streaming %} sse-swap="snapshot" hx-swap="innerHTML"{% endif %}>
+            {{- reply.text -}}
+          </span>
+          {%- if reply.streaming %}<span sse-swap="token" hx-target="#{{ text_id }}" hx-swap="beforeend"></span>{% endif %}
+        </p>
+        <div{% if reply.streaming %} sse-swap="failure" hx-swap="innerHTML"{% endif %}>
+          {%- if reply.error %}{{ reply_error(reply.error) }}{% endif -%}
+        </div>
+      {% endcall %}
+    {% endcall %}
+  {% endcall %}
+{%- endmacro %}

@@ -1,0 +1,7 @@
+{#
+  A reply's state badge. The payload of the stream's `status` event, swapped
+  into the bubble's header; the page draws it with the same macro.
+#}
+{% from "chat/macros.html" import reply_status %}
+
+{{ reply_status(reply) }}

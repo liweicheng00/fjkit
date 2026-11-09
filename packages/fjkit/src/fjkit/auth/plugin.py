@@ -104,11 +104,23 @@ def _is_navigation(request) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class CookieSpec:
-    """The one cookie this plugin sets.
+    """The session cookie, and the login cookie `start_login` names after it.
 
     `httponly` is not a field. This plugin exists so no script can read the
     credential, and a setting to turn that off would only ever be turned off by
     mistake.
+
+    A sibling subdomain on the same site can set a cookie for this host, and
+    so plant a session or a login nonce of its own choosing. A name starting
+    `__Host-` stops that: a browser accepts such a cookie only from this
+    origin, `Secure`, with `Path=/` and no `Domain`. It is opt-in, because
+    renaming the cookie signs out every browser holding the old name once:
+
+        CookieSpec(name="__Host-fjkit_session")
+
+    The login cookie becomes `__Host-fjkit_session_login` with it. A prefixed
+    name with attributes the browser would drop the cookie for is refused
+    here, since otherwise every login appears to work and none sticks.
     """
 
     name: str = "fjkit_session"
@@ -122,6 +134,17 @@ class CookieSpec:
     #: `Origin` check alone; use it only for an app embedded in another site's
     #: iframe.
     same_site: Literal["lax", "strict", "none"] = "lax"
+
+    def __post_init__(self) -> None:
+        # Browsers match the prefixes without regard to case.
+        lowered = self.name.lower()
+        if lowered.startswith("__host-") and (not self.secure or self.domain is not None or self.path != "/"):
+            raise ValueError(
+                f"CookieSpec(name={self.name!r}): a `__Host-` cookie needs secure=True, "
+                "domain=None and path='/', or browsers drop it."
+            )
+        if lowered.startswith("__secure-") and not self.secure:
+            raise ValueError(f"CookieSpec(name={self.name!r}): a `__Secure-` cookie needs secure=True.")
 
 
 class AuthPlugin:
@@ -166,6 +189,7 @@ class AuthPlugin:
         refresh_leeway: timedelta = timedelta(seconds=60),
         refresh_lock_ttl: timedelta = timedelta(seconds=10),
         refresh_wait: timedelta = timedelta(seconds=10),
+        refresh_backoff: timedelta = timedelta(seconds=_RETRY_AFTER_SECONDS),
     ) -> None:
         self.secret = secret.encode("utf-8") if isinstance(secret, str) else secret
         self.store: SessionStore = store if store is not None else MemoryStore()
@@ -185,6 +209,14 @@ class AuthPlugin:
         self.refresh_leeway = refresh_leeway
         self.refresh_lock_ttl = refresh_lock_ttl
         self.refresh_wait = refresh_wait
+        #: How long a session whose renewal found the upstream unreachable
+        #: waits before its next attempt. Inside it a request is served on the
+        #: token it has, or answered 503 if that token has expired, without
+        #: waiting out the upstream's timeout or logging the outage again. The
+        #: default matches the 503's `Retry-After`. Kept per process: a second
+        #: worker makes its own first attempt. `timedelta(0)` turns it off.
+        self.refresh_backoff = refresh_backoff
+        self._backoff_until: dict[str, float] = {}
         self._warned_no_refresh = False
 
         if csrf is None:
@@ -207,7 +239,15 @@ class AuthPlugin:
             if isinstance(found, FlashPlugin):
                 self.flash = found
 
-        setup.add_middleware(_SessionMiddleware, plugin=self, static_url=setup.config.static_url)
+        static_url = setup.config.static_url
+        if not static_url.startswith("/") or not static_url.rstrip("/"):
+            # The middleware loads no session under this prefix. At the root
+            # that is every route, and every signed-in page reads anonymous.
+            raise ValueError(
+                f"AuthPlugin needs `FjkitConfig.static_url` to be a path below the root, not {static_url!r}: "
+                "requests under it skip session loading."
+            )
+        setup.add_middleware(_SessionMiddleware, plugin=self, static_url=static_url)
         setup.add_exception_handler(NotAuthenticated, self._handle)
         setup.add_exception_handler(CsrfRejected, self._handle)
         setup.add_exception_handler(RefreshUnavailable, self._handle)
@@ -266,7 +306,7 @@ class AuthPlugin:
             domain=self.cookie.domain,
             secure=self.cookie.secure,
             httponly=True,
-            samesite="none" if self.cookie.same_site == "none" else "lax",
+            samesite=self._login_same_site,
         )
         return nonce
 
@@ -304,11 +344,7 @@ class AuthPlugin:
             raise CsrfRejected("the login cookie is older than its TTL")
         if not hmac.compare_digest(nonce.encode("utf-8"), state.encode("utf-8")):
             raise CsrfRejected("`state` is not the one this browser's login started with")
-        response.delete_cookie(
-            self._login_cookie,
-            path=self.cookie.path,
-            domain=self.cookie.domain,
-        )
+        self._delete_cookie(response, self._login_cookie, same_site=self._login_same_site)
 
     async def issue(self, request: Request, response: Response, credentials: Any) -> Session:
         """Log in: exchange `credentials`, store the session, set the cookie.
@@ -350,11 +386,7 @@ class AuthPlugin:
         sid = self._read_cookie(request)
         if sid is not None:
             await self.store.delete(sid)
-        response.delete_cookie(
-            self.cookie.name,
-            path=self.cookie.path,
-            domain=self.cookie.domain,
-        )
+        self._delete_cookie(response, self.cookie.name, same_site=self.cookie.same_site)
         request.state.auth = None
         request.state.auth_unavailable = None
 
@@ -468,6 +500,11 @@ class AuthPlugin:
                 )
             return session
 
+        if self._backing_off(sid):
+            if self._expired(session):
+                raise RefreshUnavailable("the upstream did not answer the last attempt to renew this session")
+            return session
+
         if not await self.store.acquire_refresh_lock(sid, int(self.refresh_lock_ttl.total_seconds())):
             return await self._await_refresh(sid, session)
 
@@ -489,18 +526,42 @@ class AuthPlugin:
             try:
                 fresh = await self.source.refresh(current)  # type: ignore[attr-defined]
             except RefreshRefused as exc:
+                self._backoff_until.pop(sid, None)
                 await self.store.delete(sid)
                 raise RefreshFailed(f"the upstream refused to renew the session: {exc}") from exc
             except Exception as exc:
+                self._back_off(sid)
                 if self._expired(current):
                     raise RefreshUnavailable(f"could not reach the upstream to renew the session: {exc}") from exc
                 _log.warning("could not reach the upstream to renew a session ahead of expiry: %s", exc)
                 return current
 
             await self._write(sid, fresh)
+            self._backoff_until.pop(sid, None)
             return fresh
         finally:
             await self.store.release_refresh_lock(sid)
+
+    def _backing_off(self, sid: str) -> bool:
+        """Report whether `sid`'s last renewal failed less than `refresh_backoff` ago."""
+        until = self._backoff_until.get(sid)
+        if until is None:
+            return False
+        if time.monotonic() < until:
+            return True
+        del self._backoff_until[sid]
+        return False
+
+    def _back_off(self, sid: str) -> None:
+        """Hold `sid`'s next renewal for `refresh_backoff`.
+
+        Drops every entry that has run out, so a session that never returns
+        does not keep one for the life of the process."""
+        now = time.monotonic()
+        for stale in [key for key, until in self._backoff_until.items() if until <= now]:
+            del self._backoff_until[stale]
+        if self.refresh_backoff > timedelta(0):
+            self._backoff_until[sid] = now + self.refresh_backoff.total_seconds()
 
     async def _await_refresh(self, sid: str, stale: Session) -> Session:
         """Wait for whoever won the lock, then read what they wrote.
@@ -588,6 +649,24 @@ class AuthPlugin:
             secure=self.cookie.secure,
             httponly=True,
             samesite=self.cookie.same_site,
+        )
+
+    @property
+    def _login_same_site(self) -> Literal["lax", "none"]:
+        """The login cookie's `SameSite`: `None` if the session's is, else `Lax`; see `start_login`."""
+        return "none" if self.cookie.same_site == "none" else "lax"
+
+    def _delete_cookie(self, response: Response, name: str, *, same_site: Literal["lax", "strict", "none"]) -> None:
+        """Expire `name` with the attributes it was set with. A browser ignores
+        a deletion of a `__Host-` cookie that lacks `Secure`, and one of a
+        `SameSite=None` cookie from an embedding site unless it says `None`."""
+        response.delete_cookie(
+            name,
+            path=self.cookie.path,
+            domain=self.cookie.domain,
+            secure=self.cookie.secure,
+            httponly=True,
+            samesite=same_site,
         )
 
     # ------------------------------------------------------------- responses

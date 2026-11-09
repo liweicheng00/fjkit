@@ -185,7 +185,11 @@ class ModelAdmin:
     # ---------------------------------------------------------------- hooks
 
     def get_queryset(self, request: Request, stmt: Select) -> Select:
-        """The base `select(Model)`; narrow it here for per-request scoping."""
+        """The base `select(Model)`; narrow it here for per-request scoping.
+
+        It scopes this model's own routes, and every foreign-key select and
+        filter that points at this model from another admin: a hidden row is
+        not offered there, and a posted id naming one is a 422."""
         return stmt
 
     def has_view_permission(self, request: Request, obj: Any | None = None) -> bool:

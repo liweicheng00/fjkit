@@ -56,9 +56,19 @@ COLOUR_CHECKS = [
 ]
 
 #: A CSS named colour is only a colour where a property reads one, so these are
-#: looked for in `style="…"` declarations rather than everywhere: `red` in prose
-#: is a word.
+#: looked for where CSS or SVG paints rather than everywhere: `red` in prose is
+#: a word. Three places paint: a `style="…"` declaration, a rule inside a
+#: `<style>` block, and an SVG or HTML presentation attribute.
 _STYLE_ATTR = re.compile(r"""(?<![\w-])style\s*=\s*(["'])(.*?)\1""", re.DOTALL)
+_STYLE_BLOCK = re.compile(r"<style\b[^>]*>(.*?)</style\s*>", re.DOTALL | re.IGNORECASE)
+#: The declarations of one rule. Innermost braces only, so the selector and an
+#: `@media` wrapper are never read as a declaration: `a:hover` is not `a`
+#: set to `hover`.
+_RULE = re.compile(r"\{([^{}]*)\}")
+_PAINT_ATTR = re.compile(
+    r"""(?<![\w:-])(?:fill|stroke|stop-color|flood-color|lighting-color|color|bgcolor)\s*=\s*(["'])(.*?)\1""",
+    re.DOTALL | re.IGNORECASE,
+)
 _DECLARATION = re.compile(r"([\w-]+)\s*:\s*([^;]*)")
 _COLOUR_PROPERTY = re.compile(r"colou?r|background|border|outline|fill|stroke|shadow|decoration|column-rule")
 _URL = re.compile(r"url\([^)]*\)")
@@ -155,23 +165,29 @@ class Violation:
 
 
 def _named_colours(path: Path, text: str) -> list[Violation]:
-    found = []
+    found: dict[int, str] = {}
+
+    def value(start: int, css: str) -> None:
+        for word in _WORD.finditer(_blank(_URL, css)):
+            if word.group(0).lower() in NAMED_COLOURS:
+                found[start + word.start()] = word.group(0)
+
+    def declarations(start: int, css: str) -> None:
+        for decl in _DECLARATION.finditer(css):
+            if _COLOUR_PROPERTY.search(decl.group(1)):
+                value(start + decl.start(2), decl.group(2))
+
     for attr in _STYLE_ATTR.finditer(text):
-        for decl in _DECLARATION.finditer(attr.group(2)):
-            if not _COLOUR_PROPERTY.search(decl.group(1)):
-                continue
-            for word in _WORD.finditer(_blank(_URL, decl.group(2))):
-                if word.group(0).lower() in NAMED_COLOURS:
-                    at = attr.start(2) + decl.start(2) + word.start()
-                    found.append(
-                        Violation(
-                            path,
-                            text.count("\n", 0, at) + 1,
-                            word.group(0),
-                            "named colour — colours live in the token layer, not in markup",
-                        )
-                    )
-    return found
+        declarations(attr.start(2), attr.group(2))
+    for block in _STYLE_BLOCK.finditer(text):
+        for rule in _RULE.finditer(block.group(1)):
+            declarations(block.start(1) + rule.start(1), rule.group(1))
+    for attr in _PAINT_ATTR.finditer(text):
+        value(attr.start(2), attr.group(2))
+
+    # Keyed by offset, so a word two scans reach is reported once, in file order.
+    reason = "named colour — colours live in the token layer, not in markup"
+    return [Violation(path, text.count("\n", 0, at) + 1, word, reason) for at, word in sorted(found.items())]
 
 
 def _ejected_paths(template_dir: Path) -> frozenset[Path]:
@@ -194,12 +210,12 @@ def _ejected_paths(template_dir: Path) -> frozenset[Path]:
     typo, so allowing utilities while still catching typos would report a clean
     eject as broken on any machine that has not run `fjkit build-css`.
 
-    Only at `ui/<name>.html`, the one path `eject` writes for that name. A stamp
-    anywhere else marks nothing the kit wrote, so it exempts nothing. An
-    orphaned copy at its own path keeps the exemption: the app cannot rewrite a
-    kit macro without utilities, so failing it would leave no way back to green.
+    Only at `ui/<name>.html`, the one path `eject` writes for that name;
+    `find_ejected` ignores a stamp anywhere else. An orphaned copy at its own
+    path keeps the exemption: the app cannot rewrite a kit macro without
+    utilities, so failing it would leave no way back to green.
     """
-    return frozenset(e.path for e in find_ejected(template_dir) if e.path == template_dir / "ui" / f"{e.name}.html")
+    return frozenset(e.path for e in find_ejected(template_dir))
 
 
 _TEMPLATE_SUFFIXES = frozenset({".html", ".htm", ".jinja", ".jinja2", ".j2"})

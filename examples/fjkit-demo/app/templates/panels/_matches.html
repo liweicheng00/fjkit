@@ -11,13 +11,15 @@
   `hx_trigger_after_swap`, which fires after this table is in the document rather
   than before.
 
-  The input is rendered only when there is an id, and that is not tidiness. An
-  `hx-include` sends whatever it selects, so an input rendered `value=""` on the
-  cold page sends `task_id=`, and an empty string is not an integer: the first
-  panel to open on a fresh page answers 422 before anyone has picked anything. A
-  selector that matches nothing sends nothing, which is what "nothing is picked"
-  means, and it is the state every panel route already defaults to. A value a
-  route cannot parse is never the way to say a value is absent.
+  With no id the input is `disabled`, and that is not tidiness. An `hx-include`
+  sends whatever it selects, so an input rendered `value=""` on the cold page
+  sends `task_id=`, and an empty string is not an integer: the first panel to
+  open on a fresh page answers 422 before anyone has picked anything. htmx
+  leaves a disabled field out, so nothing is sent, which is what "nothing is
+  picked" means and the state every panel route already defaults to. Leaving
+  the input out instead sends nothing too, but then the selector matches
+  nothing and htmx logs "returned no matches!" on every fetch before the first
+  pick. A value a route cannot parse is never the way to say a value is absent.
 #}
 {% from "ui/data.html" import card %}
 {% from "ui/table.html" import table %}
@@ -27,6 +29,8 @@
 <div id="panels-matches">
   {% if selected_id is not none %}
     <input type="hidden" name="task_id" value="{{ selected_id }}">
+  {% else %}
+    <input type="hidden" name="task_id" disabled>
   {% endif %}
   {% call card("The board",
                matches | length ~ (" task" if matches | length == 1 else " tasks"),

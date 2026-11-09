@@ -12,6 +12,7 @@ from typing import Annotated, Any
 
 import pytest
 from fastapi import APIRouter, FastAPI, Form, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, htmx, messages, mount_fjkit, render
@@ -742,6 +743,96 @@ def test_a_404_handler_registered_before_mount_is_kept():
     response = TestClient(app).get("/nowhere", headers=BROWSER)
 
     assert (response.status_code, response.text) == (404, "mine")
+
+
+def _boom() -> None:
+    raise RaisedError("the service is down")
+
+
+def test_a_validation_handler_registered_before_mount_is_kept():
+    """FastAPI registers its own 422 handler in the constructor, so the kit
+    replaces that one and nothing else."""
+
+    async def mine(request: Request, exc: Exception) -> Response:
+        return Response("mine", status_code=400, media_type="text/plain")
+
+    app = FastAPI(exception_handlers={RequestValidationError: mine})
+    mount_fjkit(app, FjkitConfig())
+
+    @app.post("/save")
+    def save(title: Annotated[str, Form()]) -> None:
+        return None
+
+    response = TestClient(app).post("/save", headers=BROWSER)
+
+    assert (response.status_code, response.text) == (400, "mine")
+
+
+@pytest.mark.parametrize("key", [Exception, 500])
+def test_a_500_handler_registered_before_mount_is_kept(key):
+    """Starlette reads one handler for whatever escaped, keyed by `Exception`
+    or by 500. An app that chose its own keeps it with the kit's catch on."""
+
+    async def mine(request: Request, exc: Exception) -> Response:
+        return Response("mine", status_code=500, media_type="text/plain")
+
+    app = FastAPI(exception_handlers={key: mine})
+    mount_fjkit(app, FjkitConfig(catch_unexpected_errors=True))
+    app.post("/boom")(_boom)
+
+    response = TestClient(app, raise_server_exceptions=False).post("/boom", headers=HTMX)
+
+    assert (response.status_code, response.text) == (500, "mine")
+    assert "hx-trigger" not in response.headers
+
+
+def test_the_404_toast_can_be_one_fixed_message():
+    """`not_found_error` is to a 404 swap what `unexpected_error` is to a 500."""
+    config = FjkitConfig(not_found_error=messages.Message("Gone", "Someone removed it.", category="warning"))
+    client = make_app(config)
+
+    response = client.get("/tasks/9", headers=HTMX)
+
+    assert response.status_code == 404
+    payload = json.loads(response.headers["hx-trigger"])[messages.TOAST_EVENT]["messages"]
+    assert payload == [{"category": "warning", "title": "Gone", "description": "Someone removed it."}]
+
+
+def test_the_404_toast_can_be_chosen_per_request():
+    def choose(request: Request, exc: Exception) -> messages.Message:
+        return messages.Message(f"Nothing at {request.url.path}")
+
+    client = make_app(FjkitConfig(not_found_error=choose))
+
+    response = client.get("/tasks/9", headers=HTMX)
+
+    assert toast_titles(response) == ["Nothing at /tasks/9"]
+
+
+def test_a_render_that_raises_an_error_the_app_answers_is_answered_by_that_handler(caplog):
+    """The error page renders through every context processor. One that raises
+    an exception the app has a handler for — the auth plugin's outage, say —
+    gets that handler's answer, not a plain-text fallback and a traceback."""
+
+    class Unavailable(Exception):
+        pass
+
+    def unavailable(request: Request, exc: Exception) -> Response:
+        return Response("try later", status_code=503, media_type="text/plain")
+
+    app = FastAPI(exception_handlers={Unavailable: unavailable})
+    templates = mount_fjkit(app, FjkitConfig())
+
+    def outage(request: Request) -> dict[str, Any]:
+        raise Unavailable
+
+    templates.env.fjkit_context_processors = (("test", ("session",), outage),)
+
+    with caplog.at_level("ERROR", logger="fjkit.errors"):
+        response = TestClient(app).get("/nowhere", headers=BROWSER)
+
+    assert (response.status_code, response.text) == (503, "try later")
+    assert caplog.records == []
 
 
 def test_the_kits_404_page_talks_about_a_missing_page():

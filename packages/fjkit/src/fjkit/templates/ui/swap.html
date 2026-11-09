@@ -15,7 +15,8 @@
   on it. Sorting a table no longer moves the caret out of the filter box, and a
   form redrawn after a 422 keeps the scroll position of the panel it sits in.
 
-  This file holds the opt-in and nothing else. There is no `morph_table` and no
+  This file holds the opt-ins — morphing, and server-sent events further down —
+  and nothing else. There is no `morph_table` and no
   `swap="morph"` parameter anywhere in the kit, because a swap style is not a
   component: `table`, `pagination` and `page_size` already take `swap` as a
   string, so a caller that wants morphing passes `swap="morph:outerHTML"` and
@@ -55,4 +56,38 @@
 #}
 {% macro morph_scripts() -%}
   <script defer src="{{ fjkit_static("vendor/htmx/idiomorph-ext.min.js") }}"></script>
+{%- endmacro %}
+
+{#
+  sse_scripts() — the script a page loads to receive server-sent events.
+
+      {% block scripts %}{{ sse_scripts() }}{% endblock %}
+
+  A reply that arrives in pieces — an agent's answer token by token, a log
+  tailing — is one connection the server keeps writing to, not a request per
+  piece. The extension opens that connection from `sse-connect` and swaps each
+  named event into the element that names it in `sse-swap`. No macro learns the
+  `sse-*` attributes: they pass through `**attrs` like `hx-*`.
+
+      {% call card("Assistant", hx_ext="sse", sse_connect=url, sse_close="done") %}
+        <span sse-swap="snapshot" hx-swap="innerHTML"></span>
+        <span sse-swap="token" hx-swap="beforeend"></span>
+      {% endcall %}
+
+  The server side is `Templates.events()`, which writes the frames and always
+  ends with the event `sse-close` names. That ending is not optional: this
+  extension reconnects whenever the connection closes, for any reason and with
+  any status, until the close event arrives. A stream that just stops is
+  re-read from the start, forever.
+
+  Per page, never from the shell, like `morph_scripts()`: 2,853 bytes (1,074
+  gzip) that a page with nothing streaming would download for nothing.
+  `defer` for the same reason too — the file calls `htmx.defineExtension` the
+  moment it runs, and htmx is deferred in the shell's head.
+
+  The failure when it is missing is silence. `hx-ext="sse"` names an extension
+  htmx does not know, no connection opens, and the bubble stays empty.
+#}
+{% macro sse_scripts() -%}
+  <script defer src="{{ fjkit_static("vendor/htmx/sse.min.js") }}"></script>
 {%- endmacro %}
