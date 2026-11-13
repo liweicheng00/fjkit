@@ -103,19 +103,19 @@ fjkit
 <div class="flex flex-col gap-8">
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
-      <h1 class="text-2xl font-semibold tracking-tight">A Fast UI for FastAPI</h1>
+      <h1 class="text-2xl font-semibold tracking-tight">A fast UI for FastAPI</h1>
 <p class="text-muted-foreground text-sm">    Pages, tables, forms, navigation and htmx swaps for FastAPI, written as Jinja macros next to
     your routes.
 </p>    </div>
   </div>
 
 <div class="flex flex-col gap-3">    <p>
-      A FastAPI service that needs a real interface has two usual routes. Write Jinja and hand-roll
+      A FastAPI service that needs a real interface has two usual answers. Write Jinja and hand-roll
       the CSS, and you own a design system you did not set out to build. Reach for a front-end
       framework, and you own a second build, a second language and a second thing to deploy.
     </p>
     <p>
-      fjkit is a third route. The interface is Jinja macros beside your routes, and the stylesheet
+      fjkit is a third answer. The interface is Jinja macros beside your routes, and the stylesheet
       was compiled when fjkit was released — so your repository gets no <code>package.json</code>,
       and there is nothing to rebuild when you edit a template.
     </p>
@@ -134,10 +134,10 @@ fjkit
   </div>
   <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>The key features are:</h3>      </div>
+<h3>What the third answer gives you</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>No build step</h4><p>No package.json, no node_modules, no watcher. The stylesheet is compiled when fjkit is released, not when your app runs.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>One colour knob</h4><p>Every colour is a token. Rebranding is one stylesheet, and status colours stay put, so green still means done.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>One place for every colour</h4><p>Every colour is a token. Rebranding is one stylesheet, and status colours stay put, so green still means done.</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>The htmx endpoint is also the JSON API</h4><p>A route that renders a partial answers htmx with HTML and every other caller with its response model as JSON.</p>    </section>  </div></div></div>
   </div>
 
@@ -194,7 +194,7 @@ def overview() -&gt; Overview:
 
 <div class="flex flex-col gap-3">      <p>
         Open <code>http://127.0.0.1:8000</code>. The page has a header, a dark-mode toggle and one
-        stat card. The template has no CSS classes and no colours: macros take named options such as
+        stat card. The template has no CSS classes and no colours. Macros take named options such as
         <code>tone="success"</code>, and the shipped stylesheet covers them.
       </p>
       <p>
@@ -212,7 +212,7 @@ def overview() -&gt; Overview:
 <h2 class="text-lg font-semibold tracking-tight">Who it is for</h2><p class="text-muted-foreground text-sm">A back-end developer who needs a real interface and no front-end toolchain.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
         You write FastAPI and need navigation, dark mode, a filterable table and a form that
-        validates. If you want React, Vue or Svelte, use them instead: fjkit renders on the server
+        validates. If you want React, Vue or Svelte, use them instead. fjkit renders on the server
         and has no client-side component model.
       </p>
 </div>
@@ -243,7 +243,7 @@ def overview() -&gt; Overview:
   </div>
       <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>The whole surface you touch</h3>      </div>
+<h3>Everything you call</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>FjkitConfig, mount_fjkit</h4><p>the wiring, once per app</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>@render</h4><p>names the template; the handler returns data</p>    </section>  </div></div></div>
@@ -281,7 +281,7 @@ def overview() -&gt; Overview:
   Jinja2 3.1.6 · Basecoat 1.0.2 ·
   htmx 2.0.10 —
   <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
-  This site is a fjkit app: it extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
+  This site is a fjkit app. It extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
       </footer>
   </div>
 

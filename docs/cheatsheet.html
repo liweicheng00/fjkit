@@ -136,8 +136,8 @@ fjkit
   <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">fjkit cheatsheet</h1>
-<p class="text-muted-foreground text-sm">    Every macro the kit ships, grouped by what it is for, with the one question an index is asked
-    most often answered on the row itself: does this take a block, and what goes inside it. The
+<p class="text-muted-foreground text-sm">    Every macro the kit ships, grouped by what it is for. Each row answers the question an index
+    gets asked most often: does this take a block, and what goes inside it. The
     <a href="components.html">Components</a> page is where you see them
     running; this is where you look one up.
 </p>    </div>
@@ -148,10 +148,10 @@ fjkit
       <div>
 <h2 class="text-lg font-semibold tracking-tight">How to read this</h2><p class="text-muted-foreground text-sm">What is on a row, and two rules that apply to every one of them.</p>      </div>
     <div class="flex flex-col gap-3">      <p>
-        A Jinja macro is called in one of two ways, and the name does not tell you which. A macro
-        with nothing inside it is printed. A macro that wraps something is called with
-        <code>{% call %}</code>, and whatever sits between that and
-        <code>{% endcall %}</code> is handed to the macro to place. Jinja calls
+        A Jinja macro is called in one of two ways, and the name does not tell you which. You print a
+        macro that has nothing inside it. You call a macro that wraps something with
+        <code>{% call %}</code>, and Jinja hands whatever sits between that and
+        <code>{% endcall %}</code> to the macro to place. Jinja calls
         that the caller block, and every macro below that wants one carries a badge saying what goes
         in it.
       </p>
@@ -171,7 +171,7 @@ fjkit
 <h3>What is on a row</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>The signature</h4><p>the call, with every parameter and its default. The heading above each list is the file you <code>import</code> it from</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>A block badge</h4><p>on the right of a row, and only on the rows that have one: this macro is called with <code>{% call %}</code>, and the badge says what goes inside. No badge means print it with <code>{{ }}</code></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>A block badge</h4><p>on the right of a row, and only on the rows that have one. Call this macro with <code>{% call %}</code>, and the badge says what goes inside. No badge means print it with <code>{{ }}</code></p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>One line under it</h4><p>what the signature does not say. Absent when the signature says all of it</p>    </section>  </div></div></div>
   </div>
 
@@ -215,7 +215,7 @@ fjkit
       <div>
 <h3>ui/swap.html</h3>      </div>
     </header>      <div class="border-t"><div class="item-group">      <div class="item" data-clamp="false">    <section>
-      <h4><code>morph_scripts()</code></h4><p>Loads the idiomorph extension, which adds the morph:* swap styles: the reply patches the DOM instead of replacing it, so focus, scroll position, an open details and a ticked box survive a sort. Two halves — the element whose swaps should morph declares hx-ext=&#34;morph&#34;, and the swap itself is swap=&#34;morph:outerHTML&#34;. Per page, never the shell.</p>    </section>  </div>
+      <h4><code>morph_scripts()</code></h4><p>Loads the idiomorph extension, which adds the morph:* swap styles. The reply patches the DOM instead of replacing it, so focus, scroll position, an open details and a ticked box survive a sort. Two halves — the element whose swaps should morph declares hx-ext=&#34;morph&#34;, and the swap itself is swap=&#34;morph:outerHTML&#34;. Per page, never the shell.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>sse_scripts()</code></h4><p>Loads htmx&#39;s sse extension, so a reply can arrive in pieces over one connection: hx-ext=&#34;sse&#34; and sse-connect on the container, sse-swap on each element an event fills, sse-close naming the event that ends it. The server side is templates.events(), which always sends that event — without it the extension reconnects forever. Per page, never the shell.</p>    </section>  </div>
 </div></div>
@@ -236,7 +236,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>grid(cols=3, gap=4)</code></h4><p>cols is 2, 3 or 4. The breakpoints belong to the macro; a caller that picks its own is how a layout vocabulary turns back into utility classes.</p>    </section><aside><span class="badge" data-variant="outline">block: the children</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>split(aside=&#34;md&#34;, gap=6)</code></h4><p>Called as {% call(slot) split() %}, and the block is rendered twice — once with slot=&#34;main&#34;, once with slot=&#34;aside&#34;.</p>    </section><aside><span class="badge" data-variant="outline">block: two slots — main and aside</span></aside>  </div>
+      <h4><code>split(aside=&#34;md&#34;, gap=6)</code></h4><p>Called as {% call(slot) split() %}, and the macro renders the block twice — once with slot=&#34;main&#34;, once with slot=&#34;aside&#34;.</p>    </section><aside><span class="badge" data-variant="outline">block: two slots — main and aside</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>centered(width=&#34;sm&#34;, gap=6)</code></h4><p>The width cap the rest of this file cannot express. width is xs, sm, md, lg, xl or prose — a sign-in card, a settings form, a page of prose. It centres horizontally only.</p>    </section><aside><span class="badge" data-variant="outline">block: the children</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -259,7 +259,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>sidebar_link(request, route, label, icon_name=none)</code></h4><p>route is a route name, not a URL. The active state is is_active&#39;s, so a link cannot disagree with the page it is on.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>sidebar_item(label, href, active=false, icon_name=none, lead=none)</code></h4><p>For a URL that is not one route: the same route with a different parameter per row. lead puts a badge in a fixed-width cell so labels align.</p>    </section>  </div>
+      <h4><code>sidebar_item(label, href, active=false, icon_name=none, lead=none)</code></h4><p>For a URL that is not one route, such as the same route with a different parameter per row. lead puts a badge in a fixed-width cell so labels align.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>sidebar_submenu(label, icon_name=none, open=false)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: sidebar_link() calls</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -296,13 +296,13 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>description_list(layout=&#34;rows&#34;)</code></h4><p>layout: rows | stacked | inline. inline is a few short facts on one wrapping line, in small type.</p>    </section><aside><span class="badge" data-variant="outline">block: description_item() calls</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>description_item(term, value=none)</code></h4><p>A native &lt;dl&gt;: the value is announced as the definition of its term. item_list is a list of things; this is a list of facts about one.</p>    </section><aside><span class="badge" data-variant="outline">block: value calls (optional)</span></aside>  </div>
+      <h4><code>description_item(term, value=none)</code></h4><p>A native &lt;dl&gt;. A screen reader announces the value as the definition of its term. item_list is a list of things; this is a list of facts about one.</p>    </section><aside><span class="badge" data-variant="outline">block: value calls (optional)</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>item(title, description=none, icon_name=none, actions=none,
      href=none, clamp=true)</code></h4><p>clamp=false lets a description run past two lines — what a definition needs and a feed does not.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>avatar(name, src=none, size=&#34;&#34;, initials=none, badge_tone=none,
-       badge_icon=none)</code></h4><p>Initials are derived from name unless you override them.</p>    </section>  </div>
+       badge_icon=none)</code></h4><p>The macro derives the initials from name unless you override them.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>avatar_group(overflow=none, label=none)</code></h4>    </section><aside><span class="badge" data-variant="outline">block: avatar() calls</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -321,16 +321,16 @@ fjkit
       <h4><code>table(columns, rows=none, empty_title=&#34;Nothing here&#34;,
       empty_description=none, empty_icon=&#34;list&#34;, target=none,
       swap=&#34;outerHTML&#34;, push_url=true, select_name=&#34;selected&#34;,
-      select_label=&#34;Select all rows&#34;, resizable=false)</code></h4><p>columns is a list of dicts — label, and optionally align, width, sort, sort_url, select or group. Passing rows lets the macro own the empty case; pass rows=none to always render the body yourself. A column with a sort_url becomes a sortable header, and target turns those links into htmx swaps. resizable=true puts a drag handle on each labelled column and needs an id=, the key the widths are stored under. Columns sharing a group get one heading above them in a second header row.</p>    </section><aside><span class="badge" data-variant="outline">block: the rows</span></aside>  </div>
+      select_label=&#34;Select all rows&#34;, resizable=false)</code></h4><p>columns is a list of dicts — label, and optionally align, width, sort, sort_url, select or group. Passing rows lets the macro own the empty case; pass rows=none to always render the body yourself. A column with a sort_url becomes a sortable header, and target turns those links into htmx swaps. resizable=true puts a drag handle on each labelled column and needs an id=, the key it stores the widths under. Columns sharing a group get one heading above them in a second header row.</p>    </section><aside><span class="badge" data-variant="outline">block: the rows</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
-      <h4><code>cell(value=none, tone=none, numeric=false, align=none)</code></h4><p>Pass value for text, or omit it and use a block for markup. tone is a closed lookup, so no colour can be passed through.</p>    </section><aside><span class="badge" data-variant="outline">block: the cell content (optional)</span></aside>  </div>
+      <h4><code>cell(value=none, tone=none, numeric=false, align=none)</code></h4><p>Pass value for text, or omit it and use a block for markup. tone is a closed lookup, so you cannot pass a colour through.</p>    </section><aside><span class="badge" data-variant="outline">block: the cell content (optional)</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>row_actions()</code></h4><p>The trailing cell, right-aligned and tight.</p>    </section><aside><span class="badge" data-variant="outline">block: the buttons</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>select_cell(value, name=&#34;selected&#34;, checked=false, label=none)</code></h4><p>The row half of a {&#34;select&#34;: true} column. An ordinary checkbox with an ordinary name, so the selection posts as selected=3&amp;selected=7. Give it a label: an id is not one.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>select_count(name=&#34;selected&#34;, label=&#34;{n} selected&#34;,
-             zero=&#34;None selected&#34;)</code></h4><p>The live readout of how many rows are picked. Both strings travel in the markup, so a translated page translates them. Pass zero=none and it hides while nothing is selected.</p>    </section>  </div>
+             zero=&#34;None selected&#34;)</code></h4><p>The live readout of how many rows are picked. You write both strings in the markup, so a translated page translates them. Pass zero=none and it hides while nothing is selected.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>select_scripts()</code></h4><p>Loads js/select.js, which ticks the column from the header box, shows the partial state and tints the picked rows. Per page, never the shell.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -338,7 +338,7 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>page_size(url, per_page, options=(10, 25, 50, 100),
           param=&#34;per_page&#34;, keep=none, target=none,
-          label=&#34;Rows per page&#34;, apply_label=&#34;Apply&#34;)</code></h4><p>A GET form, because a select on its own cannot act on a change. url must carry no query string — a native submit throws it away — so filters travel in keep as hidden fields. Never the page number. With a target the select applies itself and the submit button is only rendered without scripting.</p>    </section>  </div>
+          label=&#34;Rows per page&#34;, apply_label=&#34;Apply&#34;)</code></h4><p>A GET form, because a select on its own cannot act on a change. url must carry no query string — a native submit throws it away — so pass the filters in keep as hidden fields. Never the page number. With a target the select applies itself, and the submit button renders only without scripting.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>pagination(page, pages, url, param=&#34;page&#34;, total=none,
            per_page=none, target=none, swap=&#34;outerHTML&#34;,
@@ -366,13 +366,13 @@ fjkit
       <h4><code>fieldset(legend=none, hint=none)</code></h4><p>A named group inside a form, with the legend the group needs.</p>    </section><aside><span class="badge" data-variant="outline">block: the fields</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>text_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;, type=&#34;text&#34;,
-           required=false, hint=none, error=none, id=none)</code></h4><p>type is where dates live: date, time, datetime-local, month and week are native inputs, and there is no date_field because a macro around one would add a name and nothing else. min/max/step ride in as attributes. Not file — an upload cannot be restored from value after a 422.</p>    </section>  </div>
+           required=false, hint=none, error=none, id=none)</code></h4><p>type is where dates live: date, time, datetime-local, month and week are native inputs, and there is no date_field because a macro around one would add a name and nothing else. min/max/step pass through as attributes. Not file — an upload cannot be restored from value after a 422.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>textarea_field(name, label=none, value=&#34;&#34;, placeholder=&#34;&#34;, rows=none,
                required=false, hint=none, error=none, id=none)</code></h4>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>file_field(name, label=none, accept=none, multiple=false,
-           required=false, hint=none, error=none, id=none)</code></h4><p>No value parameter: a browser will not let a page refill a file input, so a 422 redraw comes back with this box empty and every other field still typed in. The form needs encoding=&#34;multipart&#34; or the route is handed the file&#39;s name as a string.</p>    </section>  </div>
+           required=false, hint=none, error=none, id=none)</code></h4><p>No value parameter, because a browser will not let a page refill a file input. A 422 redraw comes back with this box empty and every other field still typed in. The form needs encoding=&#34;multipart&#34; or the route gets the file&#39;s name as a string.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>select_field(name, label=none, options=(), selected=none, id=none,
              blank=none, hint=none, error=none)</code></h4><p>options is a list of (value, label) pairs.</p>    </section>  </div>
@@ -427,7 +427,7 @@ fjkit
       <h4><code>tab_panel(id, lazy=none, on=none, include=none)</code></h4><p>id has to match the tab&#39;s. That pairing is the whole aria contract Basecoat&#39;s keyboard behaviour reads.</p>    </section><aside><span class="badge" data-variant="outline">block: the body</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>tab_panel(&#34;detail&#34;, lazy=url_for(request, &#34;detail&#34;),
-          on=[&#34;task-selected&#34;], include=&#34;[name=task_id]&#34;)</code></h4><p>lazy is a URL: the panel fetches its own body when its tab is shown, and the block is what stands in until it arrives. The open tab is the exception: it does not fetch at load, so its block is the real body, rendered by the page from the partial lazy returns. on lists the broadcasts it follows while it is visible, include the selector for what it sends. Not revealed — a panel hidden by display:none reports an all-zero rect, which passes htmx&#39;s visibility test, so a revealed panel fetches at page load.</p>    </section><aside><span class="badge" data-variant="outline">block: the placeholder, or the open tab&#39;s body calls</span></aside>  </div>
+          on=[&#34;task-selected&#34;], include=&#34;[name=task_id]&#34;)</code></h4><p>lazy is a URL. The panel fetches its own body when its tab is shown, and the block is what stands in until it arrives. The open tab is the exception. It does not fetch at load, so its block is the real body, rendered by the page from the partial lazy returns. on lists the broadcasts it follows while it is visible, include the selector for what it sends. Not revealed — a panel hidden by display:none reports an all-zero rect, which passes htmx&#39;s visibility test, so a revealed panel fetches at page load.</p>    </section><aside><span class="badge" data-variant="outline">block: the placeholder, or the open tab&#39;s body calls</span></aside>  </div>
 </div></div>
   </div>
 </section></div>
@@ -462,7 +462,7 @@ fjkit
          placeholder=&#34;Select…&#34;, empty=&#34;No results found.&#34;,
          label=none, multiple=false, close_on_select=false,
          visible_label=none, hint=none, error=none,
-         search=none, search_param=&#34;q&#34;, search_delay=250)</code></h4><p>select_menu with a filter box. Same multiple=true rule, same visible_label. search=&lt;url&gt; moves the filter to the server: the route is asked ?q=&lt;typed&gt; and answers with option rows only. To act on a pick, listen for change on the root — hx_trigger=&#34;change target:#&lt;id&gt;&#34; — because that is where Basecoat dispatches it.</p>    </section>  </div>
+         search=none, search_param=&#34;q&#34;, search_delay=250)</code></h4><p>select_menu with a filter box. Same multiple=true rule, same visible_label. search=&lt;url&gt; moves the filter to the server. The route receives ?q=&lt;typed&gt; and answers with option rows only. To act on a pick, listen for change on the root — hx_trigger=&#34;change target:#&lt;id&gt;&#34; — because that is where Basecoat dispatches it.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>multiselect_scripts()</code></h4><p>Per page. Without it, multiple=true posts one JSON string instead of repeated fields.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
@@ -527,7 +527,7 @@ fjkit
         <code>ui/shell.html</code> carries the <code>&lt;head&gt;</code>, the theme flash-guard, the
         asset links and the header/main/footer skeleton. An app extends it once, in its own
         <code>base.html</code>, and fills the blocks it needs. Fill <code>sidebar</code> or
-        <code>nav</code>, never both: the shell lays the header out differently for each, and filling
+        <code>nav</code>, never both. The shell lays the header out differently for each, and filling
         both gives you two navigations.
       </p>
 </div>
@@ -610,7 +610,7 @@ fjkit
     <div class="flex flex-col gap-3">      <p>
         Every one of these reaches the markup as an extra keyword on a macro:
         <code>{{ button("Refresh", hx_get="/tasks/board", hx_target="#board") }}</code>.
-        Underscores become dashes on the way through, and that is the whole integration: no macro has
+        Underscores become dashes on the way through, and that is the whole integration. No macro has
         an htmx-specific parameter, and none needs one. The full reference is
         <a href="https://htmx.org/reference/">htmx.org/reference</a>; what follows is what a fjkit
         page uses.
@@ -637,7 +637,7 @@ hx-target=&#34;next .row&#34;     the one after it</code></h4><p>Defaults to the
 hx-swap=&#34;innerHTML&#34;    replace what is inside it
 hx-swap=&#34;beforeend&#34;    append   (afterbegin prepends)
 hx-swap=&#34;afterend&#34;     insert after  (beforebegin: before)
-hx-swap=&#34;delete&#34;       remove it   (none: change nothing)</code></h4><p>Modifiers ride on the same string: swap:200ms, settle:100ms, scroll:top.</p>    </section>  </div>
+hx-swap=&#34;delete&#34;       remove it   (none: change nothing)</code></h4><p>Modifiers attach to the same string: swap:200ms, settle:100ms, scroll:top.</p>    </section>  </div>
 </div></div>
   </div><div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -711,7 +711,7 @@ HX-Refresh: true                 (response)</code></h4><p>Full-page navigation, 
 <h3>Read next</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>Learn</h4><p><a href="learn.html">how the pieces fit, and what htmx sends</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>Components</h4><p><a href="components.html">every macro running, with the knobs turned</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>Components</h4><p><a href="components.html">every macro running, with controls you can change</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>examples/fjkit-demo/</h4><p><a href="https://github.com/liweicheng00/fjkit/tree/main/examples/fjkit-demo">these macros inside a working app</a></p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>src/fjkit/static/src/fjkit.css</h4><p><a href="https://github.com/liweicheng00/fjkit/tree/main/packages/fjkit/src/fjkit/static/src/fjkit.css">the token table behind every variant</a></p>    </section>  </div></div></div>
   </div>
@@ -726,7 +726,7 @@ HX-Refresh: true                 (response)</code></h4><p>Full-page navigation, 
   Jinja2 3.1.6 · Basecoat 1.0.2 ·
   htmx 2.0.10 —
   <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
-  This site is a fjkit app: it extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
+  This site is a fjkit app. It extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
       </footer>
   </div>
 

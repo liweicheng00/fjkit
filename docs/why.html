@@ -17,9 +17,9 @@
   <script defer src="assets/vendor/htmx/htmx.min.js?v=71ea67185bfa"></script>
   <script defer src="assets/vendor/basecoat/js/all.min.js?v=bdb364d43e0f"></script>
   <script defer src="assets/js/errors.js?v=b54cb18a438c"></script>
-  <meta name="description" content="Three ways to put a UI on a FastAPI app and what each one costs, and what this one gives up in exchange.">
+  <meta name="description" content="Three ways to put a UI on a FastAPI app, what each one costs, and what this one gives up in exchange.">
   <meta property="og:title" content="Why fjkit, and when not">
-  <meta property="og:description" content="Three ways to put a UI on a FastAPI app and what each one costs, and what this one gives up in exchange.">
+  <meta property="og:description" content="Three ways to put a UI on a FastAPI app, what each one costs, and what this one gives up in exchange.">
   <meta property="og:type" content="article">
   <script src="assets/mock-server.js?v=956d5ea778b1"></script>
 </head>
@@ -124,7 +124,7 @@ fjkit
 <h3>② A client-rendered front end</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>what you write</h4><p>a component application, served and deployed separately from the API</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>what it costs</h4><p>a second build, a second language and a second thing to deploy. Your data gets shaped twice — once for the API, once for the view — and the loading, error and empty states the server used to answer become yours to hold</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>what it costs</h4><p>a second build, a second language and a second thing to deploy. Your data gets shaped twice — once for the API, once for the view — and the loading, error and empty states the server used to answer become yours to write</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>when it is right</h4><p>genuine client state: an editor, a canvas, a live document, anything that keeps working between requests</p>    </section>  </div></div></div>
   </div>
 
@@ -149,14 +149,14 @@ fjkit
       <div>
 <h3>The trade</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>You cannot write arbitrary CSS</h4><p>the class vocabulary is closed and <code>fjkit check</code> fails the build on anything outside it. That is what buys the missing build step: the stylesheet can be compiled before you exist only because what your templates may ask for is known in advance. When a layout seems to need a utility, the answer is a macro parameter, which means an upstream change rather than a local one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>You cannot write arbitrary CSS</h4><p>the class vocabulary is closed and <code>fjkit check</code> fails the build on anything outside it. That is what buys the missing build step. fjkit compiles the stylesheet before your app exists, and that works only because the closed vocabulary already lists every class a template may ask for. When a layout seems to need a utility, the answer is a macro parameter, which means an upstream change rather than a local one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>A component the kit has not written stops you</h4><p>the gate blocks the class, and the thing it names has to be built before that page ships. <code>fjkit eject</code> copies a macro into your repository as an escape hatch — and the file you take stops receiving upstream fixes, which is why the documentation does not lead with it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>The look starts as someone else&#39;s</h4><p>eight style packs ship, and a token override repaints all of it, but this is a design system you adopt rather than one you author</p>    </section>  </div></div></div>
   </div>
 
 <div class="flex flex-col gap-3">      <p>
-        The first two are the same trade seen from both ends, and it is the trade: a vocabulary
-        narrow enough to pre-compile is a vocabulary narrow enough to run out.
+        The first two are the same trade seen from both ends. A vocabulary narrow enough to
+        pre-compile is narrow enough to run out.
       </p>
 </div>
 </section></div></div>
@@ -169,7 +169,7 @@ fjkit
   Jinja2 3.1.6 · Basecoat 1.0.2 ·
   htmx 2.0.10 —
   <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
-  This site is a fjkit app: it extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
+  This site is a fjkit app. It extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
       </footer>
   </div>
 

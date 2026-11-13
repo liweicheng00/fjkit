@@ -184,8 +184,8 @@ fjkit
         into your app, and nothing in it knows the shape of your data.
       </p>
       <p>
-        <code>brand.css</code> is the whole configuration surface, and it is plain CSS variables.
-        No step compiles it.
+        <code>brand.css</code> is all the styling configuration there is, and it is plain CSS
+        variables. No step compiles it.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -224,7 +224,7 @@ fjkit
   </div>
 </div>
 <div class="flex flex-col gap-3">      <p>
-        Shadowing is the feature, not an accident: <code>ChoiceLoader</code> puts your directory in
+        Shadowing is the feature, not an accident. <code>ChoiceLoader</code> puts your directory in
         front of the package's.
       </p>
       <p>
@@ -316,8 +316,7 @@ fjkit
 
 <div class="flex flex-col gap-3">      <p>
         <code>_board.html</code> has two ways in and two ways out, and one definition in the middle.
-        What the first paint shows and what the swap replaces it with are therefore rendered from
-        the same source, so they cannot drift.
+        The first paint and the swap therefore render from the same source, so they cannot drift.
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="what guarantees it" data-lang="python">@router.get(&#34;/tasks&#34;, name=&#34;tasks_page&#34;)
@@ -350,9 +349,9 @@ def tasks_page(service: TaskServiceDep) -&gt; BoardResponse:
   </div>
 
 <div class="flex flex-col gap-3">      <p>
-        This feedback edge is the kit's only expansion mechanism, and the demo is its test case.
-        Measured when 0.1 was finished: the same screens written before fjkit produced 258
-        violations; rewritten against the kit, 0.
+        This loop is the kit's only expansion mechanism, and the demo is its test case. Measured
+        when 0.1 was finished: the same screens written before fjkit produced 258 violations, and
+        the rewrite against the kit produced 0.
       </p>
       <p>
         The check also blocks a utility that merely happens to exist today. An app that borrows
@@ -369,7 +368,7 @@ def tasks_page(service: TaskServiceDep) -&gt; BoardResponse:
   Jinja2 3.1.6 · Basecoat 1.0.2 ·
   htmx 2.0.10 —
   <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
-  This site is a fjkit app: it extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
+  This site is a fjkit app. It extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
       </footer>
   </div>
 
