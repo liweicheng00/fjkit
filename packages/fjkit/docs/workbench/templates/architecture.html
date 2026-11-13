@@ -58,8 +58,8 @@
         into your app, and nothing in it knows the shape of your data.
       </p>
       <p>
-        <code>brand.css</code> is the whole configuration surface, and it is plain CSS variables.
-        No step compiles it.
+        <code>brand.css</code> is all the styling configuration there is, and it is plain CSS
+        variables. No step compiles it.
       </p>
     {% endcall %}
 
@@ -88,7 +88,7 @@
 
     {% call prose() %}
       <p>
-        Shadowing is the feature, not an accident: <code>ChoiceLoader</code> puts your directory in
+        Shadowing is the feature, not an accident. <code>ChoiceLoader</code> puts your directory in
         front of the package's.
       </p>
       <p>
@@ -145,8 +145,7 @@
     {% call prose() %}
       <p>
         <code>_board.html</code> has two ways in and two ways out, and one definition in the middle.
-        What the first paint shows and what the swap replaces it with are therefore rendered from
-        the same source, so they cannot drift.
+        The first paint and the swap therefore render from the same source, so they cannot drift.
       </p>
     {% endcall %}
 
@@ -175,9 +174,9 @@ def tasks_page(service: TaskServiceDep) -> BoardResponse:
 
     {% call prose() %}
       <p>
-        This feedback edge is the kit's only expansion mechanism, and the demo is its test case.
-        Measured when 0.1 was finished: the same screens written before fjkit produced 258
-        violations; rewritten against the kit, 0.
+        This loop is the kit's only expansion mechanism, and the demo is its test case. Measured
+        when 0.1 was finished: the same screens written before fjkit produced 258 violations, and
+        the rewrite against the kit produced 0.
       </p>
       <p>
         The check also blocks a utility that merely happens to exist today. An app that borrows

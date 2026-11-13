@@ -71,8 +71,8 @@
 {% call stack(8) %}
 
   {% set intro %}
-    Every macro the kit ships, grouped by what it is for, with the one question an index is asked
-    most often answered on the row itself: does this take a block, and what goes inside it. The
+    Every macro the kit ships, grouped by what it is for. Each row answers the question an index
+    gets asked most often: does this take a block, and what goes inside it. The
     <a href="{{ url_for(request, "components") }}">Components</a> page is where you see them
     running; this is where you look one up.
   {% endset %}
@@ -83,10 +83,10 @@
   {% call band("reading", "How to read this", lead_reading) %}
     {% call prose() %}
       <p>
-        A Jinja macro is called in one of two ways, and the name does not tell you which. A macro
-        with nothing inside it is printed. A macro that wraps something is called with
-        <code>{% raw %}{% call %}{% endraw %}</code>, and whatever sits between that and
-        <code>{% raw %}{% endcall %}{% endraw %}</code> is handed to the macro to place. Jinja calls
+        A Jinja macro is called in one of two ways, and the name does not tell you which. You print a
+        macro that has nothing inside it. You call a macro that wraps something with
+        <code>{% raw %}{% call %}{% endraw %}</code>, and Jinja hands whatever sits between that and
+        <code>{% raw %}{% endcall %}{% endraw %}</code> to the macro to place. Jinja calls
         that the caller block, and every macro below that wants one carries a badge saying what goes
         in it.
       </p>
@@ -96,7 +96,7 @@
 
     {% call grid(cols=2, gap=4) %}
       {% set c_macro %}the call, with every parameter and its default. The heading above each list is the file you <code>import</code> it from{% endset %}
-      {% set c_block %}on the right of a row, and only on the rows that have one: this macro is called with <code>{% raw %}{% call %}{% endraw %}</code>, and the badge says what goes inside. No badge means print it with <code>{% raw %}{{ }}{% endraw %}</code>{% endset %}
+      {% set c_block %}on the right of a row, and only on the rows that have one. Call this macro with <code>{% raw %}{% call %}{% endraw %}</code>, and the badge says what goes inside. No badge means print it with <code>{% raw %}{{ }}{% endraw %}</code>{% endset %}
       {% set c_note %}what the signature does not say. Absent when the signature says all of it{% endset %}
       {{ defs("What is on a row", [
         ("The signature", c_macro),
@@ -128,7 +128,7 @@
         <code>ui/shell.html</code> carries the <code>&lt;head&gt;</code>, the theme flash-guard, the
         asset links and the header/main/footer skeleton. An app extends it once, in its own
         <code>base.html</code>, and fills the blocks it needs. Fill <code>sidebar</code> or
-        <code>nav</code>, never both: the shell lays the header out differently for each, and filling
+        <code>nav</code>, never both. The shell lays the header out differently for each, and filling
         both gives you two navigations.
       </p>
     {% endcall %}
@@ -151,7 +151,7 @@
       <p>
         Every one of these reaches the markup as an extra keyword on a macro:
         <code>{% raw %}{{ button("Refresh", hx_get="/tasks/board", hx_target="#board") }}{% endraw %}</code>.
-        Underscores become dashes on the way through, and that is the whole integration: no macro has
+        Underscores become dashes on the way through, and that is the whole integration. No macro has
         an htmx-specific parameter, and none needs one. The full reference is
         <a href="https://htmx.org/reference/">htmx.org/reference</a>; what follows is what a fjkit
         page uses.
@@ -182,7 +182,7 @@
       ]) }}
 
       {% set d_learn %}<a href="{{ url_for(request, "learn") }}">how the pieces fit, and what htmx sends</a>{% endset %}
-      {% set d_components %}<a href="{{ url_for(request, "components") }}">every macro running, with the knobs turned</a>{% endset %}
+      {% set d_components %}<a href="{{ url_for(request, "components") }}">every macro running, with controls you can change</a>{% endset %}
       {% set d_demo %}<a href="{{ repo("examples/fjkit-demo") }}">these macros inside a working app</a>{% endset %}
       {% set d_tokens %}<a href="{{ repo("packages/fjkit/src/fjkit/static/src/fjkit.css") }}">the token table behind every variant</a>{% endset %}
       {{ defs("Read next", [

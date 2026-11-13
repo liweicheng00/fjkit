@@ -30,6 +30,10 @@ GROUPING_OPTIONS: list[tuple[Grouping, str]] = [
 
 
 class ChartsResponse(BaseModel):
+    #: The board's figures — the group the grouping control swaps.
     charts: list[Chart]
+    #: One figure per remaining trace type, outside the swap target because
+    #: nothing on the page changes them.
+    gallery: list[Chart]
     grouping_options: list[tuple[Grouping, str]]
     active_grouping: Grouping

@@ -57,8 +57,8 @@
 {#
   chart_scripts() — put this in the page's `{% block scripts %}`.
 
-  Not in the shell, and not injected by the plugin: Plotly's basic bundle is
-  1.1 MB, and a plugin reaching into `ui/shell.html` would put it on every page
+  Not in the shell, and not injected by the plugin: Plotly's cartesian bundle is
+  1.4 MB, and a plugin reaching into `ui/shell.html` would put it on every page
   including the ones with no chart. Calling it here is the opt-in, per page.
 
   `defer` on both, in this order: `charts.js` reads `window.Plotly` when it

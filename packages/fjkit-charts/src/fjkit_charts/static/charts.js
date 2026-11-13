@@ -14,7 +14,7 @@
   The division of labour with the server: Python decides the shape, this file
   decides the chrome.
 
-  Loaded only via chart_scripts(). Plotly is 1.1 MB — no other page pays for it.
+  Loaded only via chart_scripts(). Plotly is 1.4 MB — no other page pays for it.
 */
 (() => {
   "use strict";
@@ -73,30 +73,69 @@
     };
   }
 
+  /* Trace types that draw a colour bar down the right-hand side. Its tick text
+     inherits `layout.font`, but its frame is `#444` whatever the figure says —
+     the same hard-coded default as the pie's label colour, in a different
+     place. */
+  const COLORBAR = new Set(["heatmap", "contour", "histogram2d", "histogram2dcontour"]);
+
+  /* Trace types whose mark is a length measured from zero, and the only ones
+     whose y axis is forced through it. `themed` says why. `pie` is here because
+     it has no cartesian axes at all, so a pie beside a bar does not disqualify
+     the pair. */
+  const BASELINE = new Set(["bar", "scatter", "histogram", "pie"]);
+
   /* The per-trace half of the chrome.
 
-     Only pies need it, and only because Plotly's pie ignores `layout.font`: its
-     `textfont` defaults to #444 whatever the rest of the figure says, so the
-     labels come out dark grey on whatever colour the card is. The slice gaps get
-     the card's colour too, which makes a donut read as cut rather than outlined.
+     Two types need it, both for the same reason: a default Plotly resolves
+     before `layout.font` reaches it.
 
-     Nothing here touches `marker.color` or `marker.colors`. The series palette
-     is Plotly's. */
+     A pie ignores `layout.font` outright — its `textfont` defaults to #444
+     whatever the rest of the figure says, so the labels come out dark grey on
+     whatever colour the card is. The slice gaps get the card's colour too, which
+     makes a donut read as cut rather than outlined.
+
+     A colour-bar trace inherits the font but not the frame, so an unthemed
+     `outlinecolor: "#444"` draws a dark box around the scale on a dark page.
+
+     Nothing here touches `marker.color`, `marker.colors` or `colorscale`. The
+     series palette is Plotly's, and so is the scale. */
   function chrome(data, colors) {
-    return data.map((trace) =>
-      trace.type === "pie"
-        ? {
-            ...trace,
-            marker: { ...trace.marker, line: { color: colors.surface, width: 2 } },
-            textfont: { color: colors.text },
-          }
-        : trace,
-    );
+    return data.map((trace) => {
+      if (trace.type === "pie") {
+        return {
+          ...trace,
+          marker: { ...trace.marker, line: { color: colors.surface, width: 2 } },
+          textfont: { color: colors.text },
+        };
+      }
+      if (COLORBAR.has(trace.type)) {
+        return { ...trace, colorbar: { outlinecolor: colors.grid, ...trace.colorbar } };
+      }
+      return trace;
+    });
   }
 
   /* The layout half the theme owns. The figure's own layout is merged over the
-     top, so anything the route decided wins. */
-  function themed(colors, height) {
+     top, so anything the route decided wins.
+
+     `baseline` is the one part of this that reads the data. `rangemode:
+     "tozero"` is right where the mark's length is the quantity — a bar is a lie
+     if its axis starts anywhere else — and harmless for a line of counts. It is
+     wrong everywhere else. For a box or a violin the quantity is the spread:
+     latencies between 180 and 260 ms get an axis from 0 to 260, and the shape
+     they were drawn for is a flat smudge in the top fifth of the card. For a
+     heatmap or an image the y axis is a position, not an amount.
+
+     So it is opt-in by type rather than opt-out: see `BASELINE`. Still
+     overridable either way — the figure's `yaxis` merges over this one.
+
+     The ternary block is the counterpart of the pie's `textfont`. A ternary
+     subplot does not read `plot_bgcolor` or the axis defaults above; its own
+     are `bgcolor: "#fff"` with `#444` axes, so an unthemed one puts a white
+     panel in the middle of a dark card. Costs nothing on a figure with no
+     ternary trace, because Plotly ignores a subplot nothing is assigned to. */
+  function themed(colors, height, baseline) {
     /* Inherits the page's font rather than naming one. Plotly's default is
        Open Sans, which nothing else on the card is set in. */
     const font = { color: colors.text, family: getComputedStyle(document.body).fontFamily, size: 12 };
@@ -107,6 +146,7 @@
       tickfont: font,
       automargin: true,
     };
+    const ternaryAxis = { gridcolor: colors.grid, linecolor: colors.grid, tickfont: font, color: colors.text };
 
     return {
       height: height,
@@ -118,20 +158,33 @@
       margin: { l: 8, r: 8, t: 8, b: 8 },
       legend: { orientation: "h", y: -0.18, font: font },
       xaxis: { ...axis },
-      yaxis: { ...axis, rangemode: "tozero" },
+      yaxis: baseline ? { ...axis, rangemode: "tozero" } : { ...axis },
+      ternary: {
+        bgcolor: "rgba(0,0,0,0)",
+        aaxis: { ...ternaryAxis },
+        baxis: { ...ternaryAxis },
+        caxis: { ...ternaryAxis },
+      },
       hoverlabel: { bgcolor: colors.surface, bordercolor: colors.grid, font: font },
     };
   }
 
-  /* One level deep, which is what the axes need: the figure carries
+  /* Deep over plain objects, which is what the axes need: the figure carries
      `yaxis: {title, dtick}` and the theme carries `yaxis: {gridcolor,
-     tickfont}`. A plain spread would drop one whole side of that. */
+     tickfont}`. A plain spread would drop one whole side of that.
+
+     It recurses rather than stopping at one level because a ternary subplot
+     nests one deeper — the theme sets `ternary.aaxis.gridcolor` and the figure
+     sets `ternary.aaxis.title`, and a one-level merge replaces the theme's
+     whole `aaxis` with the figure's, which is how the axes of a ternary plot
+     end up back at Plotly's #444 on a dark card. Arrays replace rather than
+     merge: a figure's `x` is the data, not an amendment to the theme's. */
   function merge(base, extra) {
     const out = { ...base };
     for (const [key, value] of Object.entries(extra || {})) {
       const mergeable =
         value && typeof value === "object" && !Array.isArray(value) && base[key] && typeof base[key] === "object";
-      out[key] = mergeable ? { ...base[key], ...value } : value;
+      out[key] = mergeable ? merge(base[key], value) : value;
     }
     return out;
   }
@@ -151,7 +204,13 @@
     element.style.height = height + "px";
 
     const colors = palette();
-    Plotly.react(element, chrome(figure.data, colors), merge(themed(colors, height), figure.layout), CONFIG);
+    const baseline = figure.data.every((trace) => BASELINE.has(trace.type));
+    Plotly.react(
+      element,
+      chrome(figure.data, colors),
+      merge(themed(colors, height, baseline), figure.layout),
+      CONFIG,
+    );
   }
 
   function drawAll(root) {

@@ -291,7 +291,7 @@ const MACROS = {
         : "";
       return `{% from "ui/data.html" import card %}\n\n${pre}{% call card(${args}) %}\n  <p>${p.body}</p>\n{% endcall %}`;
     },
-    caption: "actions takes pre-rendered markup rather than a second slot: a two-slot call block runs its body once per slot, which is wrong for a heavy body. padded=false lets a table sit flush against the edges.",
+    caption: "actions takes pre-rendered markup rather than a second slot. A two-slot call block runs its body once per slot, which is wrong for a heavy body. padded=false lets a table sit flush against the edges.",
   },
 
   table: {
@@ -664,7 +664,7 @@ const SHOWCASE = {
                      required=true, revealable=true) }}
 
 {% block scripts %}{{ reveal_scripts() }}{% endblock %}`,
-    caption: "Live on this page — click Show. The button is markup and the script is four lines. Two things make it correct: the listener is delegated from document, because a 422 is most likely to swap out the form a password sits in and take a listener bound to the old button with it; and the input is found through aria-controls, so nothing hard-codes the id the macro chose. reveal_scripts() is per page, never in the shell.",
+    caption: "Live on this page — click Show. The button is markup and the script is four lines. Two things make it correct: the script delegates the listener from document, because a 422 is most likely to swap out the form a password sits in and take a listener bound to the old button with it; and it finds the input through aria-controls, so nothing hard-codes the id the macro chose. reveal_scripts() is per page, never in the shell.",
   },
 
   section: {
@@ -719,7 +719,7 @@ const SHOWCASE = {
   {% call list_item() %}Templates are compiled once per process.{% endcall %}
   {% call list_item() %}A row costs a function call, not a lookup.{% endcall %}
 {% endcall %}`,
-    caption: "Two blocks rather than a list argument, because an item is markup: it can hold a badge, a link or a kbd without the caller escaping anything.",
+    caption: "Two blocks rather than a list argument, because an item is markup. It can hold a badge, a link or a kbd without the caller escaping anything.",
   },
 
   inline: {
@@ -824,7 +824,7 @@ const SHOWCASE = {
   {% endcall %}
   {{ progress(0, label="Upload", id="bar") }}
 {% endcall %}`,
-    caption: "encoding=\"multipart\" is not optional — without it the route is handed the file's name as a string, and the POST succeeds having saved nothing. progress names the bar; htmx reports what it has sent and the form macro writes the number into the width, aria-valuenow and the printed percentage. No JavaScript file is added. file_field takes no value: a browser will not let a page refill a file input, so a 422 redraw returns this box empty while every other field keeps what was typed.",
+    caption: "encoding=\"multipart\" is not optional — without it the route gets the file's name as a string, and the POST succeeds having saved nothing. progress names the bar; htmx reports what it has sent and the form macro writes the number into the width, aria-valuenow and the printed percentage. No JavaScript file is added. file_field takes no value: a browser will not let a page refill a file input, so a 422 redraw returns this box empty while every other field keeps what was typed.",
   },
 
   description_list: {
@@ -836,7 +836,7 @@ const SHOWCASE = {
   {{ description_item("Owner", "Ada Lovelace") }}
   {% call description_item("Notes") %}<p>Two lines fit here without a clamp.</p>{% endcall %}
 {% endcall %}`,
-    caption: "A native <dl>, so each value is announced as the definition of its term — the relationship item_list does not carry. layout=\"rows\" puts the term beside the value once there is room for two columns; layout=\"stacked\" keeps it above at every width.",
+    caption: "A native <dl>, so a screen reader announces each value as the definition of its term — the relationship item_list does not carry. layout=\"rows\" puts the term beside the value once there is room for two columns; layout=\"stacked\" keeps it above at every width.",
   },
 
   alert: {
@@ -880,7 +880,7 @@ const SHOWCASE = {
                          ("board", "Board"),
                          ("settings", "Settings")]) }}
 {% endblock %}`,
-    caption: "Route names, not URLs: the active state compares routes rather than string-matching paths, so it stays right when a URL grows a query string. Past about six destinations this is the wrong component — fill the shell's sidebar block instead.",
+    caption: "Route names, not URLs. The active state compares routes rather than string-matching paths, so it stays right when a URL grows a query string. Past about six destinations this is the wrong component — fill the shell's sidebar block instead.",
   },
 
   theme_toggle: {
@@ -898,7 +898,7 @@ const SHOWCASE = {
 {{ breadcrumb([("Board", "/"),
                ("Tasks", "/tasks"),
                ("Ship the vocabulary", none)]) }}`,
-    caption: "A pair whose href is none is the current page: it renders as a span with aria-current, not a link. That is the shape of the argument, so a trail cannot be built with the current page linked to itself.",
+    caption: "A pair whose href is none is the current page. It renders as a span with aria-current, not a link. That is the shape of the argument, so a trail cannot be built with the current page linked to itself.",
   },
 
   avatar: {
@@ -942,7 +942,7 @@ const SHOWCASE = {
   {% endcall %}
   {% call collapsible("Can I edit a component?") %}…{% endcall %}
 {% endcall %}`,
-    caption: "A native <details>: open state, keyboard operation and the disclosure role all come from the element. accordion adds the class Basecoat watches to close the siblings; multiple withholds it, so allowing several open panels ships no JS rather than JS asked to do nothing.",
+    caption: "A native <details>. Open state, keyboard operation and the disclosure role all come from the element. accordion adds the class Basecoat watches to close the siblings; multiple withholds it, so allowing several open panels ships no JS rather than JS asked to do nothing.",
   },
 
   tooltip: {
@@ -952,7 +952,7 @@ const SHOWCASE = {
 {% call tooltip("Saves without leaving the page", side="top") %}
   {{ button("Save", variant="outline") }}
 {% endcall %}`,
-    caption: "Drawn from a data-tooltip attribute and CSS content() — no second element, no JavaScript. That also means the text is not in the accessibility tree: a tooltip is a hint, never the only label a control has.",
+    caption: "Drawn from a data-tooltip attribute and CSS content() — no second element, no JavaScript. That also means the text is not in the accessibility tree. A tooltip is a hint, never the only label a control has.",
   },
 
   popover: {
@@ -979,7 +979,7 @@ const SHOWCASE = {
   {{ menu_item("Wrap long lines", checked=true) }}
   {{ menu_item("Log out", variant="destructive") }}
 {% endcall %}`,
-    caption: "menu_item switches role with the state it reports: menuitemcheckbox when checked is given, menuitemradio for radio. A menu is not a select — it runs commands and leaves nothing in a form submission.",
+    caption: "menu_item switches role with the state it reports: menuitemcheckbox when you pass checked, menuitemradio for radio. A menu is not a select — it runs commands and leaves nothing in a form submission.",
   },
 
   select_menu: {
@@ -988,7 +988,7 @@ const SHOWCASE = {
 
 {{ select_menu("theme", [("light", "Light"), ("dark", "Dark")],
                selected="dark", label="Theme") }}`,
-    caption: "Prefer select_field. A native <select> is correct for free and costs one element; this is thirty and needs JS. Reach for it when a row needs markup an <option> cannot hold. The value travels in a hidden input, pre-filled so an untouched form still posts.",
+    caption: "Prefer select_field. A native <select> is correct with no work and costs one element; this is thirty and needs JS. Reach for it when a row needs markup an <option> cannot hold. The value sits in a hidden input, pre-filled so an untouched form still posts.",
   },
 
   combobox: {
@@ -1019,7 +1019,7 @@ const SHOWCASE = {
 
 {{ combobox("labels", label_options, selected=task.labels,
             multiple=true, placeholder="Add a label", label="Labels") }}`,
-    caption: "Same hidden input and the same script as select_menu; what differs is where the selection is shown — Basecoat draws it as chips from JS, so this preview starts empty while the select's does not. Both are worth their cost only past about a dozen options; below that a checkbox group in a fieldset posts the same thing and needs no script at all.",
+    caption: "Same hidden input and the same script as select_menu; what differs is where the selection appears — Basecoat draws it as chips from JS, so this preview starts empty while the select's does not. Both are worth their cost only past about a dozen options; below that a checkbox group in a fieldset posts the same thing and needs no script at all.",
   },
 
   drawer: {
@@ -1099,7 +1099,7 @@ const SNIPPET = {
     {% endcall %}
   {% endcall %}
 {% endblock %}`,
-    caption: "The rail on the left of this page is this call. Route names again, so the current page is decided by comparing routes; open=false is the desktop starting state only, because a narrow screen renders the panel as a full-screen overlay and a page that opens under its own navigation is a bug. sidebar_submenu is a <details>, so the open state and the keyboard are the browser's.",
+    caption: "The rail on the left of this page is this call. Route names again, so comparing routes decides the current page; open=false is the desktop starting state only, because a narrow screen renders the panel as a full-screen overlay and a page that opens under its own navigation is a bug. sidebar_submenu is a <details>, so the open state and the keyboard are the browser's.",
   },
 
   toaster: {

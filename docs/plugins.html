@@ -174,15 +174,15 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
       </p>
       <p>
         Those are the places to read it, and the reason is an outage. While the identity provider
-        is unreachable, a request whose token has already expired is answered 503 by whatever asks
-        for the session, and a handler that asks for nothing, such as a logout, runs. The
+        is unreachable, whatever asks for the session answers 503 for a request whose token has
+        already expired, and a handler that asks for nothing, such as a logout, runs. The
         middleware's own <code>request.state.auth</code> is <code>None</code> on that request, so a
         handler reading it directly would take a signed-in user for an anonymous one.
       </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-<h3>How an anonymous request is refused</h3><p>The same question @render asks about the wire, asked about how to say no.</p>      </div>
+<h3>How the plugin refuses an anonymous request</h3><p>The same question @render asks about the wire, asked about how to say no.</p>      </div>
     </header>      <section>      <div class="table-container">
       <table class="table">
         <thead>
@@ -214,13 +214,13 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
 </section>
   </div>
 <div class="flex flex-col gap-3">      <p>
-        Only the middle row cannot be a 401: a plain navigation has no way to act on one, so it would
+        Only the middle row cannot be a 401. A plain navigation has no way to act on one, so it would
         land on a blank page. htmx is the interesting case. It reads <code>HX-Redirect</code> and
         returns <strong>before</strong> it looks at the status code, so the status stays honest while
         the browser still moves the whole page.
       </p>
       <p>
-        A navigation is recognised by <code>Sec-Fetch-Mode: navigate</code>, or failing that by
+        The plugin recognises a navigation by <code>Sec-Fetch-Mode: navigate</code>, or failing that by
         <code>Accept</code> mentioning <code>text/html</code>. Anything else is the caller a route in
         <code>render_mode="auto"</code> answers in JSON. The 401 carries no
         <code>WWW-Authenticate</code>, although RFC 9110 requires the field: every registered scheme
@@ -252,9 +252,9 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth,)))</pre>
         all. The cookie jar is the only thing that crosses.
       </p>
       <p>
-        So a flash is written as a short-lived signed cookie on the response that redirects, read back
-        on the request that lands, queued into <code>fjkit.messages</code> like any other message, and
-        cleared once it has been shown — which is why it appears once and not again on reload. The
+        So the plugin writes a flash as a short-lived signed cookie on the response that redirects, reads
+        it back on the request that lands, queues it into <code>fjkit.messages</code> like any other
+        message, and clears it once it has been shown — which is why it appears once and not again on reload. The
         toaster region in <code>ui/shell.html</code> is already there and already draws that queue, so
         registering the plugin is the entire setup and no template in your app changes.
       </p>
@@ -269,7 +269,7 @@ config = FjkitConfig(template_dir=…, plugins=(flash, auth))</pre>
         <code>auth</code> declares <code>uses = ("flash",)</code> and takes whichever plugin is
         registered under that name, which is why <code>flash</code> is listed first. Pass
         <code>flash=</code> to hand it one configured differently from the one your routes use; an
-        explicit argument outranks the lookup. The dependency runs one way and is optional: auth
+        explicit argument outranks the lookup. The dependency runs one way and is optional. Auth
         works without a flash, and a route that just saved something wants
         <code>flash.add(response, "Saved")</code> with no session in sight.
       </p>
@@ -281,11 +281,11 @@ config = FjkitConfig(template_dir=…, plugins=(flash, auth))</pre>
         buys — one loop in the shell, not one per delivery mechanism.
       </p>
       <p>
-        The interesting half is when the cookie is cleared: once
-        <code>messages.shown(request)</code> is true, meaning a template iterated the queue or the
-        queue was serialised into an <code>HX-Trigger</code>. A page load fires more requests than
+        The interesting half is when the plugin clears the cookie. That happens once
+        <code>messages.shown(request)</code> is true, meaning a template iterated the queue, or the
+        shell serialised the queue into an <code>HX-Trigger</code>. A page load fires more requests than
         the page — an htmx poll, a prefetch — and if "shown" meant "this request carried the cookie",
-        any of them would eat the message and leave the page it belonged to empty.
+        any of them would consume the message and leave the page it belonged to empty.
       </p>
 </div>
     <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="fjkit/flash.py" data-lang="python">def mount(self, setup: AppSetup) -&gt; None:
@@ -314,7 +314,7 @@ if carried and messages.shown(request):
 <h3>Duck-typed, not inherited</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>name</h4><p>a str attribute — required, and the only one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>mount / extend</h4><p>implement either, both, or neither; missing ones are simply not called</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>mount / extend</h4><p>implement either, both, or neither; fjkit does not call a missing one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>no base class</h4><p>Plugin is a Protocol, so a plugin never imports fjkit to be one</p>    </section>  </div></div></div>
   </div>
 
@@ -351,6 +351,8 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(ChartsPlugin(),)))</pre>
                 aria-selected="true" data-fjkit-open>app/routers/workload.py</button>
         <button type="button" role="tab" id="charts-page-tab" aria-controls="charts-page"
                 aria-selected="false">app/templates/workload/page.html</button>
+        <button type="button" role="tab" id="charts-box-tab" aria-controls="charts-box"
+                aria-selected="false">a distribution, not a total</button>
     </nav><div id="charts-router" role="tabpanel" aria-labelledby="charts-router-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/routers/workload.py" data-lang="python">import plotly.graph_objects as go
 from fastapi import APIRouter
 from fjkit import render
@@ -372,7 +374,7 @@ def workload():
         ),
     ]}</pre>
 
-<footer>A Chart has four fields you set: id, title, summary and figure. summary is required: it is the text a screen reader reads, and the text shown when JavaScript is off. figure takes the go.Figure itself; Chart validates it, so an invalid trace fails here instead of rendering an empty box.</footer></div><div id="charts-page" role="tabpanel" aria-labelledby="charts-page-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
+<footer>A Chart has four fields you set: id, title, summary and figure. summary is required. It is the text a screen reader reads, and the text shown when JavaScript is off. figure takes the go.Figure itself; Chart validates it, so an invalid trace fails here instead of rendering an empty box.</footer></div><div id="charts-page" role="tabpanel" aria-labelledby="charts-page-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="jinja">{% extends &#34;base.html&#34; %}
 {% from &#34;charts/macros.html&#34; import chart, chart_scripts %}
 
 {% block content %}
@@ -381,7 +383,17 @@ def workload():
 
 {% block scripts %}{{ chart_scripts() }}{% endblock %}</pre>
 
-<footer>chart(item) draws one figure in a card. chart_scripts() loads Plotly for this page only, so pages without charts do not download it.</footer></div></div>
+<footer>chart(item) draws one figure in a card. chart_scripts() loads Plotly for this page only, so pages without charts do not download it.</footer></div><div id="charts-box" role="tabpanel" aria-labelledby="charts-box-tab">        <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="a distribution, not a total" data-lang="python">Chart(
+    id=&#34;age-spread&#34;,
+    title=&#34;Age spread by priority&#34;,
+    summary=&#34;high is the widest spread at 28 hours.&#34;,
+    figure=go.Figure([
+        go.Box(name=&#34;high&#34;, y=[0.0, 14.0, 28.0], boxpoints=&#34;all&#34;),
+        go.Box(name=&#34;low&#34;, y=[42.0, 49.0], boxpoints=&#34;all&#34;),
+    ]),
+)</pre>
+
+<footer>One box per group. Use it where a bar of averages would hide the spread: two groups with the same mean look identical as bars and nothing like each other here. A figure holding a box trace keeps Plotly&#39;s own axis range instead of the kit&#39;s rangemode=&#34;tozero&#34;, which is right for a bar&#39;s length and wrong for a spread that starts at 180.</footer></div></div>
   </div>
 
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -391,9 +403,10 @@ def workload():
       <h4>what it accepts</h4><p>a go.Figure. A plain dict is rejected</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>it removes layout.template</h4><p>plotly.py always writes a default template, and that template holds 111 colour values. Without it, charts.js sets axis text, grid lines and backgrounds from the page&#39;s theme tokens, so the chart follows light and dark mode</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>it validates the figure</h4><p>an invalid figure raises a validation error in the route, instead of drawing an empty box in the browser</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>trace types</h4><p>bar, scatter and pie: the types in the bundled Plotly build. Any other type fails validation</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fields you can set</h4><p>any attribute Plotly documents for those types: <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/bar/">bar</a>, <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/scatter/">scatter</a>, <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/pie/">pie</a> and <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/layout/">layout</a>. Chart checks only the trace type; every other key passes through unchecked, so a misspelt key is silently ignored by Plotly</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>fields to leave out</h4><p>colours: marker_color, line_color, font colours, backgrounds. The series use Plotly&#39;s palette and the theme sets the rest. Chart does not reject them; call assert_no_colour_in(charts) in your tests to catch them</p>    </section>  </div></div></div>
+      <h4>trace types</h4><p>exactly the twelve the bundled Plotly build registers: bar, box, contour, heatmap, histogram, histogram2d, histogram2dcontour, image, pie, scatter, scatterternary and violin. Not eleven and not thirteen — a type the bundle cannot draw would validate in your route and render an empty card with nothing in the console, and a type it can draw that the model rejects is weight in the wheel you cannot reach</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fields you can set</h4><p>any attribute Plotly documents for those types: <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/bar/">bar</a>, <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/scatter/">scatter</a>, <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/pie/">pie</a>, <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/box/">box</a> and <a class="text-foreground underline underline-offset-4" href="https://plotly.com/python/reference/layout/">layout</a>. Chart checks only the trace type; every other key passes through unchecked, so Plotly ignores a misspelt key and says nothing</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fields to leave out</h4><p>colours: marker_color, line_color, colorscale, font colours, backgrounds. The series use Plotly&#39;s palette, a heatmap uses Plotly&#39;s scale, and the theme sets the rest. Chart does not reject them; call assert_no_colour_in(charts) in your tests to catch them</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the one exception</h4><p>an image trace&#39;s z is an RGB triple per pixel, so its colour is chosen on your server and nothing in the browser can re-theme it. assert_no_colour_in refuses one unless you pass allow_image=True, because the pattern it scans with cannot see a colour written as numbers</p>    </section>  </div></div></div>
   </div>
 
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -404,14 +417,14 @@ def workload():
       <h4>axis text, grid lines, tick colour, the gaps between pie slices</h4><p>the browser. charts.js resolves them from the live tokens on every draw, because Plotly&#39;s defaults are a dark grey on a light grey — a chart drawn for a white page, on a page that may be dark. A theme toggle is a redraw</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>the series colours</h4><p>Plotly&#39;s own palette, and the theme does not touch them. The figure carries no colour at all: a hex code there would fail the rule fjkit check applies to templates, and be wrong in one of the two schemes</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>the height</h4><p>Chart.height, applied by the same script that draws. A style=&#34;&#34; attribute in the markup is the other way an app starts writing CSS</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>the text alternative</h4><p>Chart.summary, written from the same numbers the traces were built from. Plotly&#39;s SVG is a thousand unlabelled &lt;path&gt; elements, so the caption is what a screen reader gets — and without JavaScript it is the whole content</p>    </section>  </div></div></div>
+      <h4>the text alternative</h4><p>Chart.summary, written from the same numbers that built the traces. Plotly&#39;s SVG is a thousand unlabelled &lt;path&gt; elements, so the caption is what a screen reader gets — and without JavaScript it is the whole content</p>    </section>  </div></div></div>
   </div>
 
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>What each argument decides</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>url=&#34;/_fjkit-charts&#34;</h4><p>where this plugin&#39;s own assets are served. Keep it outside config.static_url: Starlette matches the first mount whose prefix fits, so a path nested inside the kit&#39;s static mount is swallowed by it and 404s against a directory that does not hold these files</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>url=&#34;/_fjkit-charts&#34;</h4><p>where this plugin&#39;s own assets are served. Keep it outside config.static_url: Starlette matches the first mount whose prefix fits, so the kit&#39;s static mount catches a path nested inside it and 404s against a directory that does not hold these files</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>plotly_url=</h4><p>serve Plotly from somewhere other than the copy in the wheel — a path your app already serves, or a URL. The default is the vendored bundle under this plugin&#39;s own url, cache-stamped like every other kit asset</p>    </section>  </div></div></div>
   </div>
 
@@ -420,7 +433,8 @@ def workload():
 <h3>Worth knowing before you reach for it</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>summary is a required field</h4><p>not a keyword someone forgets. A chart with no text alternative is invisible to a screen reader, and the macro cannot invent the sentence</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>the basic bundle, not the full one</h4><p>scatter, bar and pie. plotly.js-dist-min is 4.85 MB of 3D, maps, financial and statistical traces most dashboards never draw, and picking the bundle is the only size knob Plotly offers without a build step</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>the cartesian bundle, not the full one</h4><p>1,424,820 bytes — 461 KB over the wire. plotly.js-dist-min is 4.85 MB of 3D, maps and financial traces most dashboards never draw; the basic build is 305 KB smaller but registers only bar, scatter and pie, so a box plot was not reachable from it. Picking among the three prebuilt bundles is the only size choice Plotly offers without a build step</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>a KPI gauge is not in it</h4><p>indicator, table, funnel, waterfall, treemap, sunburst and sankey live only in the 4.85 MB full build. There is no middle step for those the way cartesian was a middle step for box</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>being in a wheel is not being on a page</h4><p>which distribution holds the bundle decides what an install carries; §4.2 budgets what a page downloads. An app that never draws a chart installs neither</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>the pin lives with the bytes</h4><p>PLOTLY_VERSION is in fjkit_charts and scripts/vendor_plotly.py fetches it. The kit no longer knows Plotly exists</p>    </section>  </div></div></div>
   </div>
@@ -437,7 +451,7 @@ def workload():
         Swagger UI's Authorize dialog can express only what an OpenAPI document can describe: an API
         key, an HTTP scheme, an OAuth2 flow. An app whose sessions are section 01's — a signed
         <code>HttpOnly</code> cookie over a server-side token — is none of those. Its Try it out could
-        not send one anyway: it runs <code>fetch()</code> in the browser, and that cookie is the one
+        not send one anyway. It runs <code>fetch()</code> in the browser, and that cookie is the one
         JavaScript may not read.
       </p>
       <p>
@@ -465,7 +479,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
 
 <div class="flex flex-col gap-3">      <p>
         That is the whole of the wiring. No route to write, no template to render, no static file to
-        serve: the plugin brings its own router and templates, declares <code>uses = ("auth",)</code>,
+        serve. The plugin brings its own router and templates, declares <code>uses = ("auth",)</code>,
         and wires the sign-in panel to whatever the app registered under that name. Pass <code>flow=</code>
         instead when the app authenticates some other way, and
         <code>FastAPI(docs_url=None, redoc_url=None)</code> when you want only this one.
@@ -508,11 +522,11 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
       <div>
 <h3>What each argument decides</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>url=&#34;/api-docs&#34;</h4><p>where the page lives. Not /docs: FastAPI has claimed that before a plugin mounts, the first route registered wins, and a docs page that silently never renders is worse than a different URL — so the plugin warns at startup if the path is taken</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>url=&#34;/api-docs&#34;</h4><p>where the page lives. Not /docs, because FastAPI has claimed that before a plugin mounts, the first route registered wins, and a docs page that silently never renders is worse than a different URL — so the plugin warns at startup if the path is taken</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>flow=</h4><p>how someone signs in from the page. Defaults to the AuthPlugin sharing the config, and to a panel that only says &#34;anonymous&#34; when there is none</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>dependencies=</h4><p>put on every route the plugin adds — this is how the page is gated. Empty is right for a public API and wrong for an internal service</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>try_it=False</h4><p>renders the reference and drops the console, for an environment where replaying a request server-side is not acceptable</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>home_url=</h4><p>a way back out, in the sidebar&#39;s footer. The operation list has taken the sidebar, so without it the page is a room with no door</p>    </section>  </div></div></div>
+      <h4>home_url=</h4><p>a way back out, in the sidebar&#39;s footer. The operation list has taken the sidebar, so without it the page has no link back to the app</p>    </section>  </div></div></div>
   </div>
 
 <div class="flex flex-col gap-3">      <p>
@@ -528,7 +542,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, docs)))</pre>
       <div>
 <h3>Worth knowing before you reach for it</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>its routes are out of your document</h4><p>include_in_schema=False, for the same reason FastAPI keeps /docs out of it: these are a way of reading the API, not part of it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>its routes are out of your document</h4><p>include_in_schema=False, for the same reason FastAPI keeps /docs out of it. These are a way of reading the API, not part of it</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>a call is capped</h4><p>64 KB of body and 30 seconds, both arguments. The console is a reading tool, not a load generator</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>form bodies become fields</h4><p>an Annotated[str, Form()] route gets one input per field rather than a text box, so nobody is asked to hand-write urlencoding. A JSON body stays a single editable example, prefilled from the schema</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>nothing on the page can read the credential</h4><p>signing in is a form your app defines, not a box to paste a token into — which is the same property that makes the cookie worth having</p>    </section>  </div></div></div>
@@ -594,7 +608,7 @@ mount_fjkit(app, FjkitConfig(template_dir=…, plugins=(auth, admin)))</pre>
       <div>
 <h3>What each argument decides</h3>      </div>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
-      <h4>session_factory</h4><p>a sessionmaker, or any callable returning a Session usable as a context manager. One session per request. An async_sessionmaker is refused at construction, with a message, rather than half-working per request</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>session_factory</h4><p>a sessionmaker, or any callable returning a Session usable as a context manager. One session per request. The plugin refuses an async_sessionmaker at construction, with a message, rather than half-working per request</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>views=</h4><p>the ModelAdmin subclasses to register, in sidebar order</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>base_template=</h4><p>what the page extends. The kit&#39;s shell by default, or your own base.html so the admin sits inside the app&#39;s chrome. The admin fills the shell&#39;s sidebar block with its model list, so a base that fills it too loses its own navigation here — home_url is the way back</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>dependencies=</h4><p>put on every route the plugin adds, typically (Depends(auth.required),). That is the whole of the gating; empty means the admin is public</p>    </section>  </div><div class="item" data-clamp="false">    <section>
@@ -666,8 +680,8 @@ mount_fjkit(app, config)</pre>
       <div>
 <h2 class="text-lg font-semibold tracking-tight">mount(): the app side</h2><p class="text-muted-foreground text-sm">Middleware, handlers, routes — attributed to the plugin that added them.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        <code>AppSetup</code> is a thin pass-through to FastAPI. What it adds is attribution: a
-        misbehaving plugin is named rather than found by elimination.
+        <code>AppSetup</code> is a thin pass-through to FastAPI. What it adds is attribution. The error names a
+        misbehaving plugin instead of leaving you to find it by elimination.
       </p>
 </div>
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -678,7 +692,7 @@ mount_fjkit(app, config)</pre>
       <h4>add_exception_handler(exc, handler)</h4><p>note that an exception raised inside middleware never reaches one — Starlette&#39;s handler layer sits inside the user stack</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>include_router(router)</h4><p>for a plugin that ships endpoints of its own</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>mount_static(url, directory)</h4><p>for a plugin that ships assets, mounted under a name derived from the plugin&#39;s</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>warn(message)</h4><p>startup configuration checks; the message is prefixed with the plugin&#39;s name and raised as PluginWarning</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>warn(message)</h4><p>startup configuration checks; fjkit prefixes the message with the plugin&#39;s name and raises it as PluginWarning</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>app, config</h4><p>the live FastAPI app and the FjkitConfig, for the checks the two above cannot express</p>    </section>  </div></div></div>
   </div>
 
@@ -697,7 +711,7 @@ mount_fjkit(app, config)</pre>
       <div>
 <h2 class="text-lg font-semibold tracking-tight">extend(): Jinja, and every render</h2><p class="text-muted-foreground text-sm">The per-request context is the part that was missing.</p>      </div>
       <div class="flex flex-col gap-3">      <p>
-        <code>FjkitConfig.globals</code> is resolved once per process. That is right for a version
+        fjkit resolves <code>FjkitConfig.globals</code> once per process. That is right for a version
         string and useless for the signed-in user. <code>add_context_processor()</code> is the
         other half: a callable run once per render, with the live request.
       </p>
@@ -720,14 +734,14 @@ mount_fjkit(app, config)</pre>
 
 
 <div class="flex flex-col gap-3">      <p>
-        Two constraints, both deliberate. A processor is <strong>synchronous</strong>: it runs inside
+        Two constraints, both deliberate. A processor is <strong>synchronous</strong>. It runs inside
         <code>Templates.page()</code>, which a <code>def</code> handler reaches from the threadpool. A
         plugin needing I/O does it in middleware and leaves the result on
         <code>request.state</code>, which is what <code>session()</code> reads for the line above.
       </p>
       <p>
-        <code>provides=</code> is required rather than inferred. Without it, two plugins fighting over
-        <code>user</code> are discoverable only by rendering a page and noticing. With it, the clash
+        <code>provides=</code> is required rather than inferred. Without it, you would find two plugins fighting over
+        <code>user</code> only by rendering a page and noticing. With it, the clash
         is a startup error naming both.
       </p>
       <p>
@@ -785,7 +799,7 @@ mount_fjkit(app, config)</pre>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>two plugins with one name</h4><p>they would collide on request.state.&lt;name&gt; and make every later error ambiguous</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>two plugins claiming one global, filter or context key</h4><p>the error names both, and says to rename one or drop one</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>a context key a processor did not declare</h4><p>caught under strict_undefined, so it surfaces in development</p>    </section>  </div></div></div>
+      <h4>a context key a processor did not declare</h4><p>caught under strict_undefined, so it fails in development</p>    </section>  </div></div></div>
   </div>
 
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
@@ -794,10 +808,10 @@ mount_fjkit(app, config)</pre>
     </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
       <h4>inject markup</h4><p>      There is no hook to inject markup into the shell. With one, any plugin could put a
       <code>&lt;script&gt;</code> on every page, and both "no build step on your side" and the closed
-      vocabulary would leave through it. A plugin that ships UI ships templates, and they pass
+      vocabulary would stop holding. A plugin that ships UI ships templates, and they pass
       <code>fjkit check</code> like everything else.
 </p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>reach a sibling it did not declare</h4><p>a plugin that reads another says so — uses = (&#34;flash&#34;,) — and gets it from setup.plugin(&#34;flash&#34;), or None when the app registered none. An undeclared lookup is a startup error, and so is a sibling listed after the plugin that uses it. Order is still the order you wrote: the host checks it and never reorders</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>reach a sibling it did not declare</h4><p>a plugin that reads another says so — uses = (&#34;flash&#34;,) — and gets it from setup.plugin(&#34;flash&#34;), or None when the app registered none. An undeclared lookup is a startup error, and so is a sibling listed after the plugin that uses it. Order is still the order you wrote. The host checks it and never reorders</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>open a connection at startup</h4><p>no lifespan hook — a plugin takes a client the app already built, which is why RedisStore has a client parameter</p>    </section>  </div></div></div>
   </div>
 
@@ -811,7 +825,7 @@ mount_fjkit(app, config)</pre>
   Jinja2 3.1.6 · Basecoat 1.0.2 ·
   htmx 2.0.10 —
   <a href="https://github.com/liweicheng00/fjkit">source and issues</a>.
-  This site is a fjkit app: it extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
+  This site is a fjkit app. It extends <code class="kbd">ui/shell.html</code> and passes <code class="kbd">fjkit check</code>, so it cannot show you a component the package does not ship.
       </footer>
   </div>
 

@@ -1,9 +1,10 @@
 """`fjkit_charts` — the plugin, the figure models, and the colour rule.
 
-These lock down what an app cannot check for itself: the 1.1 MB bundle is in
-the wheel and served, only the page that asks for it loads it, and a colour
-written on the server is caught before it reaches a browser, where it is wrong
-in exactly one of the two themes.
+These lock down what an app cannot check for itself: the 1.4 MB bundle is in
+the wheel and served, only the page that asks for it loads it, every trace type
+`PlotlyTrace` admits is one the bundle can actually draw, and a colour written
+on the server is caught before it reaches a browser, where it is wrong in
+exactly one of the two themes.
 """
 
 from __future__ import annotations
@@ -13,24 +14,39 @@ import json
 import re
 import sys
 from decimal import Decimal
+from functools import cache
 from html import unescape
 from pathlib import Path
 from types import SimpleNamespace
+from typing import get_args
 
 import pytest
 from fastapi import FastAPI, Request
 from fjkit import FjkitConfig, build_environment, mount_fjkit
 from fjkit_charts import (
+    PLOTLY_DIST,
     PLOTLY_FILENAME,
+    PLOTLY_URL,
     PLOTLY_VERSION,
     Chart,
     ChartsPlugin,
     PlotlyFigure,
+    PlotlyTrace,
     assert_no_colour_in,
 )
+from fjkit_charts.figures import _COLOUR
 from pydantic import ValidationError
 
 BAR = {"data": [{"type": "bar", "x": ["a", "b"], "y": [1, 2]}], "layout": {"barmode": "group"}}
+
+
+@cache
+def _bundle_text() -> str:
+    """The vendored bundle, read once: it is 1.4 MB and four tests scan it."""
+    import fjkit_charts
+
+    bundle = Path(fjkit_charts.__file__).parent / "static" / "vendor" / "plotly" / PLOTLY_FILENAME
+    return bundle.read_text(encoding="utf-8")
 
 
 def a_chart(**over) -> Chart:
@@ -86,9 +102,39 @@ class TestFigure:
         chart = a_chart(figure={"data": [{"type": "scatter", "x": [1], "y": [2]}]})
         assert chart.figure.layout == {}
 
-    def test_an_undrawable_trace_type_fails_here_not_in_the_browser(self):
+    @pytest.mark.parametrize("kind", ["scatter3d", "choropleth", "candlestick"])
+    def test_an_undrawable_trace_type_fails_here_not_in_the_browser(self, kind):
+        """Three the cartesian bundle does not register, one from each family the
+        larger `plotly.js-dist-min` would add: 3D, maps, financial."""
         with pytest.raises(ValidationError, match="type"):
-            a_chart(figure={"data": [{"type": "heatmap", "z": [[1]]}], "layout": {}})
+            a_chart(figure={"data": [{"type": kind, "z": [[1]]}], "layout": {}})
+
+    def test_the_literal_is_exactly_what_the_bundle_registers(self):
+        """The invariant `PlotlyTrace` states, held against the bytes rather than
+        against a list written twice.
+
+        Both directions matter, and for different reasons. A type in the
+        `Literal` that the bundle cannot draw validates in the route and renders
+        an empty card with nothing in the console — the failure this field
+        exists to prevent. A type the bundle draws that the `Literal` omits is
+        the opposite: paid for in the wheel, unreachable from an app, and
+        invisible until someone reads the bundle.
+
+        So swapping `PLOTLY_DIST` fails here until the list comes with it.
+        """
+        registered = set(re.findall(r'moduleType:"trace",name:"([a-z0-9]+)"', _bundle_text()))
+        admitted = set(get_args(PlotlyTrace.model_fields["type"].annotation))
+        assert admitted == registered
+
+    @pytest.mark.parametrize("kind", sorted(get_args(PlotlyTrace.model_fields["type"].annotation)))
+    def test_every_admitted_type_validates(self, kind):
+        assert a_chart(figure={"data": [{"type": kind}], "layout": {}}).figure.data[0].type == kind
+
+    def test_a_box_keeps_its_own_attributes(self):
+        """`box` arrived for the distribution it draws, so the attributes that
+        carry one have to survive the tail."""
+        figure = {"data": [{"type": "box", "y": [1, 2, 3, 9], "boxpoints": "all", "name": "high"}]}
+        assert a_chart(figure=figure).figure.model_dump()["data"][0] == figure["data"][0]
 
     def test_the_plotly_tail_survives(self):
         """`extra="allow"` keeps the rest of the library reachable."""
@@ -233,6 +279,44 @@ class TestColourRule:
         chart = a_chart(id="by-owner", figure={"data": [{"type": "bar", "line": {"color": "#fff"}}], "layout": {}})
         with pytest.raises(AssertionError, match="by-owner"):
             assert_no_colour_in(chart)
+
+
+class TestTheImageException:
+    """`image` is the one trace whose payload is colour, so it is checked by type.
+
+    The pattern is blind to it by construction: a raster's `z` is numbers, and
+    no amount of regex over `[[[90, 90, 90]]]` finds a hue. Without this rule
+    the single most hard-coded palette a figure can carry is the one thing the
+    guard waves through.
+    """
+
+    RASTER = {"data": [{"type": "image", "z": [[[90, 90, 90], [220, 220, 220]]]}], "layout": {}}
+
+    def test_the_pattern_alone_would_miss_it(self):
+        """Why the type check had to be added rather than the pattern widened."""
+        assert _COLOUR.search(a_chart(figure=self.RASTER).figure_json) is None
+
+    def test_an_image_is_refused_by_default(self):
+        with pytest.raises(AssertionError, match="image trace"):
+            assert_no_colour_in(a_chart(id="raster", figure=self.RASTER))
+
+    def test_the_message_says_what_to_do_about_it(self):
+        with pytest.raises(AssertionError, match="allow_image=True"):
+            assert_no_colour_in(a_chart(figure=self.RASTER))
+
+    def test_the_opt_out_is_a_keyword_the_caller_writes(self):
+        assert_no_colour_in(a_chart(figure=self.RASTER), allow_image=True)
+
+    def test_the_opt_out_does_not_switch_the_rest_of_the_guard_off(self):
+        """`allow_image=True` says the pixels are intended, not that a hex code
+        somewhere else in the figure is."""
+        chart = a_chart(figure={"data": [{"type": "image", "z": [[[1, 2, 3]]], "line": {"color": "#fff"}}]})
+        with pytest.raises(AssertionError, match="carries the colour literal"):
+            assert_no_colour_in(chart, allow_image=True)
+
+    def test_one_image_in_a_list_fails_the_list(self):
+        with pytest.raises(AssertionError, match="image trace"):
+            assert_no_colour_in([a_chart(), a_chart(id="raster", figure=self.RASTER)])
 
 
 class TestPlugin:
@@ -389,21 +473,36 @@ class TestPlotlyVersion:
 
 def test_this_package_ships_exactly_the_whitelisted_plotly():
     """CHARTER A11(1) lets a plugin distribution pin, vendor and serve its own
-    bundle, and Plotly's basic bundle is this one's: one copy, at the pinned
+    bundle, and Plotly's cartesian bundle is this one's: one copy, at the pinned
     version, under this package's own `static/vendor/` where
-    `scripts/vendor_plotly.py` writes it."""
+    `scripts/vendor_plotly.py` writes it.
+
+    One copy and not two is the half worth a test: switching bundles leaves the
+    previous file in the wheel unless something removes it, served by the same
+    mount, at a filename nothing points at."""
     import fjkit_charts
 
     root = Path(fjkit_charts.__file__).parent
     bundles = list(root.rglob("plotly*.js"))
     assert bundles == [root / "static" / "vendor" / "plotly" / PLOTLY_FILENAME]
-    assert f"v{PLOTLY_VERSION}" in bundles[0].read_text(encoding="utf-8")[:2000]
+    assert f"v{PLOTLY_VERSION}" in _bundle_text()[:2000]
     assert (root / "static" / "charts.js").stat().st_size < 20_000
+
+
+def test_the_bundle_is_the_one_the_vendoring_script_would_fetch():
+    """`PLOTLY_DIST` names the npm distribution so the fetch URL cannot drift
+    from the filename on disk. The banner is the only place the bytes say which
+    build they are, so it is the only thing that can catch a cartesian pin
+    serving basic bytes."""
+    assert PLOTLY_DIST == "plotly.js-cartesian-dist-min"
+    assert "plotly.js (cartesian - minified)" in _bundle_text()[:200]
+    fetched = f"https://cdn.jsdelivr.net/npm/{PLOTLY_DIST}@{PLOTLY_VERSION}/{PLOTLY_FILENAME}"
+    assert fetched == PLOTLY_URL
 
 
 def test_the_kit_no_longer_carries_plotly():
     """The whole point of the split: `pip install fjkit` stops downloading a
-    1.1 MB bundle that only a charts page loads."""
+    1.4 MB bundle that only a charts page loads."""
     import fjkit
 
     assert list(Path(fjkit.__file__).parent.rglob("plotly*.js")) == []

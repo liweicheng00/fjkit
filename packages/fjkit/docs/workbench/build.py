@@ -135,8 +135,8 @@ PAGES = [
             "label": "Why fjkit",
             "title": "Why fjkit, and when not",
             "description": (
-                "Three ways to put a UI on a FastAPI app and what each one costs, and what this "
-                "one gives up in exchange."
+                "Three ways to put a UI on a FastAPI app, what each one costs, and what this one "
+                "gives up in exchange."
             ),
         },
         "zh": {
@@ -178,7 +178,7 @@ PAGES = [
             "title": "Learn fjkit",
             "description": (
                 "Build a FastAPI interface without a front-end toolchain: how the kit is wired, what "
-                "htmx actually sends, what a rejected form does, a brand knob that repaints the "
+                "htmx actually sends, what a rejected form does, a token override that repaints the "
                 "page, and the vocabulary checker."
             ),
         },
@@ -343,7 +343,7 @@ STRINGS = {
         #: gaps are filled with `kbd()`, which yields Markup, and splitting the
         #: sentence keeps the template free of `|safe`.
         "footer_note": [
-            "This site is a fjkit app: it extends ",
+            "This site is a fjkit app. It extends ",
             " and passes ",
             ", so it cannot show you a component the package does not ship.",
         ],

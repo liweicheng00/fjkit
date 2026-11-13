@@ -2089,3 +2089,89 @@ CSS 預算：八個包 24.4–25.1 KB gzip（上限 28 KB）。
 需求來源：poc_app（ClinicalRetriever）。
 
 CSS 預算：八個包 24.5–25.1 KB gzip（上限 28 KB）。
+
+## 2026-11-13 — box trace，與 Plotly bundle 從 basic 換成 cartesian
+
+需求是 `fjkit-charts` 要畫得出盒鬚圖。`PlotlyTrace.type` 的 `Literal` 加一個字串只解決一半：
+**vendored 的 `plotly.js-basic-dist-min` 根本沒有 box 的繪圖程式碼**。實際掃過那份 bundle，
+註冊的 trace module 只有三個（`moduleType:"trace",name:"bar"|"pie"|"scatter"`）；
+`boxmode`、`boxpoints` 兩個字串是軸的 layout 程式碼留下的，不是 trace 本體。
+只放寬型別會造成「伺服器端驗證通過、瀏覽器畫一張空卡、兩邊都不報錯」——
+正是 `type` 當初被型別化要擋掉的那一種失敗。
+
+- **三個預先打包的 bundle，實測位元組**（jsdelivr，3.7.0）：
+  basic 1,119,926；cartesian **1,424,820**；完整版 4,851,164。
+  提案裡 cartesian 約 2.6 MB 的估計是錯的，差額只有 **304,894 bytes**（+27%），
+  gzip 後 472,365（461 KB），原本是 365 KB。決策因此改變：換 bundle 比
+  「wheel 同時收兩份、由 `ChartsPlugin(bundle=…)` 選」便宜。
+- **沒有選雙 bundle。** CHARTER A11(2) 允許（「§4 ceiling governs what a page downloads,
+  not what files exist」），但它會引入一個新的失敗模式：`bundle="basic"` 搭 `type="box"`
+  在驗證階段無法攔截，因為模型不知道哪一個 plugin 實例會去渲染它。
+  用 305 KB 換掉這個套件花了最多力氣消滅的那一類 bug，不划算。
+- **cartesian 註冊十二種 trace**（實測）：bar、box、contour、heatmap、histogram、
+  histogram2d、histogram2dcontour、image、pie、scatter、scatterternary、violin。
+  `Literal` 只開到四種（+`box`），因為每一種都要有一張 demo 圖和一條測試背書。
+  規則反過來寫在 docstring 裡：**`Literal` 可以比 bundle 窄，永遠不可以比它寬**。
+  `test_every_type_the_literal_admits_is_one_the_bundle_registers` 直接拿字串去 bundle 裡找，
+  而不是在測試裡再抄一份清單。
+- **`PLOTLY_DIST` 新增為常數。** 原本 npm distribution 名稱是寫死在
+  `vendor_plotly.py` 的 fetch URL 裡的，pin 改成 cartesian 而 URL 留在 basic
+  不會有任何東西報錯。現在名稱只有一處，`PLOTLY_URL` 由它組出來，
+  並加一條測試比對 bundle 開頭的 banner（`plotly.js (cartesian - minified) v3.7.0`）——
+  那是 bytes 唯一會自報身分的地方。vendoring script 也會刪掉旁邊的舊 bundle：
+  換 bundle 若不刪，上一份會留在 wheel 裡被同一個 mount 服務，而沒有任何東西指向它。
+- **`rangemode: "tozero"` 對 box 是錯的。** `charts.js` 的 `themed()` 一直在 y 軸上強制
+  通過零點。對長條是對的（長度就是量值），對盒鬚圖是錯的：180–260 ms 的延遲分布
+  會拿到 0–260 的軸，盒子被壓成卡片上方五分之一的一道痕。改成 figure 裡含 box trace
+  時交還 Plotly 自己的 range；figure 的 `yaxis` 仍然 merge 在最上層，兩個方向都蓋得掉。
+- **demo 第七張圖**：`services/charts/age.py`，各優先度的停留時數分布，一組一個 `go.Box`，
+  `boxpoints="all"`。八筆 seed 下每個盒子只有兩三個點，四分位數是三個數字的摘要，
+  所以把點全畫出來才誠實。這同時是 box 在真瀏覽器裡的回歸證據。
+- **預算數字更新**：`charts.js` 9,721 / 4,115（原 8,953 / 3,810，增加的是註解）。
+  CHARTER §4.2 原本沒有 Plotly 這一列——bundle 的大小是個選擇，表上卻看不到，
+  所以補了一列並寫明為什麼是 cartesian。
+
+## 2026-11-13 — Literal 開到 bundle 的全部十二種，demo 建 trace 類型陳列區
+
+接著上一筆。換成 cartesian 之後有八種 trace 是「bundle 畫得出來、`Literal` 擋著」的狀態：
+contour、heatmap、histogram、histogram2d、histogram2dcontour、image、scatterternary、violin。
+全部開放，`Literal` 因此變成**恰好等於 bundle 註冊的集合**。
+
+- **不變式從「子集」改成「相等」。** 原本寫的是「`Literal` 可以比 bundle 窄」，實際執行下來那是個會腐爛的狀態：
+  窄掉的那幾種是付了 wheel 重量卻拿不到的東西，而且除非有人去讀 bundle 否則看不出來。
+  改成相等，`test_the_literal_is_exactly_what_the_bundle_registers` 兩個方向都驗，
+  清單從 bundle 的 bytes 裡用 `moduleType:"trace",name:"…"` 撈出來，不在測試裡另抄一份。
+  換 `PLOTLY_DIST` 現在會直接失敗，直到清單跟著改。
+- **`image` 是顏色規則的真正例外，而且 `assert_no_colour_in` 原本看不見它。**
+  image trace 的 `z` 是每像素一組 RGB，顏色在伺服器上決定，瀏覽器沒有任何東西能替它換主題——
+  但 `_COLOUR` 那組 regex 掃的是字串，`[[[90, 90, 90]]]` 裡沒有 `#` 也沒有 `rgb(`，
+  所以整個套件唯一的顏色守衛會放行這張圖裡**最寫死**的一組顏色。
+  改成**按型別檢查**：預設拒絕 image trace，`allow_image=True` 是呼叫端必須自己寫出來的 keyword。
+  這條補的不是 image，是規則本身的漏洞。
+- **`rangemode: "tozero"` 從 opt-out 改成 opt-in。** 上一筆只把 box 排除掉，但 violin 是同一個問題，
+  heatmap 與 image 的 y 軸則根本是位置不是量值。改成只有 `BASELINE`（bar、scatter、histogram、pie）
+  才強制通過零點——標記的長度就是量值的那幾種。
+- **`merge()` 原本只有一層深，ternary 剛好比它深一層。** 主題寫 `ternary.aaxis.gridcolor`，
+  figure 寫 `ternary.aaxis.title`，一層的 merge 會用 figure 的 `aaxis` **整個取代**主題的，
+  於是深色卡片上的 ternary 軸退回 Plotly 的 `#444`。改成對 plain object 遞迴；array 仍然整個取代
+  （figure 的 `x` 是資料，不是對主題的修補）。**這個 bug 是 headless Chrome 的 journey 抓到的，
+  pytest 不可能抓到**——它只在 `_fullLayout` 裡看得見。
+- **兩個 Plotly 在 `layout.font` 之前就解析掉的 chrome 預設**（實測，不是推測）：
+  colorbar 的 `outlinecolor` 是 `#444`（tickfont 有繼承，outline 沒有）；
+  ternary subplot 的 `bgcolor` 是 `#fff`、`aaxis.color` 是 `#444`、`gridcolor` 是 `rgb(180,180,180)`。
+  後者在深色卡片中央放一塊白色面板。兩個都在 `charts.js` 補上，跟當初圓餅 `textfont` 是同一類。
+- **demo 多一個「Every trace type」陳列區**，八張圖，在 htmx swap target 之外——
+  grouping 控制項不會改到任何一張，放進 swap 只是每次重畫八張圖。
+  `charts_page` 因此也注入 `RecordServiceDep`：histogram2d 與 histogram2dcontour 需要第二個數值維度，
+  看板只有一個，所以那兩張畫 Records 的 137 筆（rows × 距今天數）。
+- **實際畫出來才發現的三件事**（都靠截圖，不是測試）：
+  violin 的 KDE 會跑到資料範圍外，軸上出現「−20 小時」，要 `spanmode="hard"`；
+  histogram2dcontour 的 `coloring="heatmap"` 會把整個繪圖區填成色階低端（近白），
+  在深色卡片上是一塊不透明白板，改成 `coloring="lines"`；
+  `stage_over_time` 原本用「距今固定七天一格」分桶，但 seed 的資料是 104–279 天前，
+  全部落進最後一格，畫出一塊純藍——改成按資料實際範圍分桶。
+- **已知且未處理**：Plotly 預設的 sequential 色階是藍→灰→紅，用在計數資料上，
+  中間的灰會被誤讀成「中性」。要修就得讓 `charts.js` 從 token 解出一組色階，
+  那是設計工作，不是這一輪的範圍。figure 不選色階這條規則沒有動。
+- **預算數字**：`charts.js` 12,023 / 4,926（上一筆是 9,721 / 4,115，再上一筆 8,953 / 3,810）。
+  增加的幾乎都是註解與那兩個 chrome 修正。測試 1,972 passed。

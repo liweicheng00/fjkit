@@ -5,16 +5,30 @@ from __future__ import annotations
 import json
 import re
 from datetime import UTC, datetime, timedelta
+from itertools import count
 from pathlib import Path
+from typing import get_args
 
 import pytest
 from app.schemas.charts import Grouping
 from app.schemas.tasks import Priority, Status, Task
 from app.services import charts
+from app.services.records.seed import seed_records
+from app.services.tasks.seed import seed_tasks
+from fjkit_charts import PLOTLY_FILENAME, PlotlyTrace, assert_no_colour_in
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = ROOT / "app" / "templates" / "charts"
 CHARTS_JS = ROOT / "app" / "static" / "js" / "charts.js"
+
+#: The same rows the app opens on, so a count here matches a count on the page.
+TASKS = seed_tasks(count(1))
+RECORDS = seed_records()
+
+#: The board's figures, which the grouping control swaps, and everything the
+#: page draws. Two numbers because the swap returns the first group only.
+SWAPPED = len(charts.build(TASKS, Grouping.OWNER))
+ON_THE_PAGE = SWAPPED + len(charts.gallery(TASKS, RECORDS))
 
 
 @pytest.fixture
@@ -71,6 +85,22 @@ def test_the_trend_window_is_pinned_by_its_caller(tasks):
     assert sum(trace.y) == len(tasks)
 
 
+def test_the_age_spread_is_one_box_per_priority_that_has_a_task(tasks):
+    chart = charts.age_spread(tasks, now=datetime.now(UTC))
+    assert [trace.type for trace in chart.figure.data] == ["box", "box"]
+    # No low-priority task in the fixture, so no third box — an empty box draws
+    # an axis label with nothing under it.
+    assert [trace.name for trace in chart.figure.data] == ["high", "low"]
+    assert sum(len(trace.y) for trace in chart.figure.data) == len(tasks)
+
+
+def test_the_age_spread_plots_every_point_not_just_the_quartiles(tasks):
+    """At this many tasks the box summarises two or three numbers, so the points
+    are the honest part of it."""
+    for trace in charts.age_spread(tasks).figure.data:
+        assert trace.boxpoints == "all"
+
+
 def test_every_summary_describes_the_data_it_was_built_from(tasks):
     """The summary is the chart's text alternative, so it states the numbers, as a sentence."""
     for chart in charts.build(tasks, Grouping.OWNER):
@@ -83,21 +113,34 @@ def test_every_summary_describes_the_data_it_was_built_from(tasks):
 # --------------------------------------------------------------------------- #
 
 
-def test_the_page_renders_every_chart(client):
+def test_the_page_renders_both_groups(client):
     response = client.get("/charts")
     assert response.status_code == 200
-    assert response.text.count("data-chart") == len(charts.build([], Grouping.OWNER))
+    assert response.text.count("data-chart") == ON_THE_PAGE
     assert 'id="charts"' in response.text
 
 
+def test_the_gallery_covers_every_trace_type_the_contract_admits(client):
+    """The gallery exists so the demo draws all twelve, not the four the board
+    needed. A type added to `PlotlyTrace` with no figure here is a type nobody
+    has looked at in a browser."""
+    admitted = set(get_args(PlotlyTrace.model_fields["type"].annotation))
+    everything = charts.build(TASKS, Grouping.OWNER) + charts.gallery(TASKS, RECORDS)
+    drawn = {trace.type for chart in everything for trace in chart.figure.data}
+    assert drawn == admitted, f"never drawn in the demo: {sorted(admitted - drawn)}"
+
+
 def test_the_page_is_the_only_one_that_loads_plotly(client):
-    assert "plotly-basic.min.js" in client.get("/charts").text
+    assert PLOTLY_FILENAME in client.get("/charts").text
     for path in ("/", "/tasks", "/jobs"):
         assert "plotly" not in client.get(path).text
 
 
 def test_the_vendored_bundle_is_actually_served(client):
-    response = client.get("/_fjkit-charts/assets/vendor/plotly/plotly-basic.min.js")
+    """Through `PLOTLY_FILENAME`, not the literal: the plugin owns which bundle
+    it ships, and a demo spelling the name itself breaks on a swap it has no
+    opinion about."""
+    response = client.get(f"/_fjkit-charts/assets/vendor/plotly/{PLOTLY_FILENAME}")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith(("text/javascript", "application/javascript"))
 
@@ -106,7 +149,9 @@ def test_an_htmx_swap_returns_the_cards_and_nothing_else(htmx):
     response = htmx.get("/charts?group=priority")
     assert response.status_code == 200
     assert "<html" not in response.text
-    assert response.text.count("data-chart") == len(charts.build([], Grouping.OWNER))
+    # The board's cards only. The gallery sits outside the target, because
+    # nothing the control changes reaches a gallery figure.
+    assert response.text.count("data-chart") == SWAPPED
     # The grouping control is not part of the swap.
     assert 'name="group"' not in response.text
 
@@ -119,12 +164,20 @@ def test_the_grouping_control_drives_the_swap(client):
 
 
 def test_the_figure_is_typed_with_an_explicit_tail(client):
-    """`PlotlyTrace` types only what the browser branches on and stays open: the rest is Plotly's."""
+    """`PlotlyTrace` types only the trace kind and stays open: the rest is Plotly's.
+
+    The enum is read from the model rather than restated, because its contents
+    are the plugin's business — `test_the_literal_is_exactly_what_the_bundle_registers`
+    in `fjkit-charts` is what pins them to the shipped bundle. What this asserts
+    is that the enum survives the trip into the app's OpenAPI schema.
+    """
     schemas = client.get("/openapi.json").json()["components"]["schemas"]
 
     assert set(schemas["PlotlyTrace"]["properties"]) == {"type"}
     assert schemas["PlotlyTrace"]["additionalProperties"] is True
-    assert set(schemas["PlotlyTrace"]["properties"]["type"]["enum"]) == {"bar", "scatter", "pie"}
+    admitted = set(get_args(PlotlyTrace.model_fields["type"].annotation))
+    assert set(schemas["PlotlyTrace"]["properties"]["type"]["enum"]) == admitted
+    assert {"bar", "scatter", "pie", "box"} <= admitted
 
     assert set(schemas["Chart"]["properties"]) == {
         "id",
@@ -142,12 +195,18 @@ def test_the_figure_is_typed_with_an_explicit_tail(client):
 #: Hex codes and colour function calls.
 HUES = re.compile(r"#(?:[0-9a-fA-F]{3,8})\b|\b(?:rgba?|hsla?|oklch|oklab)\(")
 
+#: The one figure on the page whose payload is colour. `services/charts/raster.py`
+#: is the long version; the short one is that an `image` trace's `z` is an RGB
+#: triple per pixel, so it cannot be re-themed and cannot be pattern-matched.
+#: Named here rather than skipped silently, so removing it breaks a test.
+RASTER = "chart-raster"
+
 
 def test_no_figure_on_the_page_contains_a_colour(client):
     """Colour lives in the token layer, so a rebrand never has to reach into figure JSON."""
     page = client.get("/charts").text
     figures = re.findall(r'data-figure="([^"]*)"', page)
-    assert len(figures) == len(charts.build([], Grouping.OWNER))
+    assert len(figures) == ON_THE_PAGE
     for figure in figures:
         assert not HUES.search(figure), f"a colour reached the figure JSON: {figure[:120]}"
 
@@ -155,28 +214,62 @@ def test_no_figure_on_the_page_contains_a_colour(client):
 def test_no_trace_carries_a_colour_field(tasks):
     from html import unescape
 
-    for chart in charts.build(tasks, Grouping.OWNER):
+    for chart in charts.build(tasks, Grouping.OWNER) + charts.gallery(tasks, RECORDS):
         for trace in chart.figure.model_dump()["data"]:
             marker = trace.get("marker", {})
             assert "color" not in marker, f"{chart.id}: colour belongs to the browser, not the figure"
             assert "colors" not in marker, f"{chart.id}: colour belongs to the browser, not the figure"
+            # No figure picks a ramp either. A heatmap's scale is Plotly's, the
+            # same way a bar's fill is.
+            assert "colorscale" not in trace, f"{chart.id}: the scale is Plotly's, not the server's"
         assert not HUES.search(unescape(chart.figure_json))
 
 
+def test_the_colour_guard_the_plugin_ships_agrees(tasks):
+    """`assert_no_colour_in` is what an app is told to call, so the demo calls it.
+
+    Twice, because the raster is the documented exception: the default refuses
+    an image trace, and the opt-out is a keyword the caller has to write.
+    """
+    everything = charts.build(tasks, Grouping.OWNER) + charts.gallery(tasks, RECORDS)
+    assert_no_colour_in([c for c in everything if c.id != RASTER])
+    assert_no_colour_in(everything, allow_image=True)
+
+    with pytest.raises(AssertionError, match="image trace"):
+        assert_no_colour_in(everything)
+
+
+def test_the_raster_is_the_only_image_on_the_page(tasks):
+    """An exception that spreads is not an exception."""
+    with_image = [
+        chart.id
+        for chart in charts.build(tasks, Grouping.OWNER) + charts.gallery(tasks, RECORDS)
+        if any(trace.type == "image" for trace in chart.figure.data)
+    ]
+    assert with_image == [RASTER]
+
+
 def test_the_default_plotly_template_never_reaches_the_page(client):
-    """Plotly's default template carries its own colours and inflates every figure; neither may reach the page."""
+    """Plotly's default template carries its own colours and inflates every figure; neither may reach the page.
+
+    The size bound is 6 KB rather than the 2 KB it was while every figure was a
+    summary. A binning trace — `histogram2d`, `histogram2dcontour` — is handed
+    raw points and bins them in the browser, so its payload is the 137 records
+    at about 2.4 KB. The template measures 7,621 bytes, so 6 KB still catches
+    the thing this guard is for.
+    """
     from html import unescape
 
     for figure in re.findall(r'data-figure="([^"]*)"', client.get("/charts").text):
         # Checks the parsed layout keys, not the raw text.
         assert "template" not in json.loads(unescape(figure))["layout"]
-        assert len(figure) < 2000, "a figure this size means the template came back"
+        assert len(figure) < 6000, "a figure this size means the template came back"
 
 
 def test_the_charts_page_carries_a_text_alternative(client):
     """The plot area is a canvas no screen reader can read, so the caption has to carry the chart."""
     page = client.get("/charts").text
-    expected = len(charts.build([], Grouping.OWNER))
+    expected = ON_THE_PAGE
     assert page.count("<figcaption>") == expected
     assert page.count('aria-hidden="true"') >= expected
 

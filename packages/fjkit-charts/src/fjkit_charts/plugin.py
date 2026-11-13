@@ -17,13 +17,13 @@ Plotly's own and never change.
 
 **Why the JavaScript is not in the shell.** A plugin cannot inject markup into
 `ui/shell.html` (`fjkit.plugins`), and this is why that rule holds: Plotly's
-basic bundle is 1.1 MB, so a hook letting this plugin put a `<script>` on every
-page would put it on the login screen. Instead the page that draws charts calls
-`chart_scripts()` in its own `{% block scripts %}` and no other page pays. Being
-in the wheel changes what an install contains, not what a page downloads, and §2.2
-budgets the download. Which distribution the bundle lives in decides the first
-of those: an app that never draws a chart does not install `fjkit-charts` and
-never carries the 1.1 MB at all.
+cartesian bundle is 1.4 MB, so a hook letting this plugin put a `<script>` on
+every page would put it on the login screen. Instead the page that draws charts
+calls `chart_scripts()` in its own `{% block scripts %}` and no other page pays.
+Being in the wheel changes what an install contains, not what a page downloads,
+and §2.2 budgets the download. Which distribution the bundle lives in decides
+the first of those: an app that never draws a chart does not install
+`fjkit-charts` and never carries the 1.4 MB at all.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ from pathlib import Path
 from fjkit.plugins import AppSetup, EnvSetup
 from fjkit.templating import static_url
 
-__all__ = ["PLOTLY_VERSION", "ChartsPlugin"]
+__all__ = ["PLOTLY_DIST", "PLOTLY_VERSION", "ChartsPlugin"]
 
 #: This plugin's own templates. Named `templates/charts/` so template names are
 #: `charts/…`, matching how `apidocs` does it.
@@ -44,21 +44,36 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 #: ships of its own.
 STATIC_DIR = Path(__file__).parent / "static"
 
-#: Plotly's basic bundle — scatter, bar and pie. The full `plotly.js-dist-min`
-#: is 4.85 MB of 3D, maps, financial and statistical traces most dashboards
-#: never draw; the basic one is 1.1 MB, and picking the bundle is the only size
-#: knob Plotly offers without a build step.
+#: Plotly's cartesian bundle — 1,424,820 bytes. Picking the bundle is the only
+#: size knob Plotly offers without a build step, and this is the middle one of
+#: three: `plotly.js-basic-dist-min` is 1,119,926 bytes but registers exactly
+#: three trace modules (`bar`, `pie`, `scatter`), and `plotly.js-dist-min` is
+#: 4.85 MB of 3D, maps and financial traces most dashboards never draw.
+#:
+#: The 304,894 bytes between basic and cartesian buy `box`, and with it the rest
+#: of the statistical set — `violin`, `histogram`, `heatmap`, `contour`. A box
+#: plot is the ordinary way to show a distribution rather than a mean, so the
+#: basic bundle's three types were the narrower claim: `PlotlyTrace.type` admits
+#: what this package draws and tests, and that set has to be a subset of what
+#: the shipped bundle can draw. Otherwise a figure validates on the server and
+#: the browser draws an empty box, which is the one failure the type exists to
+#: prevent.
 #:
 #: The pin lives here rather than in `fjkit.vendored` because the bytes do:
 #: `scripts/vendor_plotly.py` writes them under this package's own
 #: `static/vendor/plotly/`, and the kit no longer knows Plotly exists.
 PLOTLY_VERSION = "3.7.0"
 
-PLOTLY_FILENAME = "plotly-basic.min.js"
+#: The npm distribution, named here rather than spelled into the fetch URL, so
+#: `scripts/vendor_plotly.py` cannot download a different bundle from the one
+#: the filename below claims is on disk.
+PLOTLY_DIST = "plotly.js-cartesian-dist-min"
+
+PLOTLY_FILENAME = "plotly-cartesian.min.js"
 
 #: Relative to this plugin's `assets` mount, not the kit's static mount.
 PLOTLY_PATH = f"vendor/plotly/{PLOTLY_FILENAME}"
-PLOTLY_URL = f"https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@{PLOTLY_VERSION}/{PLOTLY_FILENAME}"
+PLOTLY_URL = f"https://cdn.jsdelivr.net/npm/{PLOTLY_DIST}@{PLOTLY_VERSION}/{PLOTLY_FILENAME}"
 
 
 def _installed_plotlyjs_version() -> str | None:

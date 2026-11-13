@@ -21,9 +21,18 @@ config = FjkitConfig(template_dir=APP_DIR / "templates", plugins=(ChartsPlugin()
 {% block scripts %}{{ chart_scripts() }}{% endblock %}
 ```
 
-Plotly's basic bundle ships inside this wheel and is served from the plugin's
-own static mount. Nothing is fetched at runtime, and a page loads the 1.1 MB
-only if it calls `chart_scripts()`.
+Plotly's cartesian bundle ships inside this wheel and is served from the
+plugin's own static mount. Nothing is fetched at runtime, and a page loads the
+1.4 MB only if it calls `chart_scripts()`.
+
+`Chart` accepts exactly the twelve trace types that bundle registers — `bar`,
+`box`, `contour`, `heatmap`, `histogram`, `histogram2d`, `histogram2dcontour`,
+`image`, `pie`, `scatter`, `scatterternary` and `violin`. Any other type fails
+validation in the route rather than drawing an empty box in the browser.
+
+`assert_no_colour_in(charts)` is the test to put in your own suite. It refuses
+an `image` trace, whose `z` is a colour per pixel chosen on the server and
+cannot follow the theme; pass `allow_image=True` when the pixels are the point.
 
 If the app builds figures with plotly.py, that library targets one plotly.js
 release. When its major or minor differs from the bundled one, the plugin emits

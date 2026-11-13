@@ -114,7 +114,7 @@
 {% call stack(8) %}
 
   {% set intro %}
-    Every macro, grouped by the file you import it from. Change a knob and both the preview and the
+    Every macro, grouped by the file you import it from. Change a control and both the preview and the
     Jinja call update. Two rules hold on every section: parameters are closed enumerations, with no
     <code>class=</code> and no colour to pass, and any keyword a macro does not name becomes an HTML
     attribute, so <code>hx_post="/tasks"</code> renders as <code>hx-post="/tasks"</code>.
@@ -134,7 +134,7 @@
       </p>
       <p>
         <code>button_group</code> renders differently by orientation. Horizontal is a <code>row</code> with a
-        gap. Vertical is Basecoat's <code>.button-group</code>: the buttons join into one control with
+        gap. Vertical is Basecoat's <code>.button-group</code>. The buttons join into one control with
         shared borders and no gap.
       </p>
     {% endcall %}
@@ -147,7 +147,7 @@
   {% call lesson("data", "02", "Data", c03) %}
     {% call prose() %}
       <p>
-        The four macros with knobs come first; the rest follow with one rendered example each.
+        The four macros with controls come first; the rest follow with one rendered example each.
       </p>
       <p>
         <code>table</code> renders <code>empty_state</code> itself when <code>rows</code> is empty,
@@ -178,7 +178,7 @@
   {% call lesson("disclosure", "03", "Disclosure", c04) %}
     {% call prose() %}
       <p>
-        <code>collapsible</code> is a native <code>&lt;details&gt;</code>: the open state, the
+        <code>collapsible</code> is a native <code>&lt;details&gt;</code>. The open state, the
         keyboard operation and the disclosure role all come from the element, and Basecoat animates
         it with CSS. <code>tooltip</code> is drawn entirely from a <code>data-tooltip</code>
         attribute — no second element exists.
@@ -200,7 +200,7 @@
     {% call prose() %}
       <p>
         <code>alert</code> is a fact that stays on the page. <code>spinner</code> and
-        <code>skeleton</code> both mean "not yet": use a skeleton when you know the shape of what is
+        <code>skeleton</code> both mean "not yet". Use a skeleton when you know the shape of what is
         coming, a spinner when you do not. <code>dialog</code> interrupts.
         <code>toast</code> outlives the response that raised it.
       </p>
@@ -226,7 +226,7 @@
         Every field macro takes the same <code>name</code>, <code>label</code>, <code>hint</code>,
         <code>error</code> and <code>id</code>, and <code>error</code> replaces the hint rather
         than stacking on it while marking the control <code>aria-invalid</code>. The playground
-        walks five shapes of the same form: the htmx one, a field in error, the long controls, the
+        steps through five shapes of the same form: the htmx one, a field in error, the long controls, the
         radios-versus-select choice, and switches inside a <code>fieldset</code>.
       </p>
       <p>
@@ -287,10 +287,10 @@
         class the stylesheet contains.
       </p>
       <p>
-        The dashed tiles are your content. Change the knobs and the source line changes with them.
+        The dashed tiles are your content. Change the controls and the source line changes with them.
       </p>
       <p>
-        <code>page_header</code> takes a block, and the block is its actions: the title, the
+        <code>page_header</code> takes a block, and the block is its actions. The title, the
         description and the buttons stay on one line at every width. The header at the top of this
         page is the same macro with no actions.
       </p>
@@ -359,14 +359,14 @@
         arrives in a swap works with nothing extra.
       </p>
       <p>
-        A trigger and its panel find each other through four related ids. A wrong one fails silently:
-        the panel opens but is never announced, or never opens. Every macro here takes one
+        A trigger and its panel find each other through four related ids. A wrong one fails silently.
+        The panel opens but is never announced, or never opens. Every macro here takes one
         <code>id</code> and derives the other three.
       </p>
       <p>
         <code>select_menu</code> and <code>combobox</code> put their value in a hidden input,
         pre-filled on the server, so a swap that re-renders the fragment keeps the selection. Prefer
-        <code>select_field</code> when it is enough: a native <code>&lt;select&gt;</code> is one element
+        <code>select_field</code> when it is enough. A native <code>&lt;select&gt;</code> is one element
         and needs no script.
       </p>
       <p>
@@ -378,7 +378,7 @@
         string, and the route answers 422.
       </p>
       <p>
-        A multiple <code>combobox</code> is laid out for a narrow column: the filter box takes the
+        A multiple <code>combobox</code> is laid out for a narrow column. The filter box takes the
         first line on its own, the chips wrap below it, the control fills the column and the list is
         anchored to the box rather than to the bottom of the chips, so picking several options in a
         row never moves the option under the pointer. Long labels wrap in the list and truncate in a
@@ -408,17 +408,16 @@
       <p>
         <code>shell.html</code> has no macros and no preview, because the preview is this page. It
         owns the <code>&lt;head&gt;</code>, the theme flash-guard, the asset links, the toaster and
-        the header/main/footer skeleton. What it does not own — your brand, your navigation, your
-        footer text — are blocks.
+        the header/main/footer skeleton. Your brand, your navigation and your footer text are blocks.
       </p>
       <p>
         Filling the <code>sidebar</code> block changes the layout to a side column plus a top bar,
-        and the shell adds the <code>sidebar_trigger</code> to the header. No flag is needed.
+        and the shell adds the <code>sidebar_trigger</code> to the header. There is no flag to set.
       </p>
       <p>
         The header stays pinned to the top of the viewport while the page scrolls. It is
         <code>position: sticky</code>, not <code>fixed</code>, so the bar keeps its own space and
-        nothing in <code>main</code> has to be padded to clear it. With a <code>sidebar</code>, the
+        you do not have to pad anything in <code>main</code> to clear it. With a <code>sidebar</code>, the
         bar spans the whole width and the rail starts underneath it. A page that needs the header
         in the flow instead, such as an embedded or print layout, overrides the
         <code>header</code> block with its own <code>&lt;header&gt;</code>.
@@ -435,7 +434,7 @@
     {% call prose() %}
       <p>
         The rail on the left of this page is this macro. It is <code>position: fixed</code>, so it has
-        no preview card; the call that produced it is printed below.
+        no preview card; the call that produced it is below.
       </p>
       <p>
         Links take route names and icons take Lucide names. <code>open</code> sets the starting state
@@ -460,8 +459,8 @@
         <code>columns</code> is a list of dicts — <code>label</code>, and optionally
         <code>align</code>, <code>width</code>, <code>sort</code>, <code>sort_url</code> or
         <code>select</code> — and the macro tests <code>rows</code> to decide whether to render your
-        body or the empty state. It takes <code>rows</code> without iterating them for that reason:
-        the caller writes no if-rows-else branch.
+        body or the empty state. It takes <code>rows</code> without iterating them for that reason. The
+        caller writes no if-rows-else branch.
       </p>
       <p>
         Render each row with a macro call inside your loop. <code>{% raw %}{% include %}{% endraw %}</code>
@@ -470,7 +469,7 @@
       </p>
       <p>
         A column carrying a <code>sort_url</code> becomes a sortable header, and
-        <code>pagination</code> goes under the table. Neither builds a URL: the router owns the query
+        <code>pagination</code> goes under the table. Neither builds a URL. The router owns the query
         string, because it is the only thing that knows which filters are on. Both render real
         <code>href</code>s and take <code>target=</code> to add the htmx swap on top, so sorting and
         paging work without JavaScript and the URL can be bookmarked.
@@ -483,16 +482,16 @@
       <p>
         <code>resizable=true</code> puts a handle on the trailing edge of each labelled column. A
         visitor drags it, or focuses it and presses the arrow keys; Home or a double-click gives the
-        column back its natural width. The widths are kept in <code>localStorage</code> under the
+        column back its natural width. The script keeps the widths in <code>localStorage</code> under the
         table's <code>id</code>, which is why a resizable table must have one, and they come back
         after a reload and after an htmx swap. The page loads <code>resize_scripts()</code>; without
-        it the handles stay hidden and the table is the ordinary one. CSS cannot do this:
+        it the handles stay hidden and the table is the ordinary one. CSS cannot do this.
         <code>resize</code> works only on a block box with overflow, and a table cell is not one.
       </p>
       <p>
         <code>page_size</code> is a <code>&lt;form method="get"&gt;</code>, because a bare
         <code>&lt;select&gt;</code> cannot submit without a script. Its <code>url</code> must carry no
-        query string: a GET submit replaces the whole query with the form's fields, so pass the
+        query string. A GET submit replaces the whole query with the form's fields, so pass the
         filters in <code>keep</code>. Do not keep the page number; a new page size invalidates it.
       </p>
     {% endcall %}

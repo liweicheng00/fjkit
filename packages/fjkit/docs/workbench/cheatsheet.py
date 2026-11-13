@@ -117,7 +117,7 @@ GROUPS = [
                 "macros": [
                     _m(
                         "morph_scripts()",
-                        en="Loads the idiomorph extension, which adds the morph:* swap styles: the "
+                        en="Loads the idiomorph extension, which adds the morph:* swap styles. The "
                         "reply patches the DOM instead of replacing it, so focus, scroll position, "
                         "an open details and a ticked box survive a sort. Two halves — the element "
                         'whose swaps should morph declares hx-ext="morph", and the swap itself is '
@@ -183,7 +183,7 @@ GROUPS = [
                     _m(
                         'split(aside="md", gap=6)',
                         block="slots",
-                        en="Called as {% call(slot) split() %}, and the block is rendered twice — "
+                        en="Called as {% call(slot) split() %}, and the macro renders the block twice — "
                         'once with slot="main", once with slot="aside".',
                         zh="用 {% call(slot) split() %} 呼叫，區塊會被渲染兩次——"
                         'slot="main" 一次，slot="aside" 一次。',
@@ -255,7 +255,7 @@ GROUPS = [
                     ),
                     _m(
                         "sidebar_item(label, href, active=false, icon_name=none, lead=none)",
-                        en="For a URL that is not one route: the same route with a different "
+                        en="For a URL that is not one route, such as the same route with a different "
                         "parameter per row. lead puts a badge in a fixed-width cell so labels align.",
                         zh="給不是單一路由的網址用：同一條路由、每列帶不同參數。"
                         "lead 把徽章放進固定寬度的格子，讓標籤對齊。",
@@ -338,7 +338,7 @@ GROUPS = [
                         "description_item(term, value=none)",
                         block="value",
                         optional=True,
-                        en="A native <dl>: the value is announced as the definition of its term. "
+                        en="A native <dl>. A screen reader announces the value as the definition of its term. "
                         "item_list is a list of things; this is a list of facts about one.",
                         zh="原生的 <dl>：值會被朗讀成該詞條的定義。item_list 是一串東西的清單，"
                         "這個是同一個東西的一串事實。",
@@ -353,7 +353,7 @@ GROUPS = [
                     _m(
                         "avatar(name, src=none, size=\"\", initials=none, badge_tone=none,\n"
                         "       badge_icon=none)",
-                        en="Initials are derived from name unless you override them.",
+                        en="The macro derives the initials from name unless you override them.",
                         zh="沒有另外指定時，縮寫由 name 推導。",
                     ),
                     _m("avatar_group(overflow=none, label=none)", block="avatar()"),
@@ -390,7 +390,7 @@ GROUPS = [
                         "case; pass rows=none to always render the body yourself. A column with "
                         "a sort_url becomes a sortable header, and target turns those links into "
                         "htmx swaps. resizable=true puts a drag handle on each labelled column "
-                        "and needs an id=, the key the widths are stored under. Columns sharing a "
+                        "and needs an id=, the key it stores the widths under. Columns sharing a "
                         "group get one heading above them in a second header row.",
                         zh="columns 是 dict 的清單——label，可選 align、width、sort、sort_url、select 或 group。"
                         "傳了 rows，空資料的情況就歸 macro 管；傳 rows=none 則永遠自己渲染 body。"
@@ -403,7 +403,7 @@ GROUPS = [
                         block="content",
                         optional=True,
                         en="Pass value for text, or omit it and use a block for markup. tone is a "
-                        "closed lookup, so no colour can be passed through.",
+                        "closed lookup, so you cannot pass a colour through.",
                         zh="文字用 value，標記則省略 value 改用區塊。tone 是封閉查表，顏色傳不進來。",
                     ),
                     _m(
@@ -423,7 +423,7 @@ GROUPS = [
                     _m(
                         'select_count(name="selected", label="{n} selected",\n'
                         '             zero="None selected")',
-                        en="The live readout of how many rows are picked. Both strings travel in "
+                        en="The live readout of how many rows are picked. You write both strings in "
                         "the markup, so a translated page translates them. Pass zero=none and it "
                         "hides while nothing is selected.",
                         zh="即時顯示選了幾列。兩個字串都寫在標記裡，所以翻譯頁面能翻譯它們。"
@@ -449,9 +449,9 @@ GROUPS = [
                         '          param="per_page", keep=none, target=none,\n'
                         '          label="Rows per page", apply_label="Apply")',
                         en="A GET form, because a select on its own cannot act on a change. url must "
-                        "carry no query string — a native submit throws it away — so filters travel "
+                        "carry no query string — a native submit throws it away — so pass the filters "
                         "in keep as hidden fields. Never the page number. With a target the select "
-                        "applies itself and the submit button is only rendered without scripting.",
+                        "applies itself, and the submit button renders only without scripting.",
                         zh="一個 GET form，因為單獨一個 select 沒有辦法對變更做出反應。"
                         "url 不能帶 query string——原生送出會把它整段丟掉——所以篩選要放在 keep，"
                         "以 hidden 欄位傳遞，但絕不放頁碼。給了 target，select 自己就會套用，"
@@ -525,7 +525,7 @@ GROUPS = [
                         "           required=false, hint=none, error=none, id=none)",
                         en="type is where dates live: date, time, datetime-local, month and week "
                         "are native inputs, and there is no date_field because a macro around one "
-                        "would add a name and nothing else. min/max/step ride in as attributes. "
+                        "would add a name and nothing else. min/max/step pass through as attributes. "
                         "Not file — an upload cannot be restored from value after a 422.",
                         zh="日期就在 type 裡：date、time、datetime-local、month、week 都是原生 "
                         "input，沒有 date_field，因為包一層只多一個名字。min/max/step 當一般屬性傳。"
@@ -538,10 +538,10 @@ GROUPS = [
                     _m(
                         "file_field(name, label=none, accept=none, multiple=false,\n"
                         "           required=false, hint=none, error=none, id=none)",
-                        en="No value parameter: a browser will not let a page refill a file input, "
-                        "so a 422 redraw comes back with this box empty and every other field "
-                        "still typed in. The form needs encoding=\"multipart\" or the route is "
-                        "handed the file's name as a string.",
+                        en="No value parameter, because a browser will not let a page refill a file "
+                        "input. A 422 redraw comes back with this box empty and every other field "
+                        "still typed in. The form needs encoding=\"multipart\" or the route gets "
+                        "the file's name as a string.",
                         zh="沒有 value 參數：瀏覽器不允許頁面替 file input 填回內容，"
                         "所以 422 重畫時這一格是空的，其他欄位仍保留輸入。表單必須加 "
                         "encoding=\"multipart\"，否則路由收到的是檔名字串。",
@@ -671,9 +671,9 @@ GROUPS = [
                         'tab_panel("detail", lazy=url_for(request, "detail"),\n'
                         '          on=["task-selected"], include="[name=task_id]")',
                         block="the placeholder, or the open tab's body",
-                        en="lazy is a URL: the panel fetches its own body when its tab is shown, "
+                        en="lazy is a URL. The panel fetches its own body when its tab is shown, "
                         "and the block is what stands in until it arrives. The open tab is the "
-                        "exception: it does not fetch at load, so its block is the real body, "
+                        "exception. It does not fetch at load, so its block is the real body, "
                         "rendered by the page from the partial lazy returns. on lists the "
                         "broadcasts it follows while it is visible, include the selector for "
                         "what it sends. Not revealed — a panel hidden by display:none reports "
@@ -747,8 +747,8 @@ GROUPS = [
                         "         visible_label=none, hint=none, error=none,\n"
                         '         search=none, search_param="q", search_delay=250)',
                         en="select_menu with a filter box. Same multiple=true rule, same "
-                        "visible_label. search=<url> moves the filter to the server: the route is "
-                        "asked ?q=<typed> and answers with option rows only. To act on a pick, "
+                        "visible_label. search=<url> moves the filter to the server. The route receives "
+                        "?q=<typed> and answers with option rows only. To act on a pick, "
                         "listen for change on the root — hx_trigger=\"change target:#<id>\" — "
                         "because that is where Basecoat dispatches it.",
                         zh="加了篩選框的 select_menu。multiple=true 的規則相同，visible_label 也相同。"
@@ -1019,7 +1019,7 @@ HTMX = [
                 'hx-swap="beforeend"    append   (afterbegin prepends)\n'
                 'hx-swap="afterend"     insert after  (beforebegin: before)\n'
                 'hx-swap="delete"       remove it   (none: change nothing)',
-                "en": "Modifiers ride on the same string: swap:200ms, settle:100ms, scroll:top.",
+                "en": "Modifiers attach to the same string: swap:200ms, settle:100ms, scroll:top.",
                 "zh": "修飾詞接在同一個字串上：swap:200ms、settle:100ms、scroll:top。",
             },
         ],
