@@ -400,7 +400,8 @@ def workload():
       <h4>trace，以及它們代表什麼</h4><p>Python，寫在 Chart.figure。只有算出這些數字的 service 知道其中哪一個該是長條</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>軸標文字、格線、刻度顏色、圓餅切片之間的間隙</h4><p>瀏覽器。charts.js 每次繪製時從當下的 token 解析出來，因為 Plotly 的預設是淺灰底上的深灰字——一張為白底畫的圖，卻可能落在深色頁面上。切換主題就是重畫一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>series 的顏色</h4><p>Plotly 自己的色盤，主題不動它。figure 本身完全不帶顏色：寫死色碼會違反 fjkit check 對模板的同一條規則，而且在兩種配色其中之一必定是錯的</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>高度</h4><p>Chart.height，由負責繪製的同一支腳本套用。在 markup 裡寫 style=&#34;&#34; 是 app 開始自己寫 CSS 的另一條路</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>高度</h4><p>Chart.height，由負責繪製的同一支腳本套用，而且在繪製之前就先套用。在 markup 裡寫 style=&#34;&#34; 是 app 開始自己寫 CSS 的另一條路</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>每張圖什麼時候畫</h4><p>瀏覽器，在圖表第一次進入視野的時候。畫一張大約 20 ms，所以十五張圖的頁面只畫螢幕上那四張，其餘十一張維持已配好高度的空盒等著；切換主題只重畫已經畫過的，htmx swap 換進一塊沒有人在看的區域則一張都不畫。橫向捲動列裡的圖，只要還在列的視野之外就算沒進入視野。某張圖非得出現在第一次繪製不可時，傳 chart(item, eager=true)</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>替代文字</h4><p>Chart.summary，用建 trace 的同一批數字寫出來。Plotly 的 SVG 是上千個沒有標籤的 &lt;path&gt;，所以螢幕閱讀器讀到的是這句 caption；沒有 JavaScript 時，它就是全部的內容</p>    </section>  </div></div></div>
   </div>
 
@@ -420,7 +421,8 @@ def workload():
       <h4>用的是 cartesian bundle，不是完整版</h4><p>1,424,820 bytes，上線後 461 KB。plotly.js-dist-min 是 4.85 MB 的 3D、地圖與金融 trace，多數儀表板一個都不畫；basic build 小 305 KB，但只註冊 bar、scatter 與 pie，從它畫不出盒鬚圖。在沒有 build step 的前提下，在三個預先打包的 bundle 之間挑一個，是 Plotly 給的唯一一個體積旋鈕</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>KPI 儀表板的 gauge 不在裡面</h4><p>indicator、table、funnel、waterfall、treemap、sunburst 與 sankey 只存在於 4.85 MB 的完整版。box 當初有 cartesian 這個中間階可以踩，這幾種沒有</p>    </section>  </div><div class="item" data-clamp="false">    <section>
       <h4>在 wheel 裡不等於在頁面上</h4><p>bundle 放在哪個 distribution，決定一次安裝帶進什麼；§4.2 管的是一個頁面下載什麼。從不畫圖的 app 兩者都不付</p>    </section>  </div><div class="item" data-clamp="false">    <section>
-      <h4>版本 pin 跟著 bytes 走</h4><p>PLOTLY_VERSION 在 fjkit_charts 裡，由 scripts/vendor_plotly.py 抓取。kit 已經不知道 Plotly 的存在</p>    </section>  </div></div></div>
+      <h4>版本 pin 跟著 bytes 走</h4><p>PLOTLY_VERSION 在 fjkit_charts 裡，由 scripts/vendor_plotly.py 抓取。kit 已經不知道 Plotly 的存在</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>figure 跟著頁面一起送</h4><p>每一張 figure 都在 HTML 的 data-figure 裡，所以沒有任何一張圖需要第二次請求。這也是「進入視野才畫」修不到的另一半：figure 很大的頁面，不管畫不畫都要在 response 裡付這筆錢。payload 才是問題時，把 card 改成由它自己的路由回傳，用 hx-trigger=&#34;intersect once&#34; 取</p>    </section>  </div></div></div>
   </div>
 
 </section></div></div>
