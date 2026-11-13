@@ -30,7 +30,7 @@
 {% set features = [
   ("No build step",
    "No package.json, no node_modules, no watcher. The stylesheet is compiled when fjkit is released, not when your app runs."),
-  ("One colour knob",
+  ("One place for every colour",
    "Every colour is a token. Rebranding is one stylesheet, and status colours stay put, so green still means done."),
   ("The htmx endpoint is also the JSON API",
    "A route that renders a partial answers htmx with HTML and every other caller with its response model as JSON."),
@@ -43,27 +43,30 @@
     Pages, tables, forms, navigation and htmx swaps for FastAPI, written as Jinja macros next to
     your routes.
   {% endset %}
-  {{ page_header("A Fast UI for FastAPI", intro) }}
+  {{ page_header("A fast UI for FastAPI", intro) }}
 
   {#
     The problem, before the features.
 
     What this page used to open with was three features, and a feature only
     means something to a reader who already has the problem. Two paragraphs,
-    naming the two routes a FastAPI author actually takes today and what each
-    one costs, so "no build step" arrives as the answer to something.
+    naming the two answers a FastAPI author actually reaches for today and what
+    each one costs, so "no build step" arrives as a fix for something.
 
-    Neither route is named as a product. A comparison against named tools is a
+    "Route" is FastAPI's own word for an endpoint, so these are answers, not
+    routes.
+
+    Neither answer is named as a product. A comparison against named tools is a
     page that goes stale on somebody else's release schedule.
   #}
   {% call prose() %}
     <p>
-      A FastAPI service that needs a real interface has two usual routes. Write Jinja and hand-roll
+      A FastAPI service that needs a real interface has two usual answers. Write Jinja and hand-roll
       the CSS, and you own a design system you did not set out to build. Reach for a front-end
       framework, and you own a second build, a second language and a second thing to deploy.
     </p>
     <p>
-      fjkit is a third route. The interface is Jinja macros beside your routes, and the stylesheet
+      fjkit is a third answer. The interface is Jinja macros beside your routes, and the stylesheet
       was compiled when fjkit was released — so your repository gets no <code>package.json</code>,
       and there is nothing to rebuild when you edit a template.
     </p>
@@ -87,7 +90,7 @@
          alt="The same task board in dark mode.">
   {% endcall %}
 
-  {{ defs("The key features are:", features) }}
+  {{ defs("What the third answer gives you", features) }}
 
   {# ============================================================== 01 #}
   {% set i01 %}Install one package, write a handler and a template, run the app.{% endset %}
@@ -141,7 +144,7 @@ def overview() -> Overview:
     {% call prose() %}
       <p>
         Open <code>http://127.0.0.1:8000</code>. The page has a header, a dark-mode toggle and one
-        stat card. The template has no CSS classes and no colours: macros take named options such as
+        stat card. The template has no CSS classes and no colours. Macros take named options such as
         <code>tone="success"</code>, and the shipped stylesheet covers them.
       </p>
       <p>
@@ -157,7 +160,7 @@ def overview() -> Overview:
     {% call prose() %}
       <p>
         You write FastAPI and need navigation, dark mode, a filterable table and a form that
-        validates. If you want React, Vue or Svelte, use them instead: fjkit renders on the server
+        validates. If you want React, Vue or Svelte, use them instead. fjkit renders on the server
         and has no client-side component model.
       </p>
     {% endcall %}
@@ -183,7 +186,7 @@ def overview() -> Overview:
         ("static/vendor/", "htmx and Basecoat's JavaScript, pinned and served out of the package"),
         ("1,767 icons", "Lucide, inlined by name. No icon font, no sprite request, no runtime JS."),
       ]) }}
-      {{ defs("The whole surface you touch", [
+      {{ defs("Everything you call", [
         ("FjkitConfig, mount_fjkit", "the wiring, once per app"),
         ("@render", "names the template; the handler returns data"),
       ]) }}

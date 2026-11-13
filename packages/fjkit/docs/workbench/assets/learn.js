@@ -3,7 +3,7 @@ const WIRING = [
   {
     file: "app/main.py",
     lang: "python",
-    why: "Two calls. FjkitConfig holds every knob; mount_fjkit serves the kit's assets from inside the installed package and compiles the environment once, at construction.",
+    why: "Two calls. FjkitConfig holds every setting; mount_fjkit serves the kit's assets from inside the installed package and compiles the environment once, at construction.",
     code: `from fastapi import FastAPI
 from fjkit import FjkitConfig, mount_fjkit
 
@@ -528,7 +528,7 @@ const PATTERNS = [
     tag: 'hx-trigger="keyup changed delay:400ms"',
     doc: { label: "examples/active-search", href: "https://htmx.org/examples/active-search/" },
     when: "<b>A list narrows while the user types</b> — and you want one request, not one per keystroke.",
-    caption: "changed drops the request when the value did not actually move: arrows, modifiers, a retyped character. delay:400ms restarts the countdown on every keystroke, so a fast typist sends one request instead of twelve. The extra search event catches the native clear button that type=“search” gets for free.",
+    caption: "changed drops the request when the value did not move: arrows, modifiers, a retyped character. delay:400ms restarts the countdown on every keystroke, so a fast typist sends one request instead of twelve. The extra search event catches the native clear button that type=\"search\" gets for free.",
     files: [
       {
         label: "tasks/_search.html",
@@ -644,7 +644,7 @@ def board(service, status=None, owner=None) -> BoardResponse:
           aria_label="Delete " ~ task.title,
           hx_delete=url_for(request, "tasks_delete", task_id=task.id) ~ filter_query,
           hx_target="#board", hx_swap="outerHTML",
-          hx_confirm="Delete “" ~ task.title ~ "”?") }}`,
+          hx_confirm="Delete '" ~ task.title ~ "'?") }}`,
       },
       {
         label: "router.py",
@@ -665,7 +665,7 @@ def delete_task(service: ServiceDep, task_id: int,
     tag: 'hx-trigger="load delay:2s"',
     doc: { label: "docs/#polling", href: "https://htmx.org/docs/#polling" },
     when: "<b>A job, an import, a build.</b> Refresh while it runs, and stop when it finishes.",
-    caption: "Polling that ends when the work does: while the job runs the partial re-arms itself, and the finished render carries no hx-trigger, so the last response is the one that stopped asking. hx-trigger=“every 2s” never stops on its own — the server has to answer 286, htmx's stop-polling status, or something has to remove the element. Either shape costs one request per interval per open tab, so keep the handler cheap and the interval honest. Below a couple of seconds, reach for SSE instead.",
+    caption: "Polling that ends when the work does. While the job runs the partial re-arms itself, and the finished render carries no hx-trigger, so the last response is the one that stopped asking. hx-trigger=\"every 2s\" never stops on its own — the server has to answer 286, htmx's stop-polling status, or something has to remove the element. Either shape costs one request per interval per open tab, so keep the handler cheap and the interval honest. Below a couple of seconds, reach for SSE instead.",
     files: [
       {
         label: "jobs/_job.html",
@@ -730,7 +730,7 @@ def tasks_report(service: ServiceDep) -> ReportResponse:
     tag: 'hx-target="closest tr"',
     doc: { label: "examples/click-to-load", href: "https://htmx.org/examples/click-to-load/" },
     when: "<b>A long list, one page at a time</b> — with no page number living in the browser.",
-    caption: "The sentinel row replaces itself with the next page, which carries the next sentinel — or nothing, when the rows run out. Nothing is counted on the client: the only thing that advances is the cursor the server sent. Swap the trigger to revealed and the same endpoint becomes infinite scroll; keep the button and the list stays reachable from the keyboard.",
+    caption: "The sentinel row replaces itself with the next page, which carries the next sentinel — or nothing, when the rows run out. The client counts nothing. The only thing that advances is the cursor the server sent. Swap the trigger to revealed and the same endpoint becomes infinite scroll; keep the button and the list stays reachable from the keyboard.",
     files: [
       {
         label: "tasks/_rows.html",
@@ -844,7 +844,7 @@ def update_task(service: ServiceDep, task_id: int, title: Annotated[str, Form()]
     tag: "change — and hx-include",
     doc: { label: "examples/value-select", href: "https://htmx.org/examples/value-select/" },
     when: "<b>Pick a project, and the owner list narrows</b> to the people on it.",
-    caption: "A select fires on change by default, so there is no hx-trigger to write, and htmx sends the value of the element that fired — the query parameter is simply the field's name. When the endpoint needs more than that one field, hx-include names the rest. The options are (value, label) pairs built in the service; the template never maps a domain value to a label.",
+    caption: "A select fires on change by default, so there is no hx-trigger to write, and htmx sends the value of the element that fired — the query parameter is the field's name. When the endpoint needs more than that one field, hx-include names the rest. The options are (value, label) pairs built in the service; the template never maps a domain value to a label.",
     files: [
       {
         label: "tasks/_form.html",
