@@ -1,34 +1,59 @@
 {#
-  The charts page: the shell, a grouping control and the chart cards. Loads Plotly
-  with `chart_scripts()`.
+  The charts page: the shell, a grouping control, the board's cards, and the
+  trace-type gallery. Loads Plotly with `chart_scripts()`.
+
+  Two groups, one page. The board's seven are the htmx target; the gallery sits
+  outside it, because nothing on the page changes a gallery figure and a swap
+  that replaced them would redraw eight charts to no effect.
 #}
 {% extends "base.html" %}
 {% from "charts/macros.html" import chart_scripts %}
 {% from "ui/data.html" import kbd %}
 {% from "ui/form.html" import select_field %}
-{% from "ui/layout.html" import page_header, stack %}
+{% from "ui/layout.html" import divider, grid, page_header, section, stack %}
+{% from "charts/macros.html" import chart %}
 
 {% block title %}Charts{% endblock %}
 
 {% block content %}
   {% set note %}
-    Six views of the same board. The series run on Plotly's own palette; what
-    follows the theme is everything around them — axis text, grid lines, the
-    gaps between slices — resolved from the live tokens each time the page
-    redraws. The figures themselves carry no colour at all, which is what keeps
-    {{ kbd("fjkit check") }} honest about a page it cannot read into.
+    Seven views of the same board: six totals and one distribution. The series
+    run on Plotly's own palette; what follows the theme is everything around
+    them — axis text, grid lines, the gaps between slices — resolved from the
+    live tokens each time the page redraws. The figures themselves carry no
+    colour at all, which is what keeps {{ kbd("fjkit check") }} honest about a
+    page it cannot read into.
   {% endset %}
 
   {{ page_header("Charts", note) }}
 
-  {% call stack(4) %}
-    {{ select_field("group", label="Break the workload down",
-                    options=grouping_options, selected=active_grouping,
-                    hx_get=url_for(request, "charts_page"),
-                    hx_target="#charts", hx_swap="outerHTML",
-                    hx_push_url="true") }}
+  {% call stack(6) %}
+    {% call stack(4) %}
+      {{ select_field("group", label="Break the workload down",
+                      options=grouping_options, selected=active_grouping,
+                      hx_get=url_for(request, "charts_page"),
+                      hx_target="#charts", hx_swap="outerHTML",
+                      hx_push_url="true") }}
 
-    {% include "charts/_charts.html" %}
+      {% include "charts/_charts.html" %}
+    {% endcall %}
+
+    {{ divider() }}
+
+    {% set gallery_note %}
+      The other eight trace types the figure contract admits, one figure each,
+      over the same board and the Records dataset. Twelve in total, which is
+      every trace the bundled Plotly build registers — a type outside the twelve
+      fails validation in the route rather than drawing an empty card. The last
+      one is the exception to everything above: its pixels are chosen on the
+      server, so it does not follow the theme.
+    {% endset %}
+
+    {% call section("Every trace type", gallery_note) %}
+      {% call grid(2) %}
+        {% for item in gallery %}{{ chart(item) }}{% endfor %}
+      {% endcall %}
+    {% endcall %}
   {% endcall %}
 {% endblock %}
 
