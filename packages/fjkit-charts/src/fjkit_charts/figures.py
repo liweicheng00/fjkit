@@ -23,6 +23,10 @@ it. The guard is a test that scans the rendered figure JSON, which does not care
 which field the bytes came from. `ChartsPlugin` ships that test as
 `fjkit_charts.assert_no_colour_in`, so an app gets it in one line.
 
+One trace type is the exception and is handled by name rather than by pattern:
+an `image` trace's `z` is a colour per pixel, and there is no notation for the
+pattern to find. `assert_no_colour_in` rejects it unless the caller opts in.
+
 **plotly is not a dependency of fjkit.** `Chart` accepts anything with a
 `to_plotly_json()`, which is its whole required surface, so this package never
 imports plotly. The app that builds the figures declares it.
@@ -50,9 +54,19 @@ __all__ = [
 class PlotlyTrace(BaseModel):
     """One series, in Plotly's vocabulary.
 
-    `type` is a `Literal` rather than `str` because the browser branches on it:
-    a fourth trace kind arriving unannounced renders a silent empty chart, which
-    is how `mpl_to_plotly` fails.
+    `type` is a `Literal` rather than `str` because an unregistered trace kind
+    renders a silent empty chart rather than an error, which is how
+    `mpl_to_plotly` fails. The twelve here are exactly the trace modules the
+    vendored cartesian bundle registers — not a subset, and never a superset.
+    `type="scatter3d"` would otherwise validate here and draw nothing there, and
+    catching that in the route is the whole reason this field is typed.
+
+    `test_the_literal_is_exactly_what_the_bundle_registers` holds both halves of
+    that equality against the bundle's own bytes, so swapping `PLOTLY_DIST` in
+    `plugin.py` fails until this list is brought with it.
+
+    `image` is the one type whose payload *is* colour — see `assert_no_colour_in`,
+    which rejects it unless the caller opts in.
 
     Everything else — `x`, `values`, `orientation`, `hovertemplate` — comes
     through `extra="allow"` untyped. That tail is what makes the full library
@@ -61,7 +75,20 @@ class PlotlyTrace(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    type: Literal["bar", "scatter", "pie"]
+    type: Literal[
+        "bar",
+        "box",
+        "contour",
+        "heatmap",
+        "histogram",
+        "histogram2d",
+        "histogram2dcontour",
+        "image",
+        "pie",
+        "scatter",
+        "scatterternary",
+        "violin",
+    ]
 
 
 class PlotlyFigure(BaseModel):
@@ -171,7 +198,7 @@ _COLOUR = re.compile(
 )
 
 
-def assert_no_colour_in(charts: Any) -> None:
+def assert_no_colour_in(charts: Any, *, allow_image: bool = False) -> None:
     """Raise if any figure carries a colour. For an app's own test suite.
 
         from fjkit_charts import assert_no_colour_in
@@ -187,14 +214,36 @@ def assert_no_colour_in(charts: Any) -> None:
     browser's parser then discards it silently. A token name on the server is
     not a token; it is a typo with a plausible shape.
 
+    **`image` is checked by type, not by pattern.** Every other trace describes
+    data and lets the browser colour it; an `image` trace's `z` *is* the colour,
+    one RGB triple per pixel, chosen on the server. The pattern cannot see it —
+    `[[[31, 119, 180]]]` holds no `#`, no `rgb(`, nothing to match — so a raster
+    would sail through the one check this package offers while being the most
+    thoroughly hard-coded palette on the page, and wrong in one of the two themes
+    by construction.
+
+    `allow_image=True` is the opt-out, and it is deliberately a keyword the
+    caller has to write: a raster whose pixels are the point (a thumbnail, a
+    captured frame) is legitimate, and saying so in the test is how that stays a
+    decision rather than an oversight.
+
     Accepts one `Chart`, an iterable of them, or anything JSON-serialisable.
     """
     items = charts if isinstance(charts, (list, tuple)) else [charts]
     for item in items:
+        where = getattr(item, "id", "<figure>")
+        if not allow_image and isinstance(item, Chart):
+            for trace in item.figure.data:
+                if trace.type == "image":
+                    raise AssertionError(
+                        f"chart {where!r} holds an image trace, whose z is a colour per pixel "
+                        "chosen on the server. Nothing in the browser can re-theme it, and the "
+                        "colour pattern cannot see it. Pass allow_image=True if the pixels are "
+                        "the point."
+                    )
         blob = item.figure_json if isinstance(item, Chart) else json.dumps(item, default=str)
         found = _COLOUR.search(blob)
         if found is not None:
-            where = getattr(item, "id", "<figure>")
             raise AssertionError(
                 f"chart {where!r} carries the colour literal {found.group(0)!r}. "
                 "Series colours are Plotly's and the chrome is resolved from tokens in the "

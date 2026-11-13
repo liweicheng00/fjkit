@@ -22,11 +22,15 @@ and in the router, a `Chart` per figure:
     Chart(id="by-owner", title="Workload", summary="Ana has 5 of 12 open tasks.",
           figure=go.Figure(...))
 
-That is the whole setup. Plotly's basic bundle ships in this wheel — pinned
+That is the whole setup. Plotly's cartesian bundle ships in this wheel — pinned
 here rather than in `fjkit.vendored`, as CHARTER A11(1) allows a plugin
 distribution, because the bytes are here too — and is served from this plugin's
 own static mount. No download, no npm, no bundler, nothing fetched at runtime. A page
-loads the 1.1 MB only if it calls `chart_scripts()`.
+loads the 1.4 MB only if it calls `chart_scripts()`.
+
+`PlotlyTrace.type` admits exactly the twelve the bundle registers, no more and
+no fewer; `image` is the one whose payload is colour, and `assert_no_colour_in`
+refuses it unless you say otherwise.
 """
 
 from __future__ import annotations
@@ -37,9 +41,10 @@ from fjkit_charts.figures import (
     PlotlyTrace,
     assert_no_colour_in,
 )
-from fjkit_charts.plugin import PLOTLY_FILENAME, PLOTLY_URL, PLOTLY_VERSION, ChartsPlugin
+from fjkit_charts.plugin import PLOTLY_DIST, PLOTLY_FILENAME, PLOTLY_URL, PLOTLY_VERSION, ChartsPlugin
 
 __all__ = [
+    "PLOTLY_DIST",
     "PLOTLY_FILENAME",
     "PLOTLY_URL",
     "PLOTLY_VERSION",
