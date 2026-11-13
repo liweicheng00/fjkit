@@ -920,9 +920,9 @@ def test_the_kit_imports_nothing_outside_its_declared_dependencies():
 def test_no_part_of_the_kit_imports_a_charting_library():
     """The half of the old charts exemption that still earns its keep.
 
-    `fjkit.charts` ships Plotly's JavaScript (CHARTER §4.1 whitelists the bundle)
-    but never the Python library: `Chart` is duck-typed on
-    `to_plotly_json()`. An `import plotly` anywhere in the package would quietly
+    `fjkit_charts` ships Plotly's JavaScript (CHARTER A11(1) lets a plugin
+    distribution pin its own bundle) but never the Python library: `Chart` is
+    duck-typed on `to_plotly_json()`. An `import plotly` anywhere in the package would quietly
     make the 20 MB `plotly.py` a runtime dependency of every install, and the
     only visible symptom would be a slower `uv sync`."""
     from pathlib import Path

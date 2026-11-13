@@ -45,7 +45,7 @@ The line is drawn there because a UI kit that knows your schema has to be re-tau
 
 **What a page costs is decided by the page.** Anything every page pays for needs a stated reason in §4. Anything optional is loaded by a macro the page calls.
 
-This is the rule behind decisions that otherwise look inconsistent: all eight style packs ship in the wheel because a page loads one; Plotly's 1.1 MB ships in the wheel because only a page that calls `chart_scripts()` downloads it; `select.js` is loaded by `select_scripts()`, which a page with a selectable table calls, not by the shell.
+This is the rule behind decisions that otherwise look inconsistent: all eight style packs ship in the wheel because a page loads one; Plotly's 1.4 MB ships in the `fjkit-charts` wheel because only a page that calls `chart_scripts()` downloads it; `select.js` is loaded by `select_scripts()`, which a page with a selectable table calls, not by the shell.
 
 Install size is not the budget. Bytes per page is.
 
@@ -161,12 +161,17 @@ The only real lever left is subsetting Basecoat, and `styles/<pack>.css` is one 
 | `select.js` | `select_scripts()`, in `ui/table.html` | 5,172 / 2,151 |
 | `resize.js` | `resize_scripts()`, in `ui/table.html` | 8,823 / 3,240, measured 2026-11-08 |
 | `multiselect.js` | `multiselect_scripts()`, in `ui/overlay.html` | 5,461 / 2,456 |
-| `charts.js` | `chart_scripts()` | 8,953 / 3,810, in `fjkit-charts` |
+| `charts.js` | `chart_scripts()` | 12,023 / 4,926, in `fjkit-charts` |
+| `plotly-cartesian.min.js` | `chart_scripts()` | 1,424,820 / 472,365, vendored in `fjkit-charts`, measured 2026-11-13 |
 | `json-enc.js` | `form_scripts()` | vendored, 1,012 raw |
 | `idiomorph-ext.min.js` | `morph_scripts()` | vendored, 11,037 / 3,924 |
 | `sse.min.js` | `sse_scripts()` | vendored, 2,853 / 1,074 |
 
 **A vendored file is on the same footing.** `idiomorph-ext.min.js` is the largest thing in the table above, and it stays out of the shell for that reason: it is a swap strategy, not a component, so the page that wants one asks for it. Every page downloading it would have bought, for most pages, nothing — a swap only morphs where a caller wrote `morph:*`, and the reason to write that is state the browser holds on nodes the reply is about to replace. Measured on the demo's records table: a row still in the reply keeps its DOM node and is relocated when a sort moves it, where `outerHTML` gives a new one. Not measured as a win for focus, which htmx already restores by id, and not for a ticked box, which the reply describes and the morph therefore syncs.
+
+**Plotly is in the table because the bundle is a choice, not a given.** It was the basic build, 1,119,926 bytes and three trace modules, until `box` was asked for on 2026-11-13; the cartesian build is 1,424,820 and twelve. The 304,894 bytes bought a distribution plot, which is the one thing a bar of means cannot show, and the next bundle up is 4.85 MB of 3D and maps. Picking among the three prebuilt bundles is the only size lever Plotly offers without a build step, so this row records which lever is pulled and what it cost.
+
+**`PlotlyTrace.type` admits exactly the twelve the bundle registers**, held in both directions by a test that reads the bundle's own bytes. Narrower is a type paid for in the wheel and unreachable from an app; wider is a figure that validates in the route and draws an empty card in the browser with nothing in the console. One of the twelve, `image`, is the only trace whose payload *is* colour — `assert_no_colour_in` refuses it unless the caller passes `allow_image=True`, because the §3 colour rule cannot be enforced by pattern on an array of RGB triples.
 
 **`resize.js` is the reason a visitor can widen a column.** CSS `resize` applies only to a block box whose `overflow` is not `visible`, and a table cell is neither, so no stylesheet can put a handle on a column edge. Following a pointer has no HTML or CSS equivalent either. Without the script a column whose text the cell cuts off stays cut off. `table(resizable=true)` without the script is the ordinary table: the handles stay hidden.
 
