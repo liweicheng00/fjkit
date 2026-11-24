@@ -281,7 +281,7 @@ def workload():
       ("KPI 儀表板的 gauge 不在裡面", "indicator、table、funnel、waterfall、treemap、sunburst 與 sankey 只存在於 4.85 MB 的完整版。box 當初有 cartesian 這個中間階可以踩，這幾種沒有"),
       ("在 wheel 裡不等於在頁面上", "bundle 放在哪個 distribution，決定一次安裝帶進什麼；§4.2 管的是一個頁面下載什麼。從不畫圖的 app 兩者都不付"),
       ("版本 pin 跟著 bytes 走", "PLOTLY_VERSION 在 fjkit_charts 裡，由 scripts/vendor_plotly.py 抓取。kit 已經不知道 Plotly 的存在"),
-      ("figure 跟著頁面一起送", "每一張 figure 都在 HTML 的 data-figure 裡，所以沒有任何一張圖需要第二次請求。這也是「進入視野才畫」修不到的另一半：figure 很大的頁面，不管畫不畫都要在 response 裡付這筆錢。payload 才是問題時，把 card 改成由它自己的路由回傳，用 hx-trigger=\"intersect once\" 取"),
+      ("figure 跟著頁面一起送", "每一張 figure 都在 HTML 的 data-figure 裡，所以沒有任何一張圖需要第二次請求。這也是「進入視野才畫」修不到的另一半：figure 很大的頁面，不管畫不畫都要在 response 裡付這筆錢。payload 才是問題時，把 card 改成由它自己的路由回傳，用 hx-trigger=\"intersect once\" 在進入視野時才取回"),
     ]) }}
   {% endcall %}
 
