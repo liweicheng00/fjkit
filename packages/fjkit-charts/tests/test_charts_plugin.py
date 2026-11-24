@@ -347,6 +347,24 @@ class TestPlugin:
         assert "class=" not in html
         assert "#" not in html.split("data-figure=")[0]
 
+    def test_a_chart_is_drawn_on_sight_unless_the_page_asks_for_it_sooner(self):
+        """`data-chart` is the attribute `charts.js` observes, and its value is
+        the only thing that decides when the chart draws.
+
+        Bare means on first sight, which is the default because drawing costs
+        around 20 ms and a page of charts shows a handful of them at a time.
+        `eager` is the opt-out, and it has to be visible in the markup: it is
+        the one case where the browser cannot tell that the page meant it.
+        """
+        env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), auto_reload=False))
+        page = '{% from "charts/macros.html" import chart %}{{ chart(item, eager=eager) }}'
+
+        lazy = env.from_string(page).render(item=a_chart(), eager=False)
+        assert "data-chart" in lazy and 'data-chart="' not in lazy
+
+        eager = env.from_string(page).render(item=a_chart(), eager=True)
+        assert 'data-chart="eager"' in eager
+
     def test_boxed_wraps_it_in_the_card_component(self, tmp_path):
         env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), auto_reload=False))
         html = env.from_string('{% from "charts/macros.html" import chart %}{{ chart(item) }}').render(item=a_chart())

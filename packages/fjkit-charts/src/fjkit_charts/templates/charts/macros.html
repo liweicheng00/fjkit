@@ -34,19 +34,26 @@
   there is, and it remains a true description of the data.
 
   `boxed=false` drops the card, for a chart that already sits inside one.
+
+  `eager=true` draws the chart with the page instead of when it first comes
+  into view. The default is on sight, which is what a page of charts wants:
+  drawing one costs around 20 ms and most of them are below the fold. Pass it
+  for a chart that is the point of the page and has to be in the first paint —
+  observation is asynchronous, so even a chart at the top draws a frame late,
+  and on that one page it shows.
 #}
-{% macro chart(item, boxed=true) -%}
+{% macro chart(item, boxed=true, eager=false) -%}
   {%- if boxed %}
-    {% call card(item.title, item.description) %}{{ _figure(item, kwargs) }}{% endcall %}
+    {% call card(item.title, item.description) %}{{ _figure(item, eager, kwargs) }}{% endcall %}
   {%- else %}
-    {{ _figure(item, kwargs) }}
+    {{ _figure(item, eager, kwargs) }}
   {%- endif %}
 {%- endmacro %}
 
-{% macro _figure(item, extra) -%}
+{% macro _figure(item, eager, extra) -%}
   <figure>
     <div id="{{ item.id }}"
-         data-chart
+         data-chart{% if eager %}="eager"{% endif %}
          data-height="{{ item.height }}"
          data-figure="{{ item.figure_json }}"
          aria-hidden="true"{% if extra %}{{ attrs(extra) }}{% endif %}></div>
