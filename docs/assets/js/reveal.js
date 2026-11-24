@@ -27,6 +27,14 @@
 (() => {
   const BUTTON = "[data-fjkit-reveal]"
 
+  /* A click on the toggle leaves focus in the input. Cancelling `mousedown`
+     keeps the pointer from moving focus to the button, so the caret stays
+     where the user was typing. The button stays in the Tab order: it is the
+     only way a keyboard user can reveal the password. */
+  document.addEventListener("mousedown", (event) => {
+    if (event.target instanceof Element && event.target.closest(BUTTON)) event.preventDefault()
+  })
+
   document.addEventListener("click", (event) => {
     const button = event.target instanceof Element ? event.target.closest(BUTTON) : null
     if (!button) return
