@@ -211,7 +211,50 @@
       merge(themed(colors, height, baseline), figure.layout),
       CONFIG,
     );
+    drawnWidth.set(element, element.clientWidth);
+    resizes.observe(element);
   }
+
+  /* `responsive: true` covers half of resizing. Plotly listens for the window's
+     `resize` event and nothing else, so a chart whose container changes width
+     while the window does not keeps the width it was drawn at: the shell's
+     sidebar closing, a collapsible panel beside it, a tab panel that was hidden
+     when the chart drew. The last one is the worst case: the element is 0 px
+     wide at draw time and Plotly falls back to its 700 px default.
+
+     So every chart is observed for its own width. The config flag stays,
+     because it also makes Plotly size its container `width: 100%` rather than
+     in pixels, which is what lets a grid column shrink back once it has grown.
+
+     `drawnWidth` is the width the chart was last laid out at. A width of 0 is
+     a hidden panel and is skipped, so the resize happens when the panel shows.
+     The height is fixed by `data-height` and the plot fills the width it is
+     given, so a resize never changes the observed size and cannot loop.
+
+     One frame collects every chart that moved: a sidebar transition reports a
+     new width each frame, and a resize per chart per callback would be wasted
+     work. `Plots.resize` debounces again, by 100 ms, per chart. */
+  const drawnWidth = new WeakMap();
+  const pending = new Set();
+  let frame = 0;
+
+  function flush() {
+    frame = 0;
+    for (const element of pending) {
+      if (element.isConnected && element.clientWidth > 0) Plotly.Plots.resize(element);
+    }
+    pending.clear();
+  }
+
+  const resizes = new ResizeObserver((entries) => {
+    for (const { target } of entries) {
+      const width = target.clientWidth;
+      if (width === 0 || width === drawnWidth.get(target)) continue;
+      drawnWidth.set(target, width);
+      pending.add(target);
+    }
+    if (pending.size && !frame) frame = requestAnimationFrame(flush);
+  });
 
   function drawAll(root) {
     const scope = root || document;
@@ -237,7 +280,10 @@
      trace types, a WebGL context; dropping the node without purging leaks both.
      A chart inside a partial usually forgets this half. */
   document.body.addEventListener("htmx:beforeCleanupElement", (event) => {
-    if (event.target.matches && event.target.matches("[data-chart]")) Plotly.purge(event.target);
+    if (!(event.target.matches && event.target.matches("[data-chart]"))) return;
+    resizes.unobserve(event.target);
+    pending.delete(event.target);
+    Plotly.purge(event.target);
   });
 
   /* The theme toggle flips `.dark` on <html> and nothing else fires. Watching
