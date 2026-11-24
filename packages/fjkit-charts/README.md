@@ -41,6 +41,12 @@ a `PluginWarning` at startup. plotly.py is not a dependency of this package.
 Chart chrome — axis text, grid lines, tick colour, the hover card — is resolved
 from the live theme tokens on every draw, so a theme toggle is a redraw.
 
+A chart is drawn when it first comes into view, not when the page loads.
+Drawing one costs around 20 ms, so a page of fifteen draws the four that are on
+screen; the rest are sized from `Chart.height` and wait. An `overflow-x: auto`
+row counts — a chart scrolled off the side of one is off screen. Pass
+`chart(item, eager=true)` for a chart that has to be in the first paint.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

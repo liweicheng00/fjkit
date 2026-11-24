@@ -2175,3 +2175,72 @@ contour、heatmap、histogram、histogram2d、histogram2dcontour、image、scatt
   那是設計工作，不是這一輪的範圍。figure 不選色階這條規則沒有動。
 - **預算數字**：`charts.js` 12,023 / 4,926（上一筆是 9,721 / 4,115，再上一筆 8,953 / 3,810）。
   增加的幾乎都是註解與那兩個 chrome 修正。測試 1,972 passed。
+
+## 2026-11-13 — 圖表改成進入視野才畫（skyvormed-dashboard 回報）
+
+回報來自另一個 repo 的實測，不是這裡的推測。他們的 Laboratory 頁有 70 張圖
+（35 項檢驗 × 折線 + 盒鬚），每張 320 px 高、34 rem 寬，放在兩條橫向捲動列裡。
+`performance.getEntriesByType("navigation")`：DOMContentLoaded 的 handler 從 114 ms 跑到
+2012 ms——**1898 ms 全花在 `drawAll(document)` 上**，而那一刻與視窗相交的只有 70 張裡的 3 張。
+拆開來量：70 張 1458 ms，關掉 automargin 並自己給 margin 是 754 ms，只畫螢幕上那 3 張是 112 ms。
+換算每張約 20 ms，其中約一半是 automargin，而**那一頁 96% 的圖當下不需要畫**。
+
+### 做了什麼
+
+`drawAll` 改名 `scheduleAll`，三個入口（DOMContentLoaded、`htmx:load`、主題 MutationObserver）
+不再直接畫圖：
+
+- **`IntersectionObserver`，不是比 `getBoundingClientRect` 與視窗。** 預設 root 是視窗，
+  而它回報的相交會被路徑上**每一層祖先的裁切**切過——`overflow-x: auto` 列裡被捲到旁邊的圖，
+  矩形比對會說它在畫面上，observer 說它不在。回報者要的正是這個 case。`rootMargin: 200px`
+  讓圖在捲到之前先畫好；那只放大 root，不放大祖先的裁切，所以列裡的圖是「進入列」才畫，
+  不會提前。第一次相交就 `unobserve`。
+- **高度必須在畫之前先套上，這是整件事能成立的前提。** 沒畫的 `[data-chart]` 是一個空 div；
+  70 個不給高度的空 div 會讓頁面短好幾個螢幕、70 張全部落在視窗裡、70 張全部在載入時畫完——
+  正好是要避免的那個數字。所以 `reserve()` 從 `draw()` 裡抽出來，在 observe 之前呼叫。
+  附帶好處：圖畫出來的時候，它下面的東西不會往下跳。
+- **`WeakSet` 記已經畫過的。** `Plotly.react` 本來就冪等，所以這不是「畫過沒」的旗標，
+  而是**主題切換要重畫哪些**：已經畫的要換色，還在等的不能被拉進來畫，否則省下的錢在第一次
+  切換主題時就吐回去。還在等的那些不吃虧——`palette()` 是每次畫才讀，它們真的畫的時候
+  自然就是當下的主題。用 WeakSet 而不是陣列，是因為這支檔案不該是「被 swap 掉的圖還活著」的原因；
+  代價是它不能迭代，所以重畫時走 DOM 再問。
+- **`htmx:beforeCleanupElement` 現在兩半都處理。** 畫過的照舊 `Plotly.purge`；
+  沒畫過的得從 observer 上拿掉——observer 對它正在看的每個 target 都持有參照，
+  那是「進入視野才畫」自己帶進來的另一個方向的洩漏。`drawn.delete()` 的回傳值剛好就是
+  「要不要 purge」這個問題的答案。
+- **`data-chart="eager"`／`chart(item, eager=true)` 是退出開關。** observe 是非同步的，
+  第一批 entry 在第一次 layout 之後才送達，所以連頁面最上面的圖都會晚一兩個 frame；
+  在「整頁就是為了那一張圖」的頁面上看得出來，在摺線下看不出來——而後者是絕大多數。
+
+### automargin（回報的第二件事）：留著，但把代價寫進註解
+
+沒有改預設值。拿掉它等於主題那組 `{l:8, r:8, t:8, b:8}` 直接裁掉軸標題與旋轉過的刻度文字——
+一個不花錢但是錯的預設。而且改成進入視野才畫之後，這筆錢變成**按螢幕上的圖付**，不是按整頁付。
+`themed()` 裡現在寫明它買的是每張圖多一次 layout pass、70 張是 1458 ms 對 754 ms，
+以及怎麼逐張關掉（figure 的 layout 會 merge 在主題之上，兩軸 `automargin=False` 加一組夠寬的
+`layout.margin`）。
+
+### 驗收
+
+- demo 的 charts 頁：載入時 **15 張畫 4 張**（1280×900），其餘 11 張是配好高度的空盒。
+  捲過去全部畫出來，12 種 trace 一種不少。
+- **半畫完的狀態下切換主題兩次（深→淺），已畫的集合完全沒變**，而且切回來顏色也回來。
+- **swap 到沒有人在看的區域，一張都不畫**：頁面停在 gallery 時切 `By priority`，
+  board 的 7 張新卡片進了 DOM 但不畫，`.js-plotly-plot` 維持在 gallery 的 8 張。捲回去才畫。
+- 橫向捲動列與 `eager` demo 做不出來（fjkit 的詞彙表沒有橫向捲動容器，而 demo 每一張圖都該是 lazy），
+  所以多一支 `journey_charts_lazy.py`：自己攔一個 URL 餵 fixture 頁，
+  Plotly 與 `charts.js` 都是從跑著的 instance 拿的。證了三件事——
+  `eager` 的圖在兩千像素外照畫、列裡被裁掉的圖不畫（捲動列之後才畫）、
+  以及沒畫過的圖被 cleanup 之後確實從 observer 上拿掉了。
+- **全頁截圖會把圖畫出來**（Playwright 會渲染視窗以外的範圍），所以半畫完的狀態只能用
+  視窗截圖存證。`journey_charts.py` 裡有一支 `capture_half_drawn()` 就是為此。
+
+### 預算數字
+
+`charts.js` **17,055 / 6,737**（上一筆 12,023 / 4,926）。增加的約 5 KB 裡程式碼大概 1 KB，
+其餘是註解；同一頁本來就要下載 461 KB 的 Plotly。測試 1,973 passed。
+
+**這次沒有解決的那一半**：figure JSON 仍然嵌在 HTML 的 `data-figure` 裡，
+所以 payload 一點都沒省。回報者自己那一頁是用 `hx-trigger="intersect once"` 加兩條新路由
+從 485 kB／2680 ms 降到 113 kB／174 ms 的——那是 payload 的修法，需要逐頁自己接線。
+這一輪給的是繪製那一半，不用改任何一頁。文件站兩個語言版本都補了這條分界。

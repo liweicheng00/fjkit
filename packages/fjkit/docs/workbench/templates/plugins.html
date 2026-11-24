@@ -282,7 +282,8 @@ def workload():
       ("the traces, and what they mean", "Python, in Chart.figure. The service that computed the numbers is the only thing that knows which of them is a bar"),
       ("axis text, grid lines, tick colour, the gaps between pie slices", "the browser. charts.js resolves them from the live tokens on every draw, because Plotly's defaults are a dark grey on a light grey — a chart drawn for a white page, on a page that may be dark. A theme toggle is a redraw"),
       ("the series colours", "Plotly's own palette, and the theme does not touch them. The figure carries no colour at all: a hex code there would fail the rule fjkit check applies to templates, and be wrong in one of the two schemes"),
-      ("the height", "Chart.height, applied by the same script that draws. A style=\"\" attribute in the markup is the other way an app starts writing CSS"),
+      ("the height", "Chart.height, applied by the same script that draws, and applied before it draws. A style=\"\" attribute in the markup is the other way an app starts writing CSS"),
+      ("when each chart draws", "the browser, when the chart first comes into view. Drawing one costs around 20 ms, so a page of fifteen draws the four that are on screen and leaves eleven sized and waiting; a theme toggle repaints only what has been drawn, and an htmx swap into a part of the page nobody is looking at draws nothing. A chart inside a scrolling row is off screen while it is off the side of that row. Pass chart(item, eager=true) for a chart that has to be in the first paint"),
       ("the text alternative", "Chart.summary, written from the same numbers that built the traces. Plotly's SVG is a thousand unlabelled <path> elements, so the caption is what a screen reader gets — and without JavaScript it is the whole content"),
     ]) }}
 
@@ -297,6 +298,7 @@ def workload():
       ("a KPI gauge is not in it", "indicator, table, funnel, waterfall, treemap, sunburst and sankey live only in the 4.85 MB full build. There is no middle step for those the way cartesian was a middle step for box"),
       ("being in a wheel is not being on a page", "which distribution holds the bundle decides what an install carries; §4.2 budgets what a page downloads. An app that never draws a chart installs neither"),
       ("the pin lives with the bytes", "PLOTLY_VERSION is in fjkit_charts and scripts/vendor_plotly.py fetches it. The kit no longer knows Plotly exists"),
+      ("the figure travels with the page", "every figure is in the HTML, in data-figure, which is why no chart needs a second request. It is also the half drawing on sight does not fix: a page whose figures are large pays for them in the response whether or not it draws them. Return the card from its own route with hx-trigger=\"intersect once\" when the payload is the problem"),
     ]) }}
   {% endcall %}
 

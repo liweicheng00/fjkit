@@ -14,6 +14,10 @@
   The division of labour with the server: Python decides the shape, this file
   decides the chrome.
 
+  *When* each chart draws is the other half of the file. Drawing one costs
+  around 20 ms, and a page is not obliged to show them all at once, so a chart
+  is drawn when it first comes into view rather than on load — see `observer`.
+
   Loaded only via chart_scripts(). Plotly is 1.4 MB — no other page pays for it.
 */
 (() => {
@@ -144,6 +148,19 @@
       zerolinecolor: colors.grid,
       linecolor: colors.grid,
       tickfont: font,
+      /* The margins below are 8 px a side — room for the plot and nothing else
+         — and `automargin` is what keeps an axis title or a rotated tick label
+         from being clipped by them: Plotly measures the text it drew and grows
+         the margin to fit.
+
+         It costs a second layout pass per chart. Seventy charts took 1458 ms
+         with it and 754 ms with `automargin: false` and explicit margins, so
+         about half of the ~20 ms a chart takes to draw. It stays the default
+         because the alternative default is labels quietly cut off, and because
+         with drawing deferred to first sight the pass is paid per chart on
+         screen. A page that knows its own margins can have it back: the
+         figure's layout merges over this one, so `automargin=False` on both
+         axes plus a `layout.margin` wide enough for the labels turns it off. */
       automargin: true,
     };
     const ternaryAxis = { gridcolor: colors.grid, linecolor: colors.grid, tickfont: font, color: colors.text };
@@ -190,35 +207,96 @@
   }
 
   /* `react` rather than `newPlot`: `react` is idempotent. First draw, theme
-     change and htmx swap all go through the same call, so there is no "has this
-     been drawn yet" flag to get wrong. */
+     change and htmx swap all go through the same call, so no path has to ask
+     whether this element has been drawn before in order to draw it. */
   const CONFIG = { displayModeBar: false, responsive: true, staticPlot: false };
+
+  /* The height arrives as a number and is applied from here rather than as a
+     `style=""` in the template. fjkit's vocabulary is closed and has no sizing
+     utility, so the alternative was an inline style in markup — and the height
+     is a property of the figure, which is already a model.
+
+     Applied before the chart is drawn rather than as part of drawing it, which
+     is what makes drawing on sight work at all: an undrawn `[data-chart]` is an
+     empty div, so seventy unsized ones are a page several screens shorter than
+     it will be, all seventy inside the viewport and all seventy drawing on
+     load. It also means nothing below a chart moves when it draws. */
+  function reserve(element) {
+    const height = Number(element.dataset.height) || 288;
+    element.style.height = height + "px";
+    return height;
+  }
+
+  /* Which charts have been drawn: the set a theme change repaints.
+
+     Not a guard against drawing twice — `react` already is one. It is the
+     difference between a chart on screen and one still waiting to be scrolled
+     to, and a theme change has to repaint the first without pulling the second
+     forward, which is where the saving would go. The one still waiting loses
+     nothing: `palette()` is read per draw, so it arrives in whatever theme is
+     current when it finally draws.
+
+     A `WeakSet` rather than a list, because this file must not be the reason a
+     swapped-out chart is still in memory. It cannot be iterated, so the theme
+     redraw walks the DOM and asks. */
+  const drawn = new WeakSet();
 
   function draw(element) {
     const figure = JSON.parse(element.dataset.figure);
-    /* The height arrives as a number and is applied here rather than as a
-       `style=""` in the template. fjkit's vocabulary is closed and has no sizing
-       utility, so the alternative was an inline style in markup — and the height
-       is a property of the figure, which is already a model. */
-    const height = Number(element.dataset.height) || 288;
-    element.style.height = height + "px";
-
     const colors = palette();
     const baseline = figure.data.every((trace) => BASELINE.has(trace.type));
+    drawn.add(element);
     Plotly.react(
       element,
       chrome(figure.data, colors),
-      merge(themed(colors, height, baseline), figure.layout),
+      merge(themed(colors, reserve(element), baseline), figure.layout),
       CONFIG,
     );
   }
 
-  function drawAll(root) {
+  /* Draw on first sight.
+
+     The root is the viewport, and what the observer reports is clipped by every
+     ancestor on the way up to it. That is the case worth having: a chart in an
+     `overflow-x: auto` row, scrolled off the side of that row, is reported as
+     not visible, where comparing the chart's own rectangle against the viewport
+     would call it on screen and draw it.
+
+     `rootMargin` starts the draw before the chart reaches the fold, so it is
+     there by the time it is looked at. It expands the root only — an ancestor's
+     clip is not grown with it — so a chart inside a scrolling row draws as it
+     enters the row rather than ahead of it.
+
+     Unobserved on the first intersection: a chart is drawn once, and after that
+     the theme toggle is the only thing that repaints it. */
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        observer.unobserve(entry.target);
+        draw(entry.target);
+      }
+    },
+    { rootMargin: "200px" },
+  );
+
+  /* `data-chart="eager"` draws now instead of on sight — `chart(item,
+     eager=true)` in the macro — for the one chart a page is about. Observation
+     is asynchronous: the first entries arrive after the first layout, so even a
+     chart at the top of the page draws a frame or two late. Below the fold that
+     is invisible, and that is nearly every chart. */
+  function schedule(element) {
+    reserve(element);
+    if (element.dataset.chart === "eager") draw(element);
+    else observer.observe(element);
+  }
+
+  function scheduleAll(root) {
     const scope = root || document;
     /* `matches` first, because an htmx swap can hand back the chart element
        itself — `querySelectorAll` never returns its own root. */
-    if (scope.matches && scope.matches("[data-chart]")) draw(scope);
-    if (scope.querySelectorAll) scope.querySelectorAll("[data-chart]").forEach(draw);
+    if (scope.matches && scope.matches("[data-chart]")) schedule(scope);
+    if (scope.querySelectorAll) scope.querySelectorAll("[data-chart]").forEach((node) => schedule(node));
   }
 
   if (!window.Plotly) {
@@ -226,18 +304,30 @@
     return;
   }
 
-  addEventListener("DOMContentLoaded", () => drawAll(document));
+  addEventListener("DOMContentLoaded", () => scheduleAll(document));
 
   /* htmx swaps in charts that have never been drawn. `htmx:load` fires once per
      new node, which is the hook needed here — `htmx:afterSwap` fires once per
-     request and hands back the target rather than the new content. */
-  document.body.addEventListener("htmx:load", (event) => drawAll(event.target));
+     request and hands back the target rather than the new content.
 
-  /* htmx also swaps charts out. Plotly attaches resize listeners and, on some
-     trace types, a WebGL context; dropping the node without purging leaks both.
-     A chart inside a partial usually forgets this half. */
+     Swapped in is not drawn: new cards are sized and observed like any other,
+     so a swap into a region that is off screen costs the request and nothing
+     more, and one into the part being looked at draws straight away. */
+  document.body.addEventListener("htmx:load", (event) => scheduleAll(event.target));
+
+  /* htmx also swaps charts out, and either half of a chart's state can be live
+     when it goes. A drawn one holds Plotly's resize listeners and, on some
+     trace types, a WebGL context; dropping the node without purging leaks both,
+     and a chart inside a partial usually forgets this half. An undrawn one is
+     still a target of the observer, which holds a reference to everything it
+     watches — the leak drawing on sight introduces, in the other direction. */
   document.body.addEventListener("htmx:beforeCleanupElement", (event) => {
-    if (event.target.matches && event.target.matches("[data-chart]")) Plotly.purge(event.target);
+    const element = event.target;
+    if (!element.matches || !element.matches("[data-chart]")) return;
+    observer.unobserve(element);
+    /* `delete` answers whether it was there, which is exactly the question:
+       purge what Plotly drew into, and nothing else. */
+    if (drawn.delete(element)) Plotly.purge(element);
   });
 
   /* The theme toggle flips `.dark` on <html> and nothing else fires. Watching
@@ -248,10 +338,18 @@
      The redraw changes the chrome: text, grid, slice gaps, hover card. The data
      keeps its colours, which were never ours.
 
+     Only what has been drawn. A chart still waiting for its first sight is left
+     waiting — redrawing it here would be its first draw, and a theme toggle
+     would cost what a page load no longer does.
+
      Not watched: the demo's style-pack picker. The eight packs define no colour
      tokens at all — they differ in geometry, radii and control heights — so a
      pack switch cannot change anything read here. */
-  new MutationObserver(() => drawAll(document)).observe(document.documentElement, {
+  new MutationObserver(() => {
+    document.querySelectorAll("[data-chart]").forEach((element) => {
+      if (drawn.has(element)) draw(element);
+    });
+  }).observe(document.documentElement, {
     attributes: true,
     attributeFilter: ["class"],
   });
