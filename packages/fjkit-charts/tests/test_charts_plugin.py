@@ -365,6 +365,26 @@ class TestPlugin:
         eager = env.from_string(page).render(item=a_chart(), eager=True)
         assert 'data-chart="eager"' in eager
 
+    @pytest.mark.parametrize("boxed", [True, False])
+    def test_passthrough_attributes_reach_the_chart_whether_or_not_it_is_boxed(self, boxed):
+        """`chart(item, hx_get=..., hx_trigger=...)` is how an app wires a chart
+        to htmx, so the kwargs have to land on `[data-chart]`, the element that
+        dispatches. Inside `{% call card() %}` the name `kwargs` is the call
+        block's own, which is empty, so the boxed default once dropped them all
+        without a word."""
+        env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), auto_reload=False))
+        page = (
+            '{% from "charts/macros.html" import chart %}'
+            '{{ chart(item, boxed=boxed, hx_get="/t",'
+            ' hx_trigger="fjkit:chart-click", hx_vals="js:{...event.detail}") }}'
+        )
+        html = env.from_string(page).render(item=a_chart(), boxed=boxed)
+        div = re.search(r"<div id=\"c1\"[^>]*>", html).group(0)
+        assert "data-chart" in div
+        assert 'hx-get="/t"' in div
+        assert 'hx-trigger="fjkit:chart-click"' in div
+        assert 'hx-vals="js:{...event.detail}"' in div
+
     def test_boxed_wraps_it_in_the_card_component(self, tmp_path):
         env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), auto_reload=False))
         html = env.from_string('{% from "charts/macros.html" import chart %}{{ chart(item) }}').render(item=a_chart())

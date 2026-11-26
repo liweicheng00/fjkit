@@ -43,10 +43,13 @@
   and on that one page it shows.
 #}
 {% macro chart(item, boxed=true, eager=false) -%}
+  {#- Bound to a name first: inside `{% call %}`, `kwargs` is the call block's
+      own, which is empty, so the boxed chart would drop every attribute. -#}
+  {%- set extra = kwargs %}
   {%- if boxed %}
-    {% call card(item.title, item.description) %}{{ _figure(item, eager, kwargs) }}{% endcall %}
+    {% call card(item.title, item.description) %}{{ _figure(item, eager, extra) }}{% endcall %}
   {%- else %}
-    {{ _figure(item, eager, kwargs) }}
+    {{ _figure(item, eager, extra) }}
   {%- endif %}
 {%- endmacro %}
 
