@@ -241,6 +241,18 @@
      redraw walks the DOM and asks. */
   const drawn = new WeakSet();
 
+  /* `fjkit:chart-drawn` follows every draw, theme redraws too, and
+     `fjkit:chart-click` carries the first clicked point. Fired here because a
+     chart drawn on first sight is still an empty div at `htmx:load`, and a
+     `plotly_click` an app binds there fails silently unless it is eager.
+     Bound once: `gd.on` handlers survive `react`; a purge drops them, so
+     cleanup clears `bound`. */
+  const bound = new WeakSet();
+
+  function emit(element, type, detail) {
+    element.dispatchEvent(new CustomEvent(type, { bubbles: true, detail }));
+  }
+
   function draw(element) {
     const figure = JSON.parse(element.dataset.figure);
     const colors = palette();
@@ -252,8 +264,16 @@
       merge(themed(colors, reserve(element), baseline), figure.layout),
       CONFIG,
     );
+    if (!bound.has(element)) {
+      bound.add(element);
+      element.on("plotly_click", ({ points: [p] }) =>
+        emit(element, "fjkit:chart-click", { curve: p.curveNumber, point: p.pointNumber, x: p.x, y: p.y,
+          name: p.data.name, meta: p.data.meta, customdata: p.customdata }),
+      );
+    }
     drawnWidth.set(element, element.clientWidth);
     resizes.observe(element);
+    emit(element, "fjkit:chart-drawn", {});
   }
 
   /* Draw on first sight.
@@ -371,6 +391,7 @@
     observer.unobserve(element);
     resizes.unobserve(element);
     pending.delete(element);
+    bound.delete(element);
     /* `delete` answers whether it was there, which is exactly the question:
        purge what Plotly drew into, and nothing else. */
     if (drawn.delete(element)) Plotly.purge(element);
@@ -388,9 +409,8 @@
      waiting — redrawing it here would be its first draw, and a theme toggle
      would cost what a page load no longer does.
 
-     Not watched: the demo's style-pack picker. The eight packs define no colour
-     tokens at all — they differ in geometry, radii and control heights — so a
-     pack switch cannot change anything read here. */
+     Not watched: the demo's style-pack picker. Its packs define no colour
+     tokens, so a pack switch changes nothing read here. */
   new MutationObserver(() => {
     document.querySelectorAll("[data-chart]").forEach((element) => {
       if (drawn.has(element)) draw(element);

@@ -405,6 +405,30 @@ def workload():
       <h4>替代文字</h4><p>Chart.summary，用建 trace 的同一批數字寫出來。Plotly 的 SVG 是上千個沒有標籤的 &lt;path&gt;，所以螢幕閱讀器讀到的是這句 caption；沒有 JavaScript 時，它就是全部的內容</p>    </section>  </div></div></div>
   </div>
 
+<div class="flex flex-col gap-3">      <p>
+        圖表會告訴頁面兩件事：它已經畫好，以及哪一個點被點擊。兩者都是在圖表的 <code>[data-chart]</code>
+        div 上發出的 DOM 事件，而且都會冒泡。沒有開關要打開；頁面不監聽就不付出任何代價。要用點擊的長條篩選表格，
+        把 htmx 屬性傳給 <code>chart()</code>，它會把屬性放在那個 div 上。
+      </p>
+</div>
+    <pre class="code-block scrollbar" tabindex="0" role="region" aria-label="app/templates/workload/page.html" data-lang="python">{{ chart(item,
+          hx_get=&#34;/tasks/table&#34;,
+          hx_trigger=&#34;fjkit:chart-click&#34;,
+          hx_target=&#34;#tasks&#34;,
+          hx_vals=&#34;js:{...event.detail}&#34;) }}</pre>
+
+
+    <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+<h3>兩個事件</h3>      </div>
+    </header>      <div class="border-t"><div class="item-group"><div class="item" data-clamp="false">    <section>
+      <h4>fjkit:chart-drawn</h4><p>每次繪製之後：第一次是圖表進入視野時，之後是每一次主題重畫。detail 是 {}。位在首屏之下的圖表在捲動到它時才發出，不是在頁面載入時</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>fjkit:chart-click</h4><p>每點擊一個點發出一次。detail 是 {curve, point, x, y, name, meta, customdata}：第一個被點擊的點的 curveNumber、pointNumber、x 與 y，它所屬 trace 的 name 與 meta，以及該點的 customdata。meta 與 customdata 依 figure 設定的原樣傳出，因此路由需要的 id 應放在 customdata</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>為什麼不用 plotly_click</h4><p>圖表在第一次進入視野時才繪製，所以在 htmx:load 時它還是空的 div；在那裡綁定的 plotly_click handler，對每一張非 eager 的圖表都會無聲地失效。charts.js 在繪製之後綁定，每張圖表一次，主題重畫不會再綁一次</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>hx-vals 送出什麼</h4><p>使用內附的 htmx 2.0.10 時，js:{...event.detail} 會把每個欄位都送成 query 參數：數字與字串照原樣，陣列（例如 customdata）每個元素一個重複的參數，物件（例如 meta）送成 JSON。trace 沒有設定的欄位會送出字串 undefined。路由只讀一個欄位時，改為指名該欄位：hx_vals=&#34;js:{status: event.detail.x}&#34;</p>    </section>  </div><div class="item" data-clamp="false">    <section>
+      <h4>trigger filter</h4><p>結果必須恰好是 true：htmx 2.0.10 對其他任何值都會丟棄事件，不論是否為 truthy，因此 customdata 是陣列或物件時，fjkit:chart-click[detail.customdata] 永遠不會觸發，[detail] 也一樣。請改用比較式：hx_trigger=&#34;fjkit:chart-click[detail.customdata!=null]&#34;，或 [detail.meta==&#39;patient&#39;]</p>    </section>  </div></div></div>
+  </div>
+
     <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
 <h3>每個參數決定什麼</h3>      </div>

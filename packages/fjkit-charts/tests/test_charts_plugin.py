@@ -365,6 +365,26 @@ class TestPlugin:
         eager = env.from_string(page).render(item=a_chart(), eager=True)
         assert 'data-chart="eager"' in eager
 
+    @pytest.mark.parametrize("boxed", [True, False])
+    def test_passthrough_attributes_reach_the_chart_whether_or_not_it_is_boxed(self, boxed):
+        """`chart(item, hx_get=..., hx_trigger=...)` is how an app wires a chart
+        to htmx, so the kwargs have to land on `[data-chart]`, the element that
+        dispatches. Inside `{% call card() %}` the name `kwargs` is the call
+        block's own, which is empty, so the boxed default once dropped them all
+        without a word."""
+        env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), auto_reload=False))
+        page = (
+            '{% from "charts/macros.html" import chart %}'
+            '{{ chart(item, boxed=boxed, hx_get="/t",'
+            ' hx_trigger="fjkit:chart-click", hx_vals="js:{...event.detail}") }}'
+        )
+        html = env.from_string(page).render(item=a_chart(), boxed=boxed)
+        div = re.search(r"<div id=\"c1\"[^>]*>", html).group(0)
+        assert "data-chart" in div
+        assert 'hx-get="/t"' in div
+        assert 'hx-trigger="fjkit:chart-click"' in div
+        assert 'hx-vals="js:{...event.detail}"' in div
+
     def test_boxed_wraps_it_in_the_card_component(self, tmp_path):
         env = build_environment(FjkitConfig(plugins=(ChartsPlugin(),), auto_reload=False))
         html = env.from_string('{% from "charts/macros.html" import chart %}{{ chart(item) }}').render(item=a_chart())
@@ -441,6 +461,39 @@ class TestPlugin:
         body = TestClient(app).get("/_fjkit-charts/assets/charts.js")
         assert body.status_code == 200
         assert "Plotly.react" in body.text
+
+
+class TestEvents:
+    """The two DOM events `charts.js` dispatches are a contract an app writes
+    against in markup — `hx-trigger="fjkit:chart-click"`, `event.detail.x` in an
+    `hx-vals` — so their names and the click's detail keys are pinned here.
+
+    What they do in a browser (drawn after every draw, one click per click
+    across a theme redraw, the detail reaching an htmx request) is beyond
+    pytest; the verify skill's `journey_chart_events.py` drives it in Chrome."""
+
+    @staticmethod
+    def _script() -> str:
+        import fjkit_charts
+
+        return (Path(fjkit_charts.__file__).parent / "static" / "charts.js").read_text(encoding="utf-8")
+
+    def test_the_script_dispatches_exactly_two_events(self):
+        """`chart-legend-click` was asked for and declined; a third name is a
+        contract change, not a refactor."""
+        names = set(re.findall(r'"(fjkit:[a-z-]+)"', self._script()))
+        assert names == {"fjkit:chart-drawn", "fjkit:chart-click"}
+
+    def test_both_events_bubble(self):
+        """An `hx-trigger` on an ancestor — the card, a section — is a listener
+        on that ancestor, and it hears nothing from an event that does not
+        bubble."""
+        assert re.search(r"new CustomEvent\(\s*\w+\s*,\s*\{\s*bubbles:\s*true", self._script())
+
+    def test_a_click_carries_these_detail_fields_and_no_others(self):
+        literal = re.search(r'"fjkit:chart-click",\s*(\{[^}]*\})', self._script()).group(1)
+        keys = re.findall(r"(\w+):", literal)
+        assert keys == ["curve", "point", "x", "y", "name", "meta", "customdata"]
 
 
 class TestPlotlyVersion:

@@ -47,6 +47,27 @@ screen; the rest are sized from `Chart.height` and wait. An `overflow-x: auto`
 row counts — a chart scrolled off the side of one is off screen. Pass
 `chart(item, eager=true)` for a chart that has to be in the first paint.
 
+Each chart dispatches two bubbling DOM events on its `[data-chart]` div.
+`fjkit:chart-drawn` follows every draw, theme redraws included, with an empty
+`detail`. `fjkit:chart-click` fires once per click on a point, with
+`detail = {curve, point, x, y, name, meta, customdata}`. Keyword arguments to
+`chart()` land on that div, so a click can drive an htmx request:
+
+```jinja
+{{ chart(item, hx_get="/tasks/table", hx_trigger="fjkit:chart-click",
+         hx_target="#tasks", hx_vals="js:{...event.detail}") }}
+```
+
+With htmx 2, that sends each field as a query parameter: an array as repeated
+parameters, an object as JSON, and a field the trace does not set as the string
+`undefined`. Name the fields the route reads — `js:{status: event.detail.x}` —
+to send only those.
+
+A trigger filter must evaluate to exactly `true`, so
+`fjkit:chart-click[detail.customdata]` never fires when `customdata` is an
+array or an object; compare instead, as in
+`hx_trigger="fjkit:chart-click[detail.customdata!=null]"`.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
