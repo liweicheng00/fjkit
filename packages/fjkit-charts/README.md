@@ -63,6 +63,11 @@ parameters, an object as JSON, and a field the trace does not set as the string
 `undefined`. Name the fields the route reads — `js:{status: event.detail.x}` —
 to send only those.
 
+A trigger filter must evaluate to exactly `true`, so
+`fjkit:chart-click[detail.customdata]` never fires when `customdata` is an
+array or an object; compare instead, as in
+`hx_trigger="fjkit:chart-click[detail.customdata!=null]"`.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

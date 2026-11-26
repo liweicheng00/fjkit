@@ -307,6 +307,7 @@ def workload():
       ("fjkit:chart-click", "once per click on a point. detail is {curve, point, x, y, name, meta, customdata}: the first clicked point's curveNumber, pointNumber, x and y, its trace's name and meta, and the point's customdata. meta and customdata arrive as the figure set them, so customdata is the place for the id a route needs"),
       ("why not plotly_click", "a chart is drawn when it first comes into view, so at htmx:load it is still an empty div, and a plotly_click handler bound there fails silently for every chart that is not eager. charts.js binds it after the draw, once per chart, and a theme redraw does not bind it again"),
       ("what hx-vals sends", "with the vendored htmx 2.0.10, js:{...event.detail} sends every field as a query parameter: a number or a string as itself, an array such as customdata as one repeated parameter per element, an object such as meta as JSON. A field the trace does not set goes out as the string undefined. When the route reads one field, name it instead: hx_vals=\"js:{status: event.detail.x}\""),
+      ("a trigger filter", "must evaluate to exactly true: htmx 2.0.10 drops the event for any other value, truthy or not, so fjkit:chart-click[detail.customdata] never fires when customdata is an array or an object, and [detail] fails the same way. Compare instead: hx_trigger=\"fjkit:chart-click[detail.customdata!=null]\", or [detail.meta=='patient']"),
     ]) }}
 
     {{ defs("What each argument decides", [
