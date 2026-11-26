@@ -463,6 +463,39 @@ class TestPlugin:
         assert "Plotly.react" in body.text
 
 
+class TestEvents:
+    """The two DOM events `charts.js` dispatches are a contract an app writes
+    against in markup — `hx-trigger="fjkit:chart-click"`, `event.detail.x` in an
+    `hx-vals` — so their names and the click's detail keys are pinned here.
+
+    What they do in a browser (drawn after every draw, one click per click
+    across a theme redraw, the detail reaching an htmx request) is beyond
+    pytest; the verify skill's `journey_chart_events.py` drives it in Chrome."""
+
+    @staticmethod
+    def _script() -> str:
+        import fjkit_charts
+
+        return (Path(fjkit_charts.__file__).parent / "static" / "charts.js").read_text(encoding="utf-8")
+
+    def test_the_script_dispatches_exactly_two_events(self):
+        """`chart-legend-click` was asked for and declined; a third name is a
+        contract change, not a refactor."""
+        names = set(re.findall(r'"(fjkit:[a-z-]+)"', self._script()))
+        assert names == {"fjkit:chart-drawn", "fjkit:chart-click"}
+
+    def test_both_events_bubble(self):
+        """An `hx-trigger` on an ancestor — the card, a section — is a listener
+        on that ancestor, and it hears nothing from an event that does not
+        bubble."""
+        assert re.search(r"new CustomEvent\(\s*\w+\s*,\s*\{\s*bubbles:\s*true", self._script())
+
+    def test_a_click_carries_these_detail_fields_and_no_others(self):
+        literal = re.search(r'"fjkit:chart-click",\s*(\{[^}]*\})', self._script()).group(1)
+        keys = re.findall(r"(\w+):", literal)
+        assert keys == ["curve", "point", "x", "y", "name", "meta", "customdata"]
+
+
 class TestPlotlyVersion:
     """The app's plotly.py writes figures for one plotly.js; the browser runs the
     vendored one. A newer minor can emit attributes the bundle does not know, and
