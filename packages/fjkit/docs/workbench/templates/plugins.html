@@ -287,6 +287,28 @@ def workload():
       ("the text alternative", "Chart.summary, written from the same numbers that built the traces. Plotly's SVG is a thousand unlabelled <path> elements, so the caption is what a screen reader gets — and without JavaScript it is the whole content"),
     ]) }}
 
+    {% call prose() %}
+      <p>
+        A chart tells the page two things: that it has drawn, and which point was clicked. Both are
+        DOM events on the chart's <code>[data-chart]</code> div, and both bubble. There is no flag to
+        turn them on; a page that does not listen pays nothing. To filter a table by the clicked bar,
+        pass the htmx attributes to <code>chart()</code>, which puts them on that div.
+      </p>
+    {% endcall %}
+
+    {{ code("{{ chart(item,
+          hx_get=\"/tasks/table\",
+          hx_trigger=\"fjkit:chart-click\",
+          hx_target=\"#tasks\",
+          hx_vals=\"js:{...event.detail}\") }}", label="app/templates/workload/page.html") }}
+
+    {{ defs("The two events", [
+      ("fjkit:chart-drawn", "after every draw: the first one, when the chart comes into view, and each theme redraw. detail is {}. A chart below the fold fires it when it is scrolled to, not when the page loads"),
+      ("fjkit:chart-click", "once per click on a point. detail is {curve, point, x, y, name, meta, customdata}: the first clicked point's curveNumber, pointNumber, x and y, its trace's name and meta, and the point's customdata. meta and customdata arrive as the figure set them, so customdata is the place for the id a route needs"),
+      ("why not plotly_click", "a chart is drawn when it first comes into view, so at htmx:load it is still an empty div, and a plotly_click handler bound there fails silently for every chart that is not eager. charts.js binds it after the draw, once per chart, and a theme redraw does not bind it again"),
+      ("what hx-vals sends", "with the vendored htmx 2.0.10, js:{...event.detail} sends every field as a query parameter: a number or a string as itself, an array such as customdata as one repeated parameter per element, an object such as meta as JSON. A field the trace does not set goes out as the string undefined. When the route reads one field, name it instead: hx_vals=\"js:{status: event.detail.x}\""),
+    ]) }}
+
     {{ defs("What each argument decides", [
       ("url=\"/_fjkit-charts\"", "where this plugin's own assets are served. Keep it outside config.static_url: Starlette matches the first mount whose prefix fits, so the kit's static mount catches a path nested inside it and 404s against a directory that does not hold these files"),
       ("plotly_url=", "serve Plotly from somewhere other than the copy in the wheel — a path your app already serves, or a URL. The default is the vendored bundle under this plugin's own url, cache-stamped like every other kit asset"),
