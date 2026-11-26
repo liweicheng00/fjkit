@@ -41,6 +41,14 @@
   for a chart that is the point of the page and has to be in the first paint —
   observation is asynchronous, so even a chart at the top draws a frame late,
   and on that one page it shows.
+
+  Any other keyword lands on the `[data-chart]` div as an attribute, which is
+  how a chart drives htmx: `charts.js` dispatches `fjkit:chart-drawn` there
+  after every draw and `fjkit:chart-click` on a click, with `detail` =
+  {curve, point, x, y, name, meta, customdata}. Both bubble.
+
+      chart(item, hx_get="/tasks/table", hx_trigger="fjkit:chart-click",
+            hx_target="#tasks", hx_vals="js:{...event.detail}")
 #}
 {% macro chart(item, boxed=true, eager=false) -%}
   {#- Bound to a name first: inside `{% call %}`, `kwargs` is the call block's
