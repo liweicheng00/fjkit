@@ -4,8 +4,8 @@
   Nothing on this page subscribes to a broadcast, so the table carries no `hx-*`
   of its own. It is only ever a reply, swapped in band by a pick or an advance.
 
-  The hidden input is what makes the lazy panels possible. An `intersect` carries
-  no event to read an id out of, and a panel that was hidden when the pick
+  The hidden input is what makes the lazy panels possible. A tab switch carries
+  no id to read, and a panel that was hidden when the pick
   happened never heard one either, so the id has to sit where both paths can
   reach it: the page. Keeping it current is the routes' job — they broadcast with
   `hx_trigger_after_swap`, which fires after this table is in the document rather
