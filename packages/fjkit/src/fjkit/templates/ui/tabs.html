@@ -111,35 +111,55 @@
   * **Every other panel** holds a stand-in, usually a `skeleton`, shown until
     its first fetch arrives.
 
-  Every panel fetches each later time it is shown, the open one included.
+  Exactly two things make a lazy panel fetch:
 
-  Four decisions are baked in here so that no app template has to remember
+  * **Its tab going from hidden to shown**, by a click or by the arrow,
+    Home and End keys Basecoat handles. The open panel's first showing is the
+    page load, which does not fetch; every later showing does, the open one
+    included. Re-clicking the selected tab, a click or a key inside the panel,
+    and scrolling the page do not.
+  * **Each event in `on`**, while the panel is shown.
+
+  Five decisions are baked in here so that no app template has to remember
   them. Each is a way this goes silently wrong when written by hand:
 
-  * `intersect`, never `revealed`. htmx tests `revealed` with
+  * The tab switch, not the viewport. `revealed` tests visibility with
     `getBoundingClientRect`, and an element hidden by `display:none` — which is
     what the `hidden` Basecoat sets means — reports an all-zero rect. `top <
     innerHeight` and `bottom >= 0` both hold for that rect, so every panel on
-    the page counts as revealed and fetches at load. There is no error and no
-    empty panel to notice; the page is simply not lazy. `intersect` uses an
-    `IntersectionObserver`, which reports a `display:none` element as not
-    intersecting and fires when the tab is chosen.
+    the page counts as revealed and fetches at load. `intersect` gets the
+    hidden panel right, but an `IntersectionObserver` reports entering the
+    viewport, and a panel enters it on every scroll back as well as on a tab
+    switch: a tall panel above a long table reloaded itself each time the
+    reader came back up (0.4.3).
+  * `click` and `keydown` from the `.tabs` container. Basecoat's listeners are
+    on the tablist, and its arrow keys call `select()` without a click, so the
+    tab a key lands on hears no event of its own. The container is an
+    ancestor of the tablist: both events reach it after Basecoat has moved
+    `hidden`, whichever tab they started on. A nested group's events bubble to
+    the outer container too, and change nothing there.
+  * A filter that fetches on a change, not on an event. Every click and key in
+    the group reaches every panel, so each panel keeps what it last was in
+    `data-fjkit-shown` and lets the request through only when it went from
+    hidden to shown. Before the first event the panel has no mark, and its
+    starting state is read from its tab: shown if the tab carries
+    `data-fjkit-open`. The mark is on the panel and the test is on the tab
+    because Basecoat moves `aria-selected` and `hidden` as the user clicks, and
+    neither says what the server rendered. The filter ends in a comparison and
+    a negation, so it returns a boolean: htmx runs the request only when a
+    filter returns exactly `true`.
   * A filter on every broadcast. The events in `on` are raised on `<body>`, and
     a hidden panel hears them as well as the open one does. Four tabs would
     mean four requests per broadcast, three of them for markup nobody is
     looking at. `[!this.hidden]` is the whole fix, and it is this short only
     because the trigger sits on the panel — the element carrying the `hidden` —
     rather than on something inside it.
-  * `innerHTML` onto the panel. An element carrying `intersect` has to survive
-    its own reply. A panel replaced by markup that asked for `intersect` again
-    would be processed while on screen, fire immediately, and loop.
-  * The first `intersect` of the open panel is dropped. The filter marks the
-    panel seen and lets the request through only when its tab is not the one
-    carrying `data-fjkit-open`. The mark is on the panel and the test is on the
-    tab because Basecoat moves `aria-selected` and `hidden` as the user clicks,
-    and neither says what the server rendered. The `!!` is load-bearing: htmx
-    runs the request only when a filter returns exactly `true`, and the mark
-    reads back as the string `"y"`.
+  * `innerHTML` onto the panel. The panel carries the trigger and the mark its
+    filter keeps; a reply that replaced it would bring a panel that remembers
+    nothing and reads its starting state from the tab again.
+
+  A switch made by calling Basecoat's `select()` from a script raises no click
+  or key, and does not fetch. Nothing in fjkit calls it.
 
   `hx_push_url="true"` passes through and is supported: each tab becomes a URL.
   Back and Forward then reload the page at that URL rather than restore an htmx
@@ -149,12 +169,12 @@
   `include` is a selector for what the panel has to send: the id it is about,
   the query it is filtered by. A selector rather than a value carried in the
   event, because the two paths into this panel disagree on what an event is —
-  `intersect` has none. A panel hidden when the pick happened never heard
+  a tab switch carries no id. A panel hidden when the pick happened never heard
   `task-selected` and has only the page to read, so the id has to be on the
   page and the route that changes it has to say so **after** its own swap:
   `@render(..., hx_trigger_after_swap=...)`. See `fjkit.rendering.render`.
 
-  A lazy panel refetches every time it is shown, not only the first time. That
+  A lazy panel refetches on every tab switch to it, not only the first. That
   is the trade for not tracking which panels went stale while hidden; tracking
   that would need a listener on `<body>` — a script, for a page that otherwise
   has none.
@@ -171,7 +191,8 @@
       {% endcall %}
 #}
 {% macro tab_panel(id, lazy=none, on=none, include=none) -%}
-  {%- set trigger %}intersect[!!this.dataset.fjkitSeen || (this.dataset.fjkitSeen = 'y', !document.getElementById(this.id + '-tab')?.hasAttribute('data-fjkit-open'))]
+  {%- set shown %}(this.dataset.fjkitShown ?? (document.getElementById(this.id + '-tab')?.hasAttribute('data-fjkit-open') ? 'y' : '')) !== (this.dataset.fjkitShown = this.hidden ? '' : 'y') && !this.hidden{% endset -%}
+  {%- set trigger %}click[{{ shown }}] from:closest .tabs, keydown[{{ shown }}] from:closest .tabs
     {%- for event in on or [] %}, {{ event }}[!this.hidden] from:body{% endfor %}
   {%- endset -%}
   <div id="{{ id }}" role="tabpanel"

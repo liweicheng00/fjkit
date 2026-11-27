@@ -11,7 +11,7 @@ This page inverts that trade. A panel fetches when it is shown, and listens for
 a broadcast only while it is showing. `ui/tabs.html` holds the three attributes
 that say so, and its signature comment explains each one.
 
-One consequence reaches this file: an `intersect` carries no event, so a panel
+One consequence reaches this file: a tab switch carries no id, so a panel
 opened after the pick reads the id off the page. The pick therefore broadcasts
 with `hx_trigger_after_swap`, which fires once the table — carrying the hidden
 input the panels' `hx-include` selects — is in the document. `HX-Trigger` fires

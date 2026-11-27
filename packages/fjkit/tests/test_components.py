@@ -1686,14 +1686,53 @@ class TestLazyTabPanel:
 
     LAZY = '{% call tab_panel("p", lazy="/detail", on=["task-selected"], include="[name=task_id]") %}S{% endcall %}'
 
-    def test_the_trigger_is_intersect_and_never_revealed(self, render):
-        """`revealed` tests visibility with `getBoundingClientRect`, and a panel
-        hidden by `display:none` reports an all-zero rect that passes the test.
-        A `revealed` panel therefore fetches at page load: no error, no empty
-        panel, just a page that is not lazy — which is the whole component."""
+    @staticmethod
+    def trigger(html: str) -> str:
+        return re.search(r'hx-trigger="([^"]*)"', html).group(1)
+
+    @classmethod
+    def switch_filters(cls, html: str) -> dict[str, str]:
+        """Event name -> its filter, for the two events that switch a tab."""
+        return dict(re.findall(r"(click|keydown)\[(.*?)\] from:closest \.tabs", cls.trigger(html)))
+
+    def test_a_scroll_never_fetches(self, render):
+        """`intersect` fires whenever the panel enters the viewport, which is a
+        tab switch and also every scroll back to it: a tall panel above a long
+        table reloaded itself each time the reader came back up (0.4.3).
+        `revealed` is worse — a `display:none` panel reports an all-zero rect
+        that passes its test, so every panel fetches at page load. Neither is a
+        trigger here; the tab switch is."""
         html = render(f"{TABS}{self.LAZY}")
+        assert "intersect" not in html
         assert "revealed" not in html
-        assert 'hx-trigger="intersect' in html
+        assert set(self.switch_filters(html)) == {"click", "keydown"}
+
+    def test_the_switch_is_read_after_basecoat_has_moved_hidden(self, render):
+        """Basecoat listens on the tablist, and the arrow keys call its
+        `select()` without a click, so the tab a key lands on hears nothing.
+        The panel listens on the `.tabs` container instead: both events reach it
+        after Basecoat's handler, whichever tab they started on, and by then
+        `hidden` already says which panel is shown."""
+        html = render(f"{TABS}{self.LAZY}")
+        assert self.trigger(html).startswith("click[")
+        assert self.trigger(html).count("from:closest .tabs") == 2
+        assert "from:#" not in html
+
+    def test_click_and_keydown_ask_the_same_question(self, render):
+        filters = self.switch_filters(render(f"{TABS}{self.LAZY}"))
+        assert filters["click"] == filters["keydown"]
+
+    def test_only_a_hidden_to_shown_change_fetches(self, render):
+        """Every click and key in the group reaches every panel, so the filter
+        compares what the panel was against what it is and lets a request
+        through only when it went from hidden to shown. Re-clicking the selected
+        tab, a click inside the panel, a key typed into a field: no change, no
+        request. The comparison is `!==` and the last term is a negation, so
+        the filter returns a boolean — htmx runs the request only on `true`."""
+        shown = self.switch_filters(render(f"{TABS}{self.LAZY}"))["click"]
+        assert "(this.dataset.fjkitShown = this.hidden ? '' : 'y')" in shown
+        assert " !== " in shown
+        assert shown.endswith("&& !this.hidden")
 
     def test_a_broadcast_is_filtered_on_the_panel_being_visible(self, render):
         """The events are raised on `<body>`, so a hidden panel hears them as
@@ -1711,16 +1750,16 @@ class TestLazyTabPanel:
         assert "task-changed[!this.hidden] from:body" in html
 
     def test_the_panel_survives_its_own_reply(self, render):
-        """An element carrying `intersect` that is replaced by markup carrying
-        `intersect` is processed on screen, fires at once, and loops. The swap
-        has to be `innerHTML` onto the panel itself."""
+        """The panel holds the trigger and the state its filter keeps. A reply
+        that replaced it would bring a fresh panel that remembers nothing, so
+        the swap has to be `innerHTML` onto the panel itself."""
         html = render(f"{TABS}{self.LAZY}")
         assert 'hx-target="this"' in html
         assert 'hx-swap="innerHTML"' in html
 
     def test_include_is_what_the_panel_sends(self, render):
-        """`intersect` carries no event, so the id cannot come from one. It is a
-        selector because the page is the only thing both paths can read."""
+        """A tab switch carries no id, so the id cannot come from the event. It
+        is a selector because the page is the only thing both paths can read."""
         html = render(f"{TABS}{self.LAZY}")
         assert "hx-include=\"[name=task_id]\"" in html
 
@@ -1745,21 +1784,16 @@ class TestLazyTabPanel:
         assert html.count("data-fjkit-open") == 1
         assert re.search(r'id="b-tab"[^>]*data-fjkit-open', html)
 
-    def test_the_open_panel_skips_its_first_intersect(self, render):
-        """The open panel's body came with the page. Fetching it again costs a
-        request per view, and with `hx_push_url` a duplicate history entry that
-        makes Back land on the same URL. Every later showing still fetches."""
-        html = render(f"{TABS}{self.LAZY}")
-        trigger = re.search(r'hx-trigger="intersect\[(.*?)\]', html).group(1)
-        assert "data-fjkit-open" in trigger
-        assert "this.id + '-tab'" in trigger
-
-    def test_the_filter_returns_a_boolean(self, render):
-        """htmx runs the request only when a filter returns exactly `true`.
-        The mark reads back as a string, so without `!!` every panel would stop
-        fetching after its first showing."""
-        html = render(f"{TABS}{self.LAZY}")
-        assert 'hx-trigger="intersect[!!this.dataset.fjkitSeen || ' in html
+    def test_the_open_panel_starts_out_shown(self, render):
+        """The open panel's body came with the page, and no event has run when
+        the first one arrives, so the panel's starting state is read from the
+        tab the server marked. Without it the first click on the already
+        selected tab would read as hidden-to-shown and fetch what the page had
+        just rendered: a request per view, and with `hx_push_url` a duplicate
+        history entry that makes Back land on the same URL."""
+        shown = self.switch_filters(render(f"{TABS}{self.LAZY}"))["click"]
+        assert shown.startswith("(this.dataset.fjkitShown ?? (document.getElementById(this.id + '-tab')")
+        assert "hasAttribute('data-fjkit-open')" in shown
 
 
 class TestHistory:
