@@ -867,7 +867,7 @@ const SHOWCASE = {
 
 {{ brand("Acme", url_for(request, "home"), icon_name="gauge") }}
 {{ brand("Acme", url_for(request, "home"),
-         icon_src=url_for(request, "static", path="logo.svg")) }}`,
+         icon_src=app_static("logo.svg")) }}   {# FjkitConfig.static_dir #}`,
     caption: "icon_name draws a Lucide glyph on a bg-primary tile, so the mark follows a rebrand; icon_src places real artwork and stops following it, which is the trade a brand asset always makes. The two are mutually exclusive.",
   },
 

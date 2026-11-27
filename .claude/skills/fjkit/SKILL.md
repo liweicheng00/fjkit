@@ -201,6 +201,12 @@ that is meant to be an optimisation.
   renders, and styles nothing. `grep` the class in the app's style pack,
   `src/fjkit/static/dist/fjkit-<pack>.css` (`vega` unless `FjkitConfig.style`
   names another), before believing it works.
+- **An app asset linked with `url_for(request, "static", path=…)`.** That URL
+  has no `?v=` stamp. After a deploy a browser can then run the new, stamped
+  kit and plugin scripts against an old copy of the app's own script, and
+  nothing reports an error. Set `FjkitConfig(static_dir=APP_DIR / "static")`,
+  drop the app's own `StaticFiles` mount, and link with
+  `{{ app_static("js/app.js") }}`.
 - **`HX-Trigger` carrying a JSON array.** htmx passes a JSON object through as
   `event.detail` and wraps anything else, arrays included, as `{value: …}`. A
   listener reading `event.detail` directly then finds nothing, and the symptom
