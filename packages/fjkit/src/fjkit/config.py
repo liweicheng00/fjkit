@@ -82,6 +82,21 @@ class FjkitConfig:
     #: `mount_fjkit()` and the shell template read this, so they cannot disagree.
     static_url: str = "/_fjkit"
 
+    #: Where the app's own static files live — its scripts, images, fonts.
+    #: `mount_fjkit()` serves the directory at `static_dir_url` under the name
+    #: `"static"`, and templates link a file with `app_static("js/app.js")`,
+    #: which stamps it with `?v=<mtime>` the way `fjkit_static` stamps the
+    #: kit's. Link through `app_static` rather than
+    #: `url_for(request, "static", path=…)`: that URL carries no stamp, so after
+    #: a deploy a browser can pair the new kit assets with an old app script.
+    #: `None` mounts nothing and defines no `app_static`.
+    static_dir: Path | None = None
+
+    #: URL prefix `static_dir` is served from. It must not nest inside, or
+    #: contain, `static_url` or a plugin's mount: Starlette matches the first
+    #: mount whose prefix fits, so one of the two would 404 for files it holds.
+    static_dir_url: str = "/static"
+
     #: Which Basecoat style pack the shell loads. All eight ship in the wheel
     #: already built, so switching is a one-word change and a restart — no
     #: Tailwind, no reinstall, and no template edit, because a pack changes

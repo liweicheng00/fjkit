@@ -129,6 +129,12 @@ def build_environment(config: FjkitConfig | None = None) -> Environment:
     env.globals["url_for"] = _url_for
     env.globals["is_active"] = _is_active
     env.globals["fjkit_static"] = static_url(config.static_url, auto_reload=config.auto_reload)
+    # Not `fjkit_`-prefixed: that prefix names what the kit owns, and these are
+    # the app's files. Absent rather than inert without a `static_dir`, so a
+    # template that links an app asset in an app with none fails under
+    # `strict_undefined` instead of rendering a URL nothing serves.
+    if config.static_dir is not None:
+        env.globals["app_static"] = static_url(config.static_dir_url, config.static_dir, auto_reload=config.auto_reload)
     env.globals["fjkit_icon_path"] = _icon_path
     env.globals["fjkit_attr_name"] = _attr_name
     env.globals["fjkit_version"] = _versions()
@@ -256,7 +262,8 @@ def static_url(prefix: str, root: Path | None = None, *, auto_reload: bool = Fal
 
     `root` is where the files are. It is public so that a plugin mounting its
     own assets gets the same stamping rather than a second answer to the caching
-    question above. Defaults to the kit's own static directory.
+    question above; `FjkitConfig.static_dir` reaches it as `app_static`.
+    Defaults to the kit's own static directory.
     """
     base = prefix.rstrip("/")
     directory = STATIC_DIR if root is None else root

@@ -6,7 +6,8 @@ import os
 import re
 
 import pytest
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 from fjkit import FjkitConfig, Templates, mount_fjkit, render
 from fjkit.config import STATIC_DIR
@@ -163,3 +164,192 @@ def test_a_render_outside_a_request_keeps_the_bare_prefix():
     static = build_environment(FjkitConfig()).globals["fjkit_static"]
 
     assert static("dist/fjkit-vega.css").startswith("/_fjkit/")
+
+
+# ------------------------------------------------------- the app's own assets
+
+
+class _Mounts:
+    """A plugin that mounts one static directory, for the collision tests."""
+
+    name = "mounts"
+
+    def __init__(self, url: str, directory) -> None:
+        self.url = url
+        self.directory = directory
+
+    def mount(self, setup) -> None:
+        setup.mount_static(self.url, self.directory)
+
+
+@pytest.fixture
+def app_static_dir(tmp_path):
+    root = tmp_path / "static"
+    (root / "laboratory").mkdir(parents=True)
+    (root / "laboratory" / "marking.js").write_text("// marking\n", encoding="utf-8")
+    return root
+
+
+ASSET = "laboratory/marking.js"
+STAMPED = re.compile(r"/static/laboratory/marking\.js\?v=\d+")
+
+
+def _app_with_static(directory, **config) -> FastAPI:
+    router = APIRouter()
+
+    @router.get("/linked")
+    @render("linked.html")
+    def linked() -> dict[str, str]:
+        return {}
+
+    app = FastAPI()
+    templates = mount_fjkit(app, FjkitConfig(static_dir=directory, **config))
+    templates.env.loader = DictLoader(
+        {"linked.html": '<script src="{{ app_static("laboratory/marking.js") }}"></script>'}
+    )
+    app.include_router(router)
+    return app
+
+
+def _linked(client: TestClient, url: str = "/linked") -> str:
+    return re.search(r'src="([^"]+)"', client.get(url).text).group(1)
+
+
+def test_an_app_links_its_own_asset_with_a_stamp(app_static_dir):
+    """The stamp `fjkit_static` puts on the kit's assets, on the app's: a deploy
+    that ships a new `marking.js` must reach a browser that already cached the
+    old one, or the page runs today's markup against yesterday's script."""
+    url = _linked(TestClient(_app_with_static(app_static_dir)))
+
+    assert STAMPED.fullmatch(url)
+
+
+def test_the_asset_is_served_at_the_unstamped_path(app_static_dir):
+    client = TestClient(_app_with_static(app_static_dir))
+    stamped = _linked(client)
+
+    for url in (stamped, stamped.split("?")[0], f"/static/{ASSET}?v=0"):
+        response = client.get(url)
+        assert response.status_code == 200, url
+        assert response.text == "// marking\n"
+
+
+def test_url_for_static_keeps_resolving(app_static_dir):
+    """The mount keeps Starlette's conventional name, so an app's existing
+    `url_for(request, "static", path=…)` calls still find it."""
+    app = _app_with_static(app_static_dir)
+    router = APIRouter()
+
+    @router.get("/where")
+    def where(request: Request) -> dict[str, str]:
+        return {"url": request.url_for("static", path=ASSET).path}
+
+    app.include_router(router)
+
+    assert TestClient(app).get("/where").json() == {"url": f"/static/{ASSET}"}
+
+
+def test_the_url_prefix_is_configurable(app_static_dir):
+    client = TestClient(_app_with_static(app_static_dir, static_dir_url="/assets/"))
+    url = _linked(client)
+
+    assert re.fullmatch(r"/assets/laboratory/marking\.js\?v=\d+", url)
+    assert client.get(url).status_code == 200
+
+
+def test_a_sub_app_links_its_own_asset_under_its_mount_prefix(app_static_dir):
+    parent = FastAPI()
+    parent.mount("/ui", _app_with_static(app_static_dir))
+    client = TestClient(parent)
+
+    url = _linked(client, "/ui/linked")
+
+    assert re.fullmatch(r"/ui" + STAMPED.pattern, url)
+    assert client.get(url).status_code == 200
+
+
+def test_a_root_path_behind_a_proxy_prefixes_the_app_s_asset(app_static_dir):
+    url = _linked(TestClient(_app_with_static(app_static_dir), root_path="/proxy"))
+
+    assert re.fullmatch(r"/proxy" + STAMPED.pattern, url)
+
+
+def test_the_app_s_stamp_follows_the_file_while_reloading(app_static_dir):
+    static = build_environment(FjkitConfig(static_dir=app_static_dir, auto_reload=True)).globals["app_static"]
+    before = static(ASSET)
+
+    path = app_static_dir / ASSET
+    was = path.stat().st_mtime
+    os.utime(path, (was + 60, was + 60))
+
+    assert static(ASSET) != before
+    assert static(ASSET) == static(ASSET)
+
+
+def test_the_app_s_stamp_is_read_once_when_not_reloading(app_static_dir):
+    static = build_environment(FjkitConfig(static_dir=app_static_dir, auto_reload=False)).globals["app_static"]
+    before = static(ASSET)
+
+    path = app_static_dir / ASSET
+    was = path.stat().st_mtime
+    os.utime(path, (was + 60, was + 60))
+
+    assert static(ASSET) == before
+
+
+def test_without_a_static_dir_nothing_is_mounted_or_exposed():
+    app = FastAPI()
+    templates = mount_fjkit(app, FjkitConfig())
+
+    assert "app_static" not in templates.env.globals
+    assert all(getattr(route, "name", None) != "static" for route in app.routes)
+
+
+def test_a_missing_static_dir_fails_at_startup(tmp_path):
+    with pytest.raises(RuntimeError, match="static_dir"):
+        mount_fjkit(FastAPI(), FjkitConfig(static_dir=tmp_path / "nope"))
+
+
+def test_a_static_dir_that_is_a_file_fails_at_startup(tmp_path):
+    file = tmp_path / "static"
+    file.write_text("", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="static_dir"):
+        mount_fjkit(FastAPI(), FjkitConfig(static_dir=file))
+
+
+@pytest.mark.parametrize("url", ["", "/", "static"])
+def test_a_static_dir_url_that_is_not_a_path_below_the_root_fails(app_static_dir, url):
+    with pytest.raises(ValueError, match="static_dir_url"):
+        mount_fjkit(FastAPI(), FjkitConfig(static_dir=app_static_dir, static_dir_url=url))
+
+
+@pytest.mark.parametrize(
+    ("kit", "app_url"),
+    [("/static", "/static"), ("/_fjkit", "/_fjkit/app"), ("/assets/kit", "/assets")],
+    ids=["same", "inside-the-kit", "around-the-kit"],
+)
+def test_a_static_dir_url_overlapping_the_kit_s_fails_at_startup(app_static_dir, kit, app_url):
+    """Starlette matches the first mount whose prefix fits, so two nested
+    mounts mean one of them 404s for files it holds."""
+    config = FjkitConfig(static_dir=app_static_dir, static_dir_url=app_url, static_url=kit)
+    with pytest.raises(ValueError, match="fjkit_static"):
+        mount_fjkit(FastAPI(), config)
+
+
+def test_a_static_dir_url_overlapping_a_plugin_mount_fails_at_startup(app_static_dir, tmp_path):
+    plugin = _Mounts("/static/charts", tmp_path)
+    with pytest.raises(ValueError, match="fjkit_mounts_static"):
+        mount_fjkit(FastAPI(), FjkitConfig(static_dir=app_static_dir, plugins=(plugin,)))
+
+
+def test_an_app_that_already_mounted_static_is_told_to_drop_it(app_static_dir):
+    """The workaround this field replaces: an app mounting `/static` itself."""
+    app = FastAPI()
+    app.mount("/static", StaticFiles(directory=app_static_dir), name="static")
+    with pytest.raises(ValueError, match="static"):
+        mount_fjkit(app, FjkitConfig(static_dir=app_static_dir))
+
+
+def test_a_sibling_prefix_is_not_an_overlap(app_static_dir):
+    """`/static-v2` is not inside `/static`: prefixes compare by segment."""
+    mount_fjkit(FastAPI(), FjkitConfig(static_dir=app_static_dir, static_url="/static-kit"))
