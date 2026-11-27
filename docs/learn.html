@@ -183,6 +183,20 @@ fjkit
         <code>base.html</code> is four blocks long because <code>ui/shell.html</code>, which it
         extends, provides the rest. The diagram below shows it.
       </p>
+      <p>
+        An app with its own scripts or images sets <code>FjkitConfig(static_dir=APP_DIR / "static")</code>.
+        <code>mount_fjkit()</code> serves that directory at <code>/static</code>
+        (<code>static_dir_url</code> moves it), and a template links a file with
+        <code>{{ app_static("js/marking.js") }}</code>. The URL carries
+        <code>?v=&lt;mtime&gt;</code>, the stamp <code>fjkit_static</code> puts on the kit's own
+        assets. <code>StaticFiles</code> sends no <code>Cache-Control</code>, so without the stamp a
+        browser may keep an old copy after a deploy. Do not link app assets with
+        <code>url_for(request, "static", path=…)</code>: that URL has no stamp, so a browser can
+        load the new kit and plugin assets together with an old app script. The mount keeps the
+        name <code>"static"</code>, so such calls still resolve during a migration. The kit refuses
+        to start when the directory is missing, or when its URL overlaps the kit's mount or a
+        plugin's.
+      </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -1542,6 +1556,6 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
   </script>
   <script defer src="assets/data.js?v=c9d679b5903a"></script>
   <script defer src="assets/common.js?v=cfc24f854e78"></script>
-  <script defer src="assets/learn.js?v=c281df405be7"></script>
+  <script defer src="assets/learn.js?v=28da606ce7fd"></script>
 </body>
 </html>

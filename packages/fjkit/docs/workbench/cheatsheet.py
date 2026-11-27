@@ -964,6 +964,14 @@ GLOBALS = [
         "瀏覽器就不會拿舊的樣式表去配新的標記。",
     },
     {
+        "name": "app_static(path)",
+        "en": "A URL under FjkitConfig.static_dir — the app's own scripts and images — stamped the same "
+        "way. Defined only when static_dir is set. Use it instead of url_for(request, \"static\", …), "
+        "whose URL has no stamp.",
+        "zh": "FjkitConfig.static_dir（app 自己的腳本與圖片）底下的網址，戳記方式相同。"
+        "只有設定 static_dir 時才有定義。請用它取代 url_for(request, \"static\", …)，後者的網址沒有戳記。",
+    },
+    {
         "name": "fjkit_version",
         "en": "The versions in the footer: fjkit, fastapi, jinja2, basecoat, htmx.",
         "zh": "頁尾那幾個版本號：fjkit、fastapi、jinja2、basecoat、htmx。",

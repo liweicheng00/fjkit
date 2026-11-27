@@ -588,6 +588,8 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>fjkit_static(path)</code></h4><p>掛載後靜態目錄下的網址，帶上 ?v=&lt;mtime&gt;，瀏覽器就不會拿舊的樣式表去配新的標記。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
+      <h4><code>app_static(path)</code></h4><p>FjkitConfig.static_dir（app 自己的腳本與圖片）底下的網址，戳記方式相同。只有設定 static_dir 時才有定義。請用它取代 url_for(request, &#34;static&#34;, …)，後者的網址沒有戳記。</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
       <h4><code>fjkit_version</code></h4><p>頁尾那幾個版本號：fjkit、fastapi、jinja2、basecoat、htmx。</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>fjkit_color_scheme</code></h4><p>FjkitConfig.color_scheme 的渲染結果：.prepaint_script、.html_class、.toggle。</p>    </section>  </div>

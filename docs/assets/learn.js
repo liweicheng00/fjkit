@@ -3,19 +3,20 @@ const WIRING = [
   {
     file: "app/main.py",
     lang: "python",
-    why: "Two calls. FjkitConfig holds every setting; mount_fjkit serves the kit's assets from inside the installed package and compiles the environment once, at construction.",
+    why: "Two calls. FjkitConfig holds every setting; mount_fjkit serves the kit's assets from inside the installed package, serves static_dir if the app has one, and compiles the environment once, at construction.",
     code: `from fastapi import FastAPI
 from fjkit import FjkitConfig, mount_fjkit
 
 config = FjkitConfig(
     template_dir=APP_DIR / "templates",
+    static_dir=APP_DIR / "static",      # optional: the app's own JS and images
     bytecode_cache_dir=ROOT_DIR / ".jinja-cache",
 )
 
 app = FastAPI()
 
-# Serves the kit's assets, and compiles the environment once — compiling a
-# template is expensive, a later lookup is a dict hit.
+# Serves the kit's assets and static_dir, and compiles the environment once —
+# compiling a template is expensive, a later lookup is a dict hit.
 mount_fjkit(app, config)`,
   },
   {
