@@ -676,16 +676,18 @@ GROUPS = [
                         "exception. It does not fetch at load, so its block is the real body, "
                         "rendered by the page from the partial lazy returns. on lists the "
                         "broadcasts it follows while it is visible, include the selector for "
-                        "what it sends. Not revealed — a panel hidden by display:none reports "
-                        "an all-zero rect, which passes htmx's visibility test, so a revealed "
-                        "panel fetches at page load.",
+                        "what it sends. It fetches on a tab switch, by click or arrow key, and "
+                        "never on scroll: not intersect, which also fires each time the panel "
+                        "scrolls back into view, and not revealed, which a display:none panel "
+                        "passes, so every panel would fetch at page load.",
                         zh="lazy 是一個 URL：分頁被選到時，這個面板才去抓自己的內容，"
                         "區塊裡放的是在那之前的暫代內容。一開始就打開的分頁例外：它在載入時不抓，"
                         "所以區塊裡放的是真正的內容，由頁面用 lazy 回傳的同一個 partial 渲染。"
                         "on 列出它顯示中要跟著更新的廣播，"
-                        "include 是它要送出什麼的選擇器。不能用 revealed——"
-                        "被 display:none 藏起來的面板回報的是全為零的矩形，"
-                        "剛好通過 htmx 的可見性判斷，所以 revealed 會在頁面載入時就抓。",
+                        "include 是它要送出什麼的選擇器。它只在切換分頁時抓（點擊或方向鍵），"
+                        "捲動頁面不會抓：不用 intersect，因為面板每次捲回畫面都會再觸發；"
+                        "也不用 revealed，因為被 display:none 藏起來的面板也會通過它的判斷，"
+                        "所有面板會在頁面載入時就抓。",
                     ),
                 ],
             },
@@ -1063,11 +1065,13 @@ HTMX = [
             {
                 "call": 'hx-trigger="intersect once"\nhx-trigger="intersect threshold:0.5"',
                 "en": "Lazy load through an IntersectionObserver, which reports a hidden "
-                "element as not intersecting. This is the one that works in a tab panel or "
-                "a scroll container. Without once it fires every time the element becomes "
-                "visible again; root: and threshold: take the observer's own options.",
+                "element as not intersecting. This is the one that works in a scroll "
+                "container. Without once it fires every time the element becomes visible "
+                "again, scrolling included, which is why tab_panel(lazy=) does not use it; "
+                "root: and threshold: take the observer's own options.",
                 "zh": "改用 IntersectionObserver 做延遲載入，隱藏的元素會被正確判定為未交會。"
-                "分頁面板或捲動容器裡要用這個。不加 once 的話，每次重新可見都會觸發；"
+                "捲動容器裡要用這個。不加 once 的話，每次重新可見都會觸發，捲動也算，"
+                "所以 tab_panel(lazy=) 不用它；"
                 "root: 與 threshold: 對應 observer 自己的選項。",
             },
             {

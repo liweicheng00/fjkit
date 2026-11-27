@@ -424,7 +424,7 @@ fjkit
       <h4><code>tab_panel(id, lazy=none, on=none, include=none)</code></h4><p>id 必須跟分頁的一致。這組配對就是 Basecoat 鍵盤行為所讀的整份 aria 契約。</p>    </section><aside><span class="badge" data-variant="outline">區塊：內容</span></aside>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>tab_panel(&#34;detail&#34;, lazy=url_for(request, &#34;detail&#34;),
-          on=[&#34;task-selected&#34;], include=&#34;[name=task_id]&#34;)</code></h4><p>lazy 是一個 URL：分頁被選到時，這個面板才去抓自己的內容，區塊裡放的是在那之前的暫代內容。一開始就打開的分頁例外：它在載入時不抓，所以區塊裡放的是真正的內容，由頁面用 lazy 回傳的同一個 partial 渲染。on 列出它顯示中要跟著更新的廣播，include 是它要送出什麼的選擇器。不能用 revealed——被 display:none 藏起來的面板回報的是全為零的矩形，剛好通過 htmx 的可見性判斷，所以 revealed 會在頁面載入時就抓。</p>    </section><aside><span class="badge" data-variant="outline">區塊：the placeholder, or the open tab&#39;s body 呼叫</span></aside>  </div>
+          on=[&#34;task-selected&#34;], include=&#34;[name=task_id]&#34;)</code></h4><p>lazy 是一個 URL：分頁被選到時，這個面板才去抓自己的內容，區塊裡放的是在那之前的暫代內容。一開始就打開的分頁例外：它在載入時不抓，所以區塊裡放的是真正的內容，由頁面用 lazy 回傳的同一個 partial 渲染。on 列出它顯示中要跟著更新的廣播，include 是它要送出什麼的選擇器。它只在切換分頁時抓（點擊或方向鍵），捲動頁面不會抓：不用 intersect，因為面板每次捲回畫面都會再觸發；也不用 revealed，因為被 display:none 藏起來的面板也會通過它的判斷，所有面板會在頁面載入時就抓。</p>    </section><aside><span class="badge" data-variant="outline">區塊：the placeholder, or the open tab&#39;s body 呼叫</span></aside>  </div>
 </div></div>
   </div>
 </section></div>
@@ -647,7 +647,7 @@ hx-trigger=&#34;change&#34;</code></h4><p>預設值——按鈕是 click、表�
       <h4><code>hx-trigger=&#34;revealed&#34;</code></h4><p>延遲載入：元素捲進畫面時才觸發。它是用 getBoundingClientRect 判斷的，所以放在 overflow 容器裡、或被 display:none 藏起來的元素都不適用——隱藏元素回報的是全為零的矩形，會被判定為可見。</p>    </section>  </div>
             <div class="item" data-clamp="false">    <section>
       <h4><code>hx-trigger=&#34;intersect once&#34;
-hx-trigger=&#34;intersect threshold:0.5&#34;</code></h4><p>改用 IntersectionObserver 做延遲載入，隱藏的元素會被正確判定為未交會。分頁面板或捲動容器裡要用這個。不加 once 的話，每次重新可見都會觸發；root: 與 threshold: 對應 observer 自己的選項。</p>    </section>  </div>
+hx-trigger=&#34;intersect threshold:0.5&#34;</code></h4><p>改用 IntersectionObserver 做延遲載入，隱藏的元素會被正確判定為未交會。捲動容器裡要用這個。不加 once 的話，每次重新可見都會觸發，捲動也算，所以 tab_panel(lazy=) 不用它；root: 與 threshold: 對應 observer 自己的選項。</p>    </section>  </div>
             <div class="item" data-clamp="false">    <section>
       <h4><code>hx-trigger=&#34;load&#34;</code></h4><p>元素一被插入就觸發一次。</p>    </section>  </div>
             <div class="item" data-clamp="false">    <section>

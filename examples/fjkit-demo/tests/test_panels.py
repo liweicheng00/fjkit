@@ -81,7 +81,8 @@ def test_no_panel_is_lazy_by_revealed(page):
 def test_each_panel_fetches_when_it_is_shown(page, panel):
     attrs = _attrs(page)[panel]
     assert f'hx-get="{ENDPOINTS[panel]}"' in attrs
-    assert 'hx-trigger="intersect' in attrs
+    assert 'hx-trigger="click[' in attrs
+    assert "intersect" not in attrs, "intersect also fires on every scroll back to the panel"
 
 
 @pytest.mark.parametrize("panel", PANELS)
@@ -103,8 +104,8 @@ def test_every_broadcast_is_filtered_on_the_panel_being_visible(page, panel):
 
 @pytest.mark.parametrize("panel", PANELS)
 def test_each_panel_survives_its_own_reply(page, panel):
-    """A panel replaced by markup that also asked for `intersect` would be
-    processed on screen, fire at once, and loop."""
+    """The panel keeps the mark its tab-switch filter reads. A reply that
+    replaced it would bring a panel that remembers nothing."""
     attrs = _attrs(page)[panel]
     assert 'hx-target="this"' in attrs
     assert 'hx-swap="innerHTML"' in attrs
@@ -117,7 +118,7 @@ def test_only_the_panels_that_need_an_id_send_one(page, panel):
 
 
 def test_the_table_writes_the_open_id_down_only_when_there_is_one(client):
-    """`intersect` carries no event, and a panel hidden at the time of the pick
+    """A tab switch carries no id, and a panel hidden at the time of the pick
     never heard one, so the page is the only thing both paths can read.
 
     Nothing picked is a disabled input, not an empty one. `hx-include` sends
@@ -173,10 +174,10 @@ def test_nothing_but_the_pick_pushes(htmx):
 def test_the_request_the_page_actually_makes_is_answered(client, htmx, panel):
     """Issue what the browser issues, not what the route accepts.
 
-    `intersect` opens the visible tab as the page settles, before any pick. The
-    request under test is therefore the page's own markup resolved against the
-    page's own inputs, and the failure it catches is a value the page produces
-    and the route cannot parse.
+    A tab switch can open a panel before any pick. The request under test is
+    therefore the page's own markup resolved against the page's own inputs, and
+    the failure it catches is a value the page produces and the route cannot
+    parse.
     """
     page = client.get("/panels").text
     attrs = _attrs(page)[panel]
