@@ -181,6 +181,17 @@ fjkit
         <code>base.html</code> 只有四個 block，其餘部分（<code>&lt;head&gt;</code>、腳本、header／main／footer）
         由它 extends 的 <code>ui/shell.html</code> 提供，如下圖。
       </p>
+      <p>
+        app 有自己的腳本或圖片時，設定 <code>FjkitConfig(static_dir=APP_DIR / "static")</code>。
+        <code>mount_fjkit()</code> 會在 <code>/static</code> 供應這個目錄（以 <code>static_dir_url</code> 變更位置），
+        模板以 <code>{{ app_static("js/marking.js") }}</code> 連結檔案。網址帶有
+        <code>?v=&lt;mtime&gt;</code>，與 <code>fjkit_static</code> 加在 kit 自身資產上的戳記相同。
+        <code>StaticFiles</code> 不送 <code>Cache-Control</code>，沒有戳記時，瀏覽器可能在部署後仍保留舊檔。
+        不要用 <code>url_for(request, "static", path=…)</code> 連結 app 的資產：該網址沒有戳記，
+        瀏覽器可能同時載入新的 kit 與 plugin 資產和舊的 app 腳本。這個 mount 保留名稱
+        <code>"static"</code>，所以遷移期間這類呼叫仍可解析。目錄不存在，或網址與 kit 或 plugin 的 mount 重疊時，
+        kit 會拒絕啟動。
+      </p>
 </div>
 <div class="card">    <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -1484,7 +1495,7 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
 </div>    </main>
 
       <footer class="text-muted-foreground border-t py-5 text-xs">
-  fjkit 0.4.2 · FastAPI 0.141.1 ·
+  fjkit 0.4.3 · FastAPI 0.141.1 ·
   Jinja2 3.1.6 · Basecoat 1.0.2 ·
   htmx 2.0.10 —
   <a href="https://github.com/liweicheng00/fjkit">原始碼與 issues</a>.
@@ -1502,6 +1513,6 @@ def create_task(service: ServiceDep, payload: TaskCreate) -&gt; BoardResponse:
   </script>
   <script defer src="../assets/data.js?v=c9d679b5903a"></script>
   <script defer src="../assets/common.js?v=cfc24f854e78"></script>
-  <script defer src="../assets/learn.js?v=c281df405be7"></script>
+  <script defer src="../assets/learn.js?v=28da606ce7fd"></script>
 </body>
 </html>

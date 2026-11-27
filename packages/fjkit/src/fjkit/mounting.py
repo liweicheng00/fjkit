@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.routing import Mount
 
 from fjkit.config import STATIC_DIR, FjkitConfig
 from fjkit.errors import install_error_handlers
@@ -67,6 +68,53 @@ def mount_fjkit(app: FastAPI, config: FjkitConfig | None = None) -> Templates:
     # every template in the app has been compiled.
     install_plugins(app, config)
 
+    # After the plugins, so the overlap check sees every mount they made.
+    if config.static_dir is not None:
+        _mount_app_static(app, config)
+
     templates = Templates.create(config)
     app.state.templates = templates
     return templates
+
+
+#: Starlette's conventional name for an app's static mount. Kept, so an app's
+#: existing `url_for(request, "static", path=…)` calls resolve after it moves to
+#: `FjkitConfig.static_dir`.
+APP_STATIC_NAME = "static"
+
+
+def _mount_app_static(app: FastAPI, config: FjkitConfig) -> None:
+    """Serve `config.static_dir`, refusing every setup that would 404 later."""
+    directory = config.static_dir
+    assert directory is not None
+    if not directory.is_dir():
+        raise RuntimeError(
+            f"FjkitConfig.static_dir is {directory}, which is not a directory. "
+            "Point it at the folder holding the app's own scripts and images, or leave it None."
+        )
+
+    url = config.static_dir_url.rstrip("/")
+    if not url.startswith("/"):
+        raise ValueError(
+            f"FjkitConfig.static_dir_url must be a path below the root such as '/static', "
+            f"not {config.static_dir_url!r}."
+        )
+
+    for route in app.routes:
+        name = getattr(route, "name", None)
+        if name == APP_STATIC_NAME or (isinstance(route, Mount) and _nested(url, route.path)):
+            raise ValueError(
+                f"FjkitConfig.static_dir_url {url!r} overlaps the mount {name!r} at {getattr(route, 'path', '')!r}. "
+                "Starlette matches the first mount whose prefix fits, so one of them would 404 for "
+                "files it holds. Choose a URL outside it — or, if the app mounts its own static "
+                "directory as well, drop that mount: static_dir replaces it."
+            )
+
+    app.mount(url, StaticFiles(directory=directory), name=APP_STATIC_NAME)
+
+
+def _nested(a: str, b: str) -> bool:
+    """Whether one URL prefix contains the other, comparing whole segments, so
+    `/static-v2` is not inside `/static`."""
+    a, b = a.rstrip("/"), b.rstrip("/")
+    return a == b or a.startswith(b + "/") or b.startswith(a + "/")
