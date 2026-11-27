@@ -592,6 +592,8 @@ fjkit
       <div class="item" data-clamp="false">    <section>
       <h4><code>fjkit_static(path)</code></h4><p>A URL under the mounted static tree, stamped with ?v=&lt;mtime&gt; so a browser cannot serve a stale stylesheet against current markup.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
+      <h4><code>app_static(path)</code></h4><p>A URL under FjkitConfig.static_dir — the app&#39;s own scripts and images — stamped the same way. Defined only when static_dir is set. Use it instead of url_for(request, &#34;static&#34;, …), whose URL has no stamp.</p>    </section>  </div>
+      <div class="item" data-clamp="false">    <section>
       <h4><code>fjkit_version</code></h4><p>The versions in the footer: fjkit, fastapi, jinja2, basecoat, htmx.</p>    </section>  </div>
       <div class="item" data-clamp="false">    <section>
       <h4><code>fjkit_color_scheme</code></h4><p>What FjkitConfig.color_scheme renders: .prepaint_script, .html_class and .toggle.</p>    </section>  </div>
